@@ -170,3 +170,20 @@ permission policy as the Rust gateway.
   building, stdin line shapes, CLI probes parsing.
 - Against the real CLI (needs a login, costs a few tokens):
   `cargo test --manifest-path src-tauri/Cargo.toml -- --ignored claude_cli::`.
+
+## Performance
+
+Budgets and what was measured (Chromium against the Vite dev server with the mock backend, Windows
+11 dev box, `performance.now()`; the Vitest test `src/features/ai/perf.test.tsx` repeats the
+measurements in jsdom with a 3x margin and logs its numbers):
+
+| Budget | Measured | Verdict |
+|---|---|---|
+| 400-item conversation, one streamed event until the next frame | 16.6 ms median, 18.4 ms worst of 20 (one frame; mounting the 400 items takes 9 ms) | Met; the transcript is not virtualized |
+| Block diff of a 5 000-line document, `buildWriteReview` (11 change groups) | 126-162 ms (first call 162 ms, then about 130 ms) | Met (200 ms) |
+| Same, `buildEditReview` (one hunk) | 127-135 ms | Met (200 ms) |
+
+The diff time is dominated by parsing the two versions into blocks (`splitBlocks`). Not budgeted,
+for information: rendering that 5 000-line diff with `RenderedDiff` shows its first change after
+about 0.7 s (the markdown pipeline runs per block); documents over the preview size limit fall
+back to the line diff.
