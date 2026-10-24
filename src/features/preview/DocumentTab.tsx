@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useCallback, useLayoutEffect, useRef } from 'react';
 import { useDocuments } from '../../stores/documents';
 import { useTabs } from '../../stores/tabs';
+import { useWorkspace } from '../../stores/workspace';
 import { MarkdownPreview } from './MarkdownPreview';
 import { MAX_RENDERED_CHARS, useMarkdown } from './useMarkdown';
 import './document.css';
@@ -22,8 +23,15 @@ function LargeFile({ content }: { content: string }) {
   );
 }
 
-function Rendered({ content }: { content: string }) {
+interface RenderedProps {
+  content: string;
+  relPath: string;
+  getScrollContainer: () => HTMLElement | null;
+}
+
+function Rendered({ content, relPath, getScrollContainer }: RenderedProps) {
   const { rendered, error } = useMarkdown(content);
+  const rootPath = useWorkspace((s) => s.root?.path ?? '');
   if (error) {
     return (
       <div className="document-message" role="alert">
@@ -31,13 +39,21 @@ function Rendered({ content }: { content: string }) {
       </div>
     );
   }
-  return rendered ? <MarkdownPreview rendered={rendered} /> : null;
+  return rendered ? (
+    <MarkdownPreview
+      rendered={rendered}
+      relPath={relPath}
+      rootPath={rootPath}
+      getScrollContainer={getScrollContainer}
+    />
+  ) : null;
 }
 
 export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
   const doc = useDocuments((s) => s.byPath[relPath]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const restored = useRef(false);
+  const getScrollContainer = useCallback(() => scrollRef.current, []);
 
   // Restore the tab's scroll position once its content has been laid out.
   useLayoutEffect(() => {
@@ -83,7 +99,11 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
         (doc.content.length > MAX_RENDERED_CHARS ? (
           <LargeFile content={doc.content} />
         ) : (
-          <Rendered content={doc.content} />
+          <Rendered
+            content={doc.content}
+            relPath={relPath}
+            getScrollContainer={getScrollContainer}
+          />
         ))}
     </div>
   );

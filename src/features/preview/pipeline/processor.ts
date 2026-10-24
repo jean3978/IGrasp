@@ -17,6 +17,7 @@ import { alertOptions } from './alerts';
 import { remarkGithubDollarMath } from './dollarMath';
 import { remarkExtractFrontMatter } from './frontmatter';
 import { highlightCode } from './highlight';
+import { rehypeMarkInsecureMedia } from './insecureMedia';
 import { renderMath } from './math';
 import type { FrontMatter } from './frontmatter';
 import { sanitizeSchema } from './sanitize';
@@ -42,6 +43,7 @@ const transformer = unified()
   .use(remarkRehype, { allowDangerousHtml: true, footnoteLabel: 'Footnotes', clobberPrefix: '' })
   .use(rehypeRaw)
   .use(rehypeGithubAlerts, alertOptions)
+  .use(rehypeMarkInsecureMedia)
   .use(rehypeSanitize, sanitizeSchema)
   .use(rehypeSlug, { prefix: ID_PREFIX });
 

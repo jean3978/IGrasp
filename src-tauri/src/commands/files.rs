@@ -67,9 +67,56 @@ pub fn read_markdown(state: State<'_, AppState>, rel_path: String) -> AppResult<
     })
 }
 
+/// Media that a document may ask to open with the system's default application (the video
+/// fallback). Anything else, executables and scripts in particular, is refused: a document must
+/// never be able to launch a program through a link.
+const EXTERNAL_MEDIA: [&str; 18] = [
+    "mp4", "webm", "ogg", "ogv", "mov", "m4v", "mkv", "avi", "mp3", "wav", "flac", "m4a", "png",
+    "jpg", "jpeg", "gif", "webp", "svg",
+];
+
+pub fn is_external_media(name: &str) -> bool {
+    name.rsplit_once('.').is_some_and(|(stem, ext)| {
+        !stem.is_empty() && EXTERNAL_MEDIA.iter().any(|m| ext.eq_ignore_ascii_case(m))
+    })
+}
+
+/// Opens a media file of the open folder with the system's default application.
+#[tauri::command]
+pub fn open_external(state: State<'_, AppState>, rel_path: String) -> AppResult<()> {
+    let name = rel_path.rsplit('/').next().unwrap_or(&rel_path);
+    if !is_external_media(name) {
+        return Err(AppError::InvalidPath(format!(
+            "{rel_path} cannot be opened externally"
+        )));
+    }
+    let path = state.with_workspace(|ws| ws.guard.resolve(&rel_path))?;
+    tauri_plugin_opener::open_path(&path, None::<&str>)
+        .map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_media_can_be_opened_externally() {
+        for yes in ["clip.mp4", "a/b/Movie.MOV", "x.webm", "pic.PNG"] {
+            assert!(is_external_media(yes), "{yes}");
+        }
+        for no in [
+            "run.exe",
+            "script.bat",
+            "evil.cmd",
+            "a.ps1",
+            "doc.md",
+            "mp4",
+            ".mp4",
+            "x.sh",
+        ] {
+            assert!(!is_external_media(no), "{no}");
+        }
+    }
 
     #[test]
     fn strips_the_bom_and_keeps_line_endings() {

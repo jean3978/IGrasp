@@ -42,6 +42,8 @@ export interface MockState {
   scanDelayMs: number;
   /** What the next folder picker returns (null = cancelled). */
   pickFolderResult: string | null;
+  /** Files and URLs the app asked to open externally, in order. */
+  opened: string[];
 }
 
 export interface MockControls {
@@ -65,6 +67,7 @@ function initialState(): MockState {
     folders: new Set([FIXTURE_ROOT]),
     files: new Map(Object.entries(FIXTURE_FILES)),
     mtimes: new Map(),
+    opened: [],
     root: null,
     generation: 0,
     index: null,
@@ -230,6 +233,23 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         size: content.length,
         modifiedMs: state.mtimes.get(relPath) ?? 0,
       });
+    },
+
+    assetUrl: (_rootPath, relPath) => {
+      const content = state.files.get(relPath);
+      // Only SVG fixtures have real content; anything else fails to load, like a broken file.
+      if (content?.trimStart().startsWith('<svg')) {
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}`;
+      }
+      return `data:application/octet-stream,missing-${encodeURIComponent(relPath)}`;
+    },
+    openExternal: (relPath) => {
+      state.opened.push(relPath);
+      return Promise.resolve();
+    },
+    openUrl: (url) => {
+      state.opened.push(url);
+      return Promise.resolve();
     },
 
     getSettings: () => Promise.resolve(structuredClone(state.settings)),

@@ -438,3 +438,60 @@
   width: 14px;
   height: 14px;
 }
+
+/* Images and videos that cannot be shown */
+.media-placeholder {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: var(--border-width) dashed var(--md-border);
+  border-radius: var(--radius-m);
+  color: var(--fg-muted);
+  font-size: 0.875em;
+  word-break: break-all;
+}
+
+.media-placeholder svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.video-fallback {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: var(--border-width) solid var(--md-border);
+  border-radius: var(--radius-l);
+  background: var(--bg-code);
+}
+
+.video-fallback-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  color: var(--fg-muted);
+}
+
+.video-fallback-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 0.9em;
+}
+
+.video-fallback-body strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.markdown-body a[data-link='unsupported'] {
+  cursor: help;
+  text-decoration: underline dotted;
+}

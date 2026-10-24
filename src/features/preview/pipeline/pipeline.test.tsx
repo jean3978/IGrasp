@@ -82,8 +82,10 @@ describe('markdown pipeline', () => {
     const srcs = [...container.querySelectorAll('img')].map((i) => i.getAttribute('src'));
     expect(srcs).not.toContain('http://example.com/a.png');
     expect(srcs).toContain('https://example.com/b.png');
-    expect(srcs).toContain('images/c.png');
-    expect(container.querySelector('video')?.getAttribute('src')).toBe('clip.mp4');
+    // Relative paths go through the backend's asset URLs (the mock encodes the path).
+    expect(srcs.some((s) => s?.includes(encodeURIComponent('images/c.png')))).toBe(true);
+    expect(container.querySelector('video')?.getAttribute('src')).toContain('clip.mp4');
+    expect(container.textContent).toContain('Blocked insecure (http) image');
     expect(container.querySelector('details kbd')?.textContent).toBe('Ctrl');
   });
 });

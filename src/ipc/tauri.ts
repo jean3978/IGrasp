@@ -1,9 +1,11 @@
 // Backend implementation over Tauri IPC. This is the only module that calls `invoke` and `listen`.
 
-import { invoke as tauriInvoke } from '@tauri-apps/api/core';
+import { convertFileSrc, invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { listen as tauriListen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { toAbsolute } from '../lib/paths';
 import { BackendError } from './types';
 import type { AppWindow, Backend, ErrorCode } from './types';
 
@@ -74,6 +76,9 @@ export const tauriBackend: Backend = {
   rescan: (request) => invoke('rescan', { request }),
   listDir: (relPath) => invoke('list_dir', { relPath }),
   readMarkdown: (relPath) => invoke('read_markdown', { relPath }),
+  assetUrl: (rootPath, relPath) => convertFileSrc(toAbsolute(rootPath, relPath)),
+  openExternal: (relPath) => invoke('open_external', { relPath }),
+  openUrl: (url) => openUrl(url),
 
   getSettings: () => invoke('get_settings'),
   updateSettings: (patch) => invoke('update_settings', { patch }),

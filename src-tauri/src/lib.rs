@@ -30,6 +30,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(log)
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             app.manage(AppState::new(AppData::new(dir)));
@@ -62,6 +63,7 @@ pub fn run() {
             commands::workspace::rescan,
             commands::workspace::list_dir,
             commands::files::read_markdown,
+            commands::files::open_external,
         ])
         .run(tauri::generate_context!())
         .expect("error while running IGrasp");

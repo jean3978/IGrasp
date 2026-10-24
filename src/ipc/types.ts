@@ -100,6 +100,12 @@ export interface Backend {
   listDir(relPath: string): Promise<DirListing>;
   /** Reads a markdown file of the open folder. */
   readMarkdown(relPath: string): Promise<FileContent>;
+  /** URL the webview can load a file of the open folder from (images, videos). */
+  assetUrl(rootPath: string, relPath: string): string;
+  /** Opens a media file of the open folder with the system's default application. */
+  openExternal(relPath: string): Promise<void>;
+  /** Opens an http(s) or mailto URL in the system browser or mail client. */
+  openUrl(url: string): Promise<void>;
 
   getSettings(): Promise<Settings>;
   updateSettings(patch: SettingsPatch): Promise<Settings>;
