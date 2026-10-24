@@ -1,0 +1,24 @@
+[package]
+name = "igrasp"
+version = "0.0.0"
+description = "Read the markdown documentation of a project and grasp what AI agents are writing."
+authors = ["Jean-Rene Choiniere"]
+license = "MIT"
+edition = "2024"
+rust-version = "1.90"
+
+[lib]
+# The `_lib` suffix avoids a name clash with the binary on Windows (cargo issue #8519).
+name = "igrasp_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.4", features = [] }
+
+[dependencies]
+tauri = { version = "2.12.5", features = ["protocol-asset"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+
+[lints.rust]
+unsafe_code = "deny"

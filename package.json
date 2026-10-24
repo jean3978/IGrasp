@@ -1,0 +1,32 @@
+{
+  "name": "igrasp",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Read the markdown documentation of a project and grasp what AI agents are writing.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24.15.0 || ^22.22.2",
+    "npm": ">=11"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.12.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "typescript": "5.9.3",
+    "vite": "8.3.5"
+  }
+}
