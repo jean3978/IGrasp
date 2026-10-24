@@ -1,0 +1,40 @@
+.capture-overlay {
+  position: fixed;
+  z-index: 4300;
+  cursor: crosshair;
+  user-select: none;
+  outline: none;
+}
+
+.capture-overlay:focus-visible {
+  outline: var(--focus-width, 2px) solid var(--focus);
+  outline-offset: calc(var(--focus-width, 2px) * -1);
+}
+
+.capture-selection {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--accent);
+  background: var(--flash-bg);
+  pointer-events: none;
+}
+
+/* Too small to capture yet: dashed, so the state is not a colour alone. */
+.capture-selection[data-valid='false'] {
+  border-style: dashed;
+}
+
+.capture-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 4px 10px;
+  border: var(--border-width, 1px) solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--bg-overlay);
+  color: var(--fg);
+  font-size: var(--font-size-small);
+  pointer-events: none;
+}
