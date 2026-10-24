@@ -6,6 +6,7 @@ import { MAX_FONT_SIZE, MIN_FONT_SIZE } from '../../ipc/defaults';
 import type { Theme } from '../../ipc/types';
 import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
+import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
 
 export type ActionId =
@@ -16,7 +17,28 @@ export type ActionId =
   | 'view.toggleSidebar'
   | 'view.zoomIn'
   | 'view.zoomOut'
-  | 'view.zoomReset';
+  | 'view.zoomReset'
+  | 'tabs.close'
+  | 'tabs.next'
+  | 'tabs.previous'
+  | 'tabs.moveLeft'
+  | 'tabs.moveRight'
+  | `tabs.goto${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}`;
+
+const activeTabId = () => useTabs.getState().activeId;
+
+const gotoActions = Object.fromEntries(
+  [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => [
+    `tabs.goto${String(n)}`,
+    {
+      label: n === 9 ? 'Go to Last Tab' : `Go to Tab ${String(n)}`,
+      shortcut: `Alt+${String(n)}`,
+      run: () => {
+        useTabs.getState().activateIndex(n);
+      },
+    },
+  ]),
+) as Record<`tabs.goto${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9}`, ActionDef>;
 
 interface ActionDef {
   label: string;
@@ -33,6 +55,45 @@ function setFontSize(size: number) {
 }
 
 export const actions: Record<ActionId, ActionDef> = {
+  ...gotoActions,
+  'tabs.close': {
+    label: 'Close Tab',
+    shortcut: 'Ctrl+W',
+    run: () => {
+      const id = activeTabId();
+      if (id) useTabs.getState().close(id);
+    },
+  },
+  'tabs.next': {
+    label: 'Next Tab',
+    shortcut: 'Ctrl+Tab',
+    run: () => {
+      useTabs.getState().cycle(1);
+    },
+  },
+  'tabs.previous': {
+    label: 'Previous Tab',
+    shortcut: 'Ctrl+Shift+Tab',
+    run: () => {
+      useTabs.getState().cycle(-1);
+    },
+  },
+  'tabs.moveLeft': {
+    label: 'Move Tab Left',
+    shortcut: 'Ctrl+Shift+PageUp',
+    run: () => {
+      const id = activeTabId();
+      if (id) useTabs.getState().move(id, -1);
+    },
+  },
+  'tabs.moveRight': {
+    label: 'Move Tab Right',
+    shortcut: 'Ctrl+Shift+PageDown',
+    run: () => {
+      const id = activeTabId();
+      if (id) useTabs.getState().move(id, 1);
+    },
+  },
   'file.openFolder': {
     label: 'Open Folder…',
     shortcut: 'Ctrl+O',

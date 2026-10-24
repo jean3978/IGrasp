@@ -16,6 +16,18 @@ export const KEYMAP: KeyBinding[] = [
   { key: '+', ctrl: true, action: 'view.zoomIn' },
   { key: '-', ctrl: true, action: 'view.zoomOut' },
   { key: '0', ctrl: true, action: 'view.zoomReset' },
+  { key: 'w', ctrl: true, action: 'tabs.close' },
+  { key: 'tab', ctrl: true, action: 'tabs.next' },
+  { key: 'tab', ctrl: true, shift: true, action: 'tabs.previous' },
+  { key: 'pagedown', ctrl: true, action: 'tabs.next' },
+  { key: 'pageup', ctrl: true, action: 'tabs.previous' },
+  { key: 'pageup', ctrl: true, shift: true, action: 'tabs.moveLeft' },
+  { key: 'pagedown', ctrl: true, shift: true, action: 'tabs.moveRight' },
+  ...([1, 2, 3, 4, 5, 6, 7, 8, 9] as const).map((n): KeyBinding => ({
+    key: String(n),
+    alt: true,
+    action: `tabs.goto${n}`,
+  })),
 ];
 
 /** Returns the action bound to a key event, if any. Modifiers must match exactly. */

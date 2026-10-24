@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { backend } from '../ipc/client';
 import type { IndexReadyEvent, RootInfo } from '../ipc/types';
+import { useDocuments } from './documents';
 import { useRecent } from './recent';
+import { useTabs } from './tabs';
 import { useTree } from './tree';
 
 export const DEFAULT_SIDEBAR_WIDTH = 280;
@@ -73,6 +75,8 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
     try {
       const root = await backend.openRoot(path);
       useTree.setState({ expanded: new Set(), focused: null });
+      useTabs.getState().closeAll();
+      useDocuments.getState().clear();
       set({ root, opening: false });
       useTree.getState().reset(root.generation, {
         showDotfiles: root.showDotfiles,
@@ -95,6 +99,8 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
     await backend.closeRoot();
     set({ root: null, index: IDLE });
     useTree.getState().reset(0, { showDotfiles: false, showIgnored: false });
+    useTabs.getState().closeAll();
+    useDocuments.getState().clear();
     void useRecent.getState().refresh();
   },
 

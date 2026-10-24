@@ -22,8 +22,9 @@ describe('App', () => {
     render(<App />);
     await userEvent.click(screen.getByRole('button', { name: /Open Folder/ }));
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'igrasp-demo' }),
+      await screen.findByRole('heading', { level: 2, name: 'igrasp-demo' }),
     ).toBeInTheDocument();
+    expect(screen.getByText('Open a file')).toBeInTheDocument();
     // Rows are virtualized and jsdom has no layout; check the loaded listing instead.
     await waitFor(() => {
       expect(useTree.getState().listings['']?.files.map((f) => f.name)).toContain('README.md');

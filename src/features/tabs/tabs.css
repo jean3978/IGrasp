@@ -1,0 +1,167 @@
+.tab-bar {
+  display: flex;
+  height: var(--tabbar-height);
+  flex: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: var(--border-width) solid var(--border);
+  background: var(--bg-tab-inactive);
+  scrollbar-width: thin;
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  max-width: 260px;
+  height: 100%;
+  flex: none;
+  border-right: var(--border-width) solid var(--border);
+  background: var(--bg-tab-inactive);
+  color: var(--fg-muted);
+}
+
+.tab-active {
+  background: var(--bg-tab-active);
+  color: var(--fg-strong);
+}
+
+/* Accent line on the active tab, as in VS Code. */
+.tab-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.tab-active::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  background: var(--bg-tab-active);
+}
+
+.tab-main {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  padding: 0 4px 0 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: var(--font-size-ui);
+}
+
+.tab-main svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--info);
+}
+
+.tab-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tab-preview .tab-title {
+  font-style: italic;
+}
+
+.tab-deleted .tab-title {
+  color: var(--danger);
+  text-decoration: line-through;
+}
+
+.tab-description {
+  overflow: hidden;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: inherit;
+  opacity: 0;
+}
+
+.tab:hover .tab-close,
+.tab-active .tab-close {
+  opacity: 1;
+}
+
+.tab-close:hover {
+  background: var(--bg-hover);
+}
+
+.tab-close svg {
+  width: 14px;
+  height: 14px;
+}
+
+.tab-content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--fg-muted);
+}
+
+.empty-state-logo {
+  width: 120px;
+  height: 120px;
+  color: var(--fg-disabled);
+  opacity: 0.35;
+}
+
+.empty-state-keys {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 8px 24px;
+  margin: 0;
+}
+
+.empty-state-keys dt {
+  text-align: right;
+}
+
+.empty-state-keys dd {
+  margin: 0;
+}
+
+kbd {
+  padding: 1px 5px;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-s);
+  background: var(--bg-input);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-small);
+}

@@ -1,0 +1,34 @@
+.document-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  outline: none;
+  user-select: text;
+}
+
+.document-scroll:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: -2px;
+}
+
+.document-message {
+  max-width: var(--reading-width);
+  margin: 32px auto;
+  padding: 0 32px;
+  color: var(--fg-muted);
+}
+
+.document-raw {
+  max-width: var(--reading-width);
+  margin: 0 auto;
+  padding: 24px 32px;
+  font-family: var(--font-mono);
+  font-size: calc(var(--preview-font-size) * 0.85);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.placeholder {
+  padding: 24px;
+  color: var(--fg-muted);
+}
