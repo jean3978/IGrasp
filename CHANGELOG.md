@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Roadmap: a **Tutorials** phase (Hoot's Academy) is added as Phase 5; Editing, Git and the
+  Mermaid visual editor move to Phases 6, 7 and 8. The quiz and tutorials are grounded in the
+  whole project, not only its markdown files
+  ([ADR 0016](docs/decisions/0016-learning-features-grounded-in-the-project.md)).
+
 ## [0.2.0] - 2026-10-24
 
 Phase 2 — Navigation: find anything, follow links, and see what changed.

@@ -47,8 +47,9 @@ No Confluence, no editor plugin, no note-taking vault — just the project's own
   sanitized, links never navigate the app or launch programs, and the app reads only the folder
   you chose.
 
-Coming next: Claude integration, a quiz about your project, editing, and a beginner-friendly git
-view with "what changed since I last looked". See the [roadmap](#roadmap).
+Coming next: Claude integration, a quiz and generated tutorials about your project (its code,
+not only its docs), editing, and a beginner-friendly git view with "what changed since I last
+looked". AI features only ever spend tokens when you click for it. See the [roadmap](#roadmap).
 
 ## Download and installation
 
@@ -69,8 +70,11 @@ it.
   Windows 10).
 - **Linux**: WebKitGTK 4.1, version **2.44 or newer** (Ubuntu 22.04 and later with updates,
   Debian 12, Fedora 39+). Mermaid diagrams need it.
-- **Claude features** (from phase 3) will use your installed
-  [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code); it is not bundled.
+- **AI features** (from phase 3) will use your installed
+  [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code); it is not bundled. Claude is
+  the only supported provider for now; the AI layer is provider-neutral so others can be added
+  later. IGrasp never spends tokens in the background: only when you click a control marked as
+  using AI.
 
 ### Video on Linux
 
@@ -150,13 +154,19 @@ type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
 - [x] **Phase 2 — Navigation** (0.2.0): search everything (Ctrl+T), search in files
       (Ctrl+Shift+F), recent changes, back/forward history, outline, internal links, code viewer,
       broken links, backlinks.
-- [ ] **Phase 3 — Claude**: chat through the Claude CLI, inline diff review, region capture.
-- [ ] **Phase 4 — Quiz**: a fun quiz about the project with Hoot the owl.
-- [ ] **Phase 5 — Editing**: WYSIWYG editing with lossless round-trip, file management, edit
+- [ ] **Phase 3 — Claude**: a provider-neutral AI layer (Claude first) that spends tokens only on
+      a user action, chat through the Claude CLI, inline diff review, region capture.
+- [ ] **Phase 4 — Quiz**: a fun quiz about the project with Hoot the owl, grounded in the whole
+      project (code, config, docs), for developers new to it.
+- [ ] **Phase 5 — Tutorials**: Hoot's Academy, interactive tutorials generated about the project
+      (architecture, features, dependencies, how things are built, any engine or stack), saved
+      privately with your progress, shareable with the team, and checked for freshness only when
+      you ask.
+- [ ] **Phase 6 — Editing**: WYSIWYG editing with lossless round-trip, file management, edit
       conflicts.
-- [ ] **Phase 6 — Git**: branch graph, commit details, status panel, stash, beginner-friendly
+- [ ] **Phase 7 — Git**: branch graph, commit details, status panel, stash, beginner-friendly
       operations, and "what changed since I last looked".
-- [ ] **Phase 7 — Mermaid visual editor**: flowcharts first.
+- [ ] **Phase 8 — Mermaid visual editor**: flowcharts first.
 
 ## License
 
