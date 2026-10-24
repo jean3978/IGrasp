@@ -3,6 +3,7 @@ import { Tooltip } from 'radix-ui';
 import { backend } from './ipc/client';
 import { AboutDialog } from './features/about/AboutDialog';
 import { ExplorerPanel } from './features/explorer/ExplorerPanel';
+import { BacklinksCount, BacklinksSection } from './features/links/BacklinksSection';
 import { BrokenLinksPanel } from './features/links/BrokenLinksPanel';
 import { RecentChangesPanel } from './features/recent/RecentChangesPanel';
 import { SearchPanel } from './features/search/SearchPanel';
@@ -141,8 +142,8 @@ export function App() {
                   <PanelSection title="Outline" grow actions={<OutlineActions />}>
                     <OutlinePanel />
                   </PanelSection>
-                  <PanelSection title="Backlinks">
-                    <div className="panel-empty">No other document links here.</div>
+                  <PanelSection title="Backlinks" badge={<BacklinksCount />}>
+                    <BacklinksSection />
                   </PanelSection>
                 </RightPanel>
               }

@@ -83,6 +83,22 @@
   letter-spacing: normal;
 }
 
+.panel-section-badge:empty {
+  display: none;
+}
+
+.backlink-line {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  padding-left: 18px;
+}
+
+.backlink-line .list-meta {
+  margin-left: auto;
+}
+
 .panel-section-actions {
   display: flex;
   gap: 1px;
