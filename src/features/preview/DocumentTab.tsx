@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef } from 'react';
 import { useDocuments } from '../../stores/documents';
 import { useTabs } from '../../stores/tabs';
+import { MarkdownPreview } from './MarkdownPreview';
+import { MAX_RENDERED_CHARS, useMarkdown } from './useMarkdown';
 import './document.css';
 
 interface DocumentTabProps {
@@ -8,18 +10,56 @@ interface DocumentTabProps {
   relPath: string;
 }
 
+function LargeFile({ content }: { content: string }) {
+  return (
+    <>
+      <div className="document-notice" role="status">
+        This file is large ({(content.length / 1_000_000).toFixed(1)} MB), so it is shown as plain
+        text.
+      </div>
+      <pre className="document-raw">{content}</pre>
+    </>
+  );
+}
+
+function Rendered({ content }: { content: string }) {
+  const { rendered, error } = useMarkdown(content);
+  if (error) {
+    return (
+      <div className="document-message" role="alert">
+        This file could not be rendered: {error}
+      </div>
+    );
+  }
+  return rendered ? <MarkdownPreview rendered={rendered} /> : null;
+}
+
 export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
   const doc = useDocuments((s) => s.byPath[relPath]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const restored = useRef(false);
 
-  // Restore the tab's scroll position once its content is there.
+  // Restore the tab's scroll position once its content has been laid out.
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el || restored.current || doc?.status !== 'ready') return;
-    restored.current = true;
     const tab = useTabs.getState().tabs.find((t) => t.id === tabId);
-    if (tab) el.scrollTop = tab.scrollTop;
+    if (!tab || tab.scrollTop === 0) {
+      restored.current = true;
+      return;
+    }
+    // The preview renders asynchronously: retry until the content is tall enough (max ~1 s).
+    let frames = 0;
+    const apply = () => {
+      el.scrollTop = tab.scrollTop;
+      frames += 1;
+      if (Math.abs(el.scrollTop - tab.scrollTop) > 1 && frames < 60) {
+        requestAnimationFrame(apply);
+      } else {
+        restored.current = true;
+      }
+    };
+    apply();
   }, [doc?.status, tabId]);
 
   return (
@@ -29,7 +69,9 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
       tabIndex={0}
       aria-label={relPath}
       onScroll={(e) => {
-        useTabs.getState().setScroll(tabId, Math.round(e.currentTarget.scrollTop));
+        if (restored.current) {
+          useTabs.getState().setScroll(tabId, Math.round(e.currentTarget.scrollTop));
+        }
       }}
     >
       {doc?.status === 'error' && (
@@ -37,7 +79,12 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
           {doc.error}
         </div>
       )}
-      {doc?.status === 'ready' && <pre className="document-raw">{doc.content}</pre>}
+      {doc?.status === 'ready' &&
+        (doc.content.length > MAX_RENDERED_CHARS ? (
+          <LargeFile content={doc.content} />
+        ) : (
+          <Rendered content={doc.content} />
+        ))}
     </div>
   );
 }

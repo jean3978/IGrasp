@@ -1,0 +1,51 @@
+// The markdown pipeline (unified): markdown → mdast → hast, sanitized, with ids for anchors.
+
+import type { Root as HastRoot } from 'hast';
+import type { Root as MdastRoot } from 'mdast';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
+import rehypeSlug from 'rehype-slug';
+import { rehypeGithubAlerts } from 'rehype-github-alerts';
+import remarkFrontmatter from 'remark-frontmatter';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import remarkParse from 'remark-parse';
+import remarkRehype from 'remark-rehype';
+import { unified } from 'unified';
+import { VFile } from 'vfile';
+import { alertOptions } from './alerts';
+import { remarkExtractFrontMatter } from './frontmatter';
+import type { FrontMatter } from './frontmatter';
+import { sanitizeSchema } from './sanitize';
+
+/** Prefix of every id in the rendered document (anchors target `#<id>` → `user-content-<id>`). */
+export const ID_PREFIX = 'user-content-';
+
+export interface RenderedMarkdown {
+  hast: HastRoot;
+  frontMatter: FrontMatter | null;
+}
+
+const parser = unified()
+  .use(remarkParse)
+  .use(remarkGfm)
+  .use(remarkFrontmatter, ['yaml'])
+  .use(remarkExtractFrontMatter)
+  .use(remarkMath);
+
+const transformer = unified()
+  // Ids are left unprefixed here; the sanitizer adds ID_PREFIX once.
+  .use(remarkRehype, { allowDangerousHtml: true, footnoteLabel: 'Footnotes', clobberPrefix: '' })
+  .use(rehypeRaw)
+  .use(rehypeGithubAlerts, alertOptions)
+  .use(rehypeSanitize, sanitizeSchema)
+  .use(rehypeSlug, { prefix: ID_PREFIX });
+
+export async function renderMarkdown(content: string): Promise<RenderedMarkdown> {
+  const file = new VFile({ value: content });
+  const mdast = parser.parse(file);
+  const transformedMdast = (await parser.run(mdast, file)) as MdastRoot;
+  const hast = await transformer.run(transformedMdast, file);
+  // Trusted generators run after sanitization (added with math and code highlighting).
+  return { hast, frontMatter: file.data.frontMatter ?? null };
+}

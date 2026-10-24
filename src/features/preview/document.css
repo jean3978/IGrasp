@@ -32,3 +32,10 @@
   padding: 24px;
   color: var(--fg-muted);
 }
+
+.document-notice {
+  max-width: var(--reading-width);
+  margin: 16px auto 0;
+  padding: 8px 32px;
+  color: var(--warning);
+}
