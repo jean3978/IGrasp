@@ -1,6 +1,6 @@
 # Phase 2 — Navigation implementation plan
 
-Status: **implemented** on `phase-2-navigation` (review answers in §16; deviations in the phase summary) · Target tag: `v0.2.0` · Branch: `phase-2-navigation`
+Status: **done**: validated by the maintainer, merged into `main` and tagged `v0.2.0` (review answers in §16; deviations in the ADRs) · Branch: `phase-2-navigation`
 
 Phase 1 delivered a fast, live, read-only viewer. Phase 2 makes a large documentation tree
 *navigable*: find anything by name or heading (Ctrl+T), search every file's content
@@ -836,14 +836,14 @@ Markdown→code links to a symbol name (`main.rs#fn%20run`) are **not** planned.
 
 ## 15. Definition of done checklist
 
-- [ ] Every row of §1.1 demonstrable on Windows 11 and Ubuntu 22.04 builds.
-- [ ] `npm run check` green on both OSes in CI; e2e suite extended per §10.
-- [ ] §7 targets measured on the reference project and the numbers recorded in
+- [x] Every row of §1.1 demonstrable on Windows 11 and Ubuntu 22.04 builds.
+- [x] `npm run check` green on both OSes in CI; e2e suite extended per §10.
+- [x] §7 targets measured on the reference project and the numbers recorded in
       `docs/features/search.md` and `navigation.md`.
-- [ ] ADRs 0009–0013 written; feature docs, architecture, CLAUDE.md, README, CHANGELOG updated.
-- [ ] No write inside the opened folder; no new Tauri capability; `open_with_default_app`
+- [x] ADRs 0009–0013 written; feature docs, architecture, CLAUDE.md, README, CHANGELOG updated.
+- [x] No write inside the opened folder; no new Tauri capability; `open_with_default_app`
       refusals verified manually for `.exe`, `.bat`, `.sh`, `.js`.
-- [ ] Phase summary given to the maintainer before Phase 3 starts.
+- [x] Phase summary given to the maintainer before Phase 3 starts.
 
 ---
 
