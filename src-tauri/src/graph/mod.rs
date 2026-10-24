@@ -52,8 +52,6 @@ pub struct LinkInfo {
 
 #[derive(Debug, Clone, Default)]
 pub struct DocMeta {
-    // Read by the symbol search (Ctrl+T), which comes with the search commands.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub headings: Vec<Heading>,
     pub anchors: BTreeSet<String>,
     pub links: Vec<LinkInfo>,
@@ -114,6 +112,8 @@ pub struct Graph {
     pub ready: bool,
     pub total: u32,
     pub skipped: u32,
+    /// Bumped on every change, so caches built from the graph (symbol search) know when to rebuild.
+    pub version: u64,
 }
 
 pub type SharedGraph = Arc<RwLock<Graph>>;
@@ -206,6 +206,10 @@ impl Graph {
         self.docs.get(rel)
     }
 
+    pub fn docs(&self) -> impl Iterator<Item = (&String, &DocMeta)> {
+        self.docs.iter()
+    }
+
     pub fn parsed(&self) -> u32 {
         u32::try_from(self.docs.len()).unwrap_or(u32::MAX)
     }
@@ -277,6 +281,7 @@ impl Graph {
 
     /// Adds or replaces a parsed document; its links stay unchecked until `resolve`.
     pub fn insert(&mut self, rel: &str, parsed: ParsedDoc) {
+        self.version += 1;
         self.unregister(rel);
         let links = parsed
             .links
@@ -301,6 +306,7 @@ impl Graph {
     }
 
     pub fn remove(&mut self, rel: &str) {
+        self.version += 1;
         self.unregister(rel);
         self.docs.remove(rel);
     }

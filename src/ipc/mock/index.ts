@@ -20,6 +20,7 @@ import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT, FIXTURE_SIZES, fixtureMtimes
 import { checkOpenable, readText } from './mockFiles';
 import { backlinksOf, brokenCount, brokenDocs, buildGraph } from './mockGraph';
 import type { MockDoc } from './mockGraph';
+import { searchSymbols } from './mockSymbols';
 import { gitignorePatterns, isMarkdown, listFixtureDir, scanFixture } from './mockIndex';
 import type { MockScanOptions } from './mockIndex';
 
@@ -463,6 +464,12 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         docs: graph ? structuredClone(brokenDocs(graph)) : [],
       });
     },
+    searchSymbols: (request) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const files = [...(state.index?.keys() ?? [])];
+      return Promise.resolve(searchSymbols(request, files, state.graph, state.generation));
+    },
+
     getSettings: () => Promise.resolve(structuredClone(state.settings)),
     updateSettings: (patch) => {
       const next: Settings = { ...state.settings, ...patch };

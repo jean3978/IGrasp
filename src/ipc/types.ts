@@ -11,6 +11,7 @@ import type { FsChangesEvent } from './generated/FsChangesEvent';
 import type { Backlinks } from './generated/Backlinks';
 import type { BrokenLinksReport } from './generated/BrokenLinksReport';
 import type { DocLinks } from './generated/DocLinks';
+import type { SymbolSearchResult } from './generated/SymbolSearchResult';
 import type { GraphChangedEvent } from './generated/GraphChangedEvent';
 import type { GraphProgressEvent } from './generated/GraphProgressEvent';
 import type { GraphReadyEvent } from './generated/GraphReadyEvent';
@@ -64,6 +65,8 @@ export type { SessionTab } from './generated/SessionTab';
 export type { SessionTabKind } from './generated/SessionTabKind';
 export type { SidebarView } from './generated/SidebarView';
 export type { LinkInfo } from './generated/LinkInfo';
+export type { SymbolHit } from './generated/SymbolHit';
+export type { SymbolSearchResult } from './generated/SymbolSearchResult';
 export type { DocLinks } from './generated/DocLinks';
 export type { Backlink } from './generated/Backlink';
 export type { Backlinks } from './generated/Backlinks';
@@ -72,6 +75,15 @@ export type { BrokenLinksReport } from './generated/BrokenLinksReport';
 export type { LinkStatus } from './generated/LinkStatus';
 export type { LinkTarget } from './generated/LinkTarget';
 export type { RightPanelState } from './generated/RightPanelState';
+
+export interface SymbolSearchRequest {
+  query: string;
+  limit?: number;
+  headingsOnly?: boolean;
+  /** Recently opened files, most recent first (ranked higher, listed for an empty query). */
+  recent: string[];
+  requestId: number;
+}
 
 /** Error raised by any backend call. */
 export class BackendError extends Error {
@@ -160,6 +172,8 @@ export interface Backend {
   getBacklinks(relPath: string): Promise<Backlinks>;
   /** Every broken link of the folder, grouped by document. */
   listBrokenLinks(): Promise<BrokenLinksReport>;
+  /** Fuzzy search over file names and headings (Ctrl+T); `#` restricts to headings. */
+  searchSymbols(request: SymbolSearchRequest): Promise<SymbolSearchResult>;
 
   getSettings(): Promise<Settings>;
   updateSettings(patch: SettingsPatch): Promise<Settings>;

@@ -14,4 +14,5 @@ are never deleted; a decision that changes gets a new record that supersedes the
 | [0007](0007-e2e-with-playwright-and-mock-ipc.md) | End-to-end tests with Playwright and a mock backend | Accepted |
 | [0008](0008-pin-typescript-5-and-vite-8.md) | Pin TypeScript 5.9 and Vite 8 | Accepted |
 | [0009](0009-document-graph-in-rust.md) | Document graph (headings, links, backlinks) built in Rust | Accepted |
+| [0011](0011-fuzzy-matching-with-nucleo.md) | Fuzzy matching for Ctrl+T with nucleo-matcher (MPL-2.0, unmodified) | Accepted |
 | [0013](0013-opening-files-with-the-default-app.md) | Opening files with the default application: text only, deny-listed, user-initiated | Accepted |

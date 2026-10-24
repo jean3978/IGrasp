@@ -10,6 +10,7 @@ use crate::index::SharedIndex;
 use crate::index::scanner::ScanOptions;
 use crate::index::watcher::SharedWatch;
 use crate::paths::RootGuard;
+use crate::search::symbols::Candidates;
 
 /// The folder currently open in the app.
 pub struct Workspace {
@@ -25,6 +26,8 @@ pub struct Workspace {
     pub watch: SharedWatch,
     /// Headings and links of every document, built after the scan.
     pub graph: SharedGraph,
+    /// Search candidates (Ctrl+T), rebuilt when the index or the graph changes.
+    pub symbols: Mutex<Option<Candidates>>,
 }
 
 /// What the background scan, the watcher and the graph builder of a workspace share.
@@ -49,6 +52,7 @@ impl Workspace {
             cancel: Arc::new(AtomicBool::new(false)),
             watch: Arc::new(Mutex::new(None)),
             graph: Arc::default(),
+            symbols: Mutex::new(None),
         }
     }
 

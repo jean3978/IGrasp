@@ -6,6 +6,7 @@ mod error;
 mod graph;
 mod index;
 mod paths;
+mod search;
 mod state;
 
 use tauri::Manager;
@@ -82,6 +83,7 @@ pub fn run() {
             commands::graph::get_doc_links,
             commands::graph::get_backlinks,
             commands::graph::list_broken_links,
+            commands::search::search_symbols,
         ])
         .run(tauri::generate_context!())
         .expect("error while running IGrasp");
