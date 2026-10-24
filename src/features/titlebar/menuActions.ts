@@ -14,6 +14,7 @@ import { useToasts } from '../../stores/toasts';
 import { useTree } from '../../stores/tree';
 import { useUi } from '../../stores/ui';
 import { useWorkspace } from '../../stores/workspace';
+import { useClaude } from '../../stores/claude';
 
 export type ActionId =
   | 'file.openFolder'
@@ -39,6 +40,7 @@ export type ActionId =
   | 'view.showIgnored'
   | 'view.muteToasts'
   | 'help.shortcuts'
+  | 'claude.chat'
   | 'help.about'
   | 'view.zoomIn'
   | 'view.zoomOut'
@@ -165,6 +167,14 @@ export const actions: Record<ActionId, ActionDef> = {
   'view.showIgnored': {
     label: 'Show Ignored Files',
     run: () => useTree.getState().setShowIgnored(!useTree.getState().showIgnored),
+  },
+  'claude.chat': {
+    label: 'Claude Chat',
+    shortcut: 'Ctrl+Alt+C',
+    run: () => {
+      if (!useWorkspace.getState().root) return;
+      useClaude.getState().toggleOpen();
+    },
   },
   'help.shortcuts': {
     label: 'Keyboard Shortcuts',

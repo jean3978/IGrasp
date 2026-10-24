@@ -1,0 +1,321 @@
+/* Claude chat: a floating panel over the bottom-right corner of the window. */
+
+.claude-dialog {
+  position: fixed;
+  right: 20px;
+  bottom: calc(var(--statusbar-height) + 16px);
+  z-index: 4400;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100vw - 40px);
+  height: min(720px, 100vh - var(--titlebar-height) - var(--statusbar-height) - 40px);
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-l);
+  background: var(--bg-overlay);
+  box-shadow: var(--shadow-dialog);
+  color: var(--fg);
+  font-size: var(--font-size-ui);
+  user-select: text;
+}
+
+.claude-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.claude-title {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--fg-strong);
+  font-size: var(--font-size-ui);
+  font-weight: 600;
+}
+
+.claude-title svg {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+.claude-model {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.claude-select {
+  height: 26px;
+  padding: 0 4px;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-s);
+  background: var(--bg-input);
+  color: var(--fg);
+  font: inherit;
+  font-size: var(--font-size-ui);
+}
+
+.claude-model-input {
+  width: 160px;
+}
+
+.claude-status {
+  padding: 6px 12px;
+  border-bottom: var(--border-width) solid var(--border);
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.claude-status-problem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  background: var(--warning-bg);
+  color: var(--fg);
+  font-size: var(--font-size-ui);
+}
+
+.claude-status-problem p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.claude-status .button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.claude-messages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  overflow: auto;
+  scroll-behavior: smooth;
+}
+
+.claude-empty {
+  margin: 0;
+  color: var(--fg-muted);
+  line-height: 1.5;
+}
+
+.claude-empty code {
+  font-family: var(--font-mono);
+}
+
+.claude-msg {
+  max-width: 92%;
+  padding: 8px 10px;
+  border-radius: var(--radius-m);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.claude-msg-user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--fg-on-accent);
+}
+
+.claude-msg-assistant {
+  align-self: flex-start;
+  background: var(--bg-sidebar);
+  border: var(--border-width) solid var(--border);
+}
+
+.claude-msg-error {
+  align-self: stretch;
+  border: var(--border-width) solid var(--danger);
+  background: var(--danger-bg);
+}
+
+.claude-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-left: 2px;
+  background: var(--accent);
+  vertical-align: text-bottom;
+  animation: claude-blink 1s steps(2) infinite;
+}
+
+@keyframes claude-blink {
+  to {
+    opacity: 0;
+  }
+}
+
+.claude-notice {
+  align-self: center;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+  white-space: pre-wrap;
+}
+
+.claude-notice-error {
+  align-self: stretch;
+  padding: 6px 10px;
+  border-radius: var(--radius-m);
+  background: var(--danger-bg);
+  color: var(--fg);
+  font-size: var(--font-size-ui);
+}
+
+.claude-tool {
+  align-self: flex-start;
+  max-width: 92%;
+  padding: 4px 8px;
+  border: var(--border-width) dashed var(--border-strong);
+  border-radius: var(--radius-m);
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+}
+
+.claude-tool summary {
+  cursor: pointer;
+}
+
+.claude-tool-error {
+  border-color: var(--warning);
+}
+
+.claude-json {
+  max-height: 200px;
+  margin: 6px 0 0;
+  padding: 6px;
+  overflow: auto;
+  border-radius: var(--radius-s);
+  background: var(--bg-code);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.claude-permission {
+  align-self: stretch;
+  border: var(--border-width) solid var(--accent);
+  border-radius: var(--radius-m);
+  background: var(--bg-editor);
+}
+
+.claude-permission-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: var(--border-width) solid var(--border);
+  font-weight: 600;
+}
+
+.claude-permission-title {
+  overflow-wrap: anywhere;
+}
+
+.claude-diff-stats {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-weight: 400;
+}
+
+.claude-diff-added {
+  color: var(--success);
+}
+
+.claude-diff-removed {
+  color: var(--danger);
+}
+
+.claude-diff {
+  max-height: 260px;
+  margin: 0;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+  line-height: 1.5;
+}
+
+.claude-diff + .claude-diff {
+  border-top: var(--border-width) dashed var(--border);
+}
+
+.claude-diff-line {
+  display: flex;
+  padding: 0 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.claude-diff-sign {
+  flex-shrink: 0;
+  width: 14px;
+  user-select: none;
+}
+
+.claude-diff-add {
+  background: var(--success-bg);
+}
+
+.claude-diff-del {
+  background: var(--danger-bg);
+  text-decoration: line-through;
+  text-decoration-color: var(--danger);
+}
+
+.claude-permission-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 8px 10px;
+}
+
+.claude-permission-actions .button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.claude-composer {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  padding: 10px;
+  border-top: var(--border-width) solid var(--border);
+}
+
+.claude-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-m);
+  background: var(--bg-input);
+  color: var(--fg);
+  font: inherit;
+  font-size: var(--font-size-ui);
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.claude-input:focus {
+  border-color: var(--focus);
+  outline: none;
+}
+
+.claude-input::placeholder {
+  color: var(--fg-muted);
+}
+
+.claude-send {
+  flex-shrink: 0;
+}

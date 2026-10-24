@@ -102,6 +102,12 @@ export const tauriBackend: Backend = {
   getAppInfo: () => invoke('get_app_info'),
   openAppDataDir: () => invoke('open_app_data_dir'),
 
+  claudeStatus: () => invoke('claude_status'),
+  claudeStartTurn: (request) => invoke('claude_start_turn', { request }),
+  claudeRespondPermission: (turnId, requestId, decision) =>
+    invoke('claude_respond_permission', { turnId, requestId, decision }),
+  claudeCancel: (turnId) => invoke('claude_cancel', { turnId }),
+
   listen: (event, handler) =>
     tauriListen<Parameters<typeof handler>[0]>(event, (e) => {
       handler(e.payload);

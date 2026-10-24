@@ -24,6 +24,8 @@ import { searchSymbols } from './mockSymbols';
 import { buildRegExp, filterFiles, searchContent } from './mockText';
 import { gitignorePatterns, isMarkdown, listFixtureDir, scanFixture } from './mockIndex';
 import type { MockScanOptions } from './mockIndex';
+import { DEFAULT_MOCK_CLAUDE, createMockClaude } from './mockClaude';
+import type { MockClaudeState } from './mockClaude';
 
 type Handler = (payload: never) => void;
 
@@ -54,6 +56,8 @@ export interface MockState {
   pickFolderResult: string | null;
   /** Files and URLs the app asked to open externally, in order. */
   opened: string[];
+  /** The fake Claude CLI: installed, logged in, speed. */
+  claude: MockClaudeState;
 }
 
 export interface MockControls {
@@ -92,6 +96,7 @@ function initialState(): MockState {
     graph: null,
     graphDelayMs: 0,
     pickFolderResult: FIXTURE_ROOT,
+    claude: { ...DEFAULT_MOCK_CLAUDE },
   };
 }
 
@@ -181,6 +186,15 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     });
   };
 
+  const claude = createMockClaude({
+    emit,
+    claude: () => state.claude,
+    fileContent: (relPath) => state.files.get(relPath),
+    writeFiles: (files) => {
+      controls.writeFiles(files);
+    },
+  });
+
   // Strictly increasing, so two writes in the same millisecond still count as a change.
   let clock = 0;
   const tick = () => (clock = Math.max(clock + 1, Date.now()));
@@ -190,6 +204,7 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       return state;
     },
     reset() {
+      claude.reset();
       state = initialState();
     },
     writeFiles(files) {
@@ -568,6 +583,11 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       return Promise.resolve();
     },
     getAppInfo: () => Promise.resolve(appInfo),
+    claudeStatus: claude.claudeStatus,
+    claudeStartTurn: claude.claudeStartTurn,
+    claudeRespondPermission: claude.claudeRespondPermission,
+    claudeCancel: claude.claudeCancel,
+
     openAppDataDir: () => {
       state.opened.push(appInfo.appDataDir);
       return Promise.resolve();

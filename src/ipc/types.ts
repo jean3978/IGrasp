@@ -31,6 +31,12 @@ import type { Settings } from './generated/Settings';
 import type { SettingsPatch } from './generated/SettingsPatch';
 import type { TextFileContent } from './generated/TextFileContent';
 import type { WatchStatusEvent } from './generated/WatchStatusEvent';
+import type { ClaudeMessageEvent } from './generated/ClaudeMessageEvent';
+import type { ClaudePermissionDecision } from './generated/ClaudePermissionDecision';
+import type { ClaudePermissionEvent } from './generated/ClaudePermissionEvent';
+import type { ClaudeStatus } from './generated/ClaudeStatus';
+import type { ClaudeTurnEndEvent } from './generated/ClaudeTurnEndEvent';
+import type { ClaudeTurnRequest } from './generated/ClaudeTurnRequest';
 
 export type {
   AppInfo,
@@ -82,6 +88,16 @@ export type { BrokenLinksReport } from './generated/BrokenLinksReport';
 export type { LinkStatus } from './generated/LinkStatus';
 export type { LinkTarget } from './generated/LinkTarget';
 export type { RightPanelState } from './generated/RightPanelState';
+export type { JsonValue } from './generated/serde_json/JsonValue';
+export type { ClaudeTurnOutcome } from './generated/ClaudeTurnOutcome';
+export type {
+  ClaudeMessageEvent,
+  ClaudePermissionDecision,
+  ClaudePermissionEvent,
+  ClaudeStatus,
+  ClaudeTurnEndEvent,
+  ClaudeTurnRequest,
+};
 
 export interface SymbolSearchRequest {
   query: string;
@@ -115,6 +131,9 @@ export interface BackendEvents {
   'graph://ready': GraphReadyEvent;
   'graph://changed': GraphChangedEvent;
   'search://results': SearchResultsEvent;
+  'claude://message': ClaudeMessageEvent;
+  'claude://permission': ClaudePermissionEvent;
+  'claude://turn-end': ClaudeTurnEndEvent;
 }
 
 export type EventName = keyof BackendEvents;
@@ -197,6 +216,19 @@ export interface Backend {
   getAppInfo(): Promise<AppInfo>;
   /** Opens the app-data folder in the system file manager. */
   openAppDataDir(): Promise<void>;
+
+  /** Whether the `claude` CLI is installed and logged in (runs the CLI; takes a second). */
+  claudeStatus(): Promise<ClaudeStatus>;
+  /** Starts a Claude turn in the open folder; resolves to its id (see the claude:// events). */
+  claudeStartTurn(request: ClaudeTurnRequest): Promise<number>;
+  /** Answers a `claude://permission` request of the running turn. */
+  claudeRespondPermission(
+    turnId: number,
+    requestId: string,
+    decision: ClaudePermissionDecision,
+  ): Promise<void>;
+  /** Stops the running turn (idempotent); `claude://turn-end` follows. */
+  claudeCancel(turnId: number): Promise<void>;
 
   listen<E extends EventName>(
     event: E,
