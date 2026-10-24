@@ -14,8 +14,10 @@ import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { VFile } from 'vfile';
 import { alertOptions } from './alerts';
+import { remarkGithubDollarMath } from './dollarMath';
 import { remarkExtractFrontMatter } from './frontmatter';
 import { highlightCode } from './highlight';
+import { renderMath } from './math';
 import type { FrontMatter } from './frontmatter';
 import { sanitizeSchema } from './sanitize';
 
@@ -32,7 +34,8 @@ const parser = unified()
   .use(remarkGfm)
   .use(remarkFrontmatter, ['yaml'])
   .use(remarkExtractFrontMatter)
-  .use(remarkMath);
+  .use(remarkMath)
+  .use(remarkGithubDollarMath);
 
 const transformer = unified()
   // Ids are left unprefixed here; the sanitizer adds ID_PREFIX once.
@@ -48,6 +51,7 @@ export async function renderMarkdown(content: string): Promise<RenderedMarkdown>
   const transformedMdast = (await parser.run(mdast, file)) as MdastRoot;
   const hast = await transformer.run(transformedMdast, file);
   // Trusted generators run after sanitization, so their markup is never stripped.
+  await renderMath(hast, file);
   await highlightCode(hast);
   return { hast, frontMatter: file.data.frontMatter ?? null };
 }
