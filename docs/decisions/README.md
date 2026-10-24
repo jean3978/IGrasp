@@ -18,3 +18,4 @@ are never deleted; a decision that changes gets a new record that supersedes the
 | [0011](0011-fuzzy-matching-with-nucleo.md) | Fuzzy matching for Ctrl+T with nucleo-matcher (MPL-2.0, unmodified) | Accepted |
 | [0012](0012-activity-bar-sidebar-views-and-right-panel.md) | Activity bar with sidebar views, and a right panel for the active document | Accepted |
 | [0013](0013-opening-files-with-the-default-app.md) | Opening files with the default application: text only, deny-listed, user-initiated | Accepted |
+| [0014](0014-claude-cli-integration.md) | Claude through the `claude` CLI: one `stream-json` process per turn, permissions over stdio | Accepted (proof of concept; Linux verification pending) |

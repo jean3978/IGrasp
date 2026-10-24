@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Claude chat (proof of concept)**: a floating chat panel (`Ctrl+Alt+C`) that talks to the
+  installed `claude` CLI in the open folder, streams the answer, shows proposed markdown edits as
+  a diff with Accept / Reject and other tool calls with Allow / Deny, resumes the CLI session
+  between messages, and explains a missing or logged-out CLI ([ADR 0014](docs/decisions/0014-claude-cli-integration.md)).
+
 ## [0.2.0] - 2026-10-24
 
 Phase 2 — Navigation: find anything, follow links, and see what changed.

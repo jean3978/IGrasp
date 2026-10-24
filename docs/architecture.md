@@ -24,7 +24,10 @@ flowchart LR
     Search --> Index
     Search --> Graph
     Commands --> AppData[(App data<br/>appdata/*)]
+    Commands --> Claude[Claude turn<br/>claude/*]
   end
+  Claude -- "stdin / stdout stream-json" --> CLI[claude CLI<br/>cwd = opened folder]
+  Claude -- "claude://message, permission, turn-end" --> Bridge
   Client -- invoke --> Commands
   Scanner -- "index://progress, ready" --> Bridge
   Watcher -- "fs://changes" --> Bridge
@@ -46,8 +49,9 @@ flowchart LR
 | `index/watcher.rs` | Debounced `notify` events → classification → targeted re-walk → `fs://changes`; then the same batch (with the raw event paths) goes to the graph; poll fallback. |
 | `graph/` | The document graph ([ADR 0009](decisions/0009-document-graph-in-rust.md)): `parse.rs` (pulldown-cmark → headings, anchors, links with lines), `slug.rs` (github-slugger port), `links.rs` (target and status of a link), `mod.rs` (graph with a reverse target map, parallel build, incremental `apply`, events). |
 | `search/` | `symbols.rs` (Ctrl+T, nucleo-matcher, cached candidates), `text.rs` (Ctrl+Shift+F, grep crates, streamed batches), `globs.rs` (VS Code-style include/exclude), `SearchRegistry` (one running search, cancellation). |
-| `commands/` | `workspace.rs` (open/close/rescan/list, recent files), `files.rs` (read markdown and text files, open media externally, open with the default app, reveal in the file manager), `graph.rs` (link status, backlinks, broken links, status), `search.rs` (symbols, text, cancel), `appdata.rs` (settings, recents, sessions, app info). |
+| `commands/` | `workspace.rs` (open/close/rescan/list, recent files), `files.rs` (read markdown and text files, open media externally, open with the default app, reveal in the file manager), `graph.rs` (link status, backlinks, broken links, status), `search.rs` (symbols, text, cancel), `appdata.rs` (settings, recents, sessions, app info), `claude.rs` (status, start turn, answer permission, cancel). |
 | `appdata/` | Versioned JSON files in the OS app-data folder, written atomically, recovered when corrupt. |
+| `claude/` | The Claude chat ([ADR 0014](decisions/0014-claude-cli-integration.md)): `cli.rs` (find `claude`, `--version`, `auth status`), `turn.rs` (one `claude -p … --output-format stream-json --permission-prompt-tool stdio` process per turn; stdout lines → events, permission answers → stdin, kill tree on cancel). |
 | `error.rs` | `AppError`, serialized as `{ code, message }`. |
 
 The frontend never reads files directly: there is no fs plugin and no shell plugin
@@ -64,6 +68,7 @@ The frontend never reads files directly: there is no fs plugin and no shell plug
 | `get_graph_status`, `get_doc_links`, `get_backlinks`, `list_broken_links` | Graph progress and broken count, a document's links with status, documents linking to one, every broken link. |
 | `search_symbols` | Ctrl+T hits (files and headings) for a query, with a request id. |
 | `search_text`, `cancel_search` | Starts a full-text search (returns its id) / stops it. |
+| `claude_status`, `claude_start_turn`, `claude_respond_permission`, `claude_cancel` | CLI installed and logged in / starts a turn in the open folder (returns its id) / answers a permission request / kills the turn. |
 | `get_settings`, `update_settings`, `get_recent_folders`, …, `get_session`, `save_session` | App data. |
 
 | Event | When |
@@ -72,6 +77,7 @@ The frontend never reads files directly: there is no fs plugin and no shell plug
 | `fs://changes`, `fs://watch-status` | A batch of changes on disk; how the folder is watched. |
 | `graph://progress`, `graph://ready`, `graph://changed` | Graph build (≤ 4/s), done, and documents whose links changed with the broken count. |
 | `search://results` | A batch of full-text results (`done` on the last one). |
+| `claude://message`, `claude://permission`, `claude://turn-end` | A `stream-json` object of the CLI, forwarded as is; a tool waiting for the user's answer; the process ended (`Completed`, `Cancelled`, `Crashed`). |
 | `appdata://recovered` | A corrupt app-data file was reset. |
 
 ## Frontend (`src`)
@@ -79,8 +85,8 @@ The frontend never reads files directly: there is no fs plugin and no shell plug
 | Folder | Role |
 |---|---|
 | `ipc/` | The `Backend` interface, its Tauri implementation (the only code calling `invoke`/`listen`) and the in-memory mock used in the browser and in tests. `generated/` holds the TypeScript types exported from Rust by ts-rs. |
-| `stores/` | zustand stores: `workspace` (layout: sidebar view, right panel), `tree`, `tabs` (document and code tabs, pending scroll targets), `documents`, `textFiles`, `history`, `recentFiles`, `graph`, `outline`, `quickOpen`, `search`, `settings`, `toasts`, `recent`, `ui`; `session.ts` (save/restore), `diskChanges.ts`, `eventBridge.ts` (backend events → stores). |
-| `features/` | UI by feature: `titlebar` (menu bar, toolbar, window controls, `menuActions.ts`), `shell` (layout, activity bar, sidebar host, status bar), `explorer`, `search`, `recent`, `links` (broken links, backlinks), `outline`, `rightpanel`, `quickopen`, `code` (code viewer), `tabs`, `preview` (markdown pipeline, link resolver, reveal helpers), `mermaid`, `toasts`, `settings`, `shortcuts`, `welcome`, `splash`, `about`. |
+| `stores/` | zustand stores: `workspace` (layout: sidebar view, right panel), `tree`, `tabs` (document and code tabs, pending scroll targets), `documents`, `textFiles`, `history`, `recentFiles`, `graph`, `outline`, `quickOpen`, `search`, `settings`, `toasts`, `recent`, `ui`, `claude` (CLI status, conversation, pending permissions); `session.ts` (save/restore), `diskChanges.ts`, `eventBridge.ts` (backend events → stores). |
+| `features/` | UI by feature: `titlebar` (menu bar, toolbar, window controls, `menuActions.ts`), `shell` (layout, activity bar, sidebar host, status bar), `explorer`, `search`, `recent`, `links` (broken links, backlinks), `outline`, `rightpanel`, `quickopen`, `code` (code viewer), `tabs`, `preview` (markdown pipeline, link resolver, reveal helpers), `mermaid`, `toasts`, `settings`, `shortcuts`, `welcome`, `splash`, `about`, `claude` (chat panel, stream reducer, line diff). |
 | `components/` | Shared UI: buttons and `VirtualRows` (the virtualized, keyboard-navigable list behind every new view). |
 | `styles/` | Design tokens and the three themes. |
 | `lib/` | Pure helpers (paths, link classification, platform). |

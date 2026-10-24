@@ -16,4 +16,5 @@ are updated together with the code.
 | [search.md](search.md) | Search everything (Ctrl+T) and search in files (Ctrl+Shift+F) |
 | [links-and-graph.md](links-and-graph.md) | Internal links and anchors, broken links, backlinks, outline, the document graph |
 | [code-viewer.md](code-viewer.md) | Read-only viewer for linked source files, Open in default editor |
+| [claude-chat.md](claude-chat.md) | Claude chat through the installed CLI, permission prompts as diffs (proof of concept) |
 | [keyboard.md](keyboard.md) | Keyboard shortcuts and accessibility |
