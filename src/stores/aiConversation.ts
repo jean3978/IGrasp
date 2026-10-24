@@ -30,6 +30,7 @@ import type {
   PermissionDecision,
   ProposedEdit,
 } from '../ipc/types';
+import { useAiPanel } from './aiPanel';
 import { errorMessage, selectProviderName, useAiProvider } from './aiProvider';
 import { useSettings } from './settings';
 import { selectActiveTab, useTabs } from './tabs';
@@ -186,10 +187,17 @@ async function write(conversation: Conversation | null): Promise<void> {
   }
 }
 
+/** The document or code file of the active tab (null for a settings or shortcuts tab). */
+export function activeFilePath(): string | null {
+  const tab = selectActiveTab(useTabs.getState());
+  return tab && tab.relPath !== null ? tab.relPath : null;
+}
+
 /** Calls `ai_start` (the only call that spends tokens) and hands buffered events over. */
 async function runStart(request: AiStartRequest, prompt: string): Promise<void> {
   run = { prompt, resumed: request.resumeId !== undefined, answered: false, failed: false };
   const operationId = await backend.aiStart('chatMessage', request);
+  useAiPanel.getState().messageSent();
   const buffered = useAiConversation.getState().buffered;
   useAiConversation.setState({ operationId, starting: false, buffered: [] });
   // Events of this operation that arrived before its id was known.
@@ -219,14 +227,23 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
     const { resumeId } = get();
     const { model } = useAiProvider.getState();
     try {
-      // The documents this message would carry (paths and sizes only), then their size.
-      const tab = selectActiveTab(useTabs.getState());
-      const current = tab && tab.relPath !== null ? tab.relPath : null;
-      const documents = await backend.aiContext(current);
+      // What the context bar lists for the current file, minus what the user dropped (listed
+      // now if the bar has not been shown for this file), then the size of it all.
+      const current = activeFilePath();
+      if (useAiPanel.getState().context?.currentPath !== current) {
+        await useAiPanel.getState().refreshContext(current);
+      }
+      const panel = useAiPanel.getState();
+      const contextPaths = panel.contextPaths();
+      const documents = (panel.context?.documents ?? []).filter((d) =>
+        contextPaths.includes(d.path),
+      );
+      const { attachment } = panel;
       const request: AiStartRequest = {
         prompt,
-        contextPaths: documents.map((d) => d.path),
-        images: [],
+        contextPaths,
+        images: attachment?.image ? [attachment.image] : [],
+        ...(attachment ? { capture: attachment.capture } : {}),
         policy: 'interactive',
         ...(model ? { model } : {}),
         ...(resumeId ? { resumeId } : {}),

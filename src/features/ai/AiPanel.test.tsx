@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Tooltip } from 'radix-ui';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { backend } from '../../ipc/client';
 import { FIXTURE_ROOT } from '../../ipc/mock/fixture';
 import {
@@ -16,6 +16,7 @@ import {
 } from '../../ipc/mock/mockAi';
 import { useAiConversation } from '../../stores/aiConversation';
 import { startEventBridge } from '../../stores/eventBridge';
+import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
 import {
   PANEL_DEFAULT_WIDTH,
@@ -301,6 +302,101 @@ describe('the history', () => {
     await user.click(offer);
     expect(await screen.findByText(/You said: "Still there\?"/)).toBeInTheDocument();
     expect(window.__igraspMock?.state.ai.lastRequest?.resumeId).toBeUndefined();
+  });
+});
+
+describe('the context bar', () => {
+  const bar = () => screen.getByRole('group', { name: 'Context of the next message' });
+  const sentPaths = () => window.__igraspMock?.state.ai.lastRequest?.context.map((d) => d.path);
+  const idle = () =>
+    waitFor(() => {
+      expect(useAiConversation.getState().operationId).toBeNull();
+    });
+
+  it('lists the instruction files and the current file, and sends exactly those', async () => {
+    const user = userEvent.setup();
+    act(() => {
+      useTabs.getState().openDocument('docs/guide/getting-started.md');
+    });
+    renderPanel();
+    await screen.findByText(statusLine);
+    await waitFor(() => {
+      expect(within(bar()).getAllByRole('listitem')).toHaveLength(3);
+    });
+    const names = within(bar())
+      .getAllByRole('button', { name: /^Remove/ })
+      .map((b) => b.getAttribute('aria-label'));
+    expect(names).toEqual([
+      'Remove AGENTS.md from the next message',
+      'Remove docs/AGENTS.md from the next message',
+      'Remove docs/guide/getting-started.md from the next message',
+    ]);
+    expect(within(bar()).getAllByText('AGENTS.md')).toHaveLength(2);
+    expect(within(bar()).getByText('getting-started.md')).toBeInTheDocument();
+
+    await user.type(composer(), 'Explain this page{Enter}');
+    await idle();
+    expect(sentPaths()).toEqual(['AGENTS.md', 'docs/AGENTS.md', 'docs/guide/getting-started.md']);
+    expect(window.__igraspMock?.state.ai.lastRequest?.context[0]?.content).toContain('Agent rules');
+
+    // Dropped with ✕: left out of the next messages from this file.
+    await user.click(
+      within(bar()).getByRole('button', { name: 'Remove docs/AGENTS.md from the next message' }),
+    );
+    await user.type(composer(), 'Again without the docs rules{Enter}');
+    await idle();
+    expect(sentPaths()).toEqual(['AGENTS.md', 'docs/guide/getting-started.md']);
+    await user.type(composer(), 'And once more{Enter}');
+    await idle();
+    expect(sentPaths()).toEqual(['AGENTS.md', 'docs/guide/getting-started.md']);
+
+    // Added back.
+    await user.click(
+      within(bar()).getByRole('button', { name: 'Add docs/AGENTS.md back to the next message' }),
+    );
+    await user.type(composer(), 'With everything{Enter}');
+    await idle();
+    expect(sentPaths()).toHaveLength(3);
+  });
+
+  it('follows the active tab and brings dropped documents back', async () => {
+    const user = userEvent.setup();
+    act(() => {
+      useTabs.getState().openDocument('docs/guide/getting-started.md', { pin: true });
+    });
+    renderPanel();
+    await screen.findByText(statusLine);
+    await waitFor(() => {
+      expect(within(bar()).getAllByRole('listitem')).toHaveLength(3);
+    });
+    await user.click(
+      within(bar()).getByRole('button', { name: 'Remove AGENTS.md from the next message' }),
+    );
+
+    act(() => {
+      useTabs.getState().openDocument('README.md', { pin: true });
+    });
+    await waitFor(() => {
+      expect(within(bar()).getAllByRole('listitem')).toHaveLength(2);
+    });
+    expect(within(bar()).getByText('README.md')).toBeInTheDocument();
+    expect(within(bar()).queryByRole('button', { name: /^Add/ })).toBeNull();
+
+    // A settings tab has no current file: the root instructions only.
+    act(() => {
+      useTabs.getState().openSpecial('settings');
+    });
+    await waitFor(() => {
+      expect(within(bar()).getAllByRole('listitem')).toHaveLength(1);
+    });
+
+    // Disk changes do not list again (only opening the panel or switching tabs does).
+    const calls = vi.spyOn(backend, 'aiContext');
+    window.__igraspMock?.writeFiles({ 'docs/guide/AGENTS.md': '# More rules\n' });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(calls).not.toHaveBeenCalled();
+    calls.mockRestore();
+    expect(window.__igraspMock?.state.ai.starts).toEqual([]);
   });
 });
 

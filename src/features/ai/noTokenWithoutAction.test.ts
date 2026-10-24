@@ -119,6 +119,20 @@ describe('no token without a user action', () => {
     await useAiProvider.getState().checkStatus(true);
     await settle();
 
+    // With the panel open, switching tabs lists the context again (metadata only).
+    const contextCalls = vi.spyOn(backend, 'aiContext');
+    useTabs.getState().openDocument('README.md');
+    await settle();
+    useTabs.getState().openCode('src/main.ts');
+    await settle();
+    useTabs.getState().openSpecial('settings');
+    await settle();
+    useTabs.getState().openDocument('docs/guide/getting-started.md');
+    await settle();
+    expect(contextCalls.mock.calls.length).toBeGreaterThanOrEqual(4);
+    expect(useAiPanel.getState().context?.currentPath).toBe('docs/guide/getting-started.md');
+    contextCalls.mockRestore();
+
     expect(starts()).toEqual([]);
   });
 

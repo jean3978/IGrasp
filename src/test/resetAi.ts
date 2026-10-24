@@ -27,5 +27,12 @@ export function resetAiStores(): void {
     permissions: [],
     history: null,
   });
-  useAiPanel.setState({ open: false, rect: null, draft: '', historyOpen: false });
+  useAiPanel.setState({
+    open: false,
+    rect: null,
+    draft: '',
+    historyOpen: false,
+    context: null,
+    attachment: null,
+  });
 }

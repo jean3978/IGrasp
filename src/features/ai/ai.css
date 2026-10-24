@@ -602,3 +602,110 @@
 .ai-resume-failed p {
   margin: 0;
 }
+
+/* The context bar: what the next message carries. */
+.ai-context {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  max-height: 84px;
+  padding: 6px 10px;
+  overflow: auto;
+  border-top: var(--border-width) solid var(--border);
+  font-size: var(--font-size-small);
+}
+
+.ai-context-label {
+  flex-shrink: 0;
+  padding: 2px 0;
+  color: var(--fg-muted);
+}
+
+.ai-context-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-context-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-s);
+  background: var(--bg-input);
+}
+
+.ai-context-current {
+  border-color: var(--accent);
+}
+
+.ai-context-removed {
+  border-style: dashed;
+  opacity: 0.6;
+}
+
+.ai-context-removed .ai-context-name {
+  text-decoration: line-through;
+}
+
+.ai-context-name {
+  display: inline-flex;
+  gap: 4px;
+  min-width: 0;
+  padding: 1px 4px 1px 6px;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ai-context-size {
+  color: var(--fg-muted);
+}
+
+.ai-context-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.ai-context-toggle:hover,
+.ai-context-name:hover {
+  color: var(--fg-strong);
+}
+
+.ai-context-toggle:focus-visible,
+.ai-context-name:focus-visible {
+  outline: 2px solid var(--focus);
+}
+
+.ai-context-toggle svg {
+  width: 12px;
+  height: 12px;
+}
+
+.ai-context-thumb {
+  max-width: 40px;
+  max-height: 24px;
+  margin-left: 4px;
+  border-radius: 2px;
+}
+
+.ai-context-empty {
+  padding: 2px 0;
+  color: var(--fg-muted);
+}

@@ -86,7 +86,10 @@ describe('tree store with the mock backend', () => {
     await flush();
     useTree.getState().expand('docs');
     await flush();
-    expect(useTree.getState().listings.docs?.files.map((f) => f.name)).toEqual(['architecture.md']);
+    expect(useTree.getState().listings.docs?.files.map((f) => f.name)).toEqual([
+      'AGENTS.md',
+      'architecture.md',
+    ]);
     await useTree.getState().setShowDotfiles(true);
     expect(useTree.getState().listings).toEqual({});
     await flush();

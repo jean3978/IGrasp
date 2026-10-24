@@ -279,7 +279,7 @@ describe('mock AI context and estimate', () => {
 
   it('lists a file too large to inline by path, and refuses malformed paths', async () => {
     const b = await backend();
-    const [huge] = await b.aiContext('logs/huge.log');
+    const huge = (await b.aiContext('logs/huge.log')).at(-1);
     expect(huge).toMatchObject({ path: 'logs/huge.log', truncated: true, content: null });
     const estimate = await b.aiEstimate({
       promptBytes: 0,

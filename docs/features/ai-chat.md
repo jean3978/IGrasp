@@ -24,6 +24,16 @@ provider's status.
 - **Escape** stops a running answer; pressed again (or with nothing running) it closes the panel
   and the focus returns to the AI Chat button. Closing the panel never stops an answer: the status
   bar shows it with **Stop**.
+- **Context bar** (above the message box): what the next message carries, from `ai_context`
+  (paths and sizes only, no content reaches the frontend): the provider's instruction files
+  (`CLAUDE.md`, `CLAUDE.local.md` for Claude; `AGENTS.md` for the mock) from the root down to the
+  current file's folder, then the current file (document or code tab; a settings tab adds none),
+  with the total size. Hover shows the path, a click opens the file, ✕ leaves a document out of
+  the messages sent from this file (+ adds it back; another active tab brings it back). The list
+  is computed when the panel opens and when the active tab changes, never on a disk change or a
+  timer. On Send, `ai_start` receives the paths still listed and Rust reads their contents
+  through the root guard (32 KB per instruction file, 96 KB for the current file; larger ones go
+  by path). A region capture (later step) shows as one more chip.
 - **Status line**: the provider's name, version and account, or what is missing (not installed,
   not logged in) with the provider's own instructions and a **Check again** button.
 - **Model**: the provider's suggested models (`sonnet`, `opus`, `haiku` for Claude) or a custom
@@ -95,11 +105,13 @@ sequenceDiagram
 | History list, saved-item format (`toStoredItems` / `fromStoredItems`) | `src/features/ai/HistoryList.tsx`, `timeline.ts` |
 | Floating chat panel: `AiPanel` (geometry, Escape), `StatusLine`, `Transcript`, `PermissionCard`, `Composer`, `ModelPicker` | `src/features/ai/` |
 | Panel store (open, rectangle, clamping, draft) | `src/stores/aiPanel.ts` |
+| Context bar (`ai_context` on panel open and tab change, ✕ per document, capture chip) | `src/features/ai/ContextBar.tsx`, `src/stores/aiPanel.ts` (`context`, `attachment`) |
 | Mock provider for the browser and the tests | `src/ipc/mock/mockAi.ts` |
 
 In the browser dev mode (`npm run dev`), the mock provider ("Mock AI") answers: mentioning a
 fixture file such as `README.md` proposes an edit to it; mentioning "command" asks to run one.
-The full list of its scripts is at the top of `src/ipc/mock/mockAi.ts`; it applies the same
+The fixture has `AGENTS.md` at its root and in `docs/` (the mock provider's instruction-file name), so
+opening `docs/guide/getting-started.md` lists both in the context bar. The full list of its scripts is at the top of `src/ipc/mock/mockAi.ts`; it applies the same
 permission policy as the Rust gateway.
 
 ## Failure handling

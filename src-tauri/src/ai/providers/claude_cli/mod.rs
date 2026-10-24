@@ -265,6 +265,57 @@ mod tests {
         }
     }
 
+    /// The context bar's flow: `collect` lists the documents, the user drops one with its ✕,
+    /// `request_from` reads the paths kept, and the prompt inlines exactly those.
+    #[test]
+    fn the_prompt_carries_the_documents_the_user_kept() {
+        use crate::ai::context::{Caps, collect, request_from};
+        use crate::ai::types::AiStartRequest;
+        use crate::paths::RootGuard;
+        use std::fs;
+
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("docs/guide")).unwrap();
+        fs::write(root.join("CLAUDE.md"), "# Root rules\n").unwrap();
+        fs::write(root.join("docs/CLAUDE.md"), "# Docs rules\n").unwrap();
+        fs::write(root.join("docs/guide/start.md"), "# Start\n").unwrap();
+        let guard = RootGuard::new(root).unwrap();
+        let names = vec!["CLAUDE.md".to_string(), "CLAUDE.local.md".to_string()];
+
+        let listed = collect(&guard, Some("docs/guide/start.md"), &names, Caps::default()).unwrap();
+        let paths: Vec<&str> = listed.iter().map(|d| d.path.as_str()).collect();
+        assert_eq!(
+            paths,
+            ["CLAUDE.md", "docs/CLAUDE.md", "docs/guide/start.md"]
+        );
+        assert!(
+            listed.iter().all(|d| d.content.is_none()),
+            "no content listed"
+        );
+
+        let kept: Vec<String> = paths
+            .iter()
+            .filter(|p| **p != "docs/CLAUDE.md")
+            .map(|p| (*p).to_string())
+            .collect();
+        let request = request_from(
+            &guard,
+            &names,
+            AiStartRequest {
+                prompt: "Explain".into(),
+                context_paths: kept,
+                ..AiStartRequest::default()
+            },
+        )
+        .unwrap();
+        let prompt = prompt_with_context(&request);
+        assert!(prompt.contains("# Root rules"), "{prompt}");
+        assert!(prompt.contains("docs/guide/start.md (the file the user is reading)"));
+        assert!(!prompt.contains("# Docs rules"), "{prompt}");
+        assert!(!prompt.contains("docs/CLAUDE.md"), "{prompt}");
+    }
+
     #[test]
     fn context_documents_are_inlined_before_the_message() {
         let plain = AiRequest {

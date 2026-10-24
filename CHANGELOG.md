@@ -61,6 +61,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Ctrl+Alt+N`. A conversation the provider no longer knows offers **Start a new conversation
   from here**. Settings → AI → **Forget this folder's conversations**. The chat store is split
   into provider, conversation and panel stores.
+- **AI context bar**: above the message box, the instruction files from the root down to the
+  current file's folder and the current file, with sizes, listed when the panel opens and when
+  the active tab changes (never on disk changes); ✕ leaves a document out of the messages sent
+  from that file, and Send passes exactly the paths still listed to `ai_start`.
 
 ### Changed
 

@@ -118,6 +118,9 @@ export function fixtureMtimes(now: number): Map<string, number> {
 export const FIXTURE_FILES: Record<string, string> = {
   'README.md': README,
   'CHANGELOG.md': '# Changelog\n\n## [Unreleased]\n\n- Everything.\n',
+  // Instruction files of the mock provider (its `contextFileNames`), sent with every message.
+  'AGENTS.md': '# Agent rules\n\nKeep answers short and cite the files you read.\n',
+  'docs/AGENTS.md': '# Docs rules\n\nWrite for developers; one feature page per area.\n',
   'docs/architecture.md': ARCHITECTURE,
   'docs/decisions/0001-use-git-cli.md':
     '# 0001 — Use the git CLI\n\nWe run `git` as a subprocess.\n',

@@ -75,7 +75,7 @@ test('the chat panel moves, resizes, stays in the window and is remembered for t
   expect(await panel.boundingBox()).toEqual(kept);
 
   // Escape closes it (nothing runs) and the focus goes back to the toolbar button.
-  await panel.getByLabel('Message').focus();
+  await panel.getByLabel('Message', { exact: true }).focus();
   await page.keyboard.press('Escape');
   await expect(panel).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'AI Chat' })).toBeFocused();
@@ -84,7 +84,7 @@ test('the chat panel moves, resizes, stays in the window and is remembered for t
 test('history: two conversations, reopen the first and continue it', async ({ page }) => {
   await openChat(page);
   const panel = dialog(page);
-  const input = panel.getByLabel('Message');
+  const input = panel.getByLabel('Message', { exact: true });
   await input.fill('First question');
   await input.press('Enter');
   await expect(panel.getByText(/You said: "First question"/)).toBeVisible();
@@ -115,11 +115,36 @@ test('history: two conversations, reopen the first and continue it', async ({ pa
   expect(resumed).toMatch(/^00000000-/);
 });
 
+test('the context bar lists what the message carries; a dropped document is not sent', async ({
+  page,
+}) => {
+  await openChat(page);
+  await treeItem(page, 'README.md').click();
+  const panel = dialog(page);
+  const bar = panel.getByRole('group', { name: 'Context of the next message' });
+  await expect(bar.getByRole('listitem')).toHaveCount(2);
+  await expect(bar.getByText('AGENTS.md')).toBeVisible();
+  await expect(bar.getByText('README.md')).toBeVisible();
+  await bar.getByRole('button', { name: 'Remove AGENTS.md from the next message' }).click();
+  const input = panel.getByLabel('Message', { exact: true });
+  await input.fill('What is this file about?');
+  await input.press('Enter');
+  await expect(panel.getByText(/You said: "What is this file about\?"/)).toBeVisible();
+  const paths = await page.evaluate(() =>
+    (
+      (window as MockWindow).__igraspMock as unknown as {
+        state: { ai: { lastRequest: { context: { path: string }[] } | null } };
+      }
+    ).state.ai.lastRequest?.context.map((d) => d.path),
+  );
+  expect(paths).toEqual(['README.md']);
+});
+
 test('the AI chat shows a proposed edit as a diff and applies it when accepted', async ({
   page,
 }) => {
   await openChat(page);
-  const input = dialog(page).getByLabel('Message');
+  const input = dialog(page).getByLabel('Message', { exact: true });
   await input.fill('Please edit README.md');
   await input.press('Enter');
   await expect(dialog(page).getByText('Please edit README.md')).toBeVisible();
@@ -139,7 +164,7 @@ test('the AI chat shows a proposed edit as a diff and applies it when accepted',
 
 test('a rejected edit leaves the file alone and the operation ends cleanly', async ({ page }) => {
   await openChat(page);
-  const input = dialog(page).getByLabel('Message');
+  const input = dialog(page).getByLabel('Message', { exact: true });
   await input.fill('Please edit README.md');
   await input.press('Enter');
   const card = dialog(page).getByRole('region', { name: 'Proposed edit to README.md' });
@@ -164,14 +189,14 @@ test('browsing the project starts no AI operation; a logged-out provider is expl
   });
   await page.keyboard.press('Control+Alt+c');
   await expect(dialog(page).getByRole('alert')).toContainText('not logged in');
-  await expect(dialog(page).getByLabel('Message')).toBeDisabled();
+  await expect(dialog(page).getByLabel('Message', { exact: true })).toBeDisabled();
   await aiMock(page, (mock) => {
     mock.state.ai.loggedIn = true;
   });
   await dialog(page)
     .getByRole('button', { name: /Check again/ })
     .click();
-  await expect(dialog(page).getByLabel('Message')).toBeEnabled();
+  await expect(dialog(page).getByLabel('Message', { exact: true })).toBeEnabled();
   const starts = await page.evaluate(
     () => ((window as MockWindow).__igraspMock as unknown as AiMock).state.ai.starts,
   );
@@ -188,7 +213,7 @@ test('a large file open: the chat asks before starting; closing the chat keeps S
     });
   });
   await treeItem(page, 'BIG.md').click();
-  const input = dialog(page).getByLabel('Message');
+  const input = dialog(page).getByLabel('Message', { exact: true });
   await input.fill('Summarize this');
   await input.press('Enter');
   const card = dialog(page).getByRole('group', { name: /Confirm/ });

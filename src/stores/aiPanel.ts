@@ -1,9 +1,11 @@
-// The floating AI chat panel: shown or not, where it sits, and what the composer holds. Its
-// open state and geometry are saved per folder in the session (`session.ts`). Nothing here
-// talks to a provider.
+// The floating AI chat panel: shown or not, where it sits, what the composer holds and what the
+// next message carries (the context bar, the capture attachment). Its open state and geometry
+// are saved per folder in the session (`session.ts`). Nothing here talks to a provider: the
+// context comes from `ai_context`, which only reads metadata.
 
 import { create } from 'zustand';
-import type { AiPanelState, PanelRect } from '../ipc/types';
+import { backend } from '../ipc/client';
+import type { AiCapture, AiContextDocument, AiImage, AiPanelState, PanelRect } from '../ipc/types';
 
 export const PANEL_MIN_WIDTH = 360;
 export const PANEL_MIN_HEIGHT = 320;
@@ -89,6 +91,23 @@ export function resizeRect(
   return clampRect({ x, y, width, height }, viewport);
 }
 
+/** What the user attached to the next message (region capture). */
+export interface PanelAttachment {
+  capture: AiCapture;
+  /** The rendered region, when the screenshot could be taken. */
+  image: AiImage | null;
+}
+
+/** The documents the next message carries, as `ai_context` listed them for `currentPath`. */
+export interface PanelContext {
+  /** The current file they were listed for (null: no document or code tab). */
+  currentPath: string | null;
+  documents: AiContextDocument[];
+  /** Paths the user dropped with their ✕, for the next message only. */
+  removed: string[];
+  error: string | null;
+}
+
 interface AiPanelStore {
   open: boolean;
   /** Where the panel is; null for the default corner. */
@@ -97,6 +116,9 @@ interface AiPanelStore {
   draft: string;
   /** The history list is shown instead of the transcript. */
   historyOpen: boolean;
+  /** Null until listed (the panel opened or the active tab changed). */
+  context: PanelContext | null;
+  attachment: PanelAttachment | null;
 
   setOpen: (open: boolean) => void;
   toggleOpen: () => void;
@@ -113,6 +135,21 @@ interface AiPanelStore {
   setDraft: (draft: string) => void;
   setHistoryOpen: (open: boolean) => void;
   toggleHistory: () => void;
+  /**
+   * Lists what the next message would carry for `currentPath` (`ai_context`: paths and sizes).
+   * Called when the panel opens and when the active tab changes, never on disk changes or
+   * timers. A new current file brings back the documents dropped with ✕.
+   */
+  refreshContext: (currentPath: string | null) => Promise<void>;
+  /** Drops a document from the next message. */
+  removeContext: (path: string) => void;
+  /** Puts a dropped document back. */
+  restoreContext: (path: string) => void;
+  /** The paths the next message carries: the listed documents minus the dropped ones. */
+  contextPaths: () => string[];
+  /** After a message went out: the attachment is used up (dropped documents stay dropped until the current file changes). */
+  messageSent: () => void;
+  setAttachment: (attachment: PanelAttachment | null) => void;
   /** The panel as the session saved it for this folder (closed and default when null). */
   restore: (state: AiPanelState | null) => void;
 }
@@ -121,11 +158,16 @@ interface AiPanelStore {
 export const selectPanelRect = (s: { rect: PanelRect | null }, viewport = windowViewport()) =>
   s.rect ? clampRect(s.rect, viewport) : defaultRect(viewport);
 
+/** Counts `refreshContext` calls so a slow answer for an older tab is dropped. */
+let contextRequest = 0;
+
 export const useAiPanel = create<AiPanelStore>()((set, get) => ({
   open: false,
   rect: null,
   draft: '',
   historyOpen: false,
+  context: null,
+  attachment: null,
 
   setOpen(open) {
     if (get().open !== open) set({ open });
@@ -171,7 +213,63 @@ export const useAiPanel = create<AiPanelStore>()((set, get) => ({
   toggleHistory() {
     set((s) => ({ historyOpen: !s.historyOpen }));
   },
+  async refreshContext(currentPath) {
+    const request = ++contextRequest;
+    let documents: AiContextDocument[];
+    let error: string | null = null;
+    try {
+      documents = await backend.aiContext(currentPath);
+    } catch (err) {
+      documents = [];
+      error = err instanceof Error ? err.message : String(err);
+    }
+    // A later call (another tab) wins.
+    if (request !== contextRequest) return;
+    set((s) => ({
+      context: {
+        currentPath,
+        documents,
+        removed:
+          s.context?.currentPath === currentPath
+            ? s.context.removed.filter((p) => documents.some((d) => d.path === p))
+            : [],
+        error,
+      },
+    }));
+  },
+  removeContext(path) {
+    set((s) =>
+      s.context && !s.context.removed.includes(path)
+        ? { context: { ...s.context, removed: [...s.context.removed, path] } }
+        : s,
+    );
+  },
+  restoreContext(path) {
+    set((s) =>
+      s.context?.removed.includes(path)
+        ? { context: { ...s.context, removed: s.context.removed.filter((p) => p !== path) } }
+        : s,
+    );
+  },
+  contextPaths() {
+    const { context } = get();
+    if (!context) return [];
+    return context.documents.map((d) => d.path).filter((p) => !context.removed.includes(p));
+  },
+  messageSent() {
+    set({ attachment: null });
+  },
+  setAttachment(attachment) {
+    set({ attachment });
+  },
   restore(state) {
-    set({ open: state?.open ?? false, rect: state?.rect ?? null, historyOpen: false });
+    contextRequest++;
+    set({
+      open: state?.open ?? false,
+      rect: state?.rect ?? null,
+      historyOpen: false,
+      context: null,
+      attachment: null,
+    });
   },
 }));

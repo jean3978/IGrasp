@@ -9,8 +9,10 @@ describe('mock index', () => {
   it('keeps only visible markdown files', () => {
     const paths = [...scanFixture(files, base).keys()].sort();
     expect(paths).toEqual([
+      'AGENTS.md',
       'CHANGELOG.md',
       'README.md',
+      'docs/AGENTS.md',
       'docs/architecture.md',
       'docs/decisions/0001-use-git-cli.md',
       'docs/guide/advanced/deep-dive.markdown',
@@ -36,8 +38,8 @@ describe('mock index', () => {
   it('lists folders first, in natural order, hiding folders without markdown', () => {
     const listing = listFixtureDir(scanFixture(files, base), '');
     expect(listing?.dirs.map((d) => d.name)).toEqual(['docs', 'notes']);
-    expect(listing?.dirs[0]?.mdCount).toBe(4);
-    expect(listing?.files.map((f) => f.name)).toEqual(['CHANGELOG.md', 'README.md']);
+    expect(listing?.dirs[0]?.mdCount).toBe(5);
+    expect(listing?.files.map((f) => f.name)).toEqual(['AGENTS.md', 'CHANGELOG.md', 'README.md']);
     expect(listFixtureDir(scanFixture(files, base), 'src')).toBeNull();
   });
 });

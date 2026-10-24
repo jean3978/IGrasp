@@ -17,7 +17,10 @@ import {
   windowViewport,
 } from '../../stores/aiPanel';
 import type { ResizeEdge } from '../../stores/aiPanel';
+import { activeFilePath } from '../../stores/aiConversation';
+import { useTabs } from '../../stores/tabs';
 import { Composer } from './Composer';
+import { ContextBar } from './ContextBar';
 import { HistoryList } from './HistoryList';
 import { StatusLine } from './StatusLine';
 import { Transcript } from './Transcript';
@@ -143,6 +146,10 @@ export function AiPanel() {
   const busy = useAiConversation(selectBusy);
   const historyOpen = useAiPanel((s) => s.historyOpen);
   const setHistoryOpen = useAiPanel((s) => s.setHistoryOpen);
+  const refreshContext = useAiPanel((s) => s.refreshContext);
+  const hasContext = useAiPanel((s) => s.context !== null);
+  // Recomputed when the panel opens and when the active tab changes (never on disk changes).
+  const activePath = useTabs(() => activeFilePath());
   const titleId = useId();
   const panelRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -151,6 +158,15 @@ export function AiPanel() {
   useEffect(() => {
     if (open && !status && !checking) void checkStatus();
   }, [open, status, checking, checkStatus]);
+
+  // Also when the list was cleared (another folder opened with the panel open).
+  const listed = useRef<{ open: boolean; path: string | null }>({ open: false, path: null });
+  useEffect(() => {
+    const before = listed.current;
+    listed.current = { open, path: activePath };
+    if (!open) return;
+    if (!before.open || before.path !== activePath || !hasContext) void refreshContext(activePath);
+  }, [open, activePath, hasContext, refreshContext]);
 
   // Kept inside the window when it changes size (or DPI).
   useEffect(() => {
@@ -229,6 +245,7 @@ export function AiPanel() {
       <PanelHeader titleId={titleId} onClose={close} />
       <StatusLine />
       {historyOpen ? <HistoryList /> : <Transcript />}
+      <ContextBar />
       <Composer ref={inputRef} />
       {EDGES.map((edge) => (
         <div
