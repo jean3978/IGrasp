@@ -191,6 +191,27 @@ sequenceDiagram
   D->>D: scroll to the block of the line, flash it, CSS highlight of "agent"
 ```
 
+## Coming next: the AI layer
+
+From Phase 3, AI features (chat, region capture, quiz, tutorials) share one backend layer,
+described in [ADR 0014](decisions/0014-ai-provider-layer-and-user-action-gateway.md):
+
+```mermaid
+flowchart LR
+  U[User action in the UI] -->|explicit IPC request| G[AI gateway]
+  F[Watchers, timers, startup] -.-x|no path| G
+  G --> T[AiProvider trait]
+  T --> C[Claude CLI provider]
+  T --> M[Mock provider]
+  T -.-> O[Other providers, later]
+```
+
+- Only a user action reaches the gateway; nothing in the background spends tokens.
+- Features use provider-neutral requests, events and capabilities; only the provider knows the
+  `claude` CLI. The mock provider powers the browser dev mode and the tests.
+- The quiz and tutorials also share a local project profile and grounding rules
+  ([ADR 0015](decisions/0015-learning-features-grounded-in-the-project.md)).
+
 ## State on disk
 
 All state lives in the OS app-data folder (`%APPDATA%\io.github.jean3978.igrasp` on Windows,
