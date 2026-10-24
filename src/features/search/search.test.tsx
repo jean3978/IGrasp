@@ -44,6 +44,12 @@ describe('search helpers', () => {
     expect(container.textContent).toBe('see the agent');
     expect(container.querySelector('mark')?.textContent).toBe('agent');
   });
+
+  it('shortens long text before the first match', () => {
+    const text = `${'x'.repeat(100)} needle`;
+    const { container } = render(<MatchText match={{ line: 1, text, ranges: [[101, 107]] }} />);
+    expect(container.textContent).toBe(`…${'x'.repeat(23)} needle`);
+  });
 });
 
 describe('SearchPanel', () => {

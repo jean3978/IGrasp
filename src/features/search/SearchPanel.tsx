@@ -29,12 +29,23 @@ type Row =
 const rowKey = (row: Row) =>
   row.kind === 'file' ? `f:${row.file.relPath}` : `m:${row.file.relPath}:${String(row.index)}`;
 
-/** A match line with every match in <mark>, leading whitespace trimmed. */
+/** Characters kept before the first match, so it stays visible in a narrow sidebar. */
+const CONTEXT_BEFORE = 24;
+
+/**
+ * A match line with every match in <mark>: leading whitespace trimmed, and long text before the
+ * first match replaced by an ellipsis.
+ */
 export function MatchText({ match }: { match: TextMatch }) {
   const chars = Array.from(match.text);
   const lead = chars.findIndex((c) => c !== ' ' && c !== '\t');
-  const from = Math.max(0, Math.min(lead < 0 ? 0 : lead, match.ranges[0]?.[0] ?? 0));
+  const firstMatch = match.ranges[0]?.[0] ?? 0;
+  let from = Math.max(0, Math.min(lead < 0 ? 0 : lead, firstMatch));
   const parts: ReactNode[] = [];
+  if (firstMatch - from > CONTEXT_BEFORE) {
+    from = firstMatch - CONTEXT_BEFORE;
+    parts.push('…');
+  }
   let at = from;
   match.ranges.forEach(([s, e], i) => {
     if (s < at) return;

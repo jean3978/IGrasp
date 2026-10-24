@@ -6,6 +6,8 @@ mod error;
 mod graph;
 mod index;
 mod paths;
+#[cfg(test)]
+mod perf;
 mod search;
 mod state;
 
