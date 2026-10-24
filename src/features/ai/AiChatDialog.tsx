@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import { Check, Plus, RefreshCw, Send, Sparkles, Square, X } from 'lucide-react';
+import { Check, Plus, RefreshCw, Send, Sparkles, X } from 'lucide-react';
 import { Dialog } from 'radix-ui';
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
@@ -18,7 +18,10 @@ import type { PendingPermission } from '../../stores/ai';
 import { useWorkspace } from '../../stores/workspace';
 import { diffStats, lineDiff } from './diff';
 import type { DiffLine } from './diff';
+import { CancelButton } from './CancelButton';
+import { ConfirmCard } from './ConfirmCard';
 import { decisionText } from './timeline';
+import { UsageLine } from './UsageLine';
 import type { ChatItem } from './timeline';
 import './ai.css';
 
@@ -142,6 +145,8 @@ function Message({ item }: { item: ChatItem }) {
           {item.text}
         </div>
       );
+    case 'usage':
+      return <UsageLine {...item} />;
     case 'notice':
       return (
         <div
@@ -159,7 +164,9 @@ function ModelPicker() {
   const setModel = useAi((s) => s.setModel);
   const capabilities = useAi((s) => s.capabilities);
   const models = capabilities?.models ?? [];
-  const busy = useAi(selectBusy);
+  const running = useAi(selectBusy);
+  const confirming = useAi((s) => s.pendingConfirm !== null);
+  const busy = running || confirming;
   const isPreset = models.some((m) => m.id === model);
   const [custom, setCustom] = useState(false);
   const showCustom = custom || (!isPreset && model !== '');
@@ -245,9 +252,10 @@ function Composer() {
   const busy = useAi(selectBusy);
   const usable = useAi(selectUsable);
   const providerName = useAi(selectProviderName);
+  const confirming = useAi((s) => s.pendingConfirm !== null);
   const hasRoot = useWorkspace((s) => s.root !== null);
   const [text, setText] = useState('');
-  const canSend = usable && hasRoot && !busy && text.trim().length > 0;
+  const canSend = usable && hasRoot && !busy && !confirming && text.trim().length > 0;
 
   const submit = () => {
     if (!canSend) return;
@@ -279,22 +287,19 @@ function Composer() {
         }
         value={text}
         rows={2}
-        disabled={!usable || !hasRoot}
+        disabled={!usable || !hasRoot || confirming}
         onChange={(e) => {
           setText(e.target.value);
         }}
         onKeyDown={onKeyDown}
       />
       {busy ? (
-        <IconButton
-          label="Stop"
+        <CancelButton
           className="ai-send"
-          onClick={() => {
+          onCancel={() => {
             void cancel();
           }}
-        >
-          <Square aria-hidden />
-        </IconButton>
+        />
       ) : (
         <IconButton
           label={`Send (uses ${providerName})`}
@@ -319,6 +324,9 @@ export function AiChatDialog() {
   const providerName = useAi(selectProviderName);
   const items = useAi((s) => s.items);
   const permissions = useAi((s) => s.permissions);
+  const pendingConfirm = useAi((s) => s.pendingConfirm);
+  const confirmStart = useAi((s) => s.confirmStart);
+  const cancelConfirm = useAi((s) => s.cancelConfirm);
   const newConversation = useAi((s) => s.newConversation);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -330,7 +338,7 @@ export function AiChatDialog() {
   useEffect(() => {
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [items, permissions]);
+  }, [items, permissions, pendingConfirm]);
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen} modal={false}>
@@ -338,6 +346,13 @@ export function AiChatDialog() {
         <Dialog.Content
           className="ai-dialog"
           aria-describedby={undefined}
+          onEscapeKeyDown={(e) => {
+            // Escape answers the confirmation card first.
+            if (pendingConfirm) {
+              e.preventDefault();
+              cancelConfirm();
+            }
+          }}
           onInteractOutside={(e) => {
             // A floating panel: reading the document behind it must not close it.
             e.preventDefault();
@@ -364,7 +379,7 @@ export function AiChatDialog() {
           </header>
           <StatusLine />
           <div className="ai-messages" ref={listRef} aria-live="polite">
-            {items.length === 0 && permissions.length === 0 && (
+            {items.length === 0 && permissions.length === 0 && !pendingConfirm && (
               <p className="ai-empty">
                 Proof of concept: the chat talks to {providerName} in the open folder. Each message
                 you send spends tokens; nothing runs on its own. Edits to markdown files are shown
@@ -377,6 +392,20 @@ export function AiChatDialog() {
             {permissions.map((p) => (
               <PermissionCard key={p.requestId} permission={p} />
             ))}
+            {pendingConfirm && (
+              <ConfirmCard
+                title={pendingConfirm.title}
+                provider={providerName}
+                model={pendingConfirm.model}
+                documents={pendingConfirm.documents}
+                images={pendingConfirm.images}
+                estimate={pendingConfirm.estimate}
+                onStart={() => {
+                  void confirmStart();
+                }}
+                onCancel={cancelConfirm}
+              />
+            )}
           </div>
           <Composer />
         </Dialog.Content>

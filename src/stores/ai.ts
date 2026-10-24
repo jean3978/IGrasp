@@ -3,17 +3,28 @@
 // the backend's gateway decides which provider runs (ADR 0015).
 
 import { create } from 'zustand';
-import { applyEvent, finishStreaming, noticeItem, userItem } from '../features/ai/timeline';
+import {
+  applyEvent,
+  finishStreaming,
+  noticeItem,
+  usageItem,
+  userItem,
+} from '../features/ai/timeline';
 import type { ChatItem } from '../features/ai/timeline';
 import { backend } from '../ipc/client';
 import { BackendError } from '../ipc/types';
 import { useSettings } from './settings';
+import { selectActiveTab, useTabs } from './tabs';
 import type {
   AiCapabilities,
   AiEventEnvelope,
   AiPermissionKind,
   AiProviderInfo,
   AiProviderStatus,
+  AiSizeBucket,
+  AiSizeEstimate,
+  AiStartRequest,
+  ConfirmFrom,
   JsonValue,
   PermissionDecision,
   ProposedEdit,
@@ -40,6 +51,16 @@ export interface Usage {
   costUsd: number | null;
 }
 
+/** An operation waiting for the user's Start (the estimate reached `settings.ai.confirmFrom`). */
+export interface PendingConfirm {
+  title: string;
+  request: AiStartRequest;
+  estimate: AiSizeEstimate;
+  documents: { path: string; bytes: number }[];
+  images: number;
+  model: string;
+}
+
 interface AiState {
   open: boolean;
   status: AiProviderStatus | null;
@@ -57,6 +78,8 @@ interface AiState {
   operationId: number | null;
   /** An operation is being started: its events may arrive before its id is known. */
   starting: boolean;
+  /** The confirmation card shown before a large operation; nothing runs until Start. */
+  pendingConfirm: PendingConfirm | null;
   buffered: AiEventEnvelope[];
   items: ChatItem[];
   permissions: PendingPermission[];
@@ -73,6 +96,9 @@ interface AiState {
   /** Switches the provider (refused by the backend while an operation runs). */
   setProvider: (id: string) => Promise<void>;
   send: (text: string) => Promise<void>;
+  /** Start of the confirmation card: the only way a confirmed operation begins. */
+  confirmStart: () => Promise<void>;
+  cancelConfirm: () => void;
   respond: (requestId: string, decision: PermissionDecision) => Promise<void>;
   cancel: () => Promise<void>;
   newConversation: () => void;
@@ -85,6 +111,13 @@ let modelSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
 const NO_USAGE: Usage = { inputTokens: 0, outputTokens: 0, costUsd: null };
 
+const BUCKET_RANK: Record<AiSizeBucket, number> = { small: 0, medium: 1, large: 2 };
+
+/** Whether an estimate must be confirmed with the card under this setting. */
+export function needsConfirmation(bucket: AiSizeBucket, confirmFrom: ConfirmFrom): boolean {
+  return confirmFrom !== 'never' && BUCKET_RANK[bucket] >= BUCKET_RANK[confirmFrom];
+}
+
 export const selectBusy = (s: AiState) => s.operationId !== null || s.starting;
 export const selectUsable = (s: AiState) =>
   s.status !== null && s.status.installed && s.status.loggedIn && s.status.problem === null;
@@ -93,6 +126,17 @@ export const selectProviderName = (s: AiState) => s.status?.displayName ?? 'AI';
 function errorMessage(err: unknown): string {
   if (err instanceof BackendError || err instanceof Error) return err.message;
   return String(err);
+}
+
+/** Calls `ai_start` (the only call that spends tokens) and hands buffered events over. */
+async function runStart(request: AiStartRequest): Promise<void> {
+  const operationId = await backend.aiStart('chatMessage', request);
+  const buffered = useAi.getState().buffered;
+  useAi.setState({ operationId, starting: false, buffered: [] });
+  // Events of this operation that arrived before its id was known.
+  for (const envelope of buffered) {
+    if (envelope.operationId === operationId) useAi.getState().onEvent(envelope);
+  }
 }
 
 export const useAi = create<AiState>()((set, get) => ({
@@ -105,6 +149,7 @@ export const useAi = create<AiState>()((set, get) => ({
   resumeId: null,
   operationId: null,
   starting: false,
+  pendingConfirm: null,
   buffered: [],
   items: [],
   permissions: [],
@@ -186,24 +231,43 @@ export const useAi = create<AiState>()((set, get) => ({
 
   async send(text) {
     const prompt = text.trim();
-    if (!prompt || selectBusy(get())) return;
+    if (!prompt || selectBusy(get()) || get().pendingConfirm) return;
     set((s) => ({ items: [...s.items, userItem(prompt)], starting: true, buffered: [] }));
     const { model, resumeId } = get();
     try {
-      const operationId = await backend.aiStart('chatMessage', {
+      // The documents this message would carry (paths and sizes only), then their size.
+      const tab = selectActiveTab(useTabs.getState());
+      const current = tab && tab.relPath !== null ? tab.relPath : null;
+      const documents = await backend.aiContext(current);
+      const request: AiStartRequest = {
         prompt,
-        contextPaths: [],
+        contextPaths: documents.map((d) => d.path),
         images: [],
         policy: 'interactive',
         ...(model ? { model } : {}),
         ...(resumeId ? { resumeId } : {}),
+      };
+      const estimate = await backend.aiEstimate({
+        promptBytes: new TextEncoder().encode(prompt).length,
+        contextPaths: request.contextPaths,
+        images: request.images.length,
       });
-      const buffered = get().buffered;
-      set({ operationId, starting: false, buffered: [] });
-      // Events of this operation that arrived before its id was known.
-      for (const envelope of buffered) {
-        if (envelope.operationId === operationId) get().onEvent(envelope);
+      if (needsConfirmation(estimate.bucket, useSettings.getState().settings.ai.confirmFrom)) {
+        // Nothing starts until the user presses Start on the card.
+        set({
+          starting: false,
+          pendingConfirm: {
+            title: 'Send message',
+            request,
+            estimate,
+            documents: documents.map((d) => ({ path: d.path, bytes: d.bytes })),
+            images: request.images.length,
+            model,
+          },
+        });
+        return;
       }
+      await runStart(request);
     } catch (err) {
       set((s) => ({
         starting: false,
@@ -211,6 +275,29 @@ export const useAi = create<AiState>()((set, get) => ({
         items: [...s.items, noticeItem('error', errorMessage(err))],
       }));
     }
+  },
+
+  async confirmStart() {
+    const pending = get().pendingConfirm;
+    if (!pending || selectBusy(get())) return;
+    set({ pendingConfirm: null, starting: true, buffered: [] });
+    try {
+      await runStart(pending.request);
+    } catch (err) {
+      set((s) => ({
+        starting: false,
+        buffered: [],
+        items: [...s.items, noticeItem('error', errorMessage(err))],
+      }));
+    }
+  },
+
+  cancelConfirm() {
+    if (!get().pendingConfirm) return;
+    set((s) => ({
+      pendingConfirm: null,
+      items: [...s.items, noticeItem('info', 'Cancelled: nothing was sent.')],
+    }));
   },
 
   async respond(requestId, decision) {
@@ -243,6 +330,7 @@ export const useAi = create<AiState>()((set, get) => ({
       permissions: [],
       operationId: null,
       starting: false,
+      pendingConfirm: null,
       buffered: [],
       usage: NO_USAGE,
     });
@@ -279,6 +367,7 @@ export const useAi = create<AiState>()((set, get) => ({
         return;
       case 'usage':
         set({
+          items: [...s.items, usageItem(event)],
           usage: {
             inputTokens: s.usage.inputTokens + event.inputTokens,
             outputTokens: s.usage.outputTokens + event.outputTokens,

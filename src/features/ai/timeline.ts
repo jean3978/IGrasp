@@ -26,7 +26,16 @@ export type ChatItem =
       reason: string;
     }
   | { kind: 'error'; id: string; text: string }
-  | { kind: 'notice'; id: string; level: 'info' | 'error'; text: string };
+  | { kind: 'notice'; id: string; level: 'info' | 'error'; text: string }
+  | {
+      /** What the provider reported for an operation, shown under its answer. */
+      kind: 'usage';
+      id: string;
+      inputTokens: number;
+      outputTokens: number;
+      costUsd: number | null;
+      durationMs: number;
+    };
 
 let counter = 0;
 const nextId = (prefix: string) => `${prefix}-${String(++counter)}`;
@@ -37,6 +46,16 @@ export function userItem(text: string): ChatItem {
 
 export function noticeItem(level: 'info' | 'error', text: string): ChatItem {
   return { kind: 'notice', id: nextId('notice'), level, text };
+}
+
+/** The usage line under an operation's answer. */
+export function usageItem(usage: {
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number | null;
+  durationMs: number;
+}): ChatItem {
+  return { kind: 'usage', id: nextId('usage'), ...usage };
 }
 
 /** The transcript line of an automatic decision: `Allowed by your settings: Edit notes.md`. */

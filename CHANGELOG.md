@@ -19,6 +19,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   only starts an operation for a user action and stops it when the folder, the window or the
   app closes ([ADR 0015](docs/decisions/0015-ai-provider-abstraction-and-gateway.md)).
 - **"Uses AI" marker**: a small sparkle (with the provider's name in its tooltip) on every control that can start an AI operation and on the AI Chat button and menu item.
+- **Confirmation, usage and stop**: a message whose estimated size reaches the "confirm from"
+  threshold (`settings.ai.confirmFrom`, default large) shows a confirmation card (provider,
+  model, documents, size class) and starts only on Start; each answer shows its token usage,
+  cost and duration; with the chat closed, a status bar item shows the running operation with
+  Stop and a badge when a permission waits.
 - **AI permission kinds**: every permission request says what it would do (markdown edit, other
   file edit, command, web, other), and accepting an edit carries a neutral edit (all or some of
   its hunks) that the provider maps back to its own tool input. The mock provider scripts every

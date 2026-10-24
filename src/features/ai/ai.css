@@ -319,3 +319,95 @@
 .ai-send {
   flex-shrink: 0;
 }
+
+.ai-usage {
+  align-self: flex-start;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The confirmation card before a large operation. */
+.ai-confirm {
+  align-self: stretch;
+  border: var(--border-width) solid var(--warning);
+  border-radius: var(--radius-m);
+  background: var(--bg-editor);
+}
+
+.ai-confirm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: var(--border-width) solid var(--border);
+  font-weight: 600;
+}
+
+.ai-confirm-bucket {
+  padding: 0 6px;
+  border: var(--border-width) solid currentcolor;
+  border-radius: var(--radius-s);
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+  font-weight: 400;
+}
+
+.ai-confirm-medium,
+.ai-confirm-large {
+  color: var(--warning);
+}
+
+.ai-confirm-summary,
+.ai-confirm-estimate {
+  margin: 0;
+  padding: 8px 10px 0;
+}
+
+.ai-confirm-estimate {
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.ai-confirm-docs {
+  margin: 0;
+  padding: 6px 10px 0 26px;
+  font-size: var(--font-size-small);
+}
+
+.ai-confirm-docs li {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.ai-confirm-path {
+  overflow-wrap: anywhere;
+}
+
+.ai-confirm-size {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+}
+
+.ai-confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 8px 10px;
+}
+
+/* The running indicator in the status bar. */
+.ai-activity {
+  gap: 2px;
+}
+
+.ai-activity-badge {
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: var(--radius-s);
+  background: var(--warning);
+  color: var(--bg-editor);
+  font-size: var(--font-size-small);
+}

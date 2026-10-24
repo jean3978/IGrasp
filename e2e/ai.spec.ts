@@ -83,3 +83,42 @@ test('browsing the project starts no AI operation; a logged-out provider is expl
   );
   expect(starts).toEqual([]);
 });
+
+test('a large file open: the chat asks before starting; closing the chat keeps Stop in the status bar', async ({
+  page,
+}) => {
+  await openChat(page);
+  await page.evaluate(() => {
+    (window as MockWindow).__igraspMock?.writeFiles({
+      'BIG.md': `# Big\n\n${'word '.repeat(70_000)}\n`,
+    });
+  });
+  await treeItem(page, 'BIG.md').click();
+  const input = dialog(page).getByLabel('Message');
+  await input.fill('Summarize this');
+  await input.press('Enter');
+  const card = dialog(page).getByRole('group', { name: /Confirm/ });
+  await expect(card).toContainText('Large');
+  await expect(card).toContainText('BIG.md');
+  const starts = () =>
+    page.evaluate(() => ((window as MockWindow).__igraspMock as unknown as AiMock).state.ai.starts);
+  expect(await starts()).toEqual([]);
+
+  // Escape declines; nothing started.
+  await page.keyboard.press('Escape');
+  await expect(card).toHaveCount(0);
+  expect(await starts()).toEqual([]);
+
+  // A slow answer, then the chat is closed: the status bar shows it with Stop.
+  await input.fill('a slow answer about BIG.md');
+  await input.press('Enter');
+  await card.getByRole('button', { name: /^Start/ }).click();
+  expect(await starts()).toEqual(['chatMessage']);
+  await dialog(page).getByRole('button', { name: 'Close' }).click();
+  const bar = page.getByRole('contentinfo', { name: 'Status bar' });
+  await expect(bar.getByText('Mock AI is working…')).toBeVisible();
+  await bar.getByRole('button', { name: 'Stop' }).click();
+  await expect(bar.getByText('Mock AI is working…')).toHaveCount(0);
+  await page.keyboard.press('Control+Alt+c');
+  await expect(dialog(page).getByText('Stopped.')).toBeVisible();
+});
