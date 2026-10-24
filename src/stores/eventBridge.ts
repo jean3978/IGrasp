@@ -2,6 +2,7 @@
 
 import { backend } from '../ipc/client';
 import type { Unsubscribe } from '../ipc/types';
+import { applyDiskChanges } from './diskChanges';
 import { useTree } from './tree';
 import { useWorkspace } from './workspace';
 
@@ -16,6 +17,12 @@ export async function startEventBridge(): Promise<Unsubscribe> {
     }),
     backend.listen('index://error', (e) => {
       useWorkspace.getState().setIndexError(e.generation, e.message);
+    }),
+    backend.listen('fs://changes', (e) => {
+      applyDiskChanges(e);
+    }),
+    backend.listen('fs://watch-status', (e) => {
+      useWorkspace.getState().setWatchStatus(e.mode, e.reason);
     }),
     backend.listen('appdata://recovered', (e) => {
       // Shown as a toast once toasts exist; logged meanwhile.

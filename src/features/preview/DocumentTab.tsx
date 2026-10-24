@@ -51,6 +51,7 @@ function Rendered({ content, relPath, getScrollContainer }: RenderedProps) {
 
 export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
   const doc = useDocuments((s) => s.byPath[relPath]);
+  const deleted = useTabs((s) => s.tabs.find((t) => t.id === tabId)?.deleted ?? false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const restored = useRef(false);
   const getScrollContainer = useCallback(() => scrollRef.current, []);
@@ -90,6 +91,20 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
         }
       }}
     >
+      {deleted && (
+        <div className="deleted-banner" role="status">
+          <span>This file was deleted on disk. The last version is still shown.</span>
+          <button
+            type="button"
+            className="button"
+            onClick={() => {
+              useTabs.getState().close(tabId);
+            }}
+          >
+            Close
+          </button>
+        </div>
+      )}
       {doc?.status === 'error' && (
         <div className="document-message" role="alert">
           {doc.error}

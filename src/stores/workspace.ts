@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { backend } from '../ipc/client';
-import type { IndexReadyEvent, RootInfo } from '../ipc/types';
+import type { IndexReadyEvent, RootInfo, WatchMode } from '../ipc/types';
 import { useDocuments } from './documents';
 import { useRecent } from './recent';
 import { useTabs } from './tabs';
@@ -42,6 +42,8 @@ interface WorkspaceState {
   index: IndexStatus;
   /** The last `index://ready`, which can arrive before the call that started the scan returns. */
   lastReady: IndexReadyEvent | null;
+  /** How the folder is watched for changes ("poll" when native watching is unavailable). */
+  watch: { mode: WatchMode | null; reason: string | null };
   sidebar: SidebarState;
 
   openRoot: (path: string) => Promise<void>;
@@ -53,6 +55,7 @@ interface WorkspaceState {
   setIndexProgress: (generation: number, scannedEntries: number, markdownFiles: number) => void;
   setIndexReady: (event: IndexReadyEvent) => void;
   setIndexError: (generation: number, message: string) => void;
+  setWatchStatus: (mode: WatchMode, reason: string | null) => void;
   toggleSidebar: () => void;
   setSidebarVisible: (visible: boolean) => void;
   setSidebarWidth: (widthPx: number) => void;
@@ -68,6 +71,7 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
   opening: false,
   index: IDLE,
   lastReady: null,
+  watch: { mode: null, reason: null },
   sidebar: { visible: true, widthPx: DEFAULT_SIDEBAR_WIDTH },
 
   async openRoot(path) {
@@ -133,6 +137,10 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
   setIndexError(generation, msg) {
     if (generation !== get().index.generation) return;
     set({ index: { ...get().index, state: 'error', message: msg } });
+  },
+
+  setWatchStatus(mode, reason) {
+    set({ watch: { mode, reason } });
   },
 
   toggleSidebar() {

@@ -11,6 +11,7 @@ import type {
   EventName,
   FileEntry,
   RecentFolder,
+  RenamedPath,
   RootInfo,
   Session,
   Settings,
@@ -51,6 +52,10 @@ export interface MockControls {
   emit<E extends EventName>(event: E, payload: BackendEvents[E]): void;
   state: MockState;
   reset(): void;
+  /** Writes files on the fake disk and emits `fs://changes` like the Rust watcher. */
+  writeFiles(files: Record<string, string>): void;
+  deleteFiles(paths: string[]): void;
+  renameFile(from: string, to: string): void;
 }
 
 declare global {
@@ -85,15 +90,71 @@ export function createMockBackend(): Backend & { controls: MockControls } {
   let state = initialState();
   const handlers = new Map<EventName, Set<Handler>>();
 
+  const emit: MockControls['emit'] = (event, payload) => {
+    for (const h of handlers.get(event) ?? []) (h as (p: typeof payload) => void)(payload);
+  };
+
+  const indexFixture = () => {
+    const index = scanFixture(state.files, state.scan, 0);
+    for (const [rel, entry] of index) entry.modifiedMs = state.mtimes.get(rel) ?? 0;
+    return index;
+  };
+
+  /** Re-indexes after a fake disk change and emits the difference as `fs://changes`. */
+  const diskChanged = (renamed: RenamedPath[] = []) => {
+    if (!state.root || !state.index) return;
+    const before = state.index;
+    const after = indexFixture();
+    state.index = after;
+    const added = [...after.values()].filter((f) => !before.has(f.relPath));
+    const modified = [...after.values()].filter((f) => {
+      const old = before.get(f.relPath);
+      return old !== undefined && (old.modifiedMs !== f.modifiedMs || old.size !== f.size);
+    });
+    const removed = [...before.keys()].filter((rel) => !after.has(rel));
+    if (added.length + modified.length + removed.length === 0) return;
+    const dirs = new Set<string>();
+    for (const rel of [...added.map((f) => f.relPath), ...removed]) {
+      const parts = rel.split('/');
+      for (let i = parts.length - 1; i >= 0; i--) dirs.add(parts.slice(0, i).join('/'));
+    }
+    emit('fs://changes', {
+      generation: state.generation,
+      added,
+      modified,
+      removed,
+      renamed,
+      dirsChanged: [...dirs].sort(),
+    });
+  };
+
+  let clock = 1;
   const controls: MockControls = {
-    emit(event, payload) {
-      for (const h of handlers.get(event) ?? []) (h as (p: typeof payload) => void)(payload);
-    },
+    emit,
     get state() {
       return state;
     },
     reset() {
       state = initialState();
+    },
+    writeFiles(files) {
+      for (const [rel, content] of Object.entries(files)) {
+        state.files.set(rel, content);
+        state.mtimes.set(rel, (clock += 1));
+      }
+      diskChanged();
+    },
+    deleteFiles(paths) {
+      for (const rel of paths) state.files.delete(rel);
+      diskChanged();
+    },
+    renameFile(from, to) {
+      const content = state.files.get(from);
+      if (content === undefined) return;
+      state.files.delete(from);
+      state.files.set(to, content);
+      state.mtimes.set(to, state.mtimes.get(from) ?? 0);
+      diskChanged([{ from, to }]);
     },
   };
 
@@ -141,7 +202,7 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         markdownFiles: 0,
         elapsedMs: 1,
       });
-      state.index = scanFixture(state.files, state.scan, Date.now());
+      state.index = indexFixture();
       const dirs = new Set([...state.index.keys()].map((k) => k.split('/').slice(0, -1).join('/')));
       dirs.delete('');
       controls.emit('index://ready', {

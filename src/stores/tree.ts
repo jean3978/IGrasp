@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { backend } from '../ipc/client';
-import type { DirListing } from '../ipc/types';
+import type { DirListing, FsChangesEvent } from '../ipc/types';
 import { useWorkspace } from './workspace';
 
 export interface TreeRow {
@@ -38,6 +38,8 @@ interface TreeState {
   collapseAll: () => void;
   setExpanded: (dirs: string[]) => void;
   setFocused: (path: string | null) => void;
+  /** Re-fetches the loaded listings of folders a disk change touched. */
+  applyChanges: (changes: FsChangesEvent) => Promise<void>;
   setShowDotfiles: (show: boolean) => Promise<void>;
   setShowIgnored: (show: boolean) => Promise<void>;
   refresh: () => Promise<void>;
@@ -188,6 +190,31 @@ export const useTree = create<TreeState>()((set, get) => ({
 
   setFocused(path) {
     set({ focused: path });
+  },
+
+  async applyChanges(changes) {
+    const { generation, listings } = get();
+    if (changes.generation !== generation) return;
+    const dirs = changes.dirsChanged.filter((d) => listings[d] !== undefined);
+    await Promise.all(
+      dirs.map(async (dir) => {
+        try {
+          const listing = await backend.listDir(dir);
+          if (get().generation !== generation) return;
+          set((s) => ({ listings: { ...s.listings, [dir]: listing } }));
+        } catch {
+          // The folder no longer holds markdown: forget it.
+          set((s) => {
+            const expanded = new Set(s.expanded);
+            expanded.delete(dir);
+            return {
+              expanded,
+              listings: Object.fromEntries(Object.entries(s.listings).filter(([k]) => k !== dir)),
+            };
+          });
+        }
+      }),
+    );
   },
 
   async setShowDotfiles(show) {
