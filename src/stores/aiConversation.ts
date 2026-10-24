@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import {
   applyEvent,
+  decisionItem,
   finishStreaming,
   fromStoredItems,
   noticeItem,
@@ -57,6 +58,22 @@ export interface Usage {
   costUsd: number | null;
 }
 
+/**
+ * "Allow for this conversation": the same tool asking for the same kind of permission is allowed
+ * without a prompt until New conversation (a UI convenience over the same `respond` call; the
+ * gateway keeps no state across operations).
+ */
+export interface ConversationRule {
+  tool: string;
+  kind: AiPermissionKind;
+}
+
+/** The transcript reason of an answer given by a conversation rule. */
+export const REASON_CONVERSATION_RULE = 'allowed for this conversation';
+
+export const ruleMatches = (rule: ConversationRule, p: { tool: string; kind: AiPermissionKind }) =>
+  rule.tool === p.tool && rule.kind === p.kind;
+
 /** An operation waiting for the user's Start (the estimate reached `settings.ai.confirmFrom`). */
 export interface PendingConfirm {
   title: string;
@@ -88,6 +105,8 @@ interface AiConversationState {
   pendingConfirm: PendingConfirm | null;
   buffered: AiEventEnvelope[];
   permissions: PendingPermission[];
+  /** Permissions allowed for the rest of this conversation. */
+  rules: ConversationRule[];
   /** This folder's saved conversations, newest first; null until listed. */
   history: ConversationSummary[] | null;
 
@@ -96,6 +115,9 @@ interface AiConversationState {
   confirmStart: () => Promise<void>;
   cancelConfirm: () => void;
   respond: (requestId: string, decision: PermissionDecision) => Promise<void>;
+  /** Allows this request and, until New conversation, the same tool for the same kind. */
+  allowForConversation: (requestId: string) => Promise<void>;
+  removeRule: (rule: ConversationRule) => void;
   cancel: () => Promise<void>;
   /** Saves this conversation (if it has a message), stops its operation, starts an empty one. */
   newConversation: () => void;
@@ -140,6 +162,7 @@ const EMPTY = {
   pendingConfirm: null,
   buffered: [],
   permissions: [],
+  rules: [],
 } satisfies Partial<AiConversationState>;
 
 let idCounter = 0;
@@ -324,6 +347,20 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
       }
     },
 
+    async allowForConversation(requestId) {
+      const pending = get().permissions.find((p) => p.requestId === requestId);
+      if (!pending || pending.kind === 'markdownEdit') return;
+      const rule = { tool: pending.tool, kind: pending.kind };
+      if (!get().rules.some((r) => ruleMatches(r, rule))) {
+        set((s) => ({ rules: [...s.rules, rule] }));
+      }
+      await get().respond(requestId, { behavior: 'allow', updatedEdit: null });
+    },
+
+    removeRule(rule) {
+      set((s) => ({ rules: s.rules.filter((r) => !ruleMatches(r, rule)) }));
+    },
+
     async cancel() {
       const { operationId } = get();
       if (operationId === null) return;
@@ -353,6 +390,30 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
           return;
         case 'permissionRequest':
           if (s.permissions.some((p) => p.requestId === event.requestId)) return;
+          // A conversation rule answers without asking, and says so in the transcript.
+          if (event.kind !== 'markdownEdit' && s.rules.some((r) => ruleMatches(r, event))) {
+            set({
+              items: [
+                ...s.items,
+                decisionItem({
+                  tool: event.tool,
+                  permissionKind: event.kind,
+                  description: event.description,
+                  allowed: true,
+                  reason: REASON_CONVERSATION_RULE,
+                }),
+              ],
+            });
+            backend
+              .aiRespondPermission(envelope.operationId, event.requestId, {
+                behavior: 'allow',
+                updatedEdit: null,
+              })
+              .catch((err: unknown) => {
+                set((st) => ({ items: [...st.items, noticeItem('error', errorMessage(err))] }));
+              });
+            return;
+          }
           set({
             permissions: [
               ...s.permissions,

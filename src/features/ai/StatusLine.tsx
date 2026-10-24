@@ -6,6 +6,7 @@ import { RefreshCw } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useAiProvider } from '../../stores/aiProvider';
 import { useAiConversation } from '../../stores/aiConversation';
+import './ai.css';
 
 export function StatusLine({
   showSession = true,

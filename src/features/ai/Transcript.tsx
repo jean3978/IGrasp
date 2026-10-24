@@ -38,6 +38,26 @@ function ResumeFailed({ prompt }: { prompt: string }) {
   );
 }
 
+/**
+ * A permission answered without asking (settings, a conversation rule, the read-only policy):
+ * "Allowed by your settings: Edit notes.md". Nothing runs invisibly.
+ */
+export function PermissionDecidedItem(item: {
+  tool: string;
+  description: string | null;
+  allowed: boolean;
+  reason: string;
+}) {
+  return (
+    <div
+      className={clsx('ai-notice', 'ai-decision', { 'ai-notice-error': !item.allowed })}
+      role="status"
+    >
+      {decisionText(item)}
+    </div>
+  );
+}
+
 export function Message({ item }: { item: ChatItem }) {
   switch (item.kind) {
     case 'user':
@@ -60,14 +80,7 @@ export function Message({ item }: { item: ChatItem }) {
         </details>
       );
     case 'decision':
-      return (
-        <div
-          className={clsx('ai-notice', 'ai-decision', { 'ai-notice-error': !item.allowed })}
-          role="status"
-        >
-          {decisionText(item)}
-        </div>
-      );
+      return <PermissionDecidedItem {...item} />;
     case 'error':
       return (
         <div className="ai-msg ai-msg-error" role="alert">

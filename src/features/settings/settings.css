@@ -159,3 +159,39 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Settings → AI. */
+.settings-subsection h3 {
+  margin: 16px 0 0;
+  color: var(--fg-strong);
+  font-size: var(--font-size-ui);
+  font-weight: 600;
+}
+
+.settings-subsection > .settings-description {
+  margin-bottom: 4px;
+}
+
+.settings-warning {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--warning);
+  font-size: var(--font-size-small);
+}
+
+.settings-warning svg {
+  width: 14px;
+  height: 14px;
+}
+
+.settings-ai .ai-status {
+  width: 100%;
+  padding: 0;
+  border: 0;
+}
+
+.settings-ai .ai-status-problem {
+  padding: 8px;
+  border-radius: var(--radius-m);
+}

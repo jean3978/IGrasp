@@ -25,6 +25,7 @@ export function resetAiStores(): void {
     pendingConfirm: null,
     buffered: [],
     permissions: [],
+    rules: [],
     history: null,
   });
   useAiPanel.setState({

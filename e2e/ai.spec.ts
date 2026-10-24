@@ -140,6 +140,37 @@ test('the context bar lists what the message carries; a dropped document is not 
   expect(paths).toEqual(['README.md']);
 });
 
+test('a command denied, then allowed for the conversation, then run without a prompt', async ({
+  page,
+}) => {
+  await openChat(page);
+  const panel = dialog(page);
+  const input = panel.getByLabel('Message', { exact: true });
+  const card = panel.getByRole('region', { name: 'Permission for Bash' });
+  await input.fill('Run a command');
+  await input.press('Enter');
+  await card.getByRole('button', { name: 'Deny' }).click();
+  await expect(panel.getByText(/Bash git log --oneline -5 — refused or failed/)).toBeVisible();
+  await expect(panel.getByRole('button', { name: /^Send/ })).toBeVisible();
+
+  await input.fill('Run a command again');
+  await input.press('Enter');
+  await card.getByRole('button', { name: 'Allow for this conversation' }).click();
+  await expect(card).toHaveCount(0);
+  await expect(panel.getByRole('button', { name: /^Send/ })).toBeVisible();
+
+  await input.fill('One more command');
+  await input.press('Enter');
+  await expect(
+    panel.getByText('Allowed for this conversation: Bash git log --oneline -5'),
+  ).toBeVisible();
+  await expect(card).toHaveCount(0);
+  await panel.getByRole('button', { name: 'Rules of this conversation (1)' }).click();
+  await expect(page.getByRole('dialog', { name: 'Rules of this conversation' })).toContainText(
+    'Bash',
+  );
+});
+
 test('the AI chat shows a proposed edit as a diff and applies it when accepted', async ({
   page,
 }) => {

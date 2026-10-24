@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { useAiProvider } from '../../stores/aiProvider';
 import { selectBusy, useAiConversation } from '../../stores/aiConversation';
+import './ai.css';
 
 /** Like the provider's own check: letters, digits and `.-_:/`. */
 export const VALID_MODEL_ID = /^[A-Za-z0-9._:/-]*$/;

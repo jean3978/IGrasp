@@ -44,8 +44,20 @@ provider's status.
   tokens, and the Send button says so. **Stop** kills the running operation.
 - **Permissions**: when the AI wants to edit a markdown file, the proposed change is shown as a
   line diff with **Accept** / **Reject**. Any other tool (running a command, writing another
-  file, …) shows the tool name and its input with **Allow** / **Deny**. Reading files inside the
-  folder needs no approval. A rejection tells the model why, so it does not retry.
+  file, …) shows the tool name, a one-line summary and its input (under **Details**) with
+  **Allow**, **Deny** and **Allow for this conversation**: the last one also allows the same tool
+  for the same kind of permission without asking until New conversation; the header's shield
+  button lists these rules, each with a ✕. Reading files inside the folder needs no approval. A
+  rejection tells the model "The user rejected this in IGrasp." so it does not retry; a denial by
+  the settings says "Denied by the user's IGrasp settings.". Every automatic answer (settings,
+  conversation rule, read-only policy) is a line in the transcript: "Allowed by your settings:
+  Bash npm test", "Allowed for this conversation: Bash ls".
+- **Settings → AI**: the provider's status with **Check again**, the provider (one entry, so
+  disabled), the default model, one row per permission category (markdown edits, other file
+  edits, commands, web access, anything else) with Ask / Allow / Deny, a sentence each and a
+  warning when Allow is chosen for a risky one, **Reset to defaults**, the confirmation threshold
+  (from medium, from large, never), the conversations kept per folder (25, 100, 500) and **Forget
+  this folder's conversations**. A change applies from the next message.
 - **New conversation** (+, `Ctrl+Alt+N` with the panel open) saves the conversation in the
   history and starts an empty one; otherwise every message continues the same conversation (the
   provider's resume id), even after a stop or a crash.

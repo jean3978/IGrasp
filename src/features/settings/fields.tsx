@@ -36,11 +36,13 @@ export function Segmented<T extends string>({
   value,
   options,
   onChange,
+  disabled = false,
 }: {
   label: string;
   value: T;
   options: { value: T; label: string }[];
   onChange: (v: T) => void;
+  disabled?: boolean;
 }) {
   return (
     <ToggleGroup.Root
@@ -48,6 +50,7 @@ export function Segmented<T extends string>({
       className="segmented"
       aria-label={label}
       value={value}
+      disabled={disabled}
       onValueChange={(v) => {
         const option = options.find((o) => o.value === v);
         if (option) onChange(option.value);

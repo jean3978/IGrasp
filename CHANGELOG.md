@@ -65,6 +65,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   current file's folder and the current file, with sizes, listed when the panel opens and when
   the active tab changes (never on disk changes); ✕ leaves a document out of the messages sent
   from that file, and Send passes exactly the paths still listed to `ai_start`.
+- **AI permission prompts and settings**: a prompt shows the tool, a summary and its input with
+  Allow, Deny and **Allow for this conversation** (a rule listed in the panel header with a ✕,
+  cleared by New conversation; matching requests are answered without asking and shown in the
+  transcript). Settings → AI gains the provider status, the provider and default model, one
+  Ask / Allow / Deny row per permission category with warnings and Reset to defaults, the
+  confirmation threshold and the history limit.
 
 ### Changed
 

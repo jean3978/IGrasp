@@ -32,7 +32,13 @@ folder (`settings.json`), never in the opened folder.
 | Notifications | Mute notifications | Hides change toasts; files still reload. |
 | Files | Extra ignore patterns | gitignore-style patterns hidden from the Explorer in every mode. Applied with the Apply button (the folder is re-indexed). |
 | | Show dotfiles / ignored files by default | Initial toggles for folders opened for the first time. |
-| AI | Forget this folder's conversations | Deletes the chat history kept for the open folder (app data); asks first. |
+| AI | Status | The provider's version and account, or what is missing, with Check again. |
+| | AI provider | One entry for now (disabled). |
+| | Default model | The model new conversations start with (the chat's picker changes it too). |
+| | Permissions | Ask / Allow / Deny per category: markdown edits, other file edits, commands, web access, anything else; a warning next to a risky Allow; Reset to defaults. |
+| | Confirm before sending | From medium, from large (default) or never: the confirmation card with the size estimate. |
+| | Conversations kept per folder | 25, 100 (default) or 500. |
+| | Forget this folder's conversations | Deletes the chat history kept for the open folder (app data); asks first. |
 | Data | App data folder | Shows the folder and opens it in the file manager. |
 | | Reset settings | Restores every default. |
 

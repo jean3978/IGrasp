@@ -537,6 +537,7 @@
 }
 
 .ai-history-filter {
+  width: auto;
   margin: 0 10px;
 }
 
@@ -708,4 +709,59 @@
 .ai-context-empty {
   padding: 2px 0;
   color: var(--fg-muted);
+}
+
+.ai-permission-input {
+  padding: 4px 10px 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.ai-permission-input summary {
+  cursor: pointer;
+}
+
+.ai-permission-actions {
+  flex-wrap: wrap;
+}
+
+/* The conversation rules ("Allow for this conversation"). */
+.ai-rules-count {
+  margin-left: 1px;
+  font-size: var(--font-size-small);
+}
+
+.ai-rules-popover {
+  z-index: 4500;
+  min-width: 240px;
+  max-width: 360px;
+  padding: 8px 10px;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-m);
+  background: var(--bg-overlay);
+  box-shadow: var(--shadow-dialog);
+  color: var(--fg);
+  font-size: var(--font-size-ui);
+}
+
+.ai-rules-title {
+  margin: 0 0 6px;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.ai-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-rules-list li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
 }

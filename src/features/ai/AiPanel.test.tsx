@@ -14,7 +14,7 @@ import {
   MOCK_PROVIDER_VERSION,
   MOCK_REJECTED_TEXT,
 } from '../../ipc/mock/mockAi';
-import { useAiConversation } from '../../stores/aiConversation';
+import { REJECTION_MESSAGE, useAiConversation } from '../../stores/aiConversation';
 import { startEventBridge } from '../../stores/eventBridge';
 import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
@@ -302,6 +302,74 @@ describe('the history', () => {
     await user.click(offer);
     expect(await screen.findByText(/You said: "Still there\?"/)).toBeInTheDocument();
     expect(window.__igraspMock?.state.ai.lastRequest?.resumeId).toBeUndefined();
+  });
+});
+
+describe('permission prompts and conversation rules', () => {
+  const idle = () =>
+    waitFor(() => {
+      expect(useAiConversation.getState().operationId).toBeNull();
+    });
+  const card = () => screen.findByRole('region', { name: 'Permission for Bash' });
+
+  it('denies a command, then allows it for the conversation, then runs it without asking', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByText(statusLine);
+
+    // Deny: the model is told the user rejected it.
+    await user.type(composer(), 'Run a command{Enter}');
+    await user.click(within(await card()).getByRole('button', { name: 'Deny' }));
+    await idle();
+    const denied = useAiConversation
+      .getState()
+      .items.find((i) => i.kind === 'tool' && i.tool === 'Bash');
+    expect(denied).toMatchObject({ isError: true, result: REJECTION_MESSAGE });
+
+    // Allow for this conversation: runs now, and becomes a rule.
+    await user.type(composer(), 'Run a command again{Enter}');
+    const prompt = await card();
+    expect(within(prompt).getByText('Details')).toBeInTheDocument();
+    await user.click(within(prompt).getByRole('button', { name: 'Allow for this conversation' }));
+    await idle();
+    expect(useAiConversation.getState().rules).toEqual([{ tool: 'Bash', kind: 'command' }]);
+
+    // The next one runs without a prompt, and the transcript says why.
+    await user.type(composer(), 'And one more command{Enter}');
+    expect(
+      await screen.findByText('Allowed for this conversation: Bash git log --oneline -5'),
+    ).toBeInTheDocument();
+    await idle();
+    expect(screen.queryByRole('region', { name: 'Permission for Bash' })).toBeNull();
+
+    // The rules popover lists it; ✕ removes it, and the next one asks again.
+    await user.click(screen.getByRole('button', { name: 'Rules of this conversation (1)' }));
+    const popover = await screen.findByRole('dialog', { name: 'Rules of this conversation' });
+    expect(within(popover).getByText('Bash')).toBeInTheDocument();
+    await user.click(within(popover).getByRole('button', { name: 'Stop allowing Bash' }));
+    expect(useAiConversation.getState().rules).toEqual([]);
+    await user.keyboard('{Escape}');
+    expect(useAiPanel.getState().open).toBe(true);
+    await user.type(composer(), 'Last command{Enter}');
+    await user.click(within(await card()).getByRole('button', { name: 'Allow' }));
+    await idle();
+  });
+
+  it('forgets the rules on New conversation', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByText(statusLine);
+    await user.type(composer(), 'Run a command{Enter}');
+    await user.click(
+      within(await card()).getByRole('button', { name: 'Allow for this conversation' }),
+    );
+    await idle();
+    expect(screen.getByRole('button', { name: /Rules of this conversation/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'New conversation' }));
+    expect(useAiConversation.getState().rules).toEqual([]);
+    expect(screen.queryByRole('button', { name: /Rules of this conversation/ })).toBeNull();
+    await user.type(composer(), 'Run a command{Enter}');
+    expect(await card()).toBeInTheDocument();
   });
 });
 

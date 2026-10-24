@@ -54,6 +54,17 @@ export function resumeFailedItem(prompt: string): ChatItem {
   return { kind: 'resumeFailed', id: nextId('resume'), prompt };
 }
 
+/** An answer given without asking the user (settings, read-only policy, a conversation rule). */
+export function decisionItem(decision: {
+  tool: string;
+  permissionKind: AiPermissionKind;
+  description: string | null;
+  allowed: boolean;
+  reason: string;
+}): ChatItem {
+  return { kind: 'decision', id: nextId('decision'), ...decision };
+}
+
 export function noticeItem(level: 'info' | 'error', text: string): ChatItem {
   return { kind: 'notice', id: nextId('notice'), level, text };
 }

@@ -22,6 +22,7 @@ import { useTabs } from '../../stores/tabs';
 import { Composer } from './Composer';
 import { ContextBar } from './ContextBar';
 import { HistoryList } from './HistoryList';
+import { RulesButton } from './RulesButton';
 import { StatusLine } from './StatusLine';
 import { Transcript } from './Transcript';
 import './ai.css';
@@ -108,6 +109,7 @@ function PanelHeader({ titleId, onClose }: { titleId: string; onClose: () => voi
           {sessionModel}
         </span>
       )}
+      <RulesButton />
       <IconButton
         label="History"
         shortcut="Ctrl+Alt+H"

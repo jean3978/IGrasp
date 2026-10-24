@@ -1,5 +1,5 @@
-// A permission the provider asks for: what it would do, and the user's answer. A proposed edit
-// is shown as a line diff to accept or reject as a whole (the inline review in the preview
+// A permission the provider asks for: what it would do, and the user's answer (Allow, Deny, or
+// Allow for this conversation for anything but an edit). A proposed edit is shown as a line diff to accept or reject as a whole (the inline review in the preview
 // takes over markdown edits in a later step; this card stays the fallback).
 
 import { clsx } from 'clsx';
@@ -69,6 +69,7 @@ export function LineDiffCard({
 
 export function PermissionCard({ permission }: { permission: PendingPermission }) {
   const respond = useAiConversation((s) => s.respond);
+  const allowForConversation = useAiConversation((s) => s.allowForConversation);
   const providerName = useAiProvider(selectProviderName);
   const allow = () => {
     void respond(permission.requestId, { behavior: 'allow', updatedEdit: null });
@@ -86,8 +87,19 @@ export function PermissionCard({ permission }: { permission: PendingPermission }
           {permission.description ? `: ${permission.description}` : ''}
         </span>
       </header>
-      <pre className="ai-json">{JSON.stringify(permission.input, null, 2)}</pre>
+      <details className="ai-permission-input">
+        <summary>Details</summary>
+        <pre className="ai-json">{JSON.stringify(permission.input, null, 2)}</pre>
+      </details>
       <footer className="ai-permission-actions">
+        <Button
+          title={`Allows ${permission.tool} without asking again until New conversation`}
+          onClick={() => {
+            void allowForConversation(permission.requestId);
+          }}
+        >
+          Allow for this conversation
+        </Button>
         <Button variant="primary" onClick={allow}>
           Allow
         </Button>
