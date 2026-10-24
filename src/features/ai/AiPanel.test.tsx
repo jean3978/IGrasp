@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { Tooltip } from 'radix-ui';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { backend } from '../../ipc/client';
 import { FIXTURE_ROOT } from '../../ipc/mock/fixture';
 import {
   MOCK_APPLIED_TEXT,
@@ -13,7 +14,7 @@ import {
   MOCK_PROVIDER_VERSION,
   MOCK_REJECTED_TEXT,
 } from '../../ipc/mock/mockAi';
-import { useAi } from '../../stores/ai';
+import { useAiConversation } from '../../stores/aiConversation';
 import { startEventBridge } from '../../stores/eventBridge';
 import { useWorkspace } from '../../stores/workspace';
 import {
@@ -25,23 +26,12 @@ import {
   useAiPanel,
 } from '../../stores/aiPanel';
 import { AiPanel } from './AiPanel';
+import { resetAiStores } from '../../test/resetAi';
 
 let stop: () => void = () => undefined;
 
 function resetStore() {
-  useAi.setState({
-    status: null,
-    capabilities: null,
-    checking: false,
-    model: '',
-    resumeId: null,
-    operationId: null,
-    starting: false,
-    buffered: [],
-    items: [],
-    permissions: [],
-    usage: { inputTokens: 0, outputTokens: 0, costUsd: null },
-  });
+  resetAiStores();
 }
 
 beforeEach(async () => {
@@ -56,7 +46,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   stop();
-  useAi.getState().newConversation();
+  useAiConversation.getState().newConversation();
   await useWorkspace.getState().closeRoot();
 });
 
@@ -83,9 +73,9 @@ describe('AiPanel', () => {
     expect(screen.getByText('What is this project?')).toBeInTheDocument();
     expect(await screen.findByText(/This is the mock AI/)).toBeInTheDocument();
     await waitFor(() => {
-      expect(useAi.getState().operationId).toBeNull();
+      expect(useAiConversation.getState().operationId).toBeNull();
     });
-    expect(useAi.getState().resumeId).toMatch(/^00000000-/);
+    expect(useAiConversation.getState().resumeId).toMatch(/^00000000-/);
     expect(screen.getByText(/session 00000000/)).toBeInTheDocument();
     expect(screen.getByText(/1280 tokens · \$0\.0031/)).toBeInTheDocument();
     expect(window.__igraspMock?.state.ai.starts).toEqual(['chatMessage']);
@@ -158,7 +148,7 @@ describe('AiPanel', () => {
     await user.type(composer(), 'Tell me a long story{Enter}');
     await user.click(await screen.findByRole('button', { name: 'Stop' }));
     expect(await screen.findByText('Stopped.')).toBeInTheDocument();
-    expect(useAi.getState().operationId).toBeNull();
+    expect(useAiConversation.getState().operationId).toBeNull();
     expect(screen.getByRole('button', { name: /Send/ })).toBeInTheDocument();
   });
 
@@ -193,7 +183,7 @@ describe('AiPanel', () => {
     await user.type(composer(), 'Hello{Enter}');
     expect(await screen.findByRole('alert')).toHaveTextContent(MOCK_LATE_LOGIN_ERROR);
     await waitFor(() => {
-      expect(useAi.getState().operationId).toBeNull();
+      expect(useAiConversation.getState().operationId).toBeNull();
     });
   });
 
@@ -205,8 +195,112 @@ describe('AiPanel', () => {
     await screen.findByText(/This is the mock AI/);
     await user.click(screen.getByRole('button', { name: 'New conversation' }));
     expect(screen.queryByText(/This is the mock AI/)).not.toBeInTheDocument();
-    expect(useAi.getState().resumeId).toBeNull();
+    expect(useAiConversation.getState().resumeId).toBeNull();
     expect(screen.getByText(/session new/)).toBeInTheDocument();
+  });
+});
+
+describe('the history', () => {
+  const idle = () =>
+    waitFor(() => {
+      expect(useAiConversation.getState().operationId).toBeNull();
+    });
+
+  it('lists two conversations, reopens each and continues one', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByText(statusLine);
+    await user.type(composer(), 'First question{Enter}');
+    await screen.findByText(/You said: "First question"/);
+    await idle();
+    await user.click(screen.getByRole('button', { name: 'New conversation' }));
+    await user.type(composer(), 'Second question{Enter}');
+    await screen.findByText(/You said: "Second question"/);
+    await idle();
+
+    await user.click(screen.getByRole('button', { name: 'History' }));
+    const list = await screen.findByRole('listbox', { name: 'Conversations' });
+    await waitFor(() => {
+      expect(within(list).getAllByRole('option')).toHaveLength(2);
+    });
+    const rows = within(list).getAllByRole('option');
+    expect(rows.map((r) => r.getAttribute('aria-label'))).toEqual([
+      'Second question',
+      'First question',
+    ]);
+    expect(rows[0]).toHaveAttribute('aria-selected', 'true');
+
+    // Open the first one: its transcript comes back and the list closes.
+    await user.click(within(list).getByRole('option', { name: 'First question' }));
+    expect(await screen.findByText(/You said: "First question"/)).toBeInTheDocument();
+    expect(screen.queryByText(/You said: "Second question"/)).toBeNull();
+    expect(screen.queryByRole('listbox', { name: 'Conversations' })).toBeNull();
+    const resumeId = useAiConversation.getState().resumeId;
+
+    await user.type(composer(), 'More about it{Enter}');
+    await screen.findByText(/You said: "More about it"/);
+    expect(window.__igraspMock?.state.ai.lastRequest?.resumeId).toBe(resumeId);
+
+    // Then the second one.
+    await idle();
+    await user.click(screen.getByRole('button', { name: 'History' }));
+    await user.click(await screen.findByRole('option', { name: 'Second question' }));
+    expect(await screen.findByText(/You said: "Second question"/)).toBeInTheDocument();
+  });
+
+  it('filters, and deletes a conversation after a confirmation', async () => {
+    const user = userEvent.setup();
+    const rowsOf = () =>
+      within(screen.getByRole('listbox', { name: 'Conversations' })).getAllByRole('option');
+    renderPanel();
+    await screen.findByText(statusLine);
+    await user.type(composer(), 'Alpha{Enter}');
+    await idle();
+    await user.click(screen.getByRole('button', { name: 'New conversation' }));
+    await user.type(composer(), 'Beta{Enter}');
+    await idle();
+    await user.click(screen.getByRole('button', { name: 'History' }));
+    await waitFor(() => {
+      expect(rowsOf()).toHaveLength(2);
+    });
+    await user.type(screen.getByLabelText('Filter conversations'), 'alp');
+    expect(rowsOf().map((r) => r.getAttribute('aria-label'))).toEqual(['Alpha']);
+    await user.clear(screen.getByLabelText('Filter conversations'));
+
+    await user.click(screen.getByRole('button', { name: 'Delete "Alpha"' }));
+    await user.click(screen.getByRole('button', { name: 'Keep' }));
+    expect(rowsOf()).toHaveLength(2);
+    await user.click(screen.getByRole('button', { name: 'Delete "Alpha"' }));
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() => {
+      expect(rowsOf()).toHaveLength(1);
+    });
+    expect(window.__igraspMock?.state.ai.starts).toEqual(['chatMessage', 'chatMessage']);
+  });
+
+  it('offers to start again when the provider lost the conversation', async () => {
+    const user = userEvent.setup();
+    await backend.saveConversation({
+      id: 'lost',
+      title: 'Old talk',
+      createdMs: 1,
+      updatedMs: 2,
+      providerId: 'mock',
+      model: 'mock-fast',
+      resumeId: 'unknown-session',
+      usage: { inputTokens: 0, outputTokens: 0, costUsd: null },
+      items: [{ kind: 'user', id: 'x', text: 'Old talk' }],
+    });
+    renderPanel();
+    await screen.findByText(statusLine);
+    await user.click(screen.getByRole('button', { name: 'History' }));
+    await user.click(await screen.findByRole('option', { name: 'Old talk' }));
+    await user.type(composer(), 'Still there?{Enter}');
+    const offer = await screen.findByRole('button', { name: /Start a new conversation from here/ });
+    expect(within(offer).getByLabelText('Uses AI')).toBeInTheDocument();
+    await user.click(offer);
+    expect(await screen.findByText(/You said: "Still there\?"/)).toBeInTheDocument();
+    expect(window.__igraspMock?.state.ai.lastRequest?.resumeId).toBeUndefined();
   });
 });
 

@@ -55,6 +55,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   kept inside the window, and remembered per folder with its open state in the session.
   `Escape` stops a running answer, then closes the panel; the focus returns to the AI Chat
   button.
+- **AI conversation history per folder**: each conversation is saved (app data) when an
+  operation ends and on New conversation; the panel's **History** (`Ctrl+Alt+H`) lists them with
+  date, model and tokens, filters, deletes, and reopens one to continue it; New conversation is
+  `Ctrl+Alt+N`. A conversation the provider no longer knows offers **Start a new conversation
+  from here**. Settings → AI → **Forget this folder's conversations**. The chat store is split
+  into provider, conversation and panel stores.
 
 ### Changed
 

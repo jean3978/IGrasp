@@ -2,12 +2,13 @@
 // Alt+arrows), resized from its edges and corners (Alt+Shift+arrows), kept inside the window,
 // remembered per folder. Not modal: the document behind it stays usable.
 
-import { Plus, Sparkles, X } from 'lucide-react';
+import { History, Plus, Sparkles, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { IconButton } from '../../components/ui/IconButton';
 import type { PanelRect } from '../../ipc/types';
-import { selectBusy, selectProviderName, useAi } from '../../stores/ai';
+import { selectProviderName, useAiProvider } from '../../stores/aiProvider';
+import { selectBusy, useAiConversation } from '../../stores/aiConversation';
 import {
   PANEL_KEY_STEP,
   resizeRect,
@@ -17,6 +18,7 @@ import {
 } from '../../stores/aiPanel';
 import type { ResizeEdge } from '../../stores/aiPanel';
 import { Composer } from './Composer';
+import { HistoryList } from './HistoryList';
 import { StatusLine } from './StatusLine';
 import { Transcript } from './Transcript';
 import './ai.css';
@@ -52,8 +54,12 @@ function track(e: ReactPointerEvent<HTMLElement>, onMove: (dx: number, dy: numbe
 }
 
 function PanelHeader({ titleId, onClose }: { titleId: string; onClose: () => void }) {
-  const providerName = useAi(selectProviderName);
-  const newConversation = useAi((s) => s.newConversation);
+  const providerName = useAiProvider(selectProviderName);
+  const newConversation = useAiConversation((s) => s.newConversation);
+  const sessionModel = useAiConversation((s) => s.sessionModel);
+  const historyOpen = useAiPanel((s) => s.historyOpen);
+  const toggleHistory = useAiPanel((s) => s.toggleHistory);
+  const setHistoryOpen = useAiPanel((s) => s.setHistoryOpen);
   const setRect = useAiPanel((s) => s.setRect);
   const moveBy = useAiPanel((s) => s.moveBy);
   const resizeBy = useAiPanel((s) => s.resizeBy);
@@ -94,10 +100,25 @@ function PanelHeader({ titleId, onClose }: { titleId: string; onClose: () => voi
       >
         <Sparkles aria-hidden /> {providerName}
       </h2>
+      {sessionModel && (
+        <span className="ai-session-model" title="The model this conversation runs with">
+          {sessionModel}
+        </span>
+      )}
+      <IconButton
+        label="History"
+        shortcut="Ctrl+Alt+H"
+        pressed={historyOpen}
+        onClick={toggleHistory}
+      >
+        <History aria-hidden />
+      </IconButton>
       <IconButton
         label="New conversation"
+        shortcut="Ctrl+Alt+N"
         onClick={() => {
           newConversation();
+          setHistoryOpen(false);
         }}
       >
         <Plus aria-hidden />
@@ -115,11 +136,13 @@ export function AiPanel() {
   const setOpen = useAiPanel((s) => s.setOpen);
   const setRect = useAiPanel((s) => s.setRect);
   const clampToWindow = useAiPanel((s) => s.clampToWindow);
-  const status = useAi((s) => s.status);
-  const checking = useAi((s) => s.checking);
-  const checkStatus = useAi((s) => s.checkStatus);
-  const cancel = useAi((s) => s.cancel);
-  const busy = useAi(selectBusy);
+  const status = useAiProvider((s) => s.status);
+  const checking = useAiProvider((s) => s.checking);
+  const checkStatus = useAiProvider((s) => s.checkStatus);
+  const cancel = useAiConversation((s) => s.cancel);
+  const busy = useAiConversation(selectBusy);
+  const historyOpen = useAiPanel((s) => s.historyOpen);
+  const setHistoryOpen = useAiPanel((s) => s.setHistoryOpen);
   const titleId = useId();
   const panelRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -166,6 +189,11 @@ export function AiPanel() {
     // The confirmation card and open menus answer Escape first (they stop it).
     if (e.key !== 'Escape' || e.defaultPrevented) return;
     e.preventDefault();
+    // The history list closes first.
+    if (historyOpen) {
+      setHistoryOpen(false);
+      return;
+    }
     // First press stops a running operation, the next one closes the panel.
     if (busy) void cancel();
     else close();
@@ -200,7 +228,7 @@ export function AiPanel() {
     >
       <PanelHeader titleId={titleId} onClose={close} />
       <StatusLine />
-      <Transcript />
+      {historyOpen ? <HistoryList /> : <Transcript />}
       <Composer ref={inputRef} />
       {EDGES.map((edge) => (
         <div

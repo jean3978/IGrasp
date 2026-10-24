@@ -4,6 +4,7 @@
 // card add to `starts`.
 
 import { render, screen, waitFor } from '@testing-library/react';
+import { Tooltip } from 'radix-ui';
 import { createElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App';
@@ -11,7 +12,8 @@ import { backend } from '../../ipc/client';
 import { DEFAULT_SETTINGS } from '../../ipc/defaults';
 import { FIXTURE_ROOT } from '../../ipc/mock/fixture';
 import type { Conversation, SidebarView } from '../../ipc/types';
-import { MODEL_SAVE_DELAY_MS, useAi } from '../../stores/ai';
+import { MODEL_SAVE_DELAY_MS, useAiProvider } from '../../stores/aiProvider';
+import { useAiConversation } from '../../stores/aiConversation';
 import { useAiPanel } from '../../stores/aiPanel';
 import { startEventBridge } from '../../stores/eventBridge';
 import { useGraph } from '../../stores/graph';
@@ -22,6 +24,8 @@ import { useSettings } from '../../stores/settings';
 import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
 import { actions, runAction } from '../titlebar/menuActions';
+import { AiPanel } from './AiPanel';
+import { resetAiStores } from '../../test/resetAi';
 import type { ActionId } from '../titlebar/menuActions';
 
 let stop: () => void = () => undefined;
@@ -32,18 +36,7 @@ beforeEach(async () => {
   window.__igraspMock?.reset();
   useTabs.setState({ tabs: [], activeId: null });
   useAiPanel.setState({ open: false, rect: null, draft: '' });
-  useAi.setState({
-    status: null,
-    capabilities: null,
-    providers: null,
-    model: '',
-    resumeId: null,
-    operationId: null,
-    starting: false,
-    pendingConfirm: null,
-    items: [],
-    permissions: [],
-  });
+  resetAiStores();
   useSettings.setState({ settings: DEFAULT_SETTINGS, loaded: false });
   await useSettings.getState().load();
   stop = await startEventBridge();
@@ -51,7 +44,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   stop();
-  useAi.getState().newConversation();
+  useAiConversation.getState().newConversation();
   await useWorkspace.getState().closeRoot();
 });
 
@@ -67,7 +60,7 @@ describe('no token without a user action', () => {
     for (const view of views) useWorkspace.getState().setSidebarView(view);
     useWorkspace.getState().setRightPanelVisible(true);
     useAiPanel.getState().setOpen(true);
-    await useAi.getState().checkStatus();
+    await useAiProvider.getState().checkStatus();
 
     // Documents, searches and quick open.
     useTabs.getState().openDocument('README.md');
@@ -84,7 +77,7 @@ describe('no token without a user action', () => {
     expect(starts()).toEqual([]);
 
     // Only a message sent by the user starts one.
-    await useAi.getState().send('hello');
+    await useAiConversation.getState().send('hello');
     expect(starts()).toEqual(['chatMessage']);
   });
 
@@ -123,7 +116,7 @@ describe('no token without a user action', () => {
     runAction('ai.chat');
     useAiPanel.setState({ open: true });
     await screen.findAllByRole('dialog');
-    await useAi.getState().checkStatus(true);
+    await useAiProvider.getState().checkStatus(true);
     await settle();
 
     expect(starts()).toEqual([]);
@@ -131,7 +124,7 @@ describe('no token without a user action', () => {
 
   it('starts nothing from the history, the context, the model and the permission settings', async () => {
     await useWorkspace.getState().openRoot(FIXTURE_ROOT);
-    await useAi.getState().checkStatus();
+    await useAiProvider.getState().checkStatus();
 
     // History: saving, listing, loading, deleting and forgetting conversations.
     const conversation: Conversation = {
@@ -151,6 +144,31 @@ describe('no token without a user action', () => {
     await backend.deleteConversation('c1');
     await backend.forgetConversations();
 
+    // The same through the chat: the history list, loading a past conversation (with a resume
+    // id), saving it, New conversation, deleting, forgetting, leaving the folder.
+    await backend.saveConversation({
+      ...conversation,
+      id: 'c2',
+      resumeId: 'some-session',
+      items: [{ kind: 'user', id: 'u', text: 'hello' }],
+    });
+    useAiPanel.setState({ open: true, historyOpen: true });
+    const panel = render(createElement(Tooltip.Provider, null, createElement(AiPanel)));
+    await screen.findByRole('option', { name: 'hello' });
+    await useAiConversation.getState().loadHistory();
+    await useAiConversation.getState().load('c2');
+    await useAiConversation.getState().save();
+    useAiConversation.getState().newConversation();
+    runAction('ai.newConversation');
+    runAction('ai.history');
+    await useAiConversation.getState().load('c2');
+    await useAiConversation.getState().remove('c2');
+    await useAiConversation.getState().forgetAll();
+    await useAiConversation.getState().leaveFolder();
+    panel.unmount();
+    useAiPanel.setState({ open: false, historyOpen: false });
+    expect(starts()).toEqual([]);
+
     // Context and size estimates, for the current file and for the paths.
     const documents = await backend.aiContext('docs/guide/getting-started.md');
     await backend.aiEstimate({
@@ -160,12 +178,12 @@ describe('no token without a user action', () => {
     });
     await backend.aiContext(null);
     await backend.aiCapabilities();
-    await useAi.getState().loadProviders();
+    await useAiProvider.getState().loadProviders();
 
     // The model picker and the provider setting.
-    useAi.getState().setModel('mock-smart');
+    useAiProvider.getState().setModel('mock-smart');
     await new Promise((resolve) => setTimeout(resolve, MODEL_SAVE_DELAY_MS * 2));
-    await useAi.getState().setProvider('mock');
+    await useAiProvider.getState().setProvider('mock');
 
     // The permission, confirmation and history settings.
     await useSettings.getState().update({
@@ -182,26 +200,26 @@ describe('no token without a user action', () => {
 
   it('starts only when the user sends, and, past the threshold, only on Start', async () => {
     await useWorkspace.getState().openRoot(FIXTURE_ROOT);
-    await useAi.getState().checkStatus();
+    await useAiProvider.getState().checkStatus();
 
     // A small message goes straight through.
-    await useAi.getState().send('hello');
+    await useAiConversation.getState().send('hello');
     expect(starts()).toEqual(['chatMessage']);
     await vi.waitFor(() => {
-      expect(useAi.getState().operationId).toBeNull();
+      expect(useAiConversation.getState().operationId).toBeNull();
     });
 
     // A large one waits on the card: asking, estimating and showing it start nothing.
     useTabs.getState().openCode('logs/huge.log');
-    await useAi.getState().send('summarize');
-    expect(useAi.getState().pendingConfirm).not.toBeNull();
+    await useAiConversation.getState().send('summarize');
+    expect(useAiConversation.getState().pendingConfirm).not.toBeNull();
     expect(starts()).toEqual(['chatMessage']);
-    useAi.getState().cancelConfirm();
+    useAiConversation.getState().cancelConfirm();
     expect(starts()).toEqual(['chatMessage']);
 
-    await useAi.getState().send('summarize again');
+    await useAiConversation.getState().send('summarize again');
     expect(starts()).toEqual(['chatMessage']);
-    await useAi.getState().confirmStart();
+    await useAiConversation.getState().confirmStart();
     expect(starts()).toEqual(['chatMessage', 'chatMessage']);
   });
 });

@@ -14,6 +14,7 @@ import { useToasts } from '../../stores/toasts';
 import { useTree } from '../../stores/tree';
 import { useUi } from '../../stores/ui';
 import { useWorkspace } from '../../stores/workspace';
+import { useAiConversation } from '../../stores/aiConversation';
 import { useAiPanel } from '../../stores/aiPanel';
 
 export type ActionId =
@@ -41,6 +42,8 @@ export type ActionId =
   | 'view.muteToasts'
   | 'help.shortcuts'
   | 'ai.chat'
+  | 'ai.newConversation'
+  | 'ai.history'
   | 'help.about'
   | 'view.zoomIn'
   | 'view.zoomOut'
@@ -179,6 +182,24 @@ export const actions: Record<ActionId, ActionDef> = {
     run: () => {
       if (!useWorkspace.getState().root) return;
       useAiPanel.getState().toggleOpen();
+    },
+  },
+  'ai.newConversation': {
+    label: 'New AI Conversation',
+    shortcut: 'Ctrl+Alt+N',
+    run: () => {
+      // Saves the current one in the history; starts nothing.
+      if (!useWorkspace.getState().root || !useAiPanel.getState().open) return;
+      useAiConversation.getState().newConversation();
+      useAiPanel.getState().setHistoryOpen(false);
+    },
+  },
+  'ai.history': {
+    label: 'AI Conversation History',
+    shortcut: 'Ctrl+Alt+H',
+    run: () => {
+      if (!useWorkspace.getState().root || !useAiPanel.getState().open) return;
+      useAiPanel.getState().toggleHistory();
     },
   },
   'help.shortcuts': {

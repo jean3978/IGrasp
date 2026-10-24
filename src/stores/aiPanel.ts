@@ -95,6 +95,8 @@ interface AiPanelStore {
   rect: PanelRect | null;
   /** The message being written (kept while the panel is closed). */
   draft: string;
+  /** The history list is shown instead of the transcript. */
+  historyOpen: boolean;
 
   setOpen: (open: boolean) => void;
   toggleOpen: () => void;
@@ -109,6 +111,8 @@ interface AiPanelStore {
   /** Keeps the panel inside the window after the window changed size. */
   clampToWindow: () => void;
   setDraft: (draft: string) => void;
+  setHistoryOpen: (open: boolean) => void;
+  toggleHistory: () => void;
   /** The panel as the session saved it for this folder (closed and default when null). */
   restore: (state: AiPanelState | null) => void;
 }
@@ -121,6 +125,7 @@ export const useAiPanel = create<AiPanelStore>()((set, get) => ({
   open: false,
   rect: null,
   draft: '',
+  historyOpen: false,
 
   setOpen(open) {
     if (get().open !== open) set({ open });
@@ -160,7 +165,13 @@ export const useAiPanel = create<AiPanelStore>()((set, get) => ({
   setDraft(draft) {
     set({ draft });
   },
+  setHistoryOpen(historyOpen) {
+    set({ historyOpen });
+  },
+  toggleHistory() {
+    set((s) => ({ historyOpen: !s.historyOpen }));
+  },
   restore(state) {
-    set({ open: state?.open ?? false, rect: state?.rect ?? null });
+    set({ open: state?.open ?? false, rect: state?.rect ?? null, historyOpen: false });
   },
 }));

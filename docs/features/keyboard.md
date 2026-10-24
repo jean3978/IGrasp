@@ -18,6 +18,7 @@ IGrasp can be used entirely from the keyboard. Press **F1** for the full list of
 | `Ctrl+Shift+L` | Broken Links view |
 | `Ctrl+Shift+O` | Focus the outline (opens the right panel) |
 | `Ctrl+Alt+C` | Show or hide the AI chat panel |
+| `Ctrl+Alt+N` / `Ctrl+Alt+H` | New AI conversation / show or hide the history (chat panel open) |
 | `Alt+arrows` / `Alt+Shift+arrows` | Move / resize the AI chat panel (its title focused) |
 | `Escape` (AI chat panel) | Stop the running answer; pressed again, close the panel |
 | `Ctrl+T` | Search everything: files and headings |

@@ -2,18 +2,19 @@
 // settings (debounced) and is the default of the next conversations.
 
 import { useState } from 'react';
-import { selectBusy, useAi } from '../../stores/ai';
+import { useAiProvider } from '../../stores/aiProvider';
+import { selectBusy, useAiConversation } from '../../stores/aiConversation';
 
 /** Like the provider's own check: letters, digits and `.-_:/`. */
 export const VALID_MODEL_ID = /^[A-Za-z0-9._:/-]*$/;
 
 export function ModelPicker({ label = 'Model' }: { label?: string }) {
-  const model = useAi((s) => s.model);
-  const setModel = useAi((s) => s.setModel);
-  const capabilities = useAi((s) => s.capabilities);
+  const model = useAiProvider((s) => s.model);
+  const setModel = useAiProvider((s) => s.setModel);
+  const capabilities = useAiProvider((s) => s.capabilities);
   const models = capabilities?.models ?? [];
-  const running = useAi(selectBusy);
-  const confirming = useAi((s) => s.pendingConfirm !== null);
+  const running = useAiConversation(selectBusy);
+  const confirming = useAiConversation((s) => s.pendingConfirm !== null);
   const busy = running || confirming;
   const isPreset = models.some((m) => m.id === model);
   const [custom, setCustom] = useState(false);

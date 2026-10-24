@@ -81,6 +81,40 @@ test('the chat panel moves, resizes, stays in the window and is remembered for t
   await expect(page.getByRole('button', { name: 'AI Chat' })).toBeFocused();
 });
 
+test('history: two conversations, reopen the first and continue it', async ({ page }) => {
+  await openChat(page);
+  const panel = dialog(page);
+  const input = panel.getByLabel('Message');
+  await input.fill('First question');
+  await input.press('Enter');
+  await expect(panel.getByText(/You said: "First question"/)).toBeVisible();
+  await expect(panel.getByRole('button', { name: /^Send/ })).toBeVisible();
+  await page.keyboard.press('Control+Alt+n');
+  await expect(panel.getByText(/You said: "First question"/)).toHaveCount(0);
+  await input.fill('Second question');
+  await input.press('Enter');
+  await expect(panel.getByText(/You said: "Second question"/)).toBeVisible();
+  await expect(panel.getByRole('button', { name: /^Send/ })).toBeVisible();
+
+  await page.keyboard.press('Control+Alt+h');
+  const list = panel.getByRole('listbox', { name: 'Conversations' });
+  await expect(list.getByRole('option')).toHaveCount(2);
+  await list.getByRole('option', { name: 'First question' }).click();
+  await expect(panel.getByText(/You said: "First question"/)).toBeVisible();
+  await input.fill('Tell me more');
+  await input.press('Enter');
+  await expect(panel.getByText(/You said: "Tell me more"/)).toBeVisible();
+  const resumed = await page.evaluate(
+    () =>
+      (
+        (window as MockWindow).__igraspMock as unknown as {
+          state: { ai: { lastRequest: { resumeId?: string } | null } };
+        }
+      ).state.ai.lastRequest?.resumeId,
+  );
+  expect(resumed).toMatch(/^00000000-/);
+});
+
 test('the AI chat shows a proposed edit as a diff and applies it when accepted', async ({
   page,
 }) => {

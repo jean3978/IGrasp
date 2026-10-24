@@ -1,6 +1,6 @@
 import { Sparkles } from 'lucide-react';
 import { useEffect } from 'react';
-import { useAi } from '../stores/ai';
+import { useAiProvider } from '../stores/aiProvider';
 import { useSettings } from '../stores/settings';
 import './aiMark.css';
 
@@ -13,10 +13,10 @@ export type AiMarkVariant = 'uses' | 'feature';
  * probes anything), so no provider is named in code.
  */
 export function AiMark({ variant = 'uses' }: { variant?: AiMarkVariant }) {
-  const statusName = useAi((s) => s.status?.displayName);
-  const providers = useAi((s) => s.providers);
+  const statusName = useAiProvider((s) => s.status?.displayName);
+  const providers = useAiProvider((s) => s.providers);
   const providerId = useSettings((s) => s.settings.ai.provider);
-  const loadProviders = useAi((s) => s.loadProviders);
+  const loadProviders = useAiProvider((s) => s.loadProviders);
   useEffect(() => {
     if (providers === null) void loadProviders();
   }, [providers, loadProviders]);

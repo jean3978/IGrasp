@@ -32,6 +32,7 @@ folder (`settings.json`), never in the opened folder.
 | Notifications | Mute notifications | Hides change toasts; files still reload. |
 | Files | Extra ignore patterns | gitignore-style patterns hidden from the Explorer in every mode. Applied with the Apply button (the folder is re-indexed). |
 | | Show dotfiles / ignored files by default | Initial toggles for folders opened for the first time. |
+| AI | Forget this folder's conversations | Deletes the chat history kept for the open folder (app data); asks first. |
 | Data | App data folder | Shows the folder and opens it in the file manager. |
 | | Reset settings | Restores every default. |
 

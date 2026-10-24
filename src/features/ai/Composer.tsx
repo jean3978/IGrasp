@@ -7,19 +7,20 @@ import { forwardRef } from 'react';
 import type { KeyboardEvent } from 'react';
 import { AiMark } from '../../components/AiMark';
 import { IconButton } from '../../components/ui/IconButton';
-import { selectBusy, selectProviderName, selectUsable, useAi } from '../../stores/ai';
+import { selectProviderName, selectUsable, useAiProvider } from '../../stores/aiProvider';
+import { selectBusy, useAiConversation } from '../../stores/aiConversation';
 import { useAiPanel } from '../../stores/aiPanel';
 import { useWorkspace } from '../../stores/workspace';
 import { CancelButton } from './CancelButton';
 import { ModelPicker } from './ModelPicker';
 
 export const Composer = forwardRef<HTMLTextAreaElement>(function Composer(_props, ref) {
-  const send = useAi((s) => s.send);
-  const cancel = useAi((s) => s.cancel);
-  const busy = useAi(selectBusy);
-  const usable = useAi(selectUsable);
-  const providerName = useAi(selectProviderName);
-  const confirming = useAi((s) => s.pendingConfirm !== null);
+  const send = useAiConversation((s) => s.send);
+  const cancel = useAiConversation((s) => s.cancel);
+  const busy = useAiConversation(selectBusy);
+  const usable = useAiProvider(selectUsable);
+  const providerName = useAiProvider(selectProviderName);
+  const confirming = useAiConversation((s) => s.pendingConfirm !== null);
   const hasRoot = useWorkspace((s) => s.root !== null);
   const text = useAiPanel((s) => s.draft);
   const setText = useAiPanel((s) => s.setDraft);

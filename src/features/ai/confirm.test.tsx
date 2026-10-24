@@ -8,7 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '../../ipc/defaults';
 import { FIXTURE_ROOT } from '../../ipc/mock/fixture';
 import { MOCK_PROVIDER_NAME } from '../../ipc/mock/mockAi';
-import { useAi } from '../../stores/ai';
+import { useAiProvider } from '../../stores/aiProvider';
+import { useAiConversation } from '../../stores/aiConversation';
 import { startEventBridge } from '../../stores/eventBridge';
 import { useSettings } from '../../stores/settings';
 import { useTabs } from '../../stores/tabs';
@@ -18,6 +19,7 @@ import { useAiPanel } from '../../stores/aiPanel';
 import { AiPanel } from './AiPanel';
 import { ConfirmCard } from './ConfirmCard';
 import { UsageLine } from './UsageLine';
+import { resetAiStores } from '../../test/resetAi';
 import { confirmSummary, usageText } from './usageFormat';
 
 let stop: () => void = () => undefined;
@@ -32,70 +34,58 @@ beforeEach(async () => {
   mock().reset();
   mock().state.ai.stepMs = 1;
   useAiPanel.setState({ open: false, rect: null, draft: '' });
-  useAi.setState({
-    status: null,
-    capabilities: null,
-    checking: false,
-    model: '',
-    resumeId: null,
-    operationId: null,
-    starting: false,
-    pendingConfirm: null,
-    buffered: [],
-    items: [],
-    permissions: [],
-  });
+  resetAiStores();
   useSettings.setState({ settings: DEFAULT_SETTINGS, loaded: false });
   await useSettings.getState().load();
   useTabs.setState({ tabs: [], activeId: null });
   stop = await startEventBridge();
   await useWorkspace.getState().openRoot(FIXTURE_ROOT);
-  await useAi.getState().checkStatus();
+  await useAiProvider.getState().checkStatus();
 });
 
 afterEach(async () => {
   stop();
-  useAi.getState().newConversation();
+  useAiConversation.getState().newConversation();
   await useWorkspace.getState().closeRoot();
 });
 
 describe('the confirmation gate in send', () => {
   it('shows the card for a large estimate and starts nothing until Start', async () => {
     useTabs.getState().openCode('logs/huge.log');
-    await useAi.getState().send('summarize this');
-    const pending = useAi.getState().pendingConfirm;
+    await useAiConversation.getState().send('summarize this');
+    const pending = useAiConversation.getState().pendingConfirm;
     expect(pending?.estimate.bucket).toBe('large');
     expect(pending?.documents.map((d) => d.path)).toContain('logs/huge.log');
     expect(starts()).toEqual([]);
-    expect(useAi.getState().starting).toBe(false);
+    expect(useAiConversation.getState().starting).toBe(false);
 
-    await useAi.getState().confirmStart();
+    await useAiConversation.getState().confirmStart();
     expect(starts()).toEqual(['chatMessage']);
     expect(mock().state.ai.lastRequest?.context.map((d) => d.path)).toContain('logs/huge.log');
-    expect(useAi.getState().pendingConfirm).toBeNull();
+    expect(useAiConversation.getState().pendingConfirm).toBeNull();
   });
 
   it('starts nothing when the card is cancelled', async () => {
     useTabs.getState().openCode('logs/huge.log');
-    await useAi.getState().send('summarize this');
-    useAi.getState().cancelConfirm();
-    expect(useAi.getState().pendingConfirm).toBeNull();
+    await useAiConversation.getState().send('summarize this');
+    useAiConversation.getState().cancelConfirm();
+    expect(useAiConversation.getState().pendingConfirm).toBeNull();
     expect(starts()).toEqual([]);
-    expect(useAi.getState().items.at(-1)).toMatchObject({ kind: 'notice' });
+    expect(useAiConversation.getState().items.at(-1)).toMatchObject({ kind: 'notice' });
   });
 
   it('does not show it for a small message, and never with "never"', async () => {
-    await useAi.getState().send('hello');
-    expect(useAi.getState().pendingConfirm).toBeNull();
+    await useAiConversation.getState().send('hello');
+    expect(useAiConversation.getState().pendingConfirm).toBeNull();
     expect(starts()).toEqual(['chatMessage']);
     await vi.waitFor(() => {
-      expect(useAi.getState().operationId).toBeNull();
+      expect(useAiConversation.getState().operationId).toBeNull();
     });
 
     await useSettings.getState().update({ ai: { confirmFrom: 'never' } });
     useTabs.getState().openCode('logs/huge.log');
-    await useAi.getState().send('again');
-    expect(useAi.getState().pendingConfirm).toBeNull();
+    await useAiConversation.getState().send('again');
+    expect(useAiConversation.getState().pendingConfirm).toBeNull();
     expect(starts()).toEqual(['chatMessage', 'chatMessage']);
   });
 
@@ -106,8 +96,8 @@ describe('the confirmation gate in send', () => {
       expect(useWorkspace.getState().index.markdownFiles).toBeGreaterThan(0);
     });
     useTabs.getState().openDocument('notes/long.md');
-    await useAi.getState().send('read it');
-    expect(useAi.getState().pendingConfirm?.estimate.bucket).toBe('medium');
+    await useAiConversation.getState().send('read it');
+    expect(useAiConversation.getState().pendingConfirm?.estimate.bucket).toBe('medium');
     expect(starts()).toEqual([]);
   });
 });
@@ -200,7 +190,7 @@ describe('the running indicator', () => {
     expect(screen.queryByText(/is working/)).toBeNull();
     mock().state.ai.stepMs = 40;
     useAiPanel.setState({ open: true });
-    await useAi.getState().send('a slow answer');
+    await useAiConversation.getState().send('a slow answer');
     expect(screen.queryByText(/is working/)).toBeNull();
 
     act(() => {
@@ -216,11 +206,11 @@ describe('the running indicator', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Stop' }));
     await waitFor(() => {
-      expect(useAi.getState().operationId).toBeNull();
+      expect(useAiConversation.getState().operationId).toBeNull();
     });
     expect(screen.queryByText(/is working/)).toBeNull();
-    expect(useAi.getState().items.some((i) => i.kind === 'notice' && i.text === 'Stopped.')).toBe(
-      true,
-    );
+    expect(
+      useAiConversation.getState().items.some((i) => i.kind === 'notice' && i.text === 'Stopped.'),
+    ).toBe(true);
   });
 });

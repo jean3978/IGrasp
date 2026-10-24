@@ -515,3 +515,90 @@
   color: var(--bg-editor);
   font-size: var(--font-size-small);
 }
+
+.ai-session-model {
+  overflow: hidden;
+  max-width: 40%;
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The history list, shown in place of the transcript. */
+.ai-history {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding: 8px 0 0;
+}
+
+.ai-history-filter {
+  margin: 0 10px;
+}
+
+.ai-history-note {
+  margin: 0 10px;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.ai-history-list {
+  flex: 1;
+  min-height: 0;
+}
+
+.ai-history-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  height: 100%;
+  padding: 0 6px 0 10px;
+}
+
+.ai-history-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ai-history-title {
+  overflow: hidden;
+  color: var(--fg);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-history-current .ai-history-title {
+  font-weight: 600;
+}
+
+.ai-history-delete {
+  opacity: 0;
+}
+
+.list-row:hover .ai-history-delete,
+.list-row-focused .ai-history-delete,
+.ai-history-delete:focus-visible {
+  opacity: 1;
+}
+
+.ai-history-confirm {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.ai-resume-failed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.ai-resume-failed p {
+  margin: 0;
+}

@@ -68,6 +68,16 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
     ],
   },
   {
+    title: 'AI chat',
+    rows: [
+      ...fromActions(['ai.chat', 'ai.newConversation', 'ai.history']),
+      { keys: 'Enter / Shift+Enter', label: 'Send / new line (message box)' },
+      { keys: 'Esc', label: 'Stop the running answer; pressed again, close the chat' },
+      { keys: 'Alt+arrows', label: 'Move the chat panel (its title focused)' },
+      { keys: 'Alt+Shift+arrows', label: 'Resize the chat panel (its title focused)' },
+    ],
+  },
+  {
     title: 'Mermaid diagrams (diagram focused)',
     rows: [
       { keys: '+ / -', label: 'Zoom in / out' },

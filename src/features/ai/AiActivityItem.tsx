@@ -2,19 +2,20 @@
 // belongs to the user's action, not to the window, so it stays visible and stoppable.
 
 import { LoaderCircle } from 'lucide-react';
-import { selectBusy, selectProviderName, useAi } from '../../stores/ai';
+import { selectProviderName, useAiProvider } from '../../stores/aiProvider';
+import { selectBusy, useAiConversation } from '../../stores/aiConversation';
 import { useAiPanel } from '../../stores/aiPanel';
 import { CancelButton } from './CancelButton';
 import './ai.css';
 
 export function AiActivityItem() {
   const open = useAiPanel((s) => s.open);
-  const busy = useAi(selectBusy);
-  const providerName = useAi(selectProviderName);
-  const waiting = useAi((s) => s.permissions.length);
+  const busy = useAiConversation(selectBusy);
+  const providerName = useAiProvider(selectProviderName);
+  const waiting = useAiConversation((s) => s.permissions.length);
   const setOpen = useAiPanel((s) => s.setOpen);
-  const cancel = useAi((s) => s.cancel);
-  const confirming = useAi((s) => s.pendingConfirm !== null);
+  const cancel = useAiConversation((s) => s.cancel);
+  const confirming = useAiConversation((s) => s.pendingConfirm !== null);
   if (open || (!busy && !confirming)) return null;
   return (
     <span className="statusbar-item ai-activity">

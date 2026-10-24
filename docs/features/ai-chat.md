@@ -27,15 +27,28 @@ provider's status.
 - **Status line**: the provider's name, version and account, or what is missing (not installed,
   not logged in) with the provider's own instructions and a **Check again** button.
 - **Model**: the provider's suggested models (`sonnet`, `opus`, `haiku` for Claude) or a custom
-  id. Not remembered yet.
+  id. The choice is remembered (`settings.ai.model`) and is the default of new conversations; a
+  conversation reopened from the history continues with the model it ran with (shown in the
+  header).
 - **Send** with Enter (Shift+Enter for a new line). Every message is one user action that spends
   tokens, and the Send button says so. **Stop** kills the running operation.
 - **Permissions**: when the AI wants to edit a markdown file, the proposed change is shown as a
   line diff with **Accept** / **Reject**. Any other tool (running a command, writing another
   file, …) shows the tool name and its input with **Allow** / **Deny**. Reading files inside the
   folder needs no approval. A rejection tells the model why, so it does not retry.
-- **New conversation** (+) forgets the session; otherwise every message continues the same
-  conversation (the provider's resume id), even after a stop or a crash.
+- **New conversation** (+, `Ctrl+Alt+N` with the panel open) saves the conversation in the
+  history and starts an empty one; otherwise every message continues the same conversation (the
+  provider's resume id), even after a stop or a crash.
+- **History** (clock button, `Ctrl+Alt+H`): this folder's conversations, newest first, with their
+  date, model and tokens, a filter box, and **Delete** (with a confirmation). Opening one shows
+  its transcript; the next message continues it with its resume id. The app keeps its own copy
+  (app data, `conversations/`, written when an operation ends and on New conversation, trimmed to
+  `settings.ai.historyLimit` conversations and 400 items, tool calls kept as summaries with the
+  first 2 KB of their result), so a conversation stays readable even when the provider has
+  forgotten it. Sending into a conversation the provider lost shows its error and **Start a new
+  conversation from here** (it spends tokens: it re-sends the message without a resume id, same
+  history entry). Settings → AI → **Forget this folder's conversations** deletes them all.
+  Listing, opening, deleting and forgetting never start the AI.
 - Accepted edits land on disk through the provider, so the file tree, the open tab and the toasts
   update through the normal live reload.
 - Usage (tokens, and cost when the provider reports it) accumulates in the status line.
@@ -78,7 +91,8 @@ sequenceDiagram
 | Rust mock provider (gateway tests) | `src-tauri/src/ai/providers/mock.rs` |
 | Commands `ai_status` (60 s cache, `force`), `ai_capabilities`, `ai_providers`, `ai_set_provider`, `ai_context`, `ai_estimate`, `ai_start`, `ai_respond_permission`, `ai_cancel` | `src-tauri/src/commands/ai.rs` |
 | Event reducer (events → chat items) and line diff | `src/features/ai/timeline.ts`, `diff.ts` |
-| Store (status, capabilities, items, pending permissions, operation, usage) | `src/stores/ai.ts` |
+| Stores: provider (status, capabilities, model), conversation (items, operation, permissions, usage, history save/load), panel | `src/stores/aiProvider.ts`, `aiConversation.ts`, `aiPanel.ts` |
+| History list, saved-item format (`toStoredItems` / `fromStoredItems`) | `src/features/ai/HistoryList.tsx`, `timeline.ts` |
 | Floating chat panel: `AiPanel` (geometry, Escape), `StatusLine`, `Transcript`, `PermissionCard`, `Composer`, `ModelPicker` | `src/features/ai/` |
 | Panel store (open, rectangle, clamping, draft) | `src/stores/aiPanel.ts` |
 | Mock provider for the browser and the tests | `src/ipc/mock/mockAi.ts` |

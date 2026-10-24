@@ -4,7 +4,8 @@
 import { clsx } from 'clsx';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { useAi } from '../../stores/ai';
+import { useAiProvider } from '../../stores/aiProvider';
+import { useAiConversation } from '../../stores/aiConversation';
 
 export function StatusLine({
   showSession = true,
@@ -15,11 +16,11 @@ export function StatusLine({
   /** Offers Check again even when the provider is fine (the settings page). */
   showCheckAgain?: boolean;
 }) {
-  const status = useAi((s) => s.status);
-  const checking = useAi((s) => s.checking);
-  const checkStatus = useAi((s) => s.checkStatus);
-  const resumeId = useAi((s) => s.resumeId);
-  const usage = useAi((s) => s.usage);
+  const status = useAiProvider((s) => s.status);
+  const checking = useAiProvider((s) => s.checking);
+  const checkStatus = useAiProvider((s) => s.checkStatus);
+  const resumeId = useAiConversation((s) => s.resumeId);
+  const usage = useAiConversation((s) => s.usage);
   const checkAgain = (
     <Button
       onClick={() => {

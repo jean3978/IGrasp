@@ -3,9 +3,11 @@ import { backend } from '../ipc/client';
 import { DEFAULT_SETTINGS } from '../ipc/defaults';
 import { FIXTURE_ROOT } from '../ipc/mock/fixture';
 import { MOCK_PROVIDER_ID } from '../ipc/mock/mockAi';
-import { MODEL_SAVE_DELAY_MS, useAi } from './ai';
+import { MODEL_SAVE_DELAY_MS, useAiProvider } from './aiProvider';
+import { useAiConversation } from './aiConversation';
 import { startEventBridge } from './eventBridge';
 import { useSettings } from './settings';
+import { resetAiStores } from '../test/resetAi';
 import { useWorkspace } from './workspace';
 
 let stop: () => void = () => undefined;
@@ -16,19 +18,7 @@ const mock = () => {
 };
 
 function resetAi() {
-  useAi.setState({
-    status: null,
-    capabilities: null,
-    checking: false,
-    providers: null,
-    model: '',
-    resumeId: null,
-    operationId: null,
-    starting: false,
-    buffered: [],
-    items: [],
-    permissions: [],
-  });
+  resetAiStores();
 }
 
 beforeEach(async () => {
@@ -42,17 +32,17 @@ beforeEach(async () => {
 
 afterEach(async () => {
   stop();
-  useAi.getState().newConversation();
+  useAiConversation.getState().newConversation();
   await useWorkspace.getState().closeRoot();
 });
 
 describe('AI provider store', () => {
   it('remembers the chosen model in the settings, across a restart', async () => {
-    await useAi.getState().checkStatus();
-    expect(useAi.getState().model).toBe('mock-fast');
-    useAi.getState().setModel('mock-text');
-    useAi.getState().setModel(' mock-smart ');
-    expect(useAi.getState().model).toBe('mock-smart');
+    await useAiProvider.getState().checkStatus();
+    expect(useAiProvider.getState().model).toBe('mock-fast');
+    useAiProvider.getState().setModel('mock-text');
+    useAiProvider.getState().setModel(' mock-smart ');
+    expect(useAiProvider.getState().model).toBe('mock-smart');
     await vi.waitFor(
       async () => {
         expect((await backend.getSettings()).ai.model).toBe('mock-smart');
@@ -65,38 +55,40 @@ describe('AI provider store', () => {
     resetAi();
     useSettings.setState({ settings: DEFAULT_SETTINGS, loaded: false });
     await useSettings.getState().load();
-    await useAi.getState().checkStatus();
-    expect(useAi.getState().model).toBe('mock-smart');
+    await useAiProvider.getState().checkStatus();
+    expect(useAiProvider.getState().model).toBe('mock-smart');
     expect(mock().state.ai.starts).toEqual([]);
   });
 
   it('reuses a recent status check unless forced', async () => {
-    await useAi.getState().checkStatus();
-    await useAi.getState().checkStatus();
+    await useAiProvider.getState().checkStatus();
+    await useAiProvider.getState().checkStatus();
     expect(mock().state.ai.statusChecks).toBe(1);
     mock().state.ai.loggedIn = false;
-    await useAi.getState().checkStatus(true);
+    await useAiProvider.getState().checkStatus(true);
     expect(mock().state.ai.statusChecks).toBe(2);
-    expect(useAi.getState().status?.loggedIn).toBe(false);
+    expect(useAiProvider.getState().status?.loggedIn).toBe(false);
   });
 
   it('lists the providers and refuses a switch while an operation runs', async () => {
-    await useAi.getState().loadProviders();
-    expect(useAi.getState().providers).toEqual([{ id: MOCK_PROVIDER_ID, displayName: 'Mock AI' }]);
+    await useAiProvider.getState().loadProviders();
+    expect(useAiProvider.getState().providers).toEqual([
+      { id: MOCK_PROVIDER_ID, displayName: 'Mock AI' },
+    ]);
     await useWorkspace.getState().openRoot(FIXTURE_ROOT);
-    await useAi.getState().checkStatus();
-    await useAi.getState().send('a slow answer');
-    expect(useAi.getState().operationId).not.toBeNull();
-    await expect(useAi.getState().setProvider(MOCK_PROVIDER_ID)).rejects.toThrow(
+    await useAiProvider.getState().checkStatus();
+    await useAiConversation.getState().send('a slow answer');
+    expect(useAiConversation.getState().operationId).not.toBeNull();
+    await expect(useAiProvider.getState().setProvider(MOCK_PROVIDER_ID)).rejects.toThrow(
       /cannot change while an operation runs/,
     );
-    await useAi.getState().cancel();
+    await useAiConversation.getState().cancel();
     await vi.waitFor(() => {
-      expect(useAi.getState().operationId).toBeNull();
+      expect(useAiConversation.getState().operationId).toBeNull();
     });
-    await useAi.getState().setProvider(MOCK_PROVIDER_ID);
+    await useAiProvider.getState().setProvider(MOCK_PROVIDER_ID);
     expect(useSettings.getState().settings.ai.provider).toBe(MOCK_PROVIDER_ID);
-    await expect(useAi.getState().setProvider('elsewhere')).rejects.toThrow(/Unknown/);
+    await expect(useAiProvider.getState().setProvider('elsewhere')).rejects.toThrow(/Unknown/);
   });
 
   it('declares per-model image input', async () => {

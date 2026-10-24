@@ -6,8 +6,9 @@ import { clsx } from 'clsx';
 import { Check } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import type { ProposedEdit } from '../../ipc/types';
-import { REJECTION_MESSAGE, selectProviderName, useAi } from '../../stores/ai';
-import type { PendingPermission } from '../../stores/ai';
+import { selectProviderName, useAiProvider } from '../../stores/aiProvider';
+import { REJECTION_MESSAGE, useAiConversation } from '../../stores/aiConversation';
+import type { PendingPermission } from '../../stores/aiConversation';
 import { diffStats, lineDiff } from './diff';
 import type { DiffLine } from './diff';
 
@@ -67,8 +68,8 @@ export function LineDiffCard({
 }
 
 export function PermissionCard({ permission }: { permission: PendingPermission }) {
-  const respond = useAi((s) => s.respond);
-  const providerName = useAi(selectProviderName);
+  const respond = useAiConversation((s) => s.respond);
+  const providerName = useAiProvider(selectProviderName);
   const allow = () => {
     void respond(permission.requestId, { behavior: 'allow', updatedEdit: null });
   };

@@ -4,12 +4,39 @@
 
 import { clsx } from 'clsx';
 import { useEffect, useRef } from 'react';
-import { selectProviderName, useAi } from '../../stores/ai';
+import { selectProviderName, useAiProvider } from '../../stores/aiProvider';
+import { AiMark } from '../../components/AiMark';
+import { Button } from '../../components/ui/Button';
+import { selectBusy, useAiConversation } from '../../stores/aiConversation';
 import { ConfirmCard } from './ConfirmCard';
 import { PermissionCard } from './PermissionCard';
 import { decisionText } from './timeline';
 import type { ChatItem } from './timeline';
 import { UsageLine } from './UsageLine';
+
+/** The provider lost the conversation: the app's copy stays, and the message can go again. */
+function ResumeFailed({ prompt }: { prompt: string }) {
+  const restartFromHere = useAiConversation((s) => s.restartFromHere);
+  const busy = useAiConversation(selectBusy);
+  const providerName = useAiProvider(selectProviderName);
+  return (
+    <div className="ai-notice ai-notice-error ai-resume-failed" role="alert">
+      <p>
+        {providerName} cannot continue this conversation any more. The transcript above stays here;
+        your last message can start a new conversation that continues from it.
+      </p>
+      <Button
+        variant="primary"
+        disabled={busy}
+        onClick={() => {
+          void restartFromHere(prompt);
+        }}
+      >
+        Start a new conversation from here <AiMark />
+      </Button>
+    </div>
+  );
+}
 
 export function Message({ item }: { item: ChatItem }) {
   switch (item.kind) {
@@ -49,6 +76,8 @@ export function Message({ item }: { item: ChatItem }) {
       );
     case 'usage':
       return <UsageLine {...item} />;
+    case 'resumeFailed':
+      return <ResumeFailed prompt={item.prompt} />;
     case 'notice':
       return (
         <div
@@ -62,12 +91,12 @@ export function Message({ item }: { item: ChatItem }) {
 }
 
 export function Transcript() {
-  const providerName = useAi(selectProviderName);
-  const items = useAi((s) => s.items);
-  const permissions = useAi((s) => s.permissions);
-  const pendingConfirm = useAi((s) => s.pendingConfirm);
-  const confirmStart = useAi((s) => s.confirmStart);
-  const cancelConfirm = useAi((s) => s.cancelConfirm);
+  const providerName = useAiProvider(selectProviderName);
+  const items = useAiConversation((s) => s.items);
+  const permissions = useAiConversation((s) => s.permissions);
+  const pendingConfirm = useAiConversation((s) => s.pendingConfirm);
+  const confirmStart = useAiConversation((s) => s.confirmStart);
+  const cancelConfirm = useAiConversation((s) => s.cancelConfirm);
   const listRef = useRef<HTMLDivElement>(null);
 
   // Follow the conversation as it grows.
