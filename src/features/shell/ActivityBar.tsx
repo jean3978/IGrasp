@@ -69,6 +69,7 @@ export function ActivityBar({ badges = {} }: ActivityBarProps) {
                 aria-selected={selected}
                 aria-controls={SIDEBAR_PANEL_ID}
                 aria-label={VIEW_TITLES[view]}
+                aria-keyshortcuts={shortcut?.replace('Ctrl', 'Control')}
                 tabIndex={selected ? 0 : -1}
                 className={clsx('activity-item', { 'activity-item-active': selected })}
                 onClick={() => {

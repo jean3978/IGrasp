@@ -72,9 +72,11 @@
   }
 }
 
+/* Highlights only allow a few properties: the underline keeps 3:1 against the page. */
 ::highlight(igrasp-match) {
   background-color: var(--search-match-bg);
   color: var(--search-match-fg);
+  text-decoration: underline 2px var(--search-match-border);
 }
 
 @media (prefers-reduced-motion: reduce) {
