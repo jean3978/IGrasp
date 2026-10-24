@@ -1,6 +1,6 @@
 # Phase 2 — Navigation implementation plan
 
-Status: **draft for review** (open questions in §16) · Target tag: `v0.2.0` · Branch: `phase-2-navigation`
+Status: **in progress** (review answers in §16) · Target tag: `v0.2.0` · Branch: `phase-2-navigation`
 
 Phase 1 delivered a fast, live, read-only viewer. Phase 2 makes a large documentation tree
 *navigable*: find anything by name or heading (Ctrl+T), search every file's content
@@ -848,6 +848,11 @@ Markdown→code links to a symbol name (`main.rs#fn%20run`) are **not** planned.
 ---
 
 ## 16. Questions for the plan review
+
+**Answers.** Implementation started with every recommendation below adopted as the default
+answer; each one is reversible and called out in the phase summary so the maintainer can
+overrule it before `v0.2.0` is tagged. Q10 is already settled: the roadmap order was changed on
+`main` before this phase started.
 
 | # | Question | Recommendation |
 |---|---|---|
