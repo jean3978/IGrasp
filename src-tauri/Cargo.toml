@@ -25,6 +25,7 @@ dunce = "1.0.5"
 log = "0.4.34"
 tempfile = "3.27.0"
 tauri-plugin-log = "2.10.1"
+tauri-plugin-dialog = "2.8.3"
 
 [lints.rust]
 unsafe_code = "deny"

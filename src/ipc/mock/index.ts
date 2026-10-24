@@ -2,6 +2,7 @@
 // end-to-end tests. Tests drive it through `window.__igraspMock`.
 
 import { DEFAULT_SETTINGS, MAX_FONT_SIZE, MIN_FONT_SIZE } from '../defaults';
+import { BackendError } from '../types';
 import type {
   AppInfo,
   AppWindow,
@@ -9,16 +10,26 @@ import type {
   BackendEvents,
   EventName,
   RecentFolder,
+  RootInfo,
   Session,
   Settings,
 } from '../types';
+import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT } from './fixture';
 
 type Handler = (payload: never) => void;
 
 export interface MockState {
   settings: Settings;
-  recent: RecentFolder[];
+  recent: Omit<RecentFolder, 'exists'>[];
   sessions: Map<string, Session>;
+  /** Folders that "exist" on the fake disk, by absolute path. */
+  folders: Set<string>;
+  /** Files of the fixture project, by root-relative path. */
+  files: Map<string, string>;
+  root: RootInfo | null;
+  generation: number;
+  /** What the next folder picker returns (null = cancelled). */
+  pickFolderResult: string | null;
 }
 
 export interface MockControls {
@@ -39,7 +50,16 @@ function initialState(): MockState {
     settings: structuredClone(DEFAULT_SETTINGS),
     recent: [],
     sessions: new Map(),
+    folders: new Set([FIXTURE_ROOT]),
+    files: new Map(Object.entries(FIXTURE_FILES)),
+    root: null,
+    generation: 0,
+    pickFolderResult: FIXTURE_ROOT,
   };
+}
+
+function baseName(path: string): string {
+  return path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 }
 
 export function createMockBackend(): Backend & { controls: MockControls } {
@@ -87,9 +107,32 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     onCloseRequested: noopListener,
   };
 
+  const recentList = (): RecentFolder[] =>
+    state.recent.map((r) => ({ ...r, exists: state.folders.has(r.path) }));
+
   return {
     controls,
     window: appWindow,
+
+    pickFolder: () => Promise.resolve(state.pickFolderResult),
+    openRoot: (path) => {
+      if (!state.folders.has(path)) {
+        return Promise.reject(new BackendError('NotFound', `Not found: ${path}`));
+      }
+      state.generation += 1;
+      const name = path === FIXTURE_ROOT ? FIXTURE_NAME : baseName(path);
+      state.root = { path, name, isGitRepo: true, generation: state.generation };
+      state.recent = [
+        { path, name, lastOpenedMs: Date.now() },
+        ...state.recent.filter((r) => r.path !== path),
+      ].slice(0, 10);
+      return Promise.resolve({ ...state.root });
+    },
+    closeRoot: () => {
+      state.root = null;
+      return Promise.resolve();
+    },
+
     getSettings: () => Promise.resolve(structuredClone(state.settings)),
     updateSettings: (patch) => {
       const next: Settings = { ...state.settings, ...patch };
@@ -100,10 +143,10 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       state.settings = next;
       return Promise.resolve(structuredClone(next));
     },
-    getRecentFolders: () => Promise.resolve(structuredClone(state.recent)),
+    getRecentFolders: () => Promise.resolve(recentList()),
     removeRecentFolder: (path) => {
       state.recent = state.recent.filter((r) => r.path !== path);
-      return Promise.resolve(structuredClone(state.recent));
+      return Promise.resolve(recentList());
     },
     clearRecentFolders: () => {
       state.recent = [];

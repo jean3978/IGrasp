@@ -1,6 +1,7 @@
 import { Menubar } from 'radix-ui';
 import { Check, ChevronRight, Circle } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
 import { useWorkspace } from '../../stores/workspace';
 import { THEME_OPTIONS, actions, isTheme, runAction, setTheme } from './menuActions';
@@ -82,10 +83,53 @@ function Menu({
 export function MenuBar() {
   const theme = useSettings((s) => s.settings.theme);
   const sidebarVisible = useWorkspace((s) => s.sidebar.visible);
+  const hasRoot = useWorkspace((s) => s.root !== null);
+  const openRoot = useWorkspace((s) => s.openRoot);
+  const recent = useRecent((s) => s.folders);
+  const refreshRecent = useRecent((s) => s.refresh);
 
   return (
     <Menubar.Root className="menubar" loop>
       <Menu value="file" title="File" mnemonic="F">
+        <Item id="file.openFolder" />
+        <Menubar.Sub
+          onOpenChange={(open) => {
+            if (open) void refreshRecent();
+          }}
+        >
+          <Menubar.SubTrigger className="menu-item">
+            <span className="menu-item-label">Open Recent</span>
+            <span className="menu-submenu-arrow">
+              <ChevronRight aria-hidden />
+            </span>
+          </Menubar.SubTrigger>
+          <Menubar.Portal>
+            <Menubar.SubContent className="menu" sideOffset={4} alignOffset={-5} loop>
+              {recent.length === 0 && (
+                <Menubar.Item className="menu-item" disabled>
+                  <span className="menu-item-label">No recent folders</span>
+                </Menubar.Item>
+              )}
+              {recent.map((f) => (
+                <Menubar.Item
+                  key={f.path}
+                  className="menu-item"
+                  disabled={!f.exists}
+                  title={f.path}
+                  onSelect={() => void openRoot(f.path)}
+                >
+                  <span className="menu-item-label">{f.name}</span>
+                  <span className="menu-shortcut">{f.exists ? '' : 'Not found'}</span>
+                </Menubar.Item>
+              ))}
+              <Menubar.Separator className="menu-separator" />
+              <Item id="file.clearRecent" disabled={recent.length === 0} />
+            </Menubar.SubContent>
+          </Menubar.Portal>
+        </Menubar.Sub>
+        <Menubar.Separator className="menu-separator" />
+        <Item id="file.closeFolder" disabled={!hasRoot} />
+        <Menubar.Separator className="menu-separator" />
         <Item id="file.exit" />
       </Menu>
       <Menu value="view" title="View" mnemonic="V">

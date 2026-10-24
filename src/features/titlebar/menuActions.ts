@@ -4,11 +4,19 @@
 import { backend } from '../../ipc/client';
 import { MAX_FONT_SIZE, MIN_FONT_SIZE } from '../../ipc/defaults';
 import type { Theme } from '../../ipc/types';
+import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
 import { useWorkspace } from '../../stores/workspace';
 
 export type ActionId =
-  'file.exit' | 'view.toggleSidebar' | 'view.zoomIn' | 'view.zoomOut' | 'view.zoomReset';
+  | 'file.openFolder'
+  | 'file.closeFolder'
+  | 'file.clearRecent'
+  | 'file.exit'
+  | 'view.toggleSidebar'
+  | 'view.zoomIn'
+  | 'view.zoomOut'
+  | 'view.zoomReset';
 
 interface ActionDef {
   label: string;
@@ -25,6 +33,19 @@ function setFontSize(size: number) {
 }
 
 export const actions: Record<ActionId, ActionDef> = {
+  'file.openFolder': {
+    label: 'Open Folder…',
+    shortcut: 'Ctrl+O',
+    run: () => useWorkspace.getState().openFolderDialog(),
+  },
+  'file.closeFolder': {
+    label: 'Close Folder',
+    run: () => useWorkspace.getState().closeRoot(),
+  },
+  'file.clearRecent': {
+    label: 'Clear Recently Opened',
+    run: () => useRecent.getState().clear(),
+  },
   'file.exit': {
     label: 'Exit',
     shortcut: 'Alt+F4',

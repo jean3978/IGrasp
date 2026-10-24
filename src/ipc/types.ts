@@ -5,11 +5,21 @@ import type { AppInfo } from './generated/AppInfo';
 import type { ErrorCode } from './generated/ErrorCode';
 import type { RecentFolder } from './generated/RecentFolder';
 import type { RecoveredEvent } from './generated/RecoveredEvent';
+import type { RootInfo } from './generated/RootInfo';
 import type { Session } from './generated/Session';
 import type { Settings } from './generated/Settings';
 import type { SettingsPatch } from './generated/SettingsPatch';
 
-export type { AppInfo, ErrorCode, RecentFolder, RecoveredEvent, Session, Settings, SettingsPatch };
+export type {
+  AppInfo,
+  ErrorCode,
+  RecentFolder,
+  RecoveredEvent,
+  RootInfo,
+  Session,
+  Settings,
+  SettingsPatch,
+};
 export type { Theme } from './generated/Theme';
 export type { ReadingWidth } from './generated/ReadingWidth';
 export type { WindowFrame } from './generated/WindowFrame';
@@ -59,6 +69,11 @@ export interface AppWindow {
 
 export interface Backend {
   window: AppWindow;
+
+  /** Shows the system folder picker; resolves to the chosen absolute path or null. */
+  pickFolder(): Promise<string | null>;
+  openRoot(path: string): Promise<RootInfo>;
+  closeRoot(): Promise<void>;
 
   getSettings(): Promise<Settings>;
   updateSettings(patch: SettingsPatch): Promise<Settings>;

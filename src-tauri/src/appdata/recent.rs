@@ -5,7 +5,6 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-#[cfg_attr(not(test), expect(dead_code, reason = "used by open_root, added next"))]
 pub const MAX_RECENT: usize = 10;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -54,7 +53,6 @@ fn same_path(a: &str, b: &str) -> bool {
 
 impl RecentFile {
     /// Moves `path` to the front (adding it if needed) and trims the list.
-    #[cfg_attr(not(test), expect(dead_code, reason = "used by open_root, added next"))]
     pub fn touch(&mut self, path: &str, name: &str, now_ms: i64) {
         self.entries.retain(|e| !same_path(&e.path, path));
         self.entries.insert(

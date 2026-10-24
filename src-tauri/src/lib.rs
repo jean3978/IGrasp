@@ -3,6 +3,7 @@
 mod appdata;
 mod commands;
 mod error;
+mod paths;
 mod state;
 
 use tauri::Manager;
@@ -27,6 +28,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(log)
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             app.manage(AppState::new(AppData::new(dir)));
@@ -54,6 +56,8 @@ pub fn run() {
             commands::appdata::get_session,
             commands::appdata::save_session,
             commands::appdata::get_app_info,
+            commands::workspace::open_root,
+            commands::workspace::close_root,
         ])
         .run(tauri::generate_context!())
         .expect("error while running IGrasp");

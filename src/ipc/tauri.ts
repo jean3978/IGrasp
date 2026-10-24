@@ -3,6 +3,7 @@
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { listen as tauriListen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { BackendError } from './types';
 import type { AppWindow, Backend, ErrorCode } from './types';
 
@@ -63,6 +64,13 @@ const appWindow: AppWindow = {
 
 export const tauriBackend: Backend = {
   window: appWindow,
+
+  pickFolder: async () => {
+    const picked = await openDialog({ directory: true, multiple: false, title: 'Open Folder' });
+    return typeof picked === 'string' ? picked : null;
+  },
+  openRoot: (path) => invoke('open_root', { path }),
+  closeRoot: () => invoke('close_root'),
 
   getSettings: () => invoke('get_settings'),
   updateSettings: (patch) => invoke('update_settings', { patch }),
