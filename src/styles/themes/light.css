@@ -39,6 +39,13 @@
   --warning-bg: #fff8c5;
   --danger-bg: #ffebe9;
 
+  --search-match-bg: #ffe066;
+  --search-match-fg: #1f1f1f;
+  --search-match-border: #9a7400;
+  --flash-bg: rgb(0 95 184 / 0.16);
+  --link-broken: #cf222e;
+  --link-warning: #9a6700;
+
   --titlebar-inactive-opacity: 0.6;
   --window-close-hover: #c42b1c;
 }

@@ -7,6 +7,16 @@ use ts_rs::TS;
 
 pub const MAX_SESSIONS: usize = 50;
 
+/// What a restored tab shows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum SessionTabKind {
+    #[default]
+    Document,
+    Code,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -14,6 +24,9 @@ pub struct SessionTab {
     pub rel_path: String,
     pub pinned: bool,
     pub scroll_top: f64,
+    /// Added in 0.2.0; older sessions only have documents.
+    #[serde(default)]
+    pub kind: SessionTabKind,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -22,6 +35,36 @@ pub struct SessionTab {
 pub struct SidebarState {
     pub visible: bool,
     pub width_px: f64,
+}
+
+/// The view shown in the left panel.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum SidebarView {
+    #[default]
+    Explorer,
+    Search,
+    Recent,
+    Broken,
+}
+
+/// The right panel (Outline and Backlinks).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct RightPanelState {
+    pub visible: bool,
+    pub width_px: f64,
+}
+
+impl Default for RightPanelState {
+    fn default() -> Self {
+        Self {
+            visible: false,
+            width_px: 260.0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -34,6 +77,12 @@ pub struct Session {
     pub active_tab: Option<String>,
     pub expanded_dirs: Vec<String>,
     pub sidebar: SidebarState,
+    /// Added in 0.2.0; older sessions load with the Explorer.
+    #[serde(default)]
+    pub sidebar_view: SidebarView,
+    /// Added in 0.2.0; older sessions load with the panel hidden.
+    #[serde(default)]
+    pub right_panel: RightPanelState,
     pub show_dotfiles: bool,
     pub show_ignored: bool,
     pub saved_at_ms: i64,
@@ -87,6 +136,7 @@ pub fn sample_session() -> Session {
             rel_path: "README.md".into(),
             pinned: true,
             scroll_top: 120.0,
+            kind: SessionTabKind::Document,
         }],
         active_tab: Some("README.md".into()),
         expanded_dirs: vec!["docs".into()],
@@ -94,6 +144,8 @@ pub fn sample_session() -> Session {
             visible: true,
             width_px: 280.0,
         },
+        sidebar_view: SidebarView::Search,
+        right_panel: RightPanelState::default(),
         show_dotfiles: false,
         show_ignored: false,
         saved_at_ms: 0,
@@ -112,6 +164,18 @@ mod tests {
         assert_eq!(s.saved_at_ms, 42);
         assert_eq!(s.tabs[0].rel_path, "README.md");
         assert!(f.get("/other").is_none());
+    }
+
+    #[test]
+    fn loads_a_phase_1_session() {
+        let json = r#"{"version":1,"tabs":[{"relPath":"a.md","pinned":true,"scrollTop":0}],
+            "activeTab":"a.md","expandedDirs":[],"sidebar":{"visible":true,"widthPx":280},
+            "showDotfiles":false,"showIgnored":false,"savedAtMs":1}"#;
+        let s: Session = serde_json::from_str(json).unwrap();
+        assert_eq!(s.sidebar_view, SidebarView::Explorer);
+        assert!(!s.right_panel.visible);
+        assert_eq!(s.tabs[0].kind, SessionTabKind::Document);
+        assert_eq!(s.tabs.len(), 1);
     }
 
     #[test]

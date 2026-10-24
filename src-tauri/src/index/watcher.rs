@@ -24,6 +24,8 @@ use ts_rs::TS;
 use super::SharedIndex;
 use super::model::{Changes, FileEntry, Index, is_markdown, is_within, name_of, parent_of};
 use super::scanner::{self, ScanOptions, file_entry, rel_path};
+use crate::graph::{self, SharedGraph};
+use crate::paths::RootGuard;
 
 pub const EVENT_CHANGES: &str = "fs://changes";
 pub const EVENT_WATCH_STATUS: &str = "fs://watch-status";
@@ -285,10 +287,13 @@ pub fn to_event(generation: u64, mut changes: Changes, plan: &Plan) -> Option<Fs
 struct WatchContext {
     app: AppHandle,
     root: PathBuf,
+    /// The workspace's guard, reused for every batch (building one canonicalizes the root).
+    guard: RootGuard,
     options: ScanOptions,
     generation: u64,
     index: SharedIndex,
     cancel: Arc<AtomicBool>,
+    graph: SharedGraph,
 }
 
 impl WatchContext {
@@ -324,10 +329,21 @@ impl WatchContext {
         if self.cancel.load(Ordering::SeqCst) {
             return;
         }
-        if let Some(event) = to_event(self.generation, changes, &plan) {
-            if let Err(e) = self.app.emit(EVENT_CHANGES, event) {
-                log::warn!("cannot emit {EVENT_CHANGES}: {e}");
-            }
+        let for_graph = changes.clone();
+        if let Some(event) = to_event(self.generation, changes, &plan)
+            && let Err(e) = self.app.emit(EVENT_CHANGES, event)
+        {
+            log::warn!("cannot emit {EVENT_CHANGES}: {e}");
+        }
+        // Every reported path, non-markdown ones included: links to source files are checked too.
+        let raw: Vec<String> = simple
+            .iter()
+            .flat_map(|(_, paths)| paths.iter().flatten().cloned())
+            .collect();
+        if let Some(change) = graph::apply(&self.graph, &self.index, &self.guard, &for_graph, &raw)
+            && !self.cancel.load(Ordering::SeqCst)
+        {
+            graph::emit_changed(&self.app, self.generation, change);
         }
     }
 }
@@ -350,23 +366,27 @@ fn emit_status(app: &AppHandle, mode: WatchMode, reason: Option<String>) {
     }
 }
 
-/// Starts watching `root` recursively. Falls back to polling every 2 s when the native watcher
-/// cannot be used (for example when the Linux inotify watch limit is reached).
+/// Starts watching the guarded root recursively. Falls back to polling every 2 s when the native
+/// watcher cannot be used (for example when the Linux inotify watch limit is reached).
 pub fn start_watcher(
     app: AppHandle,
-    root: PathBuf,
+    guard: RootGuard,
     options: ScanOptions,
     generation: u64,
     index: SharedIndex,
     cancel: Arc<AtomicBool>,
+    graph: SharedGraph,
 ) -> Option<WatchHandle> {
+    let root = guard.root().to_path_buf();
     let ctx = Arc::new(WatchContext {
         app: app.clone(),
         root: root.clone(),
+        guard,
         options,
         generation,
         index,
         cancel,
+        graph,
     });
     let handler = |ctx: Arc<WatchContext>| move |result: DebounceEventResult| ctx.handle(result);
 
@@ -440,9 +460,9 @@ mod tests {
         files: &'static [&'static str],
     ) -> impl Fn(&str) -> Option<bool> {
         move |rel: &str| {
-            if dirs.iter().any(|d| *d == rel) {
+            if dirs.contains(&rel) {
                 Some(true)
-            } else if files.iter().any(|f| *f == rel) {
+            } else if files.contains(&rel) {
                 Some(false)
             } else {
                 None

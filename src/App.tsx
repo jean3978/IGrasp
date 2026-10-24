@@ -2,7 +2,18 @@ import { useEffect, useState } from 'react';
 import { Tooltip } from 'radix-ui';
 import { backend } from './ipc/client';
 import { AboutDialog } from './features/about/AboutDialog';
+import { QuickOpenDialog } from './features/quickopen/QuickOpenDialog';
 import { ExplorerPanel } from './features/explorer/ExplorerPanel';
+import { BacklinksCount, BacklinksSection } from './features/links/BacklinksSection';
+import { BrokenLinksPanel } from './features/links/BrokenLinksPanel';
+import { BrokenLinksBadge } from './features/links/BrokenLinksStatus';
+import { RecentChangesPanel } from './features/recent/RecentChangesPanel';
+import { SearchPanel } from './features/search/SearchPanel';
+import { SearchBadge } from './features/search/SearchBadge';
+import { OutlineActions, OutlinePanel } from './features/outline/OutlinePanel';
+import { PanelSection, RightPanel } from './features/rightpanel/RightPanel';
+import { ActivityBar } from './features/shell/ActivityBar';
+import { SidebarHost } from './features/shell/SidebarHost';
 import { StatusBar } from './features/shell/StatusBar';
 import { WorkspaceLayout } from './features/shell/WorkspaceLayout';
 import { useAppearance } from './features/shell/useAppearance';
@@ -16,6 +27,7 @@ import { TitleBar } from './features/titlebar/TitleBar';
 import { WelcomeScreen } from './features/welcome/WelcomeScreen';
 import { platform } from './lib/platform';
 import { startEventBridge } from './stores/eventBridge';
+import { startHistorySync } from './stores/history';
 import { flushSession, startSessionSync } from './stores/session';
 import { useSettings } from './stores/settings';
 import { fileName, selectActiveTab, tabLabel, useTabs } from './stores/tabs';
@@ -60,6 +72,7 @@ export function App() {
   // Save the session as it changes, and once more when the window closes.
   useEffect(() => {
     const stopSync = startSessionSync();
+    const stopHistory = startHistorySync();
     let offClose: (() => void) | undefined;
     let cancelled = false;
     void backend.window.onCloseRequested(flushSession).then((off) => {
@@ -69,6 +82,7 @@ export function App() {
     return () => {
       cancelled = true;
       stopSync();
+      stopHistory();
       offClose?.();
     };
   }, []);
@@ -109,12 +123,34 @@ export function App() {
         <div className="app-body">
           {root ? (
             <WorkspaceLayout
-              sidebar={<ExplorerPanel activePath={activePath} onOpen={openDocument} />}
+              activityBar={
+                <ActivityBar badges={{ broken: <BrokenLinksBadge />, search: <SearchBadge /> }} />
+              }
+              sidebar={
+                <SidebarHost
+                  views={{
+                    explorer: <ExplorerPanel activePath={activePath} onOpen={openDocument} />,
+                    search: <SearchPanel />,
+                    recent: <RecentChangesPanel />,
+                    broken: <BrokenLinksPanel />,
+                  }}
+                />
+              }
               main={
                 <>
                   <TabBar />
                   <TabContent />
                 </>
+              }
+              rightPanel={
+                <RightPanel>
+                  <PanelSection title="Outline" grow actions={<OutlineActions />}>
+                    <OutlinePanel />
+                  </PanelSection>
+                  <PanelSection title="Backlinks" badge={<BacklinksCount />}>
+                    <BacklinksSection />
+                  </PanelSection>
+                </RightPanel>
               }
             />
           ) : hasTabs ? (
@@ -132,6 +168,7 @@ export function App() {
       </div>
       <ToastHost />
       <AboutDialog />
+      <QuickOpenDialog />
       <SplashOverlay ready={ready} />
     </Tooltip.Provider>
   );

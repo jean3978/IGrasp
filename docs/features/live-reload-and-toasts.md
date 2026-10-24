@@ -16,6 +16,11 @@ needs a manual refresh.
    - `.git`, `node_modules` and non-markdown files are skipped early.
 3. One `fs://changes` event per batch tells the frontend what was added, modified, removed and
    renamed, and which folder listings changed.
+4. The same batch updates the document graph: changed documents are parsed again and the links
+   pointing at any reported path (source files and folders included) are checked again. One
+   `graph://changed` event lists the documents whose links changed and the new broken count, so
+   link flags, backlinks and the Broken Links view refresh only where needed
+   ([links-and-graph.md](links-and-graph.md)).
 
 If the operating system cannot provide native notifications (on Linux, usually because the
 inotify watch limit is reached), IGrasp polls every 2 seconds instead and the status bar shows
@@ -29,6 +34,8 @@ inotify watch limit is reached), IGrasp polls every 2 seconds instead and the st
 | File added | It appears in the Explorer (expanded folders refresh; new folders appear). |
 | File deleted | It leaves the Explorer; an open tab keeps the last version with a "deleted on disk" banner, which disappears if the file comes back. |
 | File renamed | The open tab follows the file to its new name. |
+| Any change | Recent Changes reloads and marks the file; search results drop deleted files and mark modified ones; links to a file that appears or vanishes are flagged or unflagged. |
+| Source file changed | Not watched as such: an open code viewer checks again when shown or when the window regains focus, and offers Reload. |
 
 ## Notifications
 

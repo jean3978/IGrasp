@@ -11,10 +11,20 @@ export interface KeyBinding {
 
 export const KEYMAP: KeyBinding[] = [
   { key: 'o', ctrl: true, action: 'file.openFolder' },
+  { key: 't', ctrl: true, action: 'go.symbol' },
   { key: 'b', ctrl: true, action: 'view.toggleSidebar' },
+  { key: 'b', ctrl: true, alt: true, action: 'view.toggleRightPanel' },
   { key: ',', ctrl: true, action: 'file.settings' },
   { key: 'e', ctrl: true, shift: true, action: 'view.focusExplorer' },
+  { key: 'f', ctrl: true, shift: true, action: 'view.search' },
+  { key: 'r', ctrl: true, shift: true, action: 'view.recent' },
+  { key: 'l', ctrl: true, shift: true, action: 'view.broken' },
+  { key: 'o', ctrl: true, shift: true, action: 'view.focusOutline' },
   { key: 'f1', action: 'help.shortcuts' },
+  { key: 'f4', action: 'search.next' },
+  { key: 'f4', shift: true, action: 'search.previous' },
+  { key: 'arrowleft', alt: true, action: 'go.back' },
+  { key: 'arrowright', alt: true, action: 'go.forward' },
   { key: '=', ctrl: true, action: 'view.zoomIn' },
   { key: '+', ctrl: true, action: 'view.zoomIn' },
   { key: '-', ctrl: true, action: 'view.zoomOut' },
@@ -34,16 +44,7 @@ export const KEYMAP: KeyBinding[] = [
 ];
 
 /** Shortcuts reserved for features of later phases: never bind them to anything else. */
-export const RESERVED_SHORTCUTS = [
-  'Ctrl+T',
-  'Ctrl+Shift+F',
-  'Alt+Left',
-  'Alt+Right',
-  'F2',
-  'Delete',
-  'Ctrl+S',
-  'Ctrl+E',
-];
+export const RESERVED_SHORTCUTS = ['F2', 'Delete', 'Ctrl+S', 'Ctrl+E'];
 
 /** Returns the action bound to a key event, if any. Modifiers must match exactly. */
 export function matchBinding(

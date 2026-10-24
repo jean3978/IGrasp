@@ -192,10 +192,9 @@ pub fn collect(
             dirs: HashSet::new(),
             skipped: 0,
         };
-        let mut scanned = 0u64;
         let mut last_report = Instant::now();
-        for found in rx {
-            scanned += 1;
+        for (index, found) in rx.into_iter().enumerate() {
+            let scanned = index as u64 + 1;
             match found {
                 Found::File(f) => out.files.push(f),
                 Found::Dir(d) => {

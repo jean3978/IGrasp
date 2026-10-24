@@ -16,7 +16,12 @@ import type {
   Session,
   Settings,
 } from '../types';
-import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT } from './fixture';
+import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT, FIXTURE_SIZES, fixtureMtimes } from './fixture';
+import { checkOpenable, readText } from './mockFiles';
+import { backlinksOf, brokenCount, brokenDocs, buildGraph } from './mockGraph';
+import type { MockDoc } from './mockGraph';
+import { searchSymbols } from './mockSymbols';
+import { buildRegExp, filterFiles, searchContent } from './mockText';
 import { gitignorePatterns, isMarkdown, listFixtureDir, scanFixture } from './mockIndex';
 import type { MockScanOptions } from './mockIndex';
 
@@ -41,6 +46,10 @@ export interface MockState {
   scan: MockScanOptions;
   /** Delay of the fake scan, in milliseconds. */
   scanDelayMs: number;
+  /** Document graph of the open root; null until "built" (after the index). */
+  graph: Map<string, MockDoc> | null;
+  /** Delay of the fake graph build after the index is ready, in milliseconds. */
+  graphDelayMs: number;
   /** What the next folder picker returns (null = cancelled). */
   pickFolderResult: string | null;
   /** Files and URLs the app asked to open externally, in order. */
@@ -56,6 +65,8 @@ export interface MockControls {
   writeFiles(files: Record<string, string>): void;
   deleteFiles(paths: string[]): void;
   renameFile(from: string, to: string): void;
+  /** Delays the next graph builds (to test the "indexing headings and links" states). */
+  setGraphDelay(ms: number): void;
 }
 
 declare global {
@@ -71,13 +82,15 @@ function initialState(): MockState {
     sessions: new Map(),
     folders: new Set([FIXTURE_ROOT]),
     files: new Map(Object.entries(FIXTURE_FILES)),
-    mtimes: new Map(),
+    mtimes: fixtureMtimes(Date.now()),
     opened: [],
     root: null,
     generation: 0,
     index: null,
     scan: { showDotfiles: false, showIgnored: false, ignorePatterns: [] },
     scanDelayMs: 0,
+    graph: null,
+    graphDelayMs: 0,
     pickFolderResult: FIXTURE_ROOT,
   };
 }
@@ -88,10 +101,23 @@ function baseName(path: string): string {
 
 export function createMockBackend(): Backend & { controls: MockControls } {
   let state = initialState();
+  let searchId = 0;
+  const cancelled = new Set<number>();
   const handlers = new Map<EventName, Set<Handler>>();
 
   const emit: MockControls['emit'] = (event, payload) => {
     for (const h of handlers.get(event) ?? []) (h as (p: typeof payload) => void)(payload);
+  };
+
+  /** A file of the fake disk with its size and time, or undefined. */
+  const fakeFile = (relPath: string) => {
+    const content = state.files.get(relPath);
+    if (content === undefined) return undefined;
+    return {
+      content,
+      size: FIXTURE_SIZES[relPath] ?? content.length,
+      modifiedMs: state.mtimes.get(relPath) ?? 0,
+    };
   };
 
   const indexFixture = () => {
@@ -112,7 +138,10 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       return old !== undefined && (old.modifiedMs !== f.modifiedMs || old.size !== f.size);
     });
     const removed = [...before.keys()].filter((rel) => !after.has(rel));
-    if (added.length + modified.length + removed.length === 0) return;
+    if (added.length + modified.length + removed.length === 0) {
+      graphChanged([], []);
+      return;
+    }
     const dirs = new Set<string>();
     for (const rel of [...added.map((f) => f.relPath), ...removed]) {
       const parts = rel.split('/');
@@ -126,9 +155,35 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       renamed,
       dirsChanged: [...dirs].sort(),
     });
+    graphChanged(
+      [...added, ...modified].map((f) => f.relPath),
+      removed,
+    );
   };
 
-  let clock = 1;
+  /** Rebuilds the graph after a disk change and emits `graph://changed` like Rust. */
+  const graphChanged = (touched: string[], removed: string[]) => {
+    if (!state.graph || !state.index) return;
+    const before = state.graph;
+    const after = buildGraph(state.files, state.index.keys());
+    state.graph = after;
+    const docs = [...after.keys()].filter(
+      (rel) =>
+        touched.includes(rel) ||
+        JSON.stringify(before.get(rel)?.links) !== JSON.stringify(after.get(rel)?.links),
+    );
+    if (docs.length === 0 && removed.length === 0) return;
+    emit('graph://changed', {
+      generation: state.generation,
+      docs: docs.sort(),
+      removed,
+      brokenCount: brokenCount(after),
+    });
+  };
+
+  // Strictly increasing, so two writes in the same millisecond still count as a change.
+  let clock = 0;
+  const tick = () => (clock = Math.max(clock + 1, Date.now()));
   const controls: MockControls = {
     emit,
     get state() {
@@ -140,9 +195,12 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     writeFiles(files) {
       for (const [rel, content] of Object.entries(files)) {
         state.files.set(rel, content);
-        state.mtimes.set(rel, (clock += 1));
+        state.mtimes.set(rel, tick());
       }
       diskChanged();
+    },
+    setGraphDelay(ms) {
+      state.graphDelayMs = ms;
     },
     deleteFiles(paths) {
       for (const rel of paths) state.files.delete(rel);
@@ -212,7 +270,25 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         elapsedMs: 2,
         skipped: 0,
       });
+      startGraphBuild(generation);
     }, state.scanDelayMs);
+  };
+
+  const startGraphBuild = (generation: number) => {
+    state.graph = null;
+    setTimeout(() => {
+      if (state.generation !== generation || !state.index) return;
+      state.graph = buildGraph(state.files, state.index.keys());
+      const links = [...state.graph.values()].reduce((n, d) => n + d.links.length, 0);
+      emit('graph://ready', {
+        generation,
+        docs: state.graph.size,
+        links,
+        brokenCount: brokenCount(state.graph),
+        elapsedMs: 1,
+        skipped: 0,
+      });
+    }, state.graphDelayMs);
   };
 
   return {
@@ -250,6 +326,7 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     closeRoot: () => {
       state.root = null;
       state.index = null;
+      state.graph = null;
       return Promise.resolve();
     },
     rescan: (request) => {
@@ -282,6 +359,22 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         ...structuredClone(listing),
       });
     },
+    listRecentFiles: (offset, limit) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      if (!state.index) {
+        return Promise.reject(
+          new BackendError('IndexNotReady', 'The folder is still being indexed.'),
+        );
+      }
+      const sorted = [...state.index.values()].sort(
+        (a, b) => b.modifiedMs - a.modifiedMs || (a.relPath < b.relPath ? -1 : 1),
+      );
+      return Promise.resolve({
+        generation: state.generation,
+        total: sorted.length,
+        files: structuredClone(sorted.slice(offset, offset + Math.min(limit, 5000))),
+      });
+    },
     readMarkdown: (relPath) => {
       if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
       const content = state.files.get(relPath);
@@ -294,6 +387,28 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         size: content.length,
         modifiedMs: state.mtimes.get(relPath) ?? 0,
       });
+    },
+
+    // Async so the errors thrown by the helpers become rejections.
+    // eslint-disable-next-line @typescript-eslint/require-await
+    readTextFile: async (relPath) => {
+      if (!state.root) throw new BackendError('NoRootOpen', 'No folder is open.');
+      return readText(relPath, fakeFile(relPath));
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    openWithDefaultApp: async (relPath) => {
+      if (!state.root) throw new BackendError('NoRootOpen', 'No folder is open.');
+      checkOpenable(relPath, fakeFile(relPath));
+      state.opened.push(`editor:${relPath}`);
+    },
+    revealInFileManager: (relPath) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const isDir = [...state.files.keys()].some((k) => k.startsWith(`${relPath}/`));
+      if (relPath !== '' && !state.files.has(relPath) && !isDir) {
+        return Promise.reject(new BackendError('NotFound', `Not found: ${relPath}`));
+      }
+      state.opened.push(`reveal:${relPath}`);
+      return Promise.resolve();
     },
 
     assetUrl: (_rootPath, relPath) => {
@@ -311,6 +426,120 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     openUrl: (url) => {
       state.opened.push(url);
       return Promise.resolve();
+    },
+
+    getGraphStatus: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const graph = state.graph;
+      return Promise.resolve({
+        generation: state.generation,
+        ready: graph !== null,
+        parsedDocs: graph?.size ?? 0,
+        totalDocs: state.index?.size ?? 0,
+        brokenCount: graph ? brokenCount(graph) : 0,
+      });
+    },
+
+    getDocLinks: (relPath) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      return Promise.resolve({
+        relPath,
+        graphReady: state.graph !== null,
+        links: structuredClone(state.graph?.get(relPath)?.links ?? []),
+      });
+    },
+    getBacklinks: (relPath) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      return Promise.resolve({
+        relPath,
+        graphReady: state.graph !== null,
+        items: state.graph ? backlinksOf(state.graph, relPath) : [],
+      });
+    },
+    listBrokenLinks: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const graph = state.graph;
+      return Promise.resolve({
+        generation: state.generation,
+        graphReady: graph !== null,
+        parsedDocs: graph?.size ?? 0,
+        totalDocs: state.index?.size ?? 0,
+        docs: graph ? structuredClone(brokenDocs(graph)) : [],
+      });
+    },
+    // Async so the errors thrown by the helpers become rejections.
+    // eslint-disable-next-line @typescript-eslint/require-await
+    searchText: async (request) => {
+      if (!state.root) throw new BackendError('NoRootOpen', 'No folder is open.');
+      if (!state.index)
+        throw new BackendError('IndexNotReady', 'The folder is still being indexed.');
+      const re = buildRegExp(request);
+      const files = filterFiles([...state.index.keys()], request);
+      const id = (searchId += 1);
+      cancelled.add(id - 1);
+      const generation = state.generation;
+      const max = request.maxResults ?? 20_000;
+      const stats = { filesSearched: 0, filesMatched: 0, matches: 0, skipped: 0, elapsedMs: 0 };
+      let truncated = false;
+      // One file per tick, so a test or the UI can cancel in the middle like a real search.
+      const step = (i: number) => {
+        const isCancelled = cancelled.has(id);
+        const file = files[i];
+        if (isCancelled || file === undefined || truncated) {
+          emit('search://results', {
+            searchId: id,
+            generation,
+            files: [],
+            done: true,
+            cancelled: isCancelled,
+            truncated: truncated && !isCancelled,
+            stats,
+          });
+          return;
+        }
+        stats.filesSearched += 1;
+        // Like Rust: one match more than the room left tells whether a match is left out, and
+        // reaching a cap exactly is not truncation.
+        const room = max - stats.matches;
+        let matches = searchContent(re, state.files.get(file) ?? '', room + 1);
+        if (matches.length > 0 && (room === 0 || stats.filesMatched >= 2000)) {
+          truncated = true;
+          matches = [];
+        } else if (matches.length > room) {
+          matches = matches.slice(0, room);
+          truncated = true;
+        }
+        if (matches.length > 0) {
+          stats.filesMatched += 1;
+          stats.matches += matches.length;
+          emit('search://results', {
+            searchId: id,
+            generation,
+            files: [{ relPath: file, matches }],
+            done: false,
+            cancelled: false,
+            truncated: false,
+            stats: { ...stats },
+          });
+        }
+        setTimeout(() => {
+          step(i + 1);
+        }, 0);
+      };
+      setTimeout(() => {
+        step(0);
+      }, 0);
+      return id;
+    },
+    cancelSearch: (id) => {
+      cancelled.add(id);
+      return Promise.resolve();
+    },
+
+    searchSymbols: (request) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const files = [...(state.index?.keys() ?? [])];
+      return Promise.resolve(searchSymbols(request, files, state.graph, state.generation));
     },
 
     getSettings: () => Promise.resolve(structuredClone(state.settings)),

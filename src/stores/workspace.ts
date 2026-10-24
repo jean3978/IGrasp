@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 import { backend } from '../ipc/client';
-import type { IndexReadyEvent, RootInfo, WatchMode } from '../ipc/types';
+import type { IndexReadyEvent, RootInfo, SidebarView, WatchMode } from '../ipc/types';
 import { useDocuments } from './documents';
+import { useGraph } from './graph';
 import { useRecent } from './recent';
+import { useRecentFiles } from './recentFiles';
+import { useSearch } from './search';
 import {
   applySessionLayout,
   clearPendingRestore,
@@ -16,8 +19,16 @@ import { useTree } from './tree';
 
 export const DEFAULT_SIDEBAR_WIDTH = 280;
 export const MIN_SIDEBAR_WIDTH = 170;
+export const DEFAULT_RIGHT_PANEL_WIDTH = 260;
+export const MIN_RIGHT_PANEL_WIDTH = 200;
 
 interface SidebarState {
+  visible: boolean;
+  widthPx: number;
+  view: SidebarView;
+}
+
+interface RightPanelState {
   visible: boolean;
   widthPx: number;
 }
@@ -53,6 +64,8 @@ interface WorkspaceState {
   /** How the folder is watched for changes ("poll" when native watching is unavailable). */
   watch: { mode: WatchMode | null; reason: string | null };
   sidebar: SidebarState;
+  /** The right panel with the Outline and Backlinks of the active document. */
+  rightPanel: RightPanelState;
 
   openRoot: (path: string) => Promise<void>;
   /** Shows the folder picker and opens the chosen folder. */
@@ -69,6 +82,13 @@ interface WorkspaceState {
   toggleSidebar: () => void;
   setSidebarVisible: (visible: boolean) => void;
   setSidebarWidth: (widthPx: number) => void;
+  /** Shows a view in the sidebar (and the sidebar itself). */
+  setSidebarView: (view: SidebarView) => void;
+  /** Activity bar click: switches to `view`, or hides the sidebar when it is already shown. */
+  toggleSidebarView: (view: SidebarView) => void;
+  toggleRightPanel: () => void;
+  setRightPanelVisible: (visible: boolean) => void;
+  setRightPanelWidth: (widthPx: number) => void;
 }
 
 function message(err: unknown): string {
@@ -82,7 +102,8 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
   index: IDLE,
   lastReady: null,
   watch: { mode: null, reason: null },
-  sidebar: { visible: true, widthPx: DEFAULT_SIDEBAR_WIDTH },
+  sidebar: { visible: true, widthPx: DEFAULT_SIDEBAR_WIDTH, view: 'explorer' },
+  rightPanel: { visible: false, widthPx: DEFAULT_RIGHT_PANEL_WIDTH },
 
   async openRoot(path) {
     set({ opening: true, openError: null });
@@ -94,6 +115,8 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
       suspendSaving();
       useTree.setState({ expanded: new Set(), focused: null });
       useTabs.getState().closeAll();
+      useSearch.getState().clear();
+      useRecentFiles.getState().reset();
       useDocuments.getState().clear();
       applySessionLayout(session);
       setPendingRestore(root.generation, session);
@@ -124,11 +147,17 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
     useTabs.getState().closeAll();
     useDocuments.getState().clear();
     resetToasts();
+    useRecentFiles.getState().reset();
+    useSearch.getState().clear();
+    useGraph.getState().reset();
     void useRecent.getState().refresh();
   },
 
   beginScan(generation) {
     set({ index: { ...IDLE, state: 'scanning', generation } });
+    // Open tabs keep their entries so the new graph's `ready` refreshes them (a rescan does
+    // not re-render documents, so nothing else would fetch their links again).
+    useGraph.getState().beginRebuild();
     const early = get().lastReady;
     if (early?.generation === generation) get().setIndexReady(early);
   },
@@ -179,5 +208,36 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
   setSidebarWidth(widthPx) {
     const width = Math.max(MIN_SIDEBAR_WIDTH, Math.round(widthPx));
     set((s) => (s.sidebar.widthPx === width ? s : { sidebar: { ...s.sidebar, widthPx: width } }));
+  },
+
+  setSidebarView(view) {
+    set((s) =>
+      s.sidebar.visible && s.sidebar.view === view
+        ? s
+        : { sidebar: { ...s.sidebar, visible: true, view } },
+    );
+  },
+
+  toggleSidebarView(view) {
+    const { sidebar } = get();
+    if (sidebar.visible && sidebar.view === view) get().setSidebarVisible(false);
+    else get().setSidebarView(view);
+  },
+
+  toggleRightPanel() {
+    get().setRightPanelVisible(!get().rightPanel.visible);
+  },
+
+  setRightPanelVisible(visible) {
+    set((s) =>
+      s.rightPanel.visible === visible ? s : { rightPanel: { ...s.rightPanel, visible } },
+    );
+  },
+
+  setRightPanelWidth(widthPx) {
+    const width = Math.max(MIN_RIGHT_PANEL_WIDTH, Math.round(widthPx));
+    set((s) =>
+      s.rightPanel.widthPx === width ? s : { rightPanel: { ...s.rightPanel, widthPx: width } },
+    );
   },
 }));

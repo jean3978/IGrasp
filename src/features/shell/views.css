@@ -1,0 +1,276 @@
+/* Activity bar, sidebar and right-panel views. */
+
+.workspace-row {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-bar {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 40px;
+  padding-top: 4px;
+  border-right: var(--border-width) solid var(--border);
+  background: var(--bg-sidebar);
+}
+
+.activity-item {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.activity-item svg {
+  width: 20px;
+  height: 20px;
+}
+
+.activity-item:hover,
+.activity-item-active {
+  color: var(--fg-strong);
+}
+
+.activity-item-active::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: var(--accent);
+}
+
+.activity-item:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: -2px;
+}
+
+.activity-badge {
+  position: absolute;
+  right: 3px;
+  bottom: 5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--fg-on-accent);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+.activity-badge svg {
+  width: 10px;
+  height: 10px;
+}
+
+.view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 35px;
+  flex: none;
+  padding: 0 4px 0 12px;
+}
+
+.view-title {
+  overflow: hidden;
+  margin: 0;
+  color: var(--fg-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.view-actions {
+  display: flex;
+  gap: 1px;
+}
+
+.view-status {
+  padding: 4px 12px 8px;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.view-status-error {
+  color: var(--danger);
+}
+
+.view-list {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.view-list:focus-visible {
+  outline: none;
+}
+
+/* Rows of the virtualized lists (VirtualRows). */
+.list-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+  padding: 0 8px 0 12px;
+  border: var(--border-width) solid transparent;
+  color: var(--fg);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.list-row:hover {
+  background: var(--bg-hover);
+}
+
+.list-row-active {
+  background: var(--bg-selection);
+  color: var(--fg-strong);
+}
+
+.view-list:focus-visible .list-row-focused {
+  border-color: var(--focus);
+}
+
+.view-list:focus .list-row-focused {
+  background: var(--bg-selection-focus);
+}
+
+.list-row svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.list-icon {
+  color: var(--info);
+}
+
+.list-label {
+  overflow: hidden;
+  flex: none;
+  max-width: 70%;
+  text-overflow: ellipsis;
+}
+
+.list-dim {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+  text-overflow: ellipsis;
+}
+
+.list-meta {
+  flex: none;
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.list-count {
+  flex: none;
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--bg-active);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.list-group-header {
+  color: var(--fg-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: default;
+}
+
+.list-group-header:hover {
+  background: none;
+}
+
+.list-row-action {
+  display: none;
+  flex: none;
+  padding: 1px;
+  border: none;
+  border-radius: var(--radius-s);
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.list-row:hover .list-row-action,
+.list-row-focused .list-row-action {
+  display: inline-flex;
+}
+
+.list-row-action:hover {
+  background: var(--bg-active);
+  color: var(--fg-strong);
+}
+
+.change-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--info);
+}
+
+.list-row-changed .list-label {
+  font-weight: 600;
+}
+
+.view-footer {
+  flex: none;
+  padding: 4px 12px 8px;
+}
+
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-size: var(--font-size-small);
+  cursor: pointer;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+.statusbar-link {
+  overflow: hidden;
+  max-width: 60vw;
+  text-overflow: ellipsis;
+}

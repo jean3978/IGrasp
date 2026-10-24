@@ -5,10 +5,13 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use crate::appdata::AppData;
 use crate::error::{AppError, AppResult};
+use crate::graph::SharedGraph;
 use crate::index::SharedIndex;
 use crate::index::scanner::ScanOptions;
 use crate::index::watcher::SharedWatch;
 use crate::paths::RootGuard;
+use crate::search::SearchRegistry;
+use crate::search::symbols::Candidates;
 
 /// The folder currently open in the app.
 pub struct Workspace {
@@ -22,6 +25,24 @@ pub struct Workspace {
     pub cancel: Arc<AtomicBool>,
     /// The file watcher, started once the scan is ready.
     pub watch: SharedWatch,
+    /// Headings and links of every document, built after the scan.
+    pub graph: SharedGraph,
+    /// Search candidates (Ctrl+T), rebuilt when the index or the graph changes.
+    pub symbols: Mutex<Option<Candidates>>,
+    /// The running full-text search, cancelled with the workspace.
+    pub searches: SearchRegistry,
+}
+
+/// What the background scan, the watcher and the graph builder of a workspace share.
+#[derive(Clone)]
+pub struct ScanContext {
+    pub guard: RootGuard,
+    pub options: ScanOptions,
+    pub generation: u64,
+    pub index: SharedIndex,
+    pub cancel: Arc<AtomicBool>,
+    pub watch: SharedWatch,
+    pub graph: SharedGraph,
 }
 
 impl Workspace {
@@ -33,6 +54,21 @@ impl Workspace {
             index: Arc::new(RwLock::new(None)),
             cancel: Arc::new(AtomicBool::new(false)),
             watch: Arc::new(Mutex::new(None)),
+            graph: Arc::default(),
+            symbols: Mutex::new(None),
+            searches: SearchRegistry::default(),
+        }
+    }
+
+    pub fn scan_context(&self) -> ScanContext {
+        ScanContext {
+            guard: self.guard.clone(),
+            options: self.options.clone(),
+            generation: self.generation,
+            index: self.index.clone(),
+            cancel: self.cancel.clone(),
+            watch: self.watch.clone(),
+            graph: self.graph.clone(),
         }
     }
 }
@@ -41,6 +77,7 @@ impl Drop for Workspace {
     fn drop(&mut self) {
         // Closing or replacing the workspace stops its background work.
         self.cancel.store(true, Ordering::SeqCst);
+        self.searches.cancel_all();
         self.watch.lock().unwrap_or_else(|e| e.into_inner()).take();
     }
 }

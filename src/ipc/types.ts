@@ -8,16 +8,28 @@ import type { ErrorCode } from './generated/ErrorCode';
 import type { FileContent } from './generated/FileContent';
 import type { FileEntry } from './generated/FileEntry';
 import type { FsChangesEvent } from './generated/FsChangesEvent';
+import type { Backlinks } from './generated/Backlinks';
+import type { BrokenLinksReport } from './generated/BrokenLinksReport';
+import type { DocLinks } from './generated/DocLinks';
+import type { SymbolSearchResult } from './generated/SymbolSearchResult';
+import type { SearchResultsEvent } from './generated/SearchResultsEvent';
+import type { TextSearchRequest } from './generated/TextSearchRequest';
+import type { GraphChangedEvent } from './generated/GraphChangedEvent';
+import type { GraphProgressEvent } from './generated/GraphProgressEvent';
+import type { GraphReadyEvent } from './generated/GraphReadyEvent';
+import type { GraphStatus } from './generated/GraphStatus';
 import type { IndexErrorEvent } from './generated/IndexErrorEvent';
 import type { IndexProgressEvent } from './generated/IndexProgressEvent';
 import type { IndexReadyEvent } from './generated/IndexReadyEvent';
 import type { RecentFolder } from './generated/RecentFolder';
+import type { RecentFilesListing } from './generated/RecentFilesListing';
 import type { RecoveredEvent } from './generated/RecoveredEvent';
 import type { RescanRequest } from './generated/RescanRequest';
 import type { RootInfo } from './generated/RootInfo';
 import type { Session } from './generated/Session';
 import type { Settings } from './generated/Settings';
 import type { SettingsPatch } from './generated/SettingsPatch';
+import type { TextFileContent } from './generated/TextFileContent';
 import type { WatchStatusEvent } from './generated/WatchStatusEvent';
 
 export type {
@@ -28,9 +40,14 @@ export type {
   FileContent,
   FileEntry,
   FsChangesEvent,
+  GraphChangedEvent,
+  GraphProgressEvent,
+  GraphReadyEvent,
+  GraphStatus,
   IndexErrorEvent,
   IndexProgressEvent,
   IndexReadyEvent,
+  RecentFilesListing,
   RecentFolder,
   RecoveredEvent,
   RescanRequest,
@@ -38,6 +55,7 @@ export type {
   Session,
   Settings,
   SettingsPatch,
+  TextFileContent,
   WatchStatusEvent,
 };
 export type { RenamedPath } from './generated/RenamedPath';
@@ -46,6 +64,33 @@ export type { Theme } from './generated/Theme';
 export type { ReadingWidth } from './generated/ReadingWidth';
 export type { WindowFrame } from './generated/WindowFrame';
 export type { SessionTab } from './generated/SessionTab';
+export type { SessionTabKind } from './generated/SessionTabKind';
+export type { SidebarView } from './generated/SidebarView';
+export type { LinkInfo } from './generated/LinkInfo';
+export type { SymbolHit } from './generated/SymbolHit';
+export type { FileMatches } from './generated/FileMatches';
+export type { SearchResultsEvent } from './generated/SearchResultsEvent';
+export type { SearchStats } from './generated/SearchStats';
+export type { TextMatch } from './generated/TextMatch';
+export type { TextSearchRequest } from './generated/TextSearchRequest';
+export type { SymbolSearchResult } from './generated/SymbolSearchResult';
+export type { DocLinks } from './generated/DocLinks';
+export type { Backlink } from './generated/Backlink';
+export type { Backlinks } from './generated/Backlinks';
+export type { BrokenDoc } from './generated/BrokenDoc';
+export type { BrokenLinksReport } from './generated/BrokenLinksReport';
+export type { LinkStatus } from './generated/LinkStatus';
+export type { LinkTarget } from './generated/LinkTarget';
+export type { RightPanelState } from './generated/RightPanelState';
+
+export interface SymbolSearchRequest {
+  query: string;
+  limit?: number;
+  headingsOnly?: boolean;
+  /** Recently opened files, most recent first (ranked higher, listed for an empty query). */
+  recent: string[];
+  requestId: number;
+}
 
 /** Error raised by any backend call. */
 export class BackendError extends Error {
@@ -66,6 +111,10 @@ export interface BackendEvents {
   'index://error': IndexErrorEvent;
   'fs://changes': FsChangesEvent;
   'fs://watch-status': WatchStatusEvent;
+  'graph://progress': GraphProgressEvent;
+  'graph://ready': GraphReadyEvent;
+  'graph://changed': GraphChangedEvent;
+  'search://results': SearchResultsEvent;
 }
 
 export type EventName = keyof BackendEvents;
@@ -106,14 +155,37 @@ export interface Backend {
   rescan(request: RescanRequest): Promise<number>;
   /** Lists an indexed folder (root-relative path, "" for the root). */
   listDir(relPath: string): Promise<DirListing>;
+  /** Markdown files sorted by last modification, newest first. */
+  listRecentFiles(offset: number, limit: number): Promise<RecentFilesListing>;
   /** Reads a markdown file of the open folder. */
   readMarkdown(relPath: string): Promise<FileContent>;
+  /** Reads any text file of the open folder (NotText for binaries, TooLarge above 5 MB). */
+  readTextFile(relPath: string): Promise<TextFileContent>;
+  /** Opens a text file with the system's default app (Forbidden for programs and scripts). */
+  openWithDefaultApp(relPath: string): Promise<void>;
+  /** Shows a file or folder of the open folder in the system file manager. */
+  revealInFileManager(relPath: string): Promise<void>;
   /** URL the webview can load a file of the open folder from (images, videos). */
   assetUrl(rootPath: string, relPath: string): string;
   /** Opens a media file of the open folder with the system's default application. */
   openExternal(relPath: string): Promise<void>;
   /** Opens an http(s) or mailto URL in the system browser or mail client. */
   openUrl(url: string): Promise<void>;
+
+  /** Progress of the document graph build and the number of broken links. */
+  getGraphStatus(): Promise<GraphStatus>;
+  /** The links of a document with their status (empty for unparsed documents). */
+  getDocLinks(relPath: string): Promise<DocLinks>;
+  /** The documents linking to a document. */
+  getBacklinks(relPath: string): Promise<Backlinks>;
+  /** Every broken link of the folder, grouped by document. */
+  listBrokenLinks(): Promise<BrokenLinksReport>;
+  /** Fuzzy search over file names and headings (Ctrl+T); `#` restricts to headings. */
+  searchSymbols(request: SymbolSearchRequest): Promise<SymbolSearchResult>;
+  /** Starts a full-text search; results arrive as `search://results` batches. Resolves to its id. */
+  searchText(request: TextSearchRequest): Promise<number>;
+  /** Cancels a running text search (idempotent). */
+  cancelSearch(searchId: number): Promise<void>;
 
   getSettings(): Promise<Settings>;
   updateSettings(patch: SettingsPatch): Promise<Settings>;

@@ -1,7 +1,9 @@
-import { BellOff, Eye, FileText, LoaderCircle, TriangleAlert } from 'lucide-react';
+import { BellOff, Eye, FileText, Link2, LoaderCircle, TriangleAlert } from 'lucide-react';
+import { BrokenLinksStatus } from '../links/BrokenLinksStatus';
 import { THEME_OPTIONS } from '../titlebar/menuActions';
 import { useSettings } from '../../stores/settings';
 import { useToasts } from '../../stores/toasts';
+import { useUi } from '../../stores/ui';
 import { useWorkspace } from '../../stores/workspace';
 
 function IndexItem() {
@@ -66,16 +68,28 @@ function MutedItem() {
   );
 }
 
+/** The target of the hovered link, like a browser's status line. */
+function HoveredLink({ target }: { target: string }) {
+  return (
+    <span className="statusbar-item statusbar-link" title={target}>
+      <Link2 aria-hidden />
+      {target}
+    </span>
+  );
+}
+
 export function StatusBar() {
   const theme = useSettings((s) => s.settings.theme);
   const themeLabel = THEME_OPTIONS.find((o) => o.value === theme)?.label ?? theme;
+  const hovered = useUi((s) => s.hoveredLink);
 
   return (
     <footer className="statusbar" aria-label="Status bar">
       <div className="statusbar-start">
-        <IndexItem />
+        {hovered ? <HoveredLink target={hovered} /> : <IndexItem />}
       </div>
       <div className="statusbar-end">
+        <BrokenLinksStatus />
         <MutedItem />
         <span className="statusbar-item">{themeLabel}</span>
       </div>

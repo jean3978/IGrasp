@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { FIXTURE_ROOT } from '../../ipc/mock/fixture';
 import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
-import { classifyLink } from './links';
+import { resolveLink } from './links';
 import { MarkdownPreview } from './MarkdownPreview';
 import { renderMarkdown } from './pipeline/processor';
 
@@ -20,20 +20,25 @@ beforeEach(() => {
   useTabs.setState({ tabs: [], activeId: null });
 });
 
+const target = (from: string, href: string) => resolveLink(from, href, undefined).target;
+
 describe('links', () => {
-  it('classifies anchors, web links, documents and other files', () => {
-    expect(classifyLink('a.md', '#install')).toEqual({ kind: 'anchor', id: 'install' });
-    expect(classifyLink('a.md', 'https://x.org')).toEqual({
-      kind: 'external',
-      url: 'https://x.org',
-    });
-    expect(classifyLink('a.md', 'mailto:me@x.org').kind).toBe('external');
-    expect(classifyLink('docs/a.md', '../README.md#top')).toEqual({
+  it('classifies anchors, web links, documents and other files before the graph knows them', () => {
+    expect(target('a.md', '#install')).toEqual({ kind: 'anchor', fragment: 'install' });
+    expect(target('a.md', 'https://x.org')).toEqual({ kind: 'external', url: 'https://x.org' });
+    expect(target('a.md', 'mailto:me@x.org').kind).toBe('external');
+    expect(target('docs/a.md', '../README.md#top')).toEqual({
       kind: 'document',
       relPath: 'README.md',
+      fragment: 'top',
     });
-    expect(classifyLink('a.md', 'src/main.rs').kind).toBe('unsupported');
-    expect(classifyLink('a.md', 'javascript:alert(1)').kind).toBe('unsupported');
+    expect(target('a.md', 'src/main.rs#L3-L5')).toEqual({
+      kind: 'file',
+      relPath: 'src/main.rs',
+      fragment: 'L3-L5',
+    });
+    expect(target('a.md', 'javascript:alert(1)').kind).toBe('unsupported');
+    expect(resolveLink('a.md', '../out.md', undefined).status.kind).toBe('outsideRoot');
   });
 
   it('opens web links in the system browser', async () => {
@@ -59,9 +64,9 @@ describe('links', () => {
     });
   });
 
-  it('marks links to other kinds of files as not available yet', async () => {
+  it('marks links to source files for the code viewer', async () => {
     const container = await show('[code](../../src/main.ts)');
-    expect(container.querySelector('a')?.getAttribute('title')).toContain('not available yet');
+    expect(container.querySelector('a')?.dataset.link).toBe('file');
   });
 });
 

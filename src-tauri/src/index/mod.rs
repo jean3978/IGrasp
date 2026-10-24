@@ -4,8 +4,7 @@ pub mod model;
 pub mod scanner;
 pub mod watcher;
 
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, RwLock};
 
 use serde::Serialize;
@@ -13,7 +12,9 @@ use tauri::{AppHandle, Emitter};
 use ts_rs::TS;
 
 use model::Index;
-use scanner::{ScanOptions, ScanProgress};
+use scanner::ScanProgress;
+
+use crate::state::ScanContext;
 
 pub const EVENT_PROGRESS: &str = "index://progress";
 pub const EVENT_READY: &str = "index://ready";
@@ -62,17 +63,19 @@ fn emit<T: Serialize + Clone>(app: &AppHandle, event: &str, payload: T) {
     }
 }
 
-/// Scans `root` on a background thread, stores the result in `index` unless cancelled, then
-/// starts watching the folder (the watcher handle goes into `watch`).
-pub fn start_scan(
-    app: AppHandle,
-    root: PathBuf,
-    options: ScanOptions,
-    generation: u64,
-    index: SharedIndex,
-    cancel: Arc<AtomicBool>,
-    watch: watcher::SharedWatch,
-) {
+/// Scans the root on a background thread, stores the result in the index unless cancelled, then
+/// starts watching the folder and builds the document graph.
+pub fn start_scan(app: AppHandle, ctx: ScanContext) {
+    let ScanContext {
+        guard,
+        options,
+        generation,
+        index,
+        cancel,
+        watch,
+        graph,
+    } = ctx;
+    let root = guard.root().to_path_buf();
     std::thread::Builder::new()
         .name(format!("igrasp-scan-{generation}"))
         .spawn(move || {
@@ -110,14 +113,23 @@ pub fn start_scan(
                     emit(&app, EVENT_READY, ready);
                     let handle = watcher::start_watcher(
                         app.clone(),
-                        root.clone(),
+                        guard.clone(),
                         options.clone(),
                         generation,
                         index.clone(),
                         cancel.clone(),
+                        graph.clone(),
                     );
                     if !cancel.load(Ordering::SeqCst) {
                         *watch.lock().unwrap_or_else(|e| e.into_inner()) = handle;
+                        crate::graph::start_build(
+                            app.clone(),
+                            guard,
+                            generation,
+                            index,
+                            graph,
+                            cancel,
+                        );
                     }
                 }
                 Ok(_) => log::info!("scan {generation} cancelled"),

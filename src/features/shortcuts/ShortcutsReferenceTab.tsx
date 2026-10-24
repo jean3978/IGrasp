@@ -25,11 +25,23 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
     title: 'View',
     rows: fromActions([
       'view.toggleSidebar',
+      'view.toggleRightPanel',
+      'view.focusOutline',
       'view.focusExplorer',
+      'view.search',
+      'view.recent',
+      'view.broken',
       'view.zoomIn',
       'view.zoomOut',
       'view.zoomReset',
     ]),
+  },
+  {
+    title: 'Navigation',
+    rows: [
+      ...fromActions(['go.symbol', 'go.back', 'go.forward', 'search.next', 'search.previous']),
+      { keys: 'Mouse back / forward', label: 'Back / forward' },
+    ],
   },
   {
     title: 'Tabs',

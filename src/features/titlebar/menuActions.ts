@@ -3,7 +3,10 @@
 
 import { backend } from '../../ipc/client';
 import { MAX_FONT_SIZE, MIN_FONT_SIZE } from '../../ipc/defaults';
-import type { Theme } from '../../ipc/types';
+import type { SidebarView, Theme } from '../../ipc/types';
+import { useHistory } from '../../stores/history';
+import { useQuickOpen } from '../../stores/quickOpen';
+import { useSearch } from '../../stores/search';
 import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
 import { useTabs } from '../../stores/tabs';
@@ -22,6 +25,16 @@ export type ActionId =
   | 'edit.selectAll'
   | 'view.toggleSidebar'
   | 'view.focusExplorer'
+  | 'view.search'
+  | 'view.recent'
+  | 'view.broken'
+  | 'view.toggleRightPanel'
+  | 'view.focusOutline'
+  | 'go.symbol'
+  | 'search.next'
+  | 'search.previous'
+  | 'go.back'
+  | 'go.forward'
   | 'view.showDotfiles'
   | 'view.showIgnored'
   | 'view.muteToasts'
@@ -66,6 +79,18 @@ function setFontSize(size: number) {
   return useSettings.getState().update({ fontSize });
 }
 
+/** Shows a sidebar view and focuses its main element once it is mounted. */
+function showView(view: SidebarView, focusSelector: string) {
+  if (!useWorkspace.getState().root) return;
+  useWorkspace.getState().setSidebarView(view);
+  requestAnimationFrame(() => {
+    const el = document.querySelector<HTMLElement>(`#sidebar-view ${focusSelector}`);
+    (
+      el ?? document.querySelector<HTMLElement>('#sidebar-view [tabindex], #sidebar-view button')
+    )?.focus();
+  });
+}
+
 /** The preview of the active tab, if any. */
 const activePreview = () => document.querySelector<HTMLElement>('.tab-content .markdown-body');
 
@@ -100,14 +125,37 @@ export const actions: Record<ActionId, ActionDef> = {
     },
   },
   'view.focusExplorer': {
-    label: 'Focus Explorer',
+    label: 'Explorer',
     shortcut: 'Ctrl+Shift+E',
     run: () => {
-      useWorkspace.getState().setSidebarVisible(true);
-      // The tree mounts on the next frame when the sidebar was hidden.
-      requestAnimationFrame(() => {
-        document.querySelector<HTMLElement>('.file-tree')?.focus();
-      });
+      showView('explorer', '.file-tree');
+    },
+  },
+  'view.search': {
+    label: 'Search',
+    shortcut: 'Ctrl+Shift+F',
+    run: () => {
+      // Selected text (one line) becomes the query, like VS Code.
+      const selected = window.getSelection()?.toString().trim() ?? '';
+      if (selected !== '' && !/[\r\n]/.test(selected) && selected.length <= 200) {
+        useSearch.getState().setQuery(selected);
+        void useSearch.getState().run();
+      }
+      showView('search', '.search-input');
+    },
+  },
+  'view.recent': {
+    label: 'Recent Changes',
+    shortcut: 'Ctrl+Shift+R',
+    run: () => {
+      showView('recent', '.recent-list');
+    },
+  },
+  'view.broken': {
+    label: 'Broken Links',
+    shortcut: 'Ctrl+Shift+L',
+    run: () => {
+      showView('broken', '.broken-list');
     },
   },
   'view.showDotfiles': {
@@ -192,6 +240,60 @@ export const actions: Record<ActionId, ActionDef> = {
     shortcut: 'Ctrl+B',
     run: () => {
       useWorkspace.getState().toggleSidebar();
+    },
+  },
+  'go.symbol': {
+    label: 'Go to File or Heading…',
+    shortcut: 'Ctrl+T',
+    run: () => {
+      if (useWorkspace.getState().root) useQuickOpen.getState().openDialog();
+    },
+  },
+  'search.next': {
+    label: 'Next Search Result',
+    shortcut: 'F4',
+    run: () => {
+      useSearch.getState().step(1);
+    },
+  },
+  'search.previous': {
+    label: 'Previous Search Result',
+    shortcut: 'Shift+F4',
+    run: () => {
+      useSearch.getState().step(-1);
+    },
+  },
+  'go.back': {
+    label: 'Back',
+    shortcut: 'Alt+Left',
+    run: () => {
+      useHistory.getState().back();
+    },
+  },
+  'go.forward': {
+    label: 'Forward',
+    shortcut: 'Alt+Right',
+    run: () => {
+      useHistory.getState().forward();
+    },
+  },
+  'view.focusOutline': {
+    label: 'Focus Outline',
+    shortcut: 'Ctrl+Shift+O',
+    run: () => {
+      if (!useWorkspace.getState().root) return;
+      useWorkspace.getState().setRightPanelVisible(true);
+      // The panel mounts on the next frame when it was hidden.
+      requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>('.outline-filter')?.focus();
+      });
+    },
+  },
+  'view.toggleRightPanel': {
+    label: 'Toggle Right Panel',
+    shortcut: 'Ctrl+Alt+B',
+    run: () => {
+      useWorkspace.getState().toggleRightPanel();
     },
   },
   'view.muteToasts': {

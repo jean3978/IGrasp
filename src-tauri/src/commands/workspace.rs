@@ -8,7 +8,7 @@ use ts_rs::TS;
 
 use crate::appdata::now_ms;
 use crate::error::{AppError, AppResult};
-use crate::index::model::DirListing;
+use crate::index::model::{DirListing, FileEntry};
 use crate::index::scanner::ScanOptions;
 use crate::index::start_scan;
 use crate::paths::RootGuard;
@@ -46,15 +46,7 @@ fn folder_name(guard: &RootGuard) -> String {
 }
 
 fn spawn_scan(app: &AppHandle, ws: &Workspace) {
-    start_scan(
-        app.clone(),
-        ws.guard.root().to_path_buf(),
-        ws.options.clone(),
-        ws.generation,
-        ws.index.clone(),
-        ws.cancel.clone(),
-        ws.watch.clone(),
-    );
+    start_scan(app.clone(), ws.scan_context());
 }
 
 #[tauri::command]
@@ -135,6 +127,36 @@ pub fn rescan(
     spawn_scan(&app, &ws);
     *slot = Some(ws);
     Ok(generation)
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct RecentFilesListing {
+    pub generation: u64,
+    /// Number of markdown files in the index.
+    pub total: u32,
+    /// Newest first.
+    pub files: Vec<FileEntry>,
+}
+
+/// Markdown files sorted by last modification, newest first (the Recent changes view).
+#[tauri::command]
+pub fn list_recent_files(
+    state: State<'_, AppState>,
+    offset: u32,
+    limit: u32,
+) -> AppResult<RecentFilesListing> {
+    state.with_workspace(|ws| {
+        let index = ws.index.read().unwrap_or_else(|e| e.into_inner());
+        let index = index.as_ref().ok_or(AppError::IndexNotReady)?;
+        let (total, files) = index.recent_files(offset as usize, limit.min(5_000) as usize);
+        Ok(RecentFilesListing {
+            generation: ws.generation,
+            total: u32::try_from(total).unwrap_or(u32::MAX),
+            files,
+        })
+    })
 }
 
 #[tauri::command]

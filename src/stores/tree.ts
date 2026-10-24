@@ -39,6 +39,8 @@ interface TreeState {
   collapseAll: () => void;
   setExpanded: (dirs: string[]) => void;
   setFocused: (path: string | null) => void;
+  /** Expands the folders above `path` and focuses it (the folder itself for a folder). */
+  reveal: (path: string) => void;
   /** Re-fetches the loaded listings of folders a disk change touched. */
   applyChanges: (changes: FsChangesEvent) => Promise<void>;
   setShowDotfiles: (show: boolean) => Promise<void>;
@@ -193,6 +195,13 @@ export const useTree = create<TreeState>()((set, get) => ({
 
   setFocused(path) {
     set({ focused: path });
+  },
+
+  reveal(path) {
+    const parts = path.split('/');
+    const ancestors = parts.slice(0, -1).map((_, i) => parts.slice(0, i + 1).join('/'));
+    set((s) => ({ expanded: new Set([...s.expanded, ...ancestors]), focused: path }));
+    for (const dir of ancestors) void get().ensureLoaded(dir);
   },
 
   async applyChanges(changes) {

@@ -2,4 +2,6 @@
 
 pub mod appdata;
 pub mod files;
+pub mod graph;
+pub mod search;
 pub mod workspace;

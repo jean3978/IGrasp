@@ -3,8 +3,12 @@
 mod appdata;
 mod commands;
 mod error;
+mod graph;
 mod index;
 mod paths;
+#[cfg(test)]
+mod perf;
+mod search;
 mod state;
 
 use tauri::Manager;
@@ -71,8 +75,19 @@ pub fn run() {
             commands::workspace::close_root,
             commands::workspace::rescan,
             commands::workspace::list_dir,
+            commands::workspace::list_recent_files,
             commands::files::read_markdown,
             commands::files::open_external,
+            commands::files::read_text_file,
+            commands::files::open_with_default_app,
+            commands::files::reveal_in_file_manager,
+            commands::graph::get_graph_status,
+            commands::graph::get_doc_links,
+            commands::graph::get_backlinks,
+            commands::graph::list_broken_links,
+            commands::search::search_symbols,
+            commands::search::search_text,
+            commands::search::cancel_search,
         ])
         .run(tauri::generate_context!())
         .expect("error while running IGrasp");

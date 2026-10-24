@@ -88,6 +88,13 @@
   margin-right: 6px;
 }
 
+.toolbar-separator {
+  width: var(--border-width);
+  height: 16px;
+  margin: 0 4px;
+  background: var(--border-strong);
+}
+
 .window-controls {
   display: flex;
   height: 100%;

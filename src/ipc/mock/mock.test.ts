@@ -1,13 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createMockBackend } from '.';
 import type { Session } from '../types';
+import { FIXTURE_ROOT } from './fixture';
 
 const session: Session = {
   version: 1,
-  tabs: [{ relPath: 'README.md', pinned: true, scrollTop: 10 }],
+  tabs: [{ relPath: 'README.md', pinned: true, scrollTop: 10, kind: 'document' }],
   activeTab: 'README.md',
   expandedDirs: [],
   sidebar: { visible: true, widthPx: 260 },
+  sidebarView: 'explorer',
+  rightPanel: { visible: false, widthPx: 260 },
   showDotfiles: false,
   showIgnored: false,
   savedAtMs: 0,
@@ -30,6 +33,47 @@ describe('mock backend', () => {
     b.controls.emit('appdata://recovered', { file: 'x.json' });
     expect(handler).toHaveBeenCalledTimes(1);
     expect(handler).toHaveBeenCalledWith({ file: 'settings.json' });
+  });
+
+  it('lists recent files newest first, paged', async () => {
+    const b = createMockBackend();
+    await b.openRoot(FIXTURE_ROOT);
+    await new Promise((r) => setTimeout(r, 5));
+    b.controls.writeFiles({ 'notes/TODO.MD': '# TODO\n' });
+    b.controls.writeFiles({ 'docs/architecture.md': '# Architecture\n' });
+    const first = await b.listRecentFiles(0, 2);
+    expect(first.files.map((f) => f.relPath)).toEqual(['docs/architecture.md', 'notes/TODO.MD']);
+    expect(first.total).toBe(7);
+    const rest = await b.listRecentFiles(2, 100);
+    expect(rest.files).toHaveLength(5);
+    expect(rest.files[0]?.relPath).toBe('docs/guide/getting-started.md');
+    const times = rest.files.map((f) => f.modifiedMs);
+    expect([...times].sort((x, y) => y - x)).toEqual(times);
+  });
+
+  it('reads text files and refuses binaries and huge files like Rust', async () => {
+    const b = createMockBackend();
+    await b.openRoot(FIXTURE_ROOT);
+    const main = await b.readTextFile('src/main.ts');
+    expect(main.content).toContain('export function main');
+    expect(main.truncated).toBe(false);
+    await expect(b.readTextFile('assets/logo.bin')).rejects.toMatchObject({ code: 'NotText' });
+    await expect(b.readTextFile('logs/huge.log')).rejects.toMatchObject({ code: 'TooLarge' });
+    await expect(b.readTextFile('nope.txt')).rejects.toMatchObject({ code: 'NotFound' });
+  });
+
+  it('opens only text files that are not programs with the default app', async () => {
+    const b = createMockBackend();
+    await b.openRoot(FIXTURE_ROOT);
+    await b.openWithDefaultApp('src/main.ts');
+    await expect(b.openWithDefaultApp('scripts/deploy.sh')).rejects.toMatchObject({
+      code: 'Forbidden',
+    });
+    await expect(b.openWithDefaultApp('assets/logo.bin')).rejects.toMatchObject({
+      code: 'Forbidden',
+    });
+    await b.revealInFileManager('scripts');
+    expect(b.controls.state.opened).toEqual(['editor:src/main.ts', 'reveal:scripts']);
   });
 
   it('normalizes settings like the Rust backend', async () => {

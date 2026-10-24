@@ -29,6 +29,20 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   };
 }
 
+// jsdom has no layout, so every element is 0×0 and virtualized lists (TanStack Virtual reads
+// clientWidth/clientHeight) would render no rows. Give elements a nominal viewport size.
+Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+  configurable: true,
+  get: () => 800,
+});
+Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, get: () => 800 });
+
+if (typeof Element.prototype.scrollIntoView !== 'function') {
+  Element.prototype.scrollIntoView = () => {
+    /* no layout in jsdom */
+  };
+}
+
 afterEach(() => {
   cleanup();
 });

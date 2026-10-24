@@ -4,9 +4,10 @@
 // WASM) and loads languages on demand. All three themes are emitted at once as CSS variables
 // (`--shiki-light`, `--shiki-dark`, `--shiki-hc`), so switching the app theme never re-renders.
 
-import type { Element, Nodes, Root } from 'hast';
+import type { Element, Root } from 'hast';
 import type { HighlighterCore } from 'shiki/core';
 import { visit } from 'unist-util-visit';
+import { textContent } from './hastText';
 
 // GitHub's current (Primer) palettes: the older github-light/github-dark themes have tokens
 // below the WCAG AA contrast ratio on the code background.
@@ -62,11 +63,37 @@ async function ensureLanguage(h: HighlighterCore, lang: string): Promise<boolean
   }
 }
 
-export function textContent(node: Nodes): string {
-  if (node.type === 'text') return node.value;
-  if ('children' in node) return node.children.map((c) => textContent(c as Nodes)).join('');
-  return '';
+/** A token with its colors for every theme as CSS variables (`--shiki-light`, …). */
+export interface ThemedToken {
+  content: string;
+  style: Record<string, string>;
 }
+
+/**
+ * Tokenizes a whole file for the code viewer, one array of tokens per line. Resolves to null when
+ * the language is unknown (the caller shows plain text).
+ */
+export async function tokenizeCode(code: string, lang: string): Promise<ThemedToken[][] | null> {
+  const h = await getHighlighter();
+  if (!(await ensureLanguage(h, lang))) return null;
+  const lines = h.codeToTokensWithThemes(code, { lang, themes: SHIKI_THEMES });
+  return lines.map((line) =>
+    line.map((token) => {
+      const style: Record<string, string> = {};
+      for (const [theme, variant] of Object.entries(token.variants)) {
+        if (variant.color) style[`--shiki-${theme}`] = variant.color;
+        // Font style bit 1 = italic, 2 = bold (Shiki's FontStyle flags).
+        if (variant.fontStyle && variant.fontStyle & 1)
+          style[`--shiki-${theme}-font-style`] = 'italic';
+        if (variant.fontStyle && variant.fontStyle & 2)
+          style[`--shiki-${theme}-font-weight`] = 'bold';
+      }
+      return { content: token.content, style };
+    }),
+  );
+}
+
+export { textContent };
 
 /** The language of a `pre > code.language-x` block, or null. */
 export function codeLanguage(pre: Element): string | null {
@@ -108,6 +135,7 @@ export async function highlightCode(tree: Root): Promise<void> {
     );
     if (!newPre) continue;
     newPre.properties.dataLanguage = lang;
+    if (pre.properties.dataLine !== undefined) newPre.properties.dataLine = pre.properties.dataLine;
     parent.children[index] = newPre;
   }
 }

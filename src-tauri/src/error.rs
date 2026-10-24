@@ -15,6 +15,9 @@ pub enum ErrorCode {
     IndexNotReady,
     Io,
     AppData,
+    NotText,
+    Forbidden,
+    InvalidPattern,
 }
 
 /// Shape of every error returned by a command.
@@ -43,6 +46,12 @@ pub enum AppError {
     Io(#[from] std::io::Error),
     #[error("App data error: {0}")]
     AppData(String),
+    #[error("{0} is not a text file.")]
+    NotText(String),
+    #[error("{0}")]
+    Forbidden(String),
+    #[error("{0}")]
+    InvalidPattern(String),
 }
 
 impl AppError {
@@ -56,6 +65,9 @@ impl AppError {
             Self::IndexNotReady => ErrorCode::IndexNotReady,
             Self::Io(_) => ErrorCode::Io,
             Self::AppData(_) => ErrorCode::AppData,
+            Self::NotText(_) => ErrorCode::NotText,
+            Self::Forbidden(_) => ErrorCode::Forbidden,
+            Self::InvalidPattern(_) => ErrorCode::InvalidPattern,
         }
     }
 }

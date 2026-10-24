@@ -1,26 +1,52 @@
 import { create } from 'zustand';
 import { useDocuments } from './documents';
+import { useGraph } from './graph';
+import { useOutline } from './outline';
+import { useTextFiles } from './textFiles';
 
-export type TabKind = 'document' | 'settings' | 'shortcuts';
+export type TabKind = 'document' | 'code' | 'settings' | 'shortcuts';
+export type FileTabKind = 'document' | 'code';
+export type SpecialTabKind = Exclude<TabKind, FileTabKind>;
+
+/** Where a tab should scroll once its content is rendered (consumed by the tab). */
+export interface PendingScroll {
+  /** Heading id without the `user-content-` prefix (documents). */
+  anchor?: string;
+  /** 1-based source line; with `endLine`, a range (code viewer `#L10-L20`). */
+  line?: number;
+  endLine?: number;
+  /** Text to highlight around the line (search matches). */
+  highlight?: string[];
+}
 
 export interface Tab {
   id: string;
   kind: TabKind;
-  /** Root-relative path, for document tabs. */
+  /** Root-relative path, for document and code tabs. */
   relPath: string | null;
   /** A preview tab (italic) is replaced by the next single-click open. */
   pinned: boolean;
   scrollTop: number;
   /** The file was deleted on disk while open. */
   deleted: boolean;
+  pending?: PendingScroll | undefined;
+}
+
+export interface OpenOptions {
+  pin?: boolean;
+  scroll?: PendingScroll;
 }
 
 interface TabsState {
   tabs: Tab[];
   activeId: string | null;
 
-  openDocument: (relPath: string, options?: { pin?: boolean }) => void;
-  openSpecial: (kind: Exclude<TabKind, 'document'>) => void;
+  openDocument: (relPath: string, options?: OpenOptions) => void;
+  /** Opens a non-markdown file in the read-only code viewer. */
+  openCode: (relPath: string, options?: OpenOptions) => void;
+  openSpecial: (kind: SpecialTabKind) => void;
+  /** Returns and forgets the pending scroll target of a tab. */
+  takePending: (id: string) => PendingScroll | undefined;
   pin: (id: string) => void;
   close: (id: string) => void;
   closeOthers: (id: string) => void;
@@ -43,43 +69,58 @@ export const newTabId = () => `tab-${String(nextId++)}`;
 
 export const fileName = (relPath: string) => relPath.slice(relPath.lastIndexOf('/') + 1);
 
-const SPECIAL_IDS: Record<Exclude<TabKind, 'document'>, string> = {
+const SPECIAL_IDS: Record<SpecialTabKind, string> = {
   settings: 'tab-settings',
   shortcuts: 'tab-shortcuts',
 };
 
-/** Drops cached documents that no tab shows anymore. */
+export const isFileTab = (tab: Tab): boolean => tab.kind === 'document' || tab.kind === 'code';
+
+const pathsOf = (tabs: Tab[], kind: FileTabKind) =>
+  new Set(tabs.filter((t) => t.kind === kind && t.relPath !== null).map((t) => t.relPath ?? ''));
+
+/** Drops cached file contents that no tab shows anymore. */
 function evictUnused(tabs: Tab[]) {
-  const used = new Set(tabs.map((t) => t.relPath).filter((p): p is string => p !== null));
-  useDocuments.getState().retain(used);
+  useDocuments.getState().retain(pathsOf(tabs, 'document'));
+  useTextFiles.getState().retain(pathsOf(tabs, 'code'));
+  useGraph.getState().retainDocs(pathsOf(tabs, 'document'));
+  useOutline.getState().retain(pathsOf(tabs, 'document'));
 }
 
-export const useTabs = create<TabsState>()((set, get) => ({
-  tabs: [],
-  activeId: null,
+function loadContent(kind: FileTabKind, relPath: string) {
+  if (kind === 'document') void useDocuments.getState().load(relPath);
+  else void useTextFiles.getState().load(relPath);
+}
 
-  openDocument(relPath, options = {}) {
+export const useTabs = create<TabsState>()((set, get) => {
+  /** Opens a file tab: reuses its tab, else takes the preview slot (documents and code share it). */
+  const openFile = (kind: FileTabKind, relPath: string, options: OpenOptions) => {
     const pin = options.pin ?? false;
     const { tabs, activeId } = get();
-    const existing = tabs.find((t) => t.kind === 'document' && t.relPath === relPath);
+    const existing = tabs.find((t) => t.kind === kind && t.relPath === relPath);
     if (existing) {
       set({
         activeId: existing.id,
-        tabs: pin ? tabs.map((t) => (t.id === existing.id ? { ...t, pinned: true } : t)) : tabs,
+        tabs: tabs.map((t) =>
+          t.id === existing.id
+            ? { ...t, pinned: t.pinned || pin, pending: options.scroll ?? t.pending }
+            : t,
+        ),
       });
-      void useDocuments.getState().load(relPath);
+      loadContent(kind, relPath);
       return;
     }
 
     const tab: Tab = {
       id: newTabId(),
-      kind: 'document',
+      kind,
       relPath,
       pinned: pin,
       scrollTop: 0,
       deleted: false,
+      pending: options.scroll,
     };
-    const previewIndex = tabs.findIndex((t) => t.kind === 'document' && !t.pinned);
+    const previewIndex = tabs.findIndex((t) => isFileTab(t) && !t.pinned);
     let next: Tab[];
     if (previewIndex >= 0) {
       // Reuse the preview tab's slot; a pinned open still replaces the preview (VS Code).
@@ -91,104 +132,130 @@ export const useTabs = create<TabsState>()((set, get) => ({
     }
     set({ tabs: next, activeId: tab.id });
     evictUnused(next);
-    void useDocuments.getState().load(relPath);
-  },
+    loadContent(kind, relPath);
+  };
 
-  openSpecial(kind) {
-    const id = SPECIAL_IDS[kind];
-    const { tabs, activeId } = get();
-    if (tabs.some((t) => t.id === id)) {
-      set({ activeId: id });
-      return;
-    }
-    const tab: Tab = { id, kind, relPath: null, pinned: true, scrollTop: 0, deleted: false };
-    const next = [...tabs];
-    next.splice(tabs.findIndex((t) => t.id === activeId) + 1, 0, tab);
-    set({ tabs: next, activeId: id });
-  },
+  return {
+    tabs: [],
+    activeId: null,
 
-  pin(id) {
-    set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, pinned: true } : t)) }));
-  },
+    openDocument(relPath, options = {}) {
+      openFile('document', relPath, options);
+    },
 
-  close(id) {
-    const { tabs, activeId } = get();
-    const index = tabs.findIndex((t) => t.id === id);
-    if (index < 0) return;
-    const next = tabs.filter((t) => t.id !== id);
-    let nextActive = activeId;
-    if (activeId === id) {
-      // Activate the tab that slides into this position, else the one before it.
-      nextActive = (next[index] ?? next[index - 1])?.id ?? null;
-    }
-    set({ tabs: next, activeId: nextActive });
-    evictUnused(next);
-  },
+    openCode(relPath, options = {}) {
+      openFile('code', relPath, options);
+    },
 
-  closeOthers(id) {
-    const next = get().tabs.filter((t) => t.id === id);
-    set({ tabs: next, activeId: next[0]?.id ?? null });
-    evictUnused(next);
-  },
+    takePending(id) {
+      const tab = get().tabs.find((t) => t.id === id);
+      if (!tab?.pending) return undefined;
+      const { pending } = tab;
+      set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, pending: undefined } : t)) }));
+      return pending;
+    },
 
-  closeAll() {
-    set({ tabs: [], activeId: null });
-    evictUnused([]);
-  },
+    openSpecial(kind) {
+      const id = SPECIAL_IDS[kind];
+      const { tabs, activeId } = get();
+      if (tabs.some((t) => t.id === id)) {
+        set({ activeId: id });
+        return;
+      }
+      const tab: Tab = { id, kind, relPath: null, pinned: true, scrollTop: 0, deleted: false };
+      const next = [...tabs];
+      next.splice(tabs.findIndex((t) => t.id === activeId) + 1, 0, tab);
+      set({ tabs: next, activeId: id });
+    },
 
-  activate(id) {
-    if (get().tabs.some((t) => t.id === id)) set({ activeId: id });
-  },
+    pin(id) {
+      set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, pinned: true } : t)) }));
+    },
 
-  cycle(delta) {
-    const { tabs, activeId } = get();
-    if (tabs.length === 0) return;
-    const index = tabs.findIndex((t) => t.id === activeId);
-    const next = tabs[(index + delta + tabs.length) % tabs.length];
-    if (next) set({ activeId: next.id });
-  },
+    close(id) {
+      const { tabs, activeId } = get();
+      const index = tabs.findIndex((t) => t.id === id);
+      if (index < 0) return;
+      const next = tabs.filter((t) => t.id !== id);
+      let nextActive = activeId;
+      if (activeId === id) {
+        // Activate the tab that slides into this position, else the one before it.
+        nextActive = (next[index] ?? next[index - 1])?.id ?? null;
+      }
+      set({ tabs: next, activeId: nextActive });
+      evictUnused(next);
+    },
 
-  activateIndex(position) {
-    const { tabs } = get();
-    const tab = position >= 9 ? tabs[tabs.length - 1] : tabs[position - 1];
-    if (tab) set({ activeId: tab.id });
-  },
+    closeOthers(id) {
+      const next = get().tabs.filter((t) => t.id === id);
+      set({ tabs: next, activeId: next[0]?.id ?? null });
+      evictUnused(next);
+    },
 
-  move(id, delta) {
-    const tabs = [...get().tabs];
-    const index = tabs.findIndex((t) => t.id === id);
-    const target = index + delta;
-    if (index < 0 || target < 0 || target >= tabs.length) return;
-    const [tab] = tabs.splice(index, 1);
-    if (tab) tabs.splice(target, 0, tab);
-    set({ tabs });
-  },
+    closeAll() {
+      set({ tabs: [], activeId: null });
+      evictUnused([]);
+    },
 
-  setScroll(id, scrollTop) {
-    set((s) => ({
-      tabs: s.tabs.map((t) => (t.id === id && t.scrollTop !== scrollTop ? { ...t, scrollTop } : t)),
-    }));
-  },
+    activate(id) {
+      if (get().tabs.some((t) => t.id === id)) set({ activeId: id });
+    },
 
-  markDeleted(relPath, deleted) {
-    set((s) => ({
-      tabs: s.tabs.map((t) =>
-        t.relPath === relPath && t.deleted !== deleted ? { ...t, deleted } : t,
-      ),
-    }));
-  },
+    cycle(delta) {
+      const { tabs, activeId } = get();
+      if (tabs.length === 0) return;
+      const index = tabs.findIndex((t) => t.id === activeId);
+      const next = tabs[(index + delta + tabs.length) % tabs.length];
+      if (next) set({ activeId: next.id });
+    },
 
-  renamePath(from, to) {
-    set((s) => ({
-      tabs: s.tabs.map((t) => (t.relPath === from ? { ...t, relPath: to, deleted: false } : t)),
-    }));
-  },
+    activateIndex(position) {
+      const { tabs } = get();
+      const tab = position >= 9 ? tabs[tabs.length - 1] : tabs[position - 1];
+      if (tab) set({ activeId: tab.id });
+    },
 
-  restore(tabs, activeId) {
-    set({ tabs, activeId: tabs.some((t) => t.id === activeId) ? activeId : (tabs[0]?.id ?? null) });
-    evictUnused(tabs);
-  },
-}));
+    move(id, delta) {
+      const tabs = [...get().tabs];
+      const index = tabs.findIndex((t) => t.id === id);
+      const target = index + delta;
+      if (index < 0 || target < 0 || target >= tabs.length) return;
+      const [tab] = tabs.splice(index, 1);
+      if (tab) tabs.splice(target, 0, tab);
+      set({ tabs });
+    },
+
+    setScroll(id, scrollTop) {
+      set((s) => ({
+        tabs: s.tabs.map((t) =>
+          t.id === id && t.scrollTop !== scrollTop ? { ...t, scrollTop } : t,
+        ),
+      }));
+    },
+
+    markDeleted(relPath, deleted) {
+      set((s) => ({
+        tabs: s.tabs.map((t) =>
+          t.relPath === relPath && t.deleted !== deleted ? { ...t, deleted } : t,
+        ),
+      }));
+    },
+
+    renamePath(from, to) {
+      set((s) => ({
+        tabs: s.tabs.map((t) => (t.relPath === from ? { ...t, relPath: to, deleted: false } : t)),
+      }));
+    },
+
+    restore(tabs, activeId) {
+      set({
+        tabs,
+        activeId: tabs.some((t) => t.id === activeId) ? activeId : (tabs[0]?.id ?? null),
+      });
+      evictUnused(tabs);
+    },
+  };
+});
 
 export const selectActiveTab = (s: TabsState): Tab | undefined =>
   s.tabs.find((t) => t.id === s.activeId);

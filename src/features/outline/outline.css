@@ -1,0 +1,48 @@
+.outline {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.outline-filter {
+  flex: none;
+  width: auto;
+  margin: 2px 8px 4px 12px;
+}
+
+.outline-row {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  min-width: 0;
+}
+
+.outline-twisty {
+  display: inline-flex;
+  width: 16px;
+  flex: none;
+  justify-content: center;
+}
+
+.outline-twisty svg {
+  transition: transform var(--duration-fast);
+}
+
+.outline-twisty svg.open {
+  transform: rotate(90deg);
+}
+
+.outline .list-row {
+  padding-left: 4px;
+}
+
+.outline .list-label {
+  max-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .outline-twisty svg {
+    transition: none;
+  }
+}

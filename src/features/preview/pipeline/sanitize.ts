@@ -13,6 +13,8 @@ export const sanitizeSchema: Schema = {
   tagNames: [...(defaultSchema.tagNames ?? []), 'video'],
   attributes: {
     ...attrs,
+    // Source line of block elements (pipeline/lines.ts), for scroll-to-line.
+    '*': [...(attrs['*'] ?? []), 'dataLine'],
     a: [...(attrs.a ?? []), 'href', 'title'],
     code: [['className', /^language-./, 'math-inline', 'math-display']],
     div: [

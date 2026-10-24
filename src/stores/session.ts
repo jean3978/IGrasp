@@ -5,7 +5,7 @@
 import { backend } from '../ipc/client';
 import type { Session } from '../ipc/types';
 import { dirname } from '../lib/paths';
-import { newTabId, useTabs } from './tabs';
+import { isFileTab, newTabId, useTabs } from './tabs';
 import type { Tab } from './tabs';
 import { useTree } from './tree';
 import { useWorkspace } from './workspace';
@@ -19,18 +19,21 @@ let restoring = false;
 export function buildSession(): Session {
   const { tabs, activeId } = useTabs.getState();
   const tree = useTree.getState();
-  const { sidebar } = useWorkspace.getState();
-  const documents = tabs.filter((t) => t.kind === 'document' && t.relPath !== null);
+  const { sidebar, rightPanel } = useWorkspace.getState();
+  const files = tabs.filter((t) => isFileTab(t) && t.relPath !== null);
   return {
     version: 1,
-    tabs: documents.map((t) => ({
+    tabs: files.map((t) => ({
       relPath: t.relPath ?? '',
       pinned: t.pinned,
       scrollTop: t.scrollTop,
+      kind: t.kind === 'code' ? 'code' : 'document',
     })),
     activeTab: tabs.find((t) => t.id === activeId)?.relPath ?? null,
     expandedDirs: [...tree.expanded].sort(),
     sidebar: { visible: sidebar.visible, widthPx: sidebar.widthPx },
+    sidebarView: sidebar.view,
+    rightPanel: { visible: rightPanel.visible, widthPx: rightPanel.widthPx },
     showDotfiles: tree.showDotfiles,
     showIgnored: tree.showIgnored,
     savedAtMs: Date.now(),
@@ -63,6 +66,9 @@ export function applySessionLayout(session: Session | null): void {
   if (!session) return;
   useWorkspace.getState().setSidebarVisible(session.sidebar.visible);
   useWorkspace.getState().setSidebarWidth(session.sidebar.widthPx);
+  useWorkspace.setState((s) => ({ sidebar: { ...s.sidebar, view: session.sidebarView } }));
+  useWorkspace.getState().setRightPanelVisible(session.rightPanel.visible);
+  useWorkspace.getState().setRightPanelWidth(session.rightPanel.widthPx);
 }
 
 async function existingFiles(paths: string[]): Promise<Set<string>> {
@@ -81,17 +87,22 @@ async function existingFiles(paths: string[]): Promise<Set<string>> {
   return found;
 }
 
-/** Recreates tabs and expanded folders once the index is ready. Missing files are dropped. */
+/**
+ * Recreates tabs and expanded folders once the index is ready. Missing documents are dropped;
+ * code files are not indexed, so a missing one shows "not found" when its tab is first shown
+ * (checking them all here would stat every file on startup).
+ */
 export async function restoreSession(session: Session): Promise<void> {
   restoring = true;
   try {
     useTree.getState().setExpanded(session.expandedDirs);
-    const exists = await existingFiles(session.tabs.map((t) => t.relPath));
+    const documents = session.tabs.filter((t) => t.kind === 'document');
+    const exists = await existingFiles(documents.map((t) => t.relPath));
     const tabs: Tab[] = session.tabs
-      .filter((t) => exists.has(t.relPath))
+      .filter((t) => t.kind === 'code' || exists.has(t.relPath))
       .map((t) => ({
         id: newTabId(),
-        kind: 'document',
+        kind: t.kind,
         relPath: t.relPath,
         pinned: t.pinned,
         scrollTop: t.scrollTop,
@@ -152,7 +163,7 @@ export function startSessionSync(): () => void {
       }
     }),
     useWorkspace.subscribe((s, prev) => {
-      if (s.sidebar !== prev.sidebar) scheduleSave();
+      if (s.sidebar !== prev.sidebar || s.rightPanel !== prev.rightPanel) scheduleSave();
     }),
   ];
   return () => {

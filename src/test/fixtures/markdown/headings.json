@@ -1,0 +1,23 @@
+{
+  "gfm.md": ["title", "second-heading"],
+  "headings.md": [
+    "heading-edge-cases",
+    "setext-heading",
+    "second-setext",
+    "closing-hashes",
+    "emphasis-strong-and-strike",
+    "the-run-function-and-x2-math",
+    "a-link-inside",
+    "an-image--inside",
+    "inline-html-tags",
+    "escaped--hash-and--entity",
+    "footnote-reference1",
+    "-emoji-and-️-hearts",
+    "duplicate",
+    "duplicate-1",
+    "heading-in-a-list",
+    "heading-in-a-quote",
+    "heading-in-an-alert"
+  ],
+  "unsafe.md": ["unsafe"]
+}

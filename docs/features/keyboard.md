@@ -11,7 +11,15 @@ IGrasp can be used entirely from the keyboard. Press **F1** for the full list of
 | `Ctrl+,` | Settings |
 | `F1` | Keyboard shortcuts |
 | `Ctrl+B` | Show or hide the sidebar |
-| `Ctrl+Shift+E` | Focus the Explorer |
+| `Ctrl+Alt+B` | Show or hide the right panel (Outline, Backlinks) |
+| `Ctrl+Shift+E` | Explorer view |
+| `Ctrl+Shift+F` | Search view (search in files; selected text becomes the query) |
+| `Ctrl+Shift+R` | Recent Changes view |
+| `Ctrl+Shift+L` | Broken Links view |
+| `Ctrl+Shift+O` | Focus the outline (opens the right panel) |
+| `Ctrl+T` | Search everything: files and headings |
+| `Alt+←` / `Alt+→`, mouse back / forward | Back / forward through the documents read |
+| `F4` / `Shift+F4` | Next / previous search result |
 | `Ctrl+=` / `Ctrl+-` / `Ctrl+0` | Document text larger / smaller / default |
 | `Ctrl+W` | Close the tab |
 | `Ctrl+Tab`, `Ctrl+PageDown` / `Ctrl+Shift+Tab`, `Ctrl+PageUp` | Next / previous tab |
@@ -21,28 +29,48 @@ IGrasp can be used entirely from the keyboard. Press **F1** for the full list of
 | `F10` or `Alt` | Focus the menu bar |
 | `Esc` | Close menus, dialogs and full-screen views |
 
-Reserved for upcoming features (not bound yet, so they never need to be re-learned): `Ctrl+T`,
-`Ctrl+Shift+F`, `Alt+←` / `Alt+→`, `F2`, `Delete` (in the Explorer), `Ctrl+S`, `Ctrl+E`.
+In a view or dialog:
+
+| Where | Keys |
+|---|---|
+| Search view | `Alt+C` match case, `Alt+W` whole word, `Alt+R` regex; Enter searches now; ↑ / ↓ recall searches; Esc clears; Delete dismisses a result |
+| Ctrl+T dialog | ↑ / ↓, PageUp / PageDown; Enter opens, `Ctrl+Enter` keeps the tab open, `Alt+Enter` opens and keeps searching |
+| Code viewer | `Ctrl+G` go to line |
+| Links, results, backlinks | `Ctrl+click`, middle click, double click or `Ctrl+Enter` open in a kept tab |
+
+While typing in a text box, plain keys are never taken by shortcuts (F-keys and Ctrl/Alt
+combinations still work).
+
+Reserved for upcoming features (not bound yet, so they never need to be re-learned): `F2`,
+`Delete` (in the Explorer), `Ctrl+S`, `Ctrl+E`.
 
 ## Moving around
 
 - **Tab order** follows the screen: "Skip to document" link, menu bar, title-bar toolbar,
-  window controls, Explorer toolbar, file tree, sidebar resizer (arrow keys resize it), tabs,
-  then the document.
+  window controls, activity bar, the active sidebar view (its header actions, its boxes, then
+  its tree or list), sidebar resizer (arrow keys resize it), tabs, the document, the right
+  panel resizer and the right panel (Outline, then Backlinks), then the status bar items.
+- **Activity bar**: one tab stop; ↑ / ↓ move between views, Enter or Space opens one.
 - **Explorer**: the tree follows the WAI-ARIA tree pattern (arrows, Home/End, Enter, Space, `*`,
   type-ahead). See [file-tree.md](file-tree.md).
+- **Search results, Broken links, Outline, Recent changes, Backlinks**: the same list and tree
+  keys (arrows, Home/End, PageUp/PageDown, ← / → to collapse or expand, Enter to open and keep,
+  Space to preview).
+- **Ctrl+T** follows the combobox pattern (`aria-activedescendant`), search status changes are
+  announced politely.
 - **Tabs**: ← / → move between tabs, Enter activates, Delete closes.
 - **Document**: the preview is focusable, so PageUp / PageDown / arrows scroll it. Code blocks are
   focusable to scroll them horizontally. Mermaid diagrams have their own keys (`+`, `-`, `F`, `0`,
   Enter).
 - **Menus and dialogs** (radix-ui) trap focus, close with Esc and return focus where it was.
 
-## Accessibility checklist (phase 1)
+## Accessibility checklist
 
 | Area | How it is handled |
 |---|---|
-| Focus visibility | Every focusable element shows a focus ring (`:focus-visible`), 3 px yellow in High Contrast. The tree shows focus on the active row. |
-| Roles and names | Title bar menus (`menubar`), Explorer (`tree`), tabs (`tablist`), notifications (`region` + `aria-live="polite"`), status bar, icon buttons with labels and tooltips, task-list checkboxes with "Done / Not done" labels, MathML kept next to KaTeX output. |
+| Focus visibility | Every focusable element shows a focus ring (`:focus-visible`), 3 px yellow in High Contrast. Trees and lists show focus on the active row. |
+| Roles and names | Title bar menus (`menubar`), activity bar and tabs (`tablist`), Explorer, search results, outline and broken links (`tree`), backlinks (`list`), Ctrl+T (`combobox` + `listbox`), notifications (`region` + `aria-live="polite"`), view status lines such as "12 results in 4 files" (`status`, announced politely), status bar, icon buttons with labels and tooltips, task-list checkboxes with "Done / Not done" labels, MathML kept next to KaTeX output. |
 | Contrast | Measured with an automated check in every theme: all body, UI and code text is at least 4.5:1 (WCAG AA) in Light and Dark and at least 9:1 in High Contrast; Mermaid labels 12:1 or more. Code uses GitHub's Primer themes (`github-light-default`, `github-dark-default`, `github-dark-high-contrast`). |
-| Motion | `prefers-reduced-motion` turns off the splash animation (static logo), toast animations and transitions. |
+| Motion | `prefers-reduced-motion` turns off the splash animation (static logo), toast animations and transitions; the flash of a heading you jump to becomes a static highlight. |
+| Highlights (phase 2) | Search matches and broken-link underlines have their own tokens in each theme; matches carry a border or underline with at least 3:1 contrast against the page. |
 | Zoom | Document text size is adjustable from 12 to 24 px; the UI follows the system scale factor. |

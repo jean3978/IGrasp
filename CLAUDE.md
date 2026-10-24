@@ -20,21 +20,27 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 | Frontend unit tests | `npm test` (Vitest + jsdom) |
 | End-to-end smoke tests | `npm run test:e2e` (Playwright, production build, mock backend) |
 | Rust tests | `npm run rust:test` (also regenerates `src/ipc/generated`) |
+| Performance tests (10k documents) | `cargo test --release --manifest-path src-tauri/Cargo.toml -- --ignored --nocapture` |
+| Large project to open in the app | `node scripts/gen-large-project.mjs [folder]` |
 | Lint / format | `npm run lint`, `npm run format`, `npm run rust:fmt`, `npm run rust:clippy` |
 
 ## Project structure
 
-- `src-tauri/src/`: `commands/` (IPC commands), `index/` (model, scanner, watcher), `appdata/`
-  (settings, recents, sessions as JSON), `paths.rs` (root guard), `state.rs`, `error.rs`.
+- `src-tauri/src/`: `commands/` (IPC commands), `index/` (model, scanner, watcher), `graph/`
+  (document graph: parser, slugger, link resolution, build and incremental updates), `search/`
+  (Ctrl+T symbols, full-text search, globs), `appdata/` (settings, recents, sessions as JSON),
+  `paths.rs` (root guard), `state.rs`, `error.rs`, `perf.rs` (ignored performance tests).
 - `src/ipc/`: `types.ts` (the `Backend` interface), `tauri.ts` (the only module that calls
   `invoke`/`listen` or imports `@tauri-apps/*`), `mock/` (in-memory backend + fixture project),
   `generated/` (ts-rs output: never edit by hand).
 - `src/stores/`: zustand stores; `eventBridge.ts` routes backend events to them; `session.ts`
   saves and restores per-folder state.
-- `src/features/<area>/`: UI by feature, with its CSS next to it.
+- `src/features/<area>/`: UI by feature, with its CSS next to it. Sidebar views and right-panel
+  sections build on `src/components/VirtualRows.tsx` (virtualized rows, keyboard focus).
 - `src/features/titlebar/menuActions.ts`: every user action. Menus, toolbar buttons and
   shortcuts (`features/shortcuts/keymap.ts`) dispatch through it.
-- `e2e/`: Playwright smoke tests. `docs/`: architecture, ADRs, feature pages.
+- `e2e/`: Playwright smoke tests. `scripts/`: the large-project generator. `docs/`:
+  architecture, ADRs, feature pages, and one implementation plan per phase in `docs/plan/`.
 
 ## IPC conventions
 
@@ -46,7 +52,13 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 - Errors are `AppError` → `{ code, message }` → `BackendError` in TypeScript.
 - Every scan has a generation; events and listings of an older generation are ignored.
 - When adding a command, implement it in Rust, in `ipc/tauri.ts` and in `ipc/mock/` (the mock
-  must behave like Rust: it powers the browser dev mode and all frontend tests).
+  must behave like Rust: it powers the browser dev mode and all frontend tests). The mock's
+  graph, symbol search and text search live in `mockGraph.ts`, `mockSymbols.ts`, `mockText.ts`.
+- Heading anchors must stay identical between Rust and the preview: `src/test/fixtures/slugs.json`
+  and `src/test/fixtures/markdown/headings.json` are asserted by both `cargo test` and Vitest.
+  When a markdown fixture changes, update `headings.json` with what the Vitest test receives.
+- `cargo test` filtered by name skips the ts-rs export tests: run it unfiltered before committing
+  so `src/ipc/generated` is current.
 
 ## Coding conventions
 
