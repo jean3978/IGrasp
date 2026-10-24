@@ -1,0 +1,72 @@
+# CLAUDE.md
+
+Guidance for AI coding sessions working on IGrasp.
+
+## What this is
+
+IGrasp is a Tauri v2 desktop app (Windows + Linux) that shows only the markdown files of a folder
+hierarchy, with a reading experience designed to help a human grasp what AI agents write in a
+project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Read
+`docs/architecture.md` first.
+
+## Commands
+
+| Task | Command |
+|---|---|
+| Install | `npm install` |
+| Run the app | `npm run tauri dev` |
+| Frontend only, mock backend, in a browser | `npm run dev` (http://localhost:1420) |
+| Everything a commit must pass | `npm run check` |
+| Frontend unit tests | `npm test` (Vitest + jsdom) |
+| End-to-end smoke tests | `npm run test:e2e` (Playwright, production build, mock backend) |
+| Rust tests | `npm run rust:test` (also regenerates `src/ipc/generated`) |
+| Lint / format | `npm run lint`, `npm run format`, `npm run rust:fmt`, `npm run rust:clippy` |
+
+## Project structure
+
+- `src-tauri/src/`: `commands/` (IPC commands), `index/` (model, scanner, watcher), `appdata/`
+  (settings, recents, sessions as JSON), `paths.rs` (root guard), `state.rs`, `error.rs`.
+- `src/ipc/`: `types.ts` (the `Backend` interface), `tauri.ts` (the only module that calls
+  `invoke`/`listen` or imports `@tauri-apps/*`), `mock/` (in-memory backend + fixture project),
+  `generated/` (ts-rs output: never edit by hand).
+- `src/stores/`: zustand stores; `eventBridge.ts` routes backend events to them; `session.ts`
+  saves and restores per-folder state.
+- `src/features/<area>/`: UI by feature, with its CSS next to it.
+- `src/features/titlebar/menuActions.ts`: every user action. Menus, toolbar buttons and
+  shortcuts (`features/shortcuts/keymap.ts`) dispatch through it.
+- `e2e/`: Playwright smoke tests. `docs/`: architecture, ADRs, feature pages.
+
+## IPC conventions
+
+- Paths sent to Rust are **root-relative with `/` separators** (`""` is the root); only
+  `open_root` takes an absolute path. Rust resolves them through `RootGuard`.
+- Types crossing IPC are Rust structs with `#[derive(Serialize, TS)]`,
+  `#[serde(rename_all = "camelCase")]` and `#[ts(export)]`; `cargo test` writes them to
+  `src/ipc/generated`, and CI fails if they are out of date. `u64`/`i64` map to `number`.
+- Errors are `AppError` → `{ code, message }` → `BackendError` in TypeScript.
+- Every scan has a generation; events and listings of an older generation are ignored.
+- When adding a command, implement it in Rust, in `ipc/tauri.ts` and in `ipc/mock/` (the mock
+  must behave like Rust: it powers the browser dev mode and all frontend tests).
+
+## Coding conventions
+
+- TypeScript strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`). No `any`
+  without an `eslint-disable-next-line` comment explaining why.
+- Store actions are function-typed properties (not methods), and IPC calls live in stores, not
+  components.
+- Colors only through the CSS tokens in `src/styles`; check all three themes.
+- Rust edition 2024, `unsafe_code` denied, clippy clean with `-D warnings`, errors through
+  `AppError`.
+- Untrusted markdown: anything new in the preview must keep sanitization before trusted
+  generators (ADR 0003) and must never let the webview navigate.
+
+## Workflow
+
+- Conventional Commits, small focused commits that each pass `npm run check`, with a
+  `Co-Authored-By:` trailer on AI commits.
+- One branch per delivery phase (`phase-1-mvp`, …), merged into `main` and tagged when the phase
+  is done. Never push, merge, tag or publish a release without the maintainer asking.
+- Nothing the app does may write inside the opened folder; app state lives in the OS app-data
+  folder.
+- Keep docs current: `docs/architecture.md`, the `docs/features/` page of the area you touch, an
+  ADR in `docs/decisions/` for significant choices, and `CHANGELOG.md` under `[Unreleased]`.

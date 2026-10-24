@@ -1,0 +1,123 @@
+.mermaid-viewer {
+  position: relative;
+  margin-bottom: 16px;
+  border: var(--border-width) solid var(--md-border);
+  border-radius: var(--radius-l);
+  background: var(--bg-editor);
+}
+
+.mermaid-viewer:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 2px;
+}
+
+.mermaid-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 640px;
+  cursor: grab;
+}
+
+.mermaid-canvas:active {
+  cursor: grabbing;
+}
+
+.mermaid-content {
+  padding: 16px;
+}
+
+.mermaid-svg svg {
+  display: block;
+  max-width: none !important;
+  height: auto;
+}
+
+.mermaid-toolbar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-m);
+  background: var(--bg-overlay);
+  box-shadow: var(--shadow-menu);
+  opacity: 0;
+  transition: opacity var(--duration-fast);
+}
+
+.mermaid-viewer:hover .mermaid-toolbar,
+.mermaid-viewer:focus-within .mermaid-toolbar,
+.mermaid-viewer-fullscreen .mermaid-toolbar {
+  opacity: 1;
+}
+
+.mermaid-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  margin-bottom: 16px;
+  border: var(--border-width) dashed var(--md-border);
+  border-radius: var(--radius-l);
+  color: var(--fg-muted);
+  font-size: 0.9em;
+}
+
+.mermaid-error {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: var(--border-width) solid var(--danger);
+  border-radius: var(--radius-l);
+  background: var(--danger-bg);
+  font-size: 0.9em;
+}
+
+.mermaid-error-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 8px;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.mermaid-error-title svg {
+  width: 16px;
+  height: 16px;
+}
+
+.markdown-body .mermaid-error pre {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+}
+
+/* Full screen: a window-sized overlay, not the browser Fullscreen API. */
+.mermaid-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  background: var(--bg-backdrop);
+}
+
+.mermaid-fullscreen {
+  position: fixed;
+  inset: 16px;
+  z-index: 4001;
+  display: flex;
+  outline: none;
+}
+
+.mermaid-viewer-fullscreen {
+  display: flex;
+  flex: 1;
+  margin: 0;
+  box-shadow: var(--shadow-dialog);
+}
+
+.mermaid-viewer-fullscreen .mermaid-canvas {
+  height: 100% !important;
+  max-height: none;
+}

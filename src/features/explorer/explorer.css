@@ -1,0 +1,145 @@
+.explorer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.explorer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 35px;
+  flex: none;
+  padding: 0 4px 0 12px;
+}
+
+.explorer-title {
+  overflow: hidden;
+  margin: 0;
+  color: var(--fg-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.explorer-actions {
+  display: flex;
+  gap: 1px;
+  opacity: 0.85;
+}
+
+.explorer:hover .explorer-actions,
+.explorer-actions:focus-within {
+  opacity: 1;
+}
+
+.explorer-status {
+  padding: 4px 12px 8px;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.explorer-status-error {
+  color: var(--danger);
+}
+
+.file-tree {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Keyboard focus is shown on the active row (aria-activedescendant), not around the tree. */
+.file-tree:focus-visible {
+  outline: none;
+}
+
+.tree-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  width: 100%;
+  height: var(--tree-row-height);
+  padding-right: 8px;
+  border: var(--border-width) solid transparent;
+  color: var(--fg);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tree-row:hover {
+  background: var(--bg-hover);
+}
+
+.tree-row-active {
+  background: var(--bg-selection);
+  color: var(--fg-strong);
+}
+
+.file-tree:focus-visible .tree-row-focused {
+  border-color: var(--focus);
+  border-width: var(--focus-width);
+}
+
+.file-tree:focus .tree-row-focused.tree-row-active {
+  background: var(--bg-selection-focus);
+}
+
+.tree-row-hidden .tree-label,
+.tree-row-hidden .tree-icon {
+  opacity: 0.6;
+}
+
+.tree-row-loading {
+  color: var(--fg-muted);
+  cursor: default;
+}
+
+.tree-twisty {
+  display: inline-flex;
+  width: 16px;
+  flex: none;
+  justify-content: center;
+}
+
+.tree-twisty svg,
+.tree-icon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.tree-twisty svg {
+  transition: transform var(--duration-fast);
+}
+
+.tree-twisty svg.open {
+  transform: rotate(90deg);
+}
+
+.tree-icon {
+  color: var(--info);
+}
+
+.tree-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

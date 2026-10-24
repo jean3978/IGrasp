@@ -1,0 +1,30 @@
+/* Theme-independent design tokens. Colors live in themes/*.css. */
+:root {
+  --font-ui: 'Segoe UI', system-ui, Ubuntu, Cantarell, 'Noto Sans', sans-serif;
+  --font-mono: 'Cascadia Code', Consolas, 'DejaVu Sans Mono', 'Liberation Mono', monospace;
+  --font-size-ui: 13px;
+  --font-size-small: 12px;
+
+  --titlebar-height: 32px;
+  --statusbar-height: 22px;
+  --tabbar-height: 35px;
+  --tree-row-height: 22px;
+
+  --radius-s: 3px;
+  --radius-m: 6px;
+  --radius-l: 10px;
+
+  --border-width: 1px;
+  --focus-width: 1px;
+  --focus-offset: -1px;
+
+  --shadow-menu: 0 2px 8px rgb(0 0 0 / 0.25);
+  --shadow-dialog: 0 8px 32px rgb(0 0 0 / 0.35);
+
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+
+  /* Preview typography, driven by settings. */
+  --preview-font-size: 16px;
+  --reading-width: 860px;
+}

@@ -1,0 +1,196 @@
+.titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--titlebar-height);
+  flex: none;
+  border-bottom: var(--border-width) solid var(--border);
+  background: var(--bg-titlebar);
+  color: var(--fg);
+  app-region: drag;
+}
+
+.titlebar[data-inactive] .titlebar-start,
+.titlebar[data-inactive] .titlebar-title,
+.titlebar[data-inactive] .toolbar {
+  opacity: var(--titlebar-inactive-opacity);
+}
+
+.titlebar button,
+.titlebar [role='menubar'] {
+  app-region: no-drag;
+}
+
+.titlebar-start,
+.titlebar-end {
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.titlebar-logo {
+  width: 16px;
+  height: 16px;
+  margin: 0 6px 0 10px;
+  color: var(--accent);
+  pointer-events: none;
+}
+
+.titlebar-title {
+  position: absolute;
+  inset: 0 30%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: var(--font-size-small);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.menubar {
+  display: flex;
+  height: 100%;
+  align-items: center;
+}
+
+.menubar-trigger {
+  height: 24px;
+  padding: 0 8px;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-m);
+  background: transparent;
+  font-size: var(--font-size-ui);
+  cursor: default;
+}
+
+.menubar-trigger:hover,
+.menubar-trigger[data-highlighted],
+.menubar-trigger[data-state='open'] {
+  background: var(--bg-hover);
+}
+
+/* Mnemonics are underlined only while Alt is held (VS Code / Windows behavior). */
+.mnemonic {
+  text-decoration: none;
+}
+
+[data-show-mnemonics] .mnemonic {
+  text-decoration: underline;
+}
+
+.toolbar {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  margin-right: 6px;
+}
+
+.window-controls {
+  display: flex;
+  height: 100%;
+}
+
+.window-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+}
+
+.window-control svg {
+  width: 10px;
+  height: 10px;
+}
+
+.window-control:hover {
+  background: var(--bg-hover);
+}
+
+.window-control-close:hover {
+  background: var(--window-close-hover);
+  color: #ffffff;
+}
+
+.resize-handles {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  pointer-events: none;
+}
+
+.resize-handle {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.resize-n,
+.resize-s {
+  left: 8px;
+  right: 8px;
+  height: 5px;
+  cursor: ns-resize;
+}
+
+.resize-n {
+  top: 0;
+}
+
+.resize-s {
+  bottom: 0;
+}
+
+.resize-e,
+.resize-w {
+  top: 8px;
+  bottom: 8px;
+  width: 5px;
+  cursor: ew-resize;
+}
+
+.resize-e {
+  right: 0;
+}
+
+.resize-w {
+  left: 0;
+}
+
+.resize-ne,
+.resize-nw,
+.resize-se,
+.resize-sw {
+  width: 8px;
+  height: 8px;
+}
+
+.resize-ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.resize-sw {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.resize-nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.resize-se {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+}

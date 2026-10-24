@@ -1,0 +1,123 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.workspace {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-sidebar);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  background: var(--bg-editor);
+}
+
+.sash {
+  position: relative;
+  width: var(--border-width);
+  background: var(--border);
+  outline: none;
+}
+
+/* A wider invisible hit area around the 1px line. */
+.sash::after {
+  content: '';
+  position: absolute;
+  inset: 0 -3px;
+  z-index: 10;
+}
+
+.sash[data-separator='hover'],
+.sash[data-separator='active'],
+.sash:focus-visible {
+  background: var(--accent);
+}
+
+.statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--statusbar-height);
+  flex: none;
+  padding: 0 8px;
+  border-top: var(--border-width) solid var(--border);
+  background: var(--bg-statusbar);
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.statusbar-start,
+.statusbar-end {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.statusbar-item {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.statusbar-item svg {
+  width: 14px;
+  height: 14px;
+}
+
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 8px;
+  z-index: 3000;
+  padding: 6px 12px;
+  border-radius: var(--radius-m);
+  background: var(--accent);
+  color: var(--fg-on-accent);
+}
+
+.skip-link:focus {
+  top: 4px;
+}
+
+.statusbar-warning {
+  color: var(--warning);
+}
+
+.statusbar-button {
+  padding: 0 4px;
+  border: none;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+}
+
+.statusbar-button:hover {
+  background: var(--bg-hover);
+}
+
+.main.standalone {
+  flex: 1;
+}

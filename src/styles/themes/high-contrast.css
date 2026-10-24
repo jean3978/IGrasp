@@ -1,0 +1,53 @@
+/* Pure black and white, strong borders, a thick yellow focus ring and no transparency. */
+[data-theme='high-contrast'] {
+  color-scheme: dark;
+
+  --bg-titlebar: #000000;
+  --bg-sidebar: #000000;
+  --bg-editor: #000000;
+  --bg-tab-inactive: #000000;
+  --bg-tab-active: #000000;
+  --bg-statusbar: #000000;
+  --bg-overlay: #000000;
+  --bg-input: #000000;
+  --bg-hover: #1a1a1a;
+  --bg-active: #333333;
+  --bg-selection: #333333;
+  --bg-selection-focus: #333333;
+  --bg-code: #000000;
+  --bg-backdrop: #000000;
+
+  --fg: #ffffff;
+  --fg-strong: #ffffff;
+  --fg-muted: #ffffff;
+  --fg-disabled: #a6a6a6;
+  --fg-on-accent: #000000;
+
+  --border: #ffffff;
+  --border-strong: #ffffff;
+  --accent: #ffff00;
+  --accent-hover: #ffff66;
+  --focus: #ffff00;
+  --link: #66b2ff;
+
+  --success: #6cf06c;
+  --info: #66b2ff;
+  --warning: #ffd700;
+  --danger: #ff7070;
+  --success-bg: #000000;
+  --info-bg: #000000;
+  --warning-bg: #000000;
+  --danger-bg: #000000;
+
+  --border-width: 2px;
+  --focus-width: 3px;
+  --focus-offset: 0px;
+  --shadow-menu: none;
+  --shadow-dialog: none;
+  --titlebar-inactive-opacity: 1;
+  --window-close-hover: #ff0000;
+}
+
+[data-theme='high-contrast'] a {
+  text-decoration: underline;
+}
