@@ -4,6 +4,7 @@ import { memo, useMemo } from 'react';
 import type { ComponentProps } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { Alert } from './components/Alert';
+import { CodeBlock } from './components/CodeBlock';
 import { FrontMatterCard } from './components/FrontMatterCard';
 import { ALERT_TYPES } from './pipeline/alerts';
 import type { AlertType } from './pipeline/alerts';
@@ -35,6 +36,7 @@ function TaskCheckbox(props: ComponentProps<'input'>) {
 const components: Partial<Components> = {
   div: Div,
   input: TaskCheckbox,
+  pre: CodeBlock,
 };
 
 interface MarkdownPreviewProps {

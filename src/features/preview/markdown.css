@@ -364,3 +364,77 @@
 .fm-null {
   color: var(--fg-muted);
 }
+
+/* Code blocks: Shiki emits every theme as CSS variables; pick the one of the app theme. */
+.code-block {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.markdown-body .code-block pre {
+  margin-bottom: 0;
+}
+
+.markdown-body .shiki,
+.markdown-body .shiki span {
+  color: var(--shiki-light);
+}
+
+[data-theme='dark'] .markdown-body .shiki,
+[data-theme='dark'] .markdown-body .shiki span {
+  color: var(--shiki-dark);
+}
+
+[data-theme='high-contrast'] .markdown-body .shiki,
+[data-theme='high-contrast'] .markdown-body .shiki span {
+  color: var(--shiki-hc);
+}
+
+.markdown-body .shiki span {
+  font-style: var(--shiki-light-font-style);
+  font-weight: var(--shiki-light-font-weight);
+}
+
+.code-block-tools {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  opacity: 0;
+  transition: opacity var(--duration-fast);
+}
+
+.code-block:hover .code-block-tools,
+.code-block:focus-within .code-block-tools {
+  opacity: 1;
+}
+
+.code-block-lang {
+  color: var(--fg-muted);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-small);
+}
+
+.code-block-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-m);
+  background: var(--bg-editor);
+  color: var(--fg);
+}
+
+.code-block-copy:hover {
+  background: var(--bg-hover);
+}
+
+.code-block-copy svg {
+  width: 14px;
+  height: 14px;
+}

@@ -15,6 +15,7 @@ import { unified } from 'unified';
 import { VFile } from 'vfile';
 import { alertOptions } from './alerts';
 import { remarkExtractFrontMatter } from './frontmatter';
+import { highlightCode } from './highlight';
 import type { FrontMatter } from './frontmatter';
 import { sanitizeSchema } from './sanitize';
 
@@ -46,6 +47,7 @@ export async function renderMarkdown(content: string): Promise<RenderedMarkdown>
   const mdast = parser.parse(file);
   const transformedMdast = (await parser.run(mdast, file)) as MdastRoot;
   const hast = await transformer.run(transformedMdast, file);
-  // Trusted generators run after sanitization (added with math and code highlighting).
+  // Trusted generators run after sanitization, so their markup is never stripped.
+  await highlightCode(hast);
   return { hast, frontMatter: file.data.frontMatter ?? null };
 }
