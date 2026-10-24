@@ -804,6 +804,153 @@ mod tests {
         );
     }
 
+    fn edit_of(hunks: Vec<EditHunk>, whole_file: bool) -> PermissionDecision {
+        PermissionDecision::Allow {
+            updated_edit: Some(ProposedEdit {
+                path: "notes.md".into(),
+                is_markdown: true,
+                whole_file,
+                hunks,
+            }),
+        }
+    }
+
+    /// A two-place change accepted in part: the file on disk holds the accepted change only.
+    /// Prints the tool the CLI used, the evidence recorded in ADR 0019.
+    #[test]
+    #[ignore = "spawns the real claude CLI (needs a login, costs tokens)"]
+    fn partial_accept_writes_only_the_accepted_hunk() {
+        let dir = tempfile::tempdir().unwrap();
+        let notes = dir.path().join("notes.md");
+        let original = "# Notes\n\nAlpha line.\n\nMiddle text that stays.\n\nOmega line.\n";
+        std::fs::write(&notes, original).unwrap();
+        let prompt = "In notes.md make exactly two changes: replace \"Alpha line.\" with \
+                      \"Alpha changed.\" and replace \"Omega line.\" with \"Omega changed.\". \
+                      Make both changes in one tool call (MultiEdit if you have it), otherwise \
+                      one Edit call per change. Do not explain, and do not retry a refused change.";
+        let mut tools = Vec::new();
+        let (_, outcome, _) = run_turn(
+            dir.path(),
+            &TurnRequest {
+                prompt: prompt.into(),
+                model: Some("haiku".into()),
+                ..TurnRequest::default()
+            },
+            4,
+            |turn, request| {
+                let tool = request.tool_name.as_str();
+                tools.push(tool.to_owned());
+                let proposed = protocol::proposed_edit(tool, &request.input, dir.path());
+                let decision = match (tool, proposed) {
+                    ("MultiEdit", Some(edit)) => {
+                        assert_eq!(edit.hunks.len(), 2, "two hunks: {:?}", request.input);
+                        let alpha = edit
+                            .hunks
+                            .into_iter()
+                            .filter(|h| h.old_text.contains("Alpha"))
+                            .collect();
+                        edit_of(alpha, false)
+                    }
+                    ("Edit", Some(edit)) if edit.hunks[0].old_text.contains("Omega") => {
+                        PermissionDecision::Deny {
+                            message: REJECTED_BY_USER.into(),
+                        }
+                    }
+                    ("Edit", Some(edit)) => {
+                        assert!(
+                            !edit.hunks[0].old_text.contains("Omega"),
+                            "one Edit spans both places: {:?}",
+                            request.input
+                        );
+                        // A single Edit accepted as proposed is the same input; a different
+                        // new text shows whether the CLI runs `updatedInput` or the original.
+                        edit_of(
+                            vec![EditHunk {
+                                old_text: edit.hunks[0].old_text.clone(),
+                                new_text: edit.hunks[0].new_text.replace("changed", "accepted"),
+                            }],
+                            false,
+                        )
+                    }
+                    ("Write", Some(_)) => edit_of(
+                        vec![EditHunk {
+                            old_text: String::new(),
+                            new_text: original.replace("Alpha line.", "Alpha accepted."),
+                        }],
+                        true,
+                    ),
+                    _ => PermissionDecision::Deny {
+                        message: REJECTED_BY_USER.into(),
+                    },
+                };
+                turn.respond(&request.request_id, &decision).unwrap();
+            },
+        );
+        let on_disk = std::fs::read_to_string(&notes).unwrap();
+        eprintln!(
+            "partial accept: CLI {:?}, tools {tools:?}, file now {on_disk:?}",
+            cli::status().version
+        );
+        assert_eq!(outcome, TurnOutcome::Completed);
+        assert!(!tools.is_empty(), "the CLI asked for a permission");
+        assert!(
+            on_disk.contains("Omega line."),
+            "the rejected hunk is not applied"
+        );
+        assert!(!on_disk.contains("Omega changed."));
+        assert!(
+            on_disk.contains("Alpha changed.") || on_disk.contains("Alpha accepted."),
+            "the accepted hunk is applied"
+        );
+        if tools.iter().any(|t| t != "MultiEdit") {
+            assert!(
+                on_disk.contains("Alpha accepted."),
+                "updatedInput is honoured"
+            );
+        }
+    }
+
+    /// A `Write` accepted in part runs with the content the review composed.
+    #[test]
+    #[ignore = "spawns the real claude CLI (needs a login, costs tokens)"]
+    fn write_runs_with_the_composed_content() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("summary.md");
+        let mut tools = Vec::new();
+        let (_, outcome, _) = run_turn(
+            dir.path(),
+            &TurnRequest {
+                prompt: "Create summary.md with the Write tool, containing exactly the line \
+                         \"draft\". Do not explain, and do not retry if it is refused."
+                    .into(),
+                model: Some("haiku".into()),
+                ..TurnRequest::default()
+            },
+            5,
+            |turn, request| {
+                tools.push(request.tool_name.clone());
+                let decision = if request.tool_name == "Write" {
+                    edit_of(
+                        vec![EditHunk {
+                            old_text: String::new(),
+                            new_text: "composed\n".into(),
+                        }],
+                        true,
+                    )
+                } else {
+                    PermissionDecision::Deny {
+                        message: REJECTED_BY_USER.into(),
+                    }
+                };
+                turn.respond(&request.request_id, &decision).unwrap();
+            },
+        );
+        eprintln!("write: tools {tools:?}");
+        assert_eq!(outcome, TurnOutcome::Completed);
+        assert_eq!(tools, ["Write"]);
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "composed\n");
+    }
+
     #[test]
     #[ignore = "spawns the real claude CLI (needs a login, costs tokens)"]
     fn cancel_kills_the_process_while_a_permission_is_pending() {

@@ -522,6 +522,16 @@ mod tests {
             input,
             json!({ "file_path": "/p/a.md", "content": "composed" })
         );
+        assert!(tool_input_for("Write", &write, &edit(true, vec![])).is_none());
+        // An Edit has a single hunk to accept; two cannot be expressed.
+        assert!(
+            tool_input_for(
+                "Edit",
+                &original,
+                &edit(false, vec![hunk("a", "b"), hunk("c", "d")])
+            )
+            .is_none()
+        );
         assert!(
             tool_input_for(
                 "Bash",
