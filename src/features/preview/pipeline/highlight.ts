@@ -8,9 +8,11 @@ import type { Element, Nodes, Root } from 'hast';
 import type { HighlighterCore } from 'shiki/core';
 import { visit } from 'unist-util-visit';
 
+// GitHub's current (Primer) palettes: the older github-light/github-dark themes have tokens
+// below the WCAG AA contrast ratio on the code background.
 export const SHIKI_THEMES = {
-  light: 'github-light',
-  dark: 'github-dark',
+  light: 'github-light-default',
+  dark: 'github-dark-default',
   hc: 'github-dark-high-contrast',
 } as const;
 
@@ -28,8 +30,8 @@ function getHighlighter(): Promise<HighlighterCore> {
     ]);
     return createHighlighterCore({
       themes: [
-        import('@shikijs/themes/github-light'),
-        import('@shikijs/themes/github-dark'),
+        import('@shikijs/themes/github-light-default'),
+        import('@shikijs/themes/github-dark-default'),
         import('@shikijs/themes/github-dark-high-contrast'),
       ],
       langs: [],

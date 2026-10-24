@@ -11,3 +11,4 @@ are updated together with the code.
 | [live-reload-and-toasts.md](live-reload-and-toasts.md) | Watching the folder, live reload, change notifications |
 | [themes-and-settings.md](themes-and-settings.md) | Themes and the Settings tab |
 | [tabs-and-session.md](tabs-and-session.md) | VS Code-style tabs and per-folder session restore |
+| [keyboard.md](keyboard.md) | Keyboard shortcuts and accessibility |

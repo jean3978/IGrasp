@@ -31,7 +31,7 @@ export function WorkspaceLayout({ sidebar, main }: WorkspaceLayoutProps) {
               {sidebar}
             </aside>
           </Panel>
-          <Separator className="sash" />
+          <Separator className="sash" aria-label="Resize the sidebar" />
         </>
       )}
       <Panel id="main" minSize={300}>
