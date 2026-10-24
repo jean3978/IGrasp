@@ -4,18 +4,19 @@
 use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use super::estimate::estimate;
 use super::policy::{
     AiPermissionSettings, DENIED_BY_SETTINGS, DENIED_READ_ONLY, PermissionRule,
     REASON_ALLOWED_BY_SETTINGS, REASON_DENIED_BY_SETTINGS, REASON_READ_ONLY, decide,
 };
-use super::providers::claude_cli::ClaudeCliProvider;
 use super::types::{
     AiCapabilities, AiEvent, AiPermissionKind, AiPolicy, AiProviderStatus, AiRequest, AiUserAction,
     PermissionDecision, ProposedEdit,
 };
-use super::{AiOperation, AiProvider};
+use super::{AiOperation, AiProvider, DEFAULT_PROVIDER_ID, build_provider};
+use crate::appdata::settings::Settings;
 use crate::error::{AppError, AppResult};
 
 struct Running {
@@ -79,8 +80,15 @@ fn answer_automatically(
     }
 }
 
+/// How long a status check is reused: a check costs the provider's probes (for the Claude CLI,
+/// two processes). "Check again" bypasses it.
+pub const STATUS_CACHE: Duration = Duration::from_secs(60);
+
 pub struct AiGateway {
-    provider: Box<dyn AiProvider>,
+    /// The provider chosen in the settings; swapped only while nothing runs.
+    provider: Mutex<Arc<dyn AiProvider>>,
+    /// The last status check and when it was made.
+    status_cache: Mutex<Option<(Instant, AiProviderStatus)>>,
     running: Slot,
     next_id: AtomicU32,
     /// Operations started so far (for the "no call without a user action" tests).
@@ -88,26 +96,74 @@ pub struct AiGateway {
 }
 
 impl AiGateway {
-    /// The app's gateway: Claude through its CLI, the only provider for now.
-    pub fn with_default_provider() -> Self {
-        Self::new(Box::new(ClaudeCliProvider::new()))
+    /// The gateway with the provider named by `settings.ai.provider`; an id this version does
+    /// not know falls back to the default provider.
+    pub fn from_settings(settings: &Settings) -> Self {
+        let id = settings.ai.provider.as_str();
+        let provider = build_provider(id).unwrap_or_else(|| {
+            log::warn!("unknown AI provider {id:?}; using {DEFAULT_PROVIDER_ID}");
+            build_provider(DEFAULT_PROVIDER_ID).expect("the default provider exists")
+        });
+        Self::new(provider)
     }
 
     pub fn new(provider: Box<dyn AiProvider>) -> Self {
         Self {
-            provider,
+            provider: Mutex::new(Arc::from(provider)),
+            status_cache: Mutex::default(),
             running: Arc::default(),
             next_id: AtomicU32::new(0),
             starts: AtomicU32::new(0),
         }
     }
 
-    pub fn status(&self) -> AiProviderStatus {
-        self.provider.status()
+    fn provider(&self) -> Arc<dyn AiProvider> {
+        lock(&self.provider).clone()
+    }
+
+    /// The id of the active provider.
+    pub fn provider_id(&self) -> &'static str {
+        self.provider().id()
+    }
+
+    /// Switches to the provider `id`. Refused while an operation runs (it belongs to the
+    /// current provider) and for an id this version does not know.
+    pub fn set_provider(&self, id: &str) -> AppResult<()> {
+        let running = lock(&self.running);
+        if running.as_ref().is_some_and(|r| !r.operation.is_done()) {
+            return Err(AppError::Ai(
+                "The AI provider cannot change while an operation runs; stop it first.".to_owned(),
+            ));
+        }
+        if self.provider_id() == id {
+            return Ok(());
+        }
+        let provider =
+            build_provider(id).ok_or_else(|| AppError::Ai(format!("Unknown AI provider: {id}")))?;
+        log::info!("ai provider: {} → {id}", self.provider_id());
+        *lock(&self.provider) = Arc::from(provider);
+        lock(&self.status_cache).take();
+        Ok(())
+    }
+
+    /// Whether the provider can be used. Reuses a check younger than [`STATUS_CACHE`] unless
+    /// `force`. May run the provider's probes: call it from a blocking thread.
+    pub fn status(&self, force: bool) -> AiProviderStatus {
+        let provider = self.provider();
+        if !force
+            && let Some((at, status)) = lock(&self.status_cache).as_ref()
+            && at.elapsed() < STATUS_CACHE
+            && status.provider_id == provider.id()
+        {
+            return status.clone();
+        }
+        let status = provider.status();
+        *lock(&self.status_cache) = Some((Instant::now(), status.clone()));
+        status
     }
 
     pub fn capabilities(&self) -> AiCapabilities {
-        self.provider.capabilities()
+        self.provider().capabilities()
     }
 
     #[cfg(test)]
@@ -136,6 +192,7 @@ impl AiGateway {
             ));
         }
         let id = self.next_id.fetch_add(1, Ordering::SeqCst) + 1;
+        let provider = self.provider();
         let policy = request.policy;
         let size = estimate(
             request.prompt.len() as u64,
@@ -145,8 +202,8 @@ impl AiGateway {
         log::info!(
             "ai operation {id}: {action:?} with {} ({}, model {:?}, policy {policy:?}, \
              permissions {permissions:?}, {} documents, {} images, ~{} tokens, {:?})",
-            self.provider.display_name(),
-            self.provider.id(),
+            provider.display_name(),
+            provider.id(),
             request.model,
             size.documents,
             size.images,
@@ -154,7 +211,7 @@ impl AiGateway {
             size.bucket,
         );
         let running = self.running.clone();
-        let operation = self.provider.start(
+        let operation = provider.start(
             request,
             root,
             Box::new(move |event| match event {
@@ -288,7 +345,7 @@ mod tests {
     fn nothing_runs_until_a_user_action_starts_it() {
         let g = gateway();
         assert_eq!(g.starts(), 0);
-        let _ = g.status();
+        let _ = g.status(false);
         let _ = g.capabilities();
         g.cancel_all();
         assert_eq!(
@@ -651,5 +708,64 @@ mod tests {
             effective_kind(AiPermissionKind::Command, None),
             AiPermissionKind::Command
         );
+    }
+
+    #[test]
+    fn the_provider_comes_from_the_settings_with_a_fallback() {
+        let mut settings = Settings::default();
+        assert_eq!(settings.ai.provider, DEFAULT_PROVIDER_ID);
+        assert_eq!(
+            AiGateway::from_settings(&settings).provider_id(),
+            DEFAULT_PROVIDER_ID
+        );
+        settings.ai.provider = "gone-provider".into();
+        let g = AiGateway::from_settings(&settings);
+        assert_eq!(g.provider_id(), DEFAULT_PROVIDER_ID);
+        assert_eq!(g.starts(), 0);
+        let infos = super::super::provider_infos();
+        assert!(infos.iter().any(|p| p.id == DEFAULT_PROVIDER_ID));
+    }
+
+    #[test]
+    fn the_provider_cannot_change_while_an_operation_runs() {
+        let g = gateway();
+        let (tx, rx) = mpsc::channel();
+        let id = g
+            .start(
+                AiUserAction::ChatMessage,
+                request("a slow answer"),
+                Path::new("."),
+                AiPermissionSettings::default(),
+                Box::new(move |id, e| {
+                    let _ = tx.send((id, e));
+                }),
+            )
+            .unwrap();
+        assert!(matches!(
+            g.set_provider(DEFAULT_PROVIDER_ID),
+            Err(AppError::Ai(_))
+        ));
+        assert_eq!(g.provider_id(), "mock");
+        g.cancel(id);
+        collect(&rx);
+        assert!(matches!(g.set_provider("nope"), Err(AppError::Ai(_))));
+        g.set_provider(DEFAULT_PROVIDER_ID).unwrap();
+        assert_eq!(g.provider_id(), DEFAULT_PROVIDER_ID);
+        assert_eq!(g.starts(), 1, "swapping runs nothing");
+    }
+
+    #[test]
+    fn the_status_is_cached_unless_forced() {
+        let mock = MockProvider::default();
+        let calls = mock.status_calls.clone();
+        let g = AiGateway::new(Box::new(mock));
+        assert!(g.status(false).installed);
+        g.status(false);
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        g.status(true);
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+        g.status(false);
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+        assert_eq!(g.starts(), 0);
     }
 }

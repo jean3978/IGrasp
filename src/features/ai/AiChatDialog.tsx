@@ -218,7 +218,7 @@ function StatusLine() {
         </p>
         <Button
           onClick={() => {
-            void checkStatus();
+            void checkStatus(true);
           }}
           disabled={checking}
         >

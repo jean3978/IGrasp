@@ -33,6 +33,17 @@ pub struct AiModel {
     /// What the provider accepts, e.g. an alias or a full model id.
     pub id: String,
     pub label: String,
+    /// This model accepts images (region captures).
+    pub image_input: bool,
+}
+
+/// A provider the "AI provider" setting can choose (no probe, no token).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AiProviderInfo {
+    pub id: String,
+    pub display_name: String,
 }
 
 /// What a provider supports; the UI adapts to these instead of checking provider names.

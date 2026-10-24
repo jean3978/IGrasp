@@ -31,7 +31,7 @@ import { searchSymbols } from './mockSymbols';
 import { buildRegExp, filterFiles, searchContent } from './mockText';
 import { gitignorePatterns, isMarkdown, listFixtureDir, scanFixture } from './mockIndex';
 import type { MockScanOptions } from './mockIndex';
-import { DEFAULT_MOCK_AI, createMockAi } from './mockAi';
+import { DEFAULT_MOCK_AI, MOCK_PROVIDER_ID, createMockAi } from './mockAi';
 import type { MockAiState } from './mockAi';
 
 type Handler = (payload: never) => void;
@@ -88,7 +88,11 @@ declare global {
 
 function initialState(): MockState {
   return {
-    settings: structuredClone(DEFAULT_SETTINGS),
+    // The mock is the only provider of the mock backend, like Claude in the real app.
+    settings: {
+      ...structuredClone(DEFAULT_SETTINGS),
+      ai: { ...structuredClone(DEFAULT_SETTINGS.ai), provider: MOCK_PROVIDER_ID },
+    },
     recent: [],
     sessions: new Map(),
     folders: new Set([FIXTURE_ROOT]),
@@ -605,6 +609,8 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     getAppInfo: () => Promise.resolve(appInfo),
     aiStatus: ai.aiStatus,
     aiCapabilities: ai.aiCapabilities,
+    aiProviders: ai.aiProviders,
+    aiSetProvider: ai.aiSetProvider,
     aiContext: ai.aiContext,
     aiEstimate: ai.aiEstimate,
     aiStart: ai.aiStart,

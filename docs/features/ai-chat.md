@@ -69,7 +69,7 @@ sequenceDiagram
 | Child processes die with the app (job object on Windows) | `src-tauri/src/ai/process.rs` |
 | Claude provider: CLI discovery and probes, one process per operation, wire-format mapping | `src-tauri/src/ai/providers/claude_cli/{cli,turn,protocol}.rs` |
 | Rust mock provider (gateway tests) | `src-tauri/src/ai/providers/mock.rs` |
-| Commands `ai_status`, `ai_capabilities`, `ai_context`, `ai_estimate`, `ai_start`, `ai_respond_permission`, `ai_cancel` | `src-tauri/src/commands/ai.rs` |
+| Commands `ai_status` (60 s cache, `force`), `ai_capabilities`, `ai_providers`, `ai_set_provider`, `ai_context`, `ai_estimate`, `ai_start`, `ai_respond_permission`, `ai_cancel` | `src-tauri/src/commands/ai.rs` |
 | Event reducer (events → chat items) and line diff | `src/features/ai/timeline.ts`, `diff.ts` |
 | Store (status, capabilities, items, pending permissions, operation, usage) | `src/stores/ai.ts` |
 | Floating chat panel | `src/features/ai/AiChatDialog.tsx` |

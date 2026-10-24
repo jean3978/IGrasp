@@ -102,8 +102,10 @@ export const tauriBackend: Backend = {
   getAppInfo: () => invoke('get_app_info'),
   openAppDataDir: () => invoke('open_app_data_dir'),
 
-  aiStatus: () => invoke('ai_status'),
+  aiStatus: (force) => invoke('ai_status', { force: force ?? false }),
   aiCapabilities: () => invoke('ai_capabilities'),
+  aiProviders: () => invoke('ai_providers'),
+  aiSetProvider: (id) => invoke('ai_set_provider', { id }),
   aiContext: (currentPath) => invoke('ai_context', { currentPath }),
   aiEstimate: (input) => invoke('ai_estimate', { input }),
   aiStart: (action, request) => invoke('ai_start', { action, request }),

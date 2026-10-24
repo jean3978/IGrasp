@@ -34,6 +34,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   guard, inlining up to 32 KB per instruction file and 96 KB for the current file (larger files
   are listed for the model to read). `ai_estimate` sizes a message from metadata (small /
   medium / large). A region capture (source lines and text) can travel with a message.
+- **AI provider setting and remembered model**: the gateway is built from `settings.ai.provider`
+  (unknown ids fall back to Claude) and `ai_set_provider` switches it, refused while an
+  operation runs; `ai_providers` lists the choices. The model picked in the chat is remembered
+  in `settings.ai.model`. Models declare whether they accept images. The provider status check
+  is reused for 60 s; **Check again** bypasses it.
 
 ### Changed
 

@@ -5,7 +5,7 @@
 //! waits for its answer; what the provider received is recorded for the tests.
 
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::Duration;
 
@@ -26,6 +26,8 @@ pub struct MockProvider {
     pub last_request: Arc<Mutex<Option<AiRequest>>>,
     /// Every permission answer the provider received, in order.
     pub decisions: Arc<Mutex<Vec<PermissionDecision>>>,
+    /// How many status checks ran.
+    pub status_calls: Arc<AtomicU32>,
 }
 
 struct MockOperation {
@@ -108,12 +110,14 @@ impl AiProvider for MockProvider {
             models: vec![AiModel {
                 id: "mock".into(),
                 label: "Mock".into(),
+                image_input: false,
             }],
             context_file_names: vec!["AGENTS.md".into()],
         }
     }
 
     fn status(&self) -> AiProviderStatus {
+        self.status_calls.fetch_add(1, Ordering::SeqCst);
         AiProviderStatus {
             provider_id: MOCK_ID.into(),
             display_name: "Mock AI".into(),

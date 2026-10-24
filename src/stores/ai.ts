@@ -7,10 +7,12 @@ import { applyEvent, finishStreaming, noticeItem, userItem } from '../features/a
 import type { ChatItem } from '../features/ai/timeline';
 import { backend } from '../ipc/client';
 import { BackendError } from '../ipc/types';
+import { useSettings } from './settings';
 import type {
   AiCapabilities,
   AiEventEnvelope,
   AiPermissionKind,
+  AiProviderInfo,
   AiProviderStatus,
   JsonValue,
   PermissionDecision,
@@ -43,7 +45,12 @@ interface AiState {
   status: AiProviderStatus | null;
   capabilities: AiCapabilities | null;
   checking: boolean;
-  /** Model id or alias for the provider; empty for its default. Not persisted yet. */
+  /** The providers the "AI provider" setting offers; null until loaded. */
+  providers: AiProviderInfo[] | null;
+  /**
+   * Model id or alias for the provider; empty for its default. Starts on `settings.ai.model`
+   * and is written back there when the user picks one.
+   */
   model: string;
   resumeId: string | null;
   /** The running operation, or null. */
@@ -58,14 +65,23 @@ interface AiState {
 
   setOpen: (open: boolean) => void;
   toggleOpen: () => void;
-  checkStatus: () => Promise<void>;
+  /** Checks the provider; a check younger than a minute is reused unless `force`. */
+  checkStatus: (force?: boolean) => Promise<void>;
+  /** Picks the model and remembers it in the settings (debounced). */
   setModel: (model: string) => void;
+  loadProviders: () => Promise<void>;
+  /** Switches the provider (refused by the backend while an operation runs). */
+  setProvider: (id: string) => Promise<void>;
   send: (text: string) => Promise<void>;
   respond: (requestId: string, decision: PermissionDecision) => Promise<void>;
   cancel: () => Promise<void>;
   newConversation: () => void;
   onEvent: (envelope: AiEventEnvelope) => void;
 }
+
+/** How long the model picker waits before remembering a choice. */
+export const MODEL_SAVE_DELAY_MS = 400;
+let modelSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
 const NO_USAGE: Usage = { inputTokens: 0, outputTokens: 0, costUsd: null };
 
@@ -84,6 +100,7 @@ export const useAi = create<AiState>()((set, get) => ({
   status: null,
   capabilities: null,
   checking: false,
+  providers: null,
   model: '',
   resumeId: null,
   operationId: null,
@@ -100,18 +117,20 @@ export const useAi = create<AiState>()((set, get) => ({
     set((s) => ({ open: !s.open }));
   },
 
-  async checkStatus() {
+  async checkStatus(force = false) {
     if (get().checking) return;
     set({ checking: true });
     try {
       const [status, capabilities] = await Promise.all([
-        backend.aiStatus(),
+        backend.aiStatus(force),
         get().capabilities ? Promise.resolve(get().capabilities) : backend.aiCapabilities(),
       ]);
+      // The picker starts on the last model chosen (remembered in the settings).
+      const remembered = useSettings.getState().settings.ai.model;
       set((s) => ({
         status,
         capabilities,
-        model: s.model || (capabilities?.models[0]?.id ?? ''),
+        model: s.model || remembered || (capabilities?.models[0]?.id ?? ''),
       }));
     } catch (err) {
       set({
@@ -133,7 +152,36 @@ export const useAi = create<AiState>()((set, get) => ({
   },
 
   setModel(model) {
-    set({ model: model.trim() });
+    const next = model.trim();
+    set({ model: next });
+    // Remembered for the next conversations and the next start (debounced: a custom id is
+    // typed character by character).
+    if (modelSaveTimer) clearTimeout(modelSaveTimer);
+    modelSaveTimer = setTimeout(() => {
+      modelSaveTimer = null;
+      if (useSettings.getState().settings.ai.model === next) return;
+      useSettings
+        .getState()
+        .update({ ai: { model: next } })
+        .catch((err: unknown) => {
+          set((s) => ({ items: [...s.items, noticeItem('error', errorMessage(err))] }));
+        });
+    }, MODEL_SAVE_DELAY_MS);
+  },
+
+  async loadProviders() {
+    try {
+      set({ providers: await backend.aiProviders() });
+    } catch (err) {
+      set((s) => ({ items: [...s.items, noticeItem('error', errorMessage(err))] }));
+    }
+  },
+
+  async setProvider(id) {
+    const settings = await backend.aiSetProvider(id);
+    useSettings.setState({ settings });
+    // Another provider: its status and capabilities are checked again when needed.
+    if (get().status?.providerId !== id) set({ status: null, capabilities: null, model: '' });
   },
 
   async send(text) {

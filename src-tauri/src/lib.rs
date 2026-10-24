@@ -90,6 +90,8 @@ pub fn run() {
             commands::search::search_text,
             commands::search::cancel_search,
             commands::ai::ai_status,
+            commands::ai::ai_providers,
+            commands::ai::ai_set_provider,
             commands::ai::ai_capabilities,
             commands::ai::ai_context,
             commands::ai::ai_estimate,

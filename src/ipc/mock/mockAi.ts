@@ -24,7 +24,9 @@ import type {
   AiOutcome,
   AiPermissionKind,
   AiPermissionSettings,
+  AiModel,
   AiPolicy,
+  AiProviderInfo,
   AiProviderStatus,
   AiContextDocument,
   AiEstimateInput,
@@ -50,6 +52,8 @@ export interface MockAiState {
   starts: AiUserAction[];
   /** The request the provider received last (context with contents, capture, images). */
   lastRequest: AiRequest | null;
+  /** Status checks that ran the provider's probes (not served from the cache). */
+  statusChecks: number;
 }
 
 export const DEFAULT_MOCK_AI: MockAiState = {
@@ -58,9 +62,18 @@ export const DEFAULT_MOCK_AI: MockAiState = {
   stepMs: 30,
   starts: [],
   lastRequest: null,
+  statusChecks: 0,
 };
 
 export const MOCK_PROVIDER_ID = 'mock';
+/** Like the Rust gateway: a status check is reused for a minute unless forced. */
+export const MOCK_STATUS_CACHE_MS = 60_000;
+/** The mock's models; the last one does not accept images. */
+export const MOCK_MODELS: AiModel[] = [
+  { id: 'mock-fast', label: 'Mock Fast (default)', imageInput: true },
+  { id: 'mock-smart', label: 'Mock Smart', imageInput: true },
+  { id: 'mock-text', label: 'Mock Text (no images)', imageInput: false },
+];
 /** The instruction files the mock provider declares. */
 export const MOCK_CONTEXT_FILE_NAMES = ['AGENTS.md'];
 export const MOCK_PROVIDER_NAME = 'Mock AI';
@@ -569,38 +582,66 @@ export function createMockAi({ emit, ai, settings, hasRoot, file, fileContent, w
     return [session, ...steps(request)];
   };
 
+  /** The last status check, reused for a minute like the Rust gateway's. */
+  let statusCache: { at: number; status: AiProviderStatus } | null = null;
+
+  const probe = (): AiProviderStatus => {
+    ai().statusChecks += 1;
+    const { installed, loggedIn } = ai();
+    const usable = installed && loggedIn;
+    return {
+      providerId: MOCK_PROVIDER_ID,
+      displayName: MOCK_PROVIDER_NAME,
+      installed,
+      loggedIn: usable,
+      version: installed ? MOCK_PROVIDER_VERSION : null,
+      account: usable ? 'reader@example.com' : null,
+      plan: usable ? 'max' : null,
+      problem: !installed ? MOCK_NOT_INSTALLED : !loggedIn ? MOCK_NOT_LOGGED_IN : null,
+      help: !installed ? MOCK_NOT_INSTALLED_HELP : !loggedIn ? MOCK_NOT_LOGGED_IN_HELP : null,
+    };
+  };
+
   return {
-    aiStatus: (): Promise<AiProviderStatus> => {
-      const { installed, loggedIn } = ai();
-      const usable = installed && loggedIn;
-      return Promise.resolve({
-        providerId: MOCK_PROVIDER_ID,
-        displayName: MOCK_PROVIDER_NAME,
-        installed,
-        loggedIn: usable,
-        version: installed ? MOCK_PROVIDER_VERSION : null,
-        account: usable ? 'reader@example.com' : null,
-        plan: usable ? 'max' : null,
-        problem: !installed ? MOCK_NOT_INSTALLED : !loggedIn ? MOCK_NOT_LOGGED_IN : null,
-        help: !installed ? MOCK_NOT_INSTALLED_HELP : !loggedIn ? MOCK_NOT_LOGGED_IN_HELP : null,
-      });
+    aiStatus: (force = false): Promise<AiProviderStatus> => {
+      if (!force && statusCache && Date.now() - statusCache.at < MOCK_STATUS_CACHE_MS) {
+        return Promise.resolve(structuredClone(statusCache.status));
+      }
+      const status = probe();
+      statusCache = { at: Date.now(), status };
+      return Promise.resolve(structuredClone(status));
     },
     aiCapabilities: (): Promise<AiCapabilities> =>
       Promise.resolve({
         streaming: true,
         resume: true,
         structuredOutput: true,
-        imageInput: false,
+        imageInput: true,
         permissionPrompts: true,
         readOnlyMode: true,
         usageReporting: true,
         costReporting: true,
-        models: [
-          { id: 'mock-fast', label: 'Mock Fast (default)' },
-          { id: 'mock-smart', label: 'Mock Smart' },
-        ],
+        models: MOCK_MODELS.map((m) => ({ ...m })),
         contextFileNames: MOCK_CONTEXT_FILE_NAMES,
       }),
+    aiProviders: (): Promise<AiProviderInfo[]> =>
+      Promise.resolve([{ id: MOCK_PROVIDER_ID, displayName: MOCK_PROVIDER_NAME }]),
+    aiSetProvider: (id: string): Promise<Settings> => {
+      if (running) {
+        return Promise.reject(
+          new BackendError(
+            'Ai',
+            'The AI provider cannot change while an operation runs; stop it first.',
+          ),
+        );
+      }
+      if (id !== MOCK_PROVIDER_ID) {
+        return Promise.reject(new BackendError('Ai', `Unknown AI provider: ${id}`));
+      }
+      settings().ai.provider = id;
+      statusCache = null;
+      return Promise.resolve(structuredClone(settings()));
+    },
     // Async so the errors thrown by the helpers become rejections.
     // eslint-disable-next-line @typescript-eslint/require-await
     aiContext: async (currentPath: string | null): Promise<AiContextDocument[]> => {
@@ -659,6 +700,7 @@ export function createMockAi({ emit, ai, settings, hasRoot, file, fileContent, w
     reset: () => {
       running?.stop();
       running = null;
+      statusCache = null;
       issued.clear();
     },
   };

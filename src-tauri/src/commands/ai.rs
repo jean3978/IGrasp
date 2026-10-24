@@ -6,21 +6,37 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use crate::ai::context::{self, Caps};
 use crate::ai::estimate::estimate;
 use crate::ai::types::{
-    AiCapabilities, AiContextDocument, AiEstimateInput, AiEventEnvelope, AiProviderStatus,
-    AiSizeEstimate, AiStartRequest, AiUserAction, PermissionDecision,
+    AiCapabilities, AiContextDocument, AiEstimateInput, AiEventEnvelope, AiProviderInfo,
+    AiProviderStatus, AiSizeEstimate, AiStartRequest, AiUserAction, PermissionDecision,
 };
+use crate::appdata::settings::Settings;
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 
 pub const EVENT_AI: &str = "ai://event";
 
 /// Whether the active provider is installed and signed in. Runs the provider's probes, so it
-/// may take a second; never spends tokens.
+/// may take a second; never spends tokens. A check younger than a minute is reused unless
+/// `force` ("Check again").
 #[tauri::command]
-pub async fn ai_status(app: AppHandle) -> AppResult<AiProviderStatus> {
-    tauri::async_runtime::spawn_blocking(move || app.state::<AppState>().ai.status())
+pub async fn ai_status(app: AppHandle, force: Option<bool>) -> AppResult<AiProviderStatus> {
+    let force = force.unwrap_or(false);
+    tauri::async_runtime::spawn_blocking(move || app.state::<AppState>().ai.status(force))
         .await
         .map_err(|e| AppError::Ai(format!("The status check failed: {e}")))
+}
+
+/// The providers the "AI provider" setting offers (no probe, no token).
+#[tauri::command]
+pub fn ai_providers() -> Vec<AiProviderInfo> {
+    crate::ai::provider_infos()
+}
+
+/// Switches the AI provider and records it in the settings. Refused while an operation runs.
+#[tauri::command]
+pub fn ai_set_provider(state: State<'_, AppState>, id: String) -> AppResult<Settings> {
+    state.ai.set_provider(&id)?;
+    state.appdata.update_settings(|s| s.ai.provider = id)
 }
 
 #[tauri::command]

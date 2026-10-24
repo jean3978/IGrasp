@@ -34,6 +34,7 @@ import type { WatchStatusEvent } from './generated/WatchStatusEvent';
 import type { AiCapabilities } from './generated/AiCapabilities';
 import type { AiEventEnvelope } from './generated/AiEventEnvelope';
 import type { AiProviderStatus } from './generated/AiProviderStatus';
+import type { AiProviderInfo } from './generated/AiProviderInfo';
 import type { AiRequest } from './generated/AiRequest';
 import type { AiContextDocument } from './generated/AiContextDocument';
 import type { AiEstimateInput } from './generated/AiEstimateInput';
@@ -113,6 +114,7 @@ export type { ProposedEdit } from './generated/ProposedEdit';
 export type {
   AiCapabilities,
   AiEventEnvelope,
+  AiProviderInfo,
   AiProviderStatus,
   AiContextDocument,
   AiEstimateInput,
@@ -239,9 +241,16 @@ export interface Backend {
   /** Opens the app-data folder in the system file manager. */
   openAppDataDir(): Promise<void>;
 
-  /** Whether the AI provider is installed and signed in (runs its probes; spends no tokens). */
-  aiStatus(): Promise<AiProviderStatus>;
+  /**
+   * Whether the AI provider is installed and signed in (runs its probes; spends no tokens). A
+   * check younger than a minute is reused unless `force` ("Check again").
+   */
+  aiStatus(force?: boolean): Promise<AiProviderStatus>;
   aiCapabilities(): Promise<AiCapabilities>;
+  /** The providers the "AI provider" setting offers (no probe, no token). */
+  aiProviders(): Promise<AiProviderInfo[]>;
+  /** Switches the AI provider; refused while an operation runs. Resolves to the new settings. */
+  aiSetProvider(id: string): Promise<Settings>;
   /**
    * What the next message would carry for the active file (`null`: none): the provider's
    * instruction files from the root down, then the current file. Paths, roles and sizes only;

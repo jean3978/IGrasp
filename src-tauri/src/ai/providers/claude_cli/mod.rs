@@ -130,6 +130,9 @@ impl AiProvider for ClaudeCliProvider {
         let model = |id: &str, label: &str| AiModel {
             id: id.into(),
             label: label.into(),
+            // Every model the CLI offers reads images; a custom id is assumed to, and an image
+            // refused by the model surfaces as the CLI's error result.
+            image_input: true,
         };
         AiCapabilities {
             streaming: true,
