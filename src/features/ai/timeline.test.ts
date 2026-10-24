@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { AiEvent } from '../../ipc/types';
-import { applyEvent, decisionText, finishStreaming } from './timeline';
+import {
+  applyEvent,
+  captureItem,
+  captureLabel,
+  decisionText,
+  finishStreaming,
+  fromStoredItems,
+  toStoredItems,
+} from './timeline';
 import type { ChatItem } from './timeline';
 
 const reduce = (events: AiEvent[], start: ChatItem[] = []) => events.reduce(applyEvent, start);
@@ -104,5 +112,27 @@ describe('applyEvent', () => {
     expect(finishStreaming(items)[0]).toMatchObject({ streaming: false, text: 'Hi' });
     const done = reduce([{ type: 'text', text: 'Hi' }]);
     expect(finishStreaming(done)).toBe(done);
+  });
+});
+
+describe('capture items', () => {
+  it('keep the text and the line range in the history, never the screenshot', () => {
+    const item = captureItem({
+      sourcePath: 'docs/a.md',
+      firstLine: 40,
+      lastLine: 58,
+      text: 'Some text',
+      thumbnail: 'data:image/png;base64,AAAA',
+    });
+    if (item.kind !== 'capture') throw new Error('not a capture item');
+    expect(captureLabel(item)).toBe('docs/a.md lines 40–58');
+    const stored = toStoredItems([item]);
+    expect(stored[0]).toMatchObject({ kind: 'capture', firstLine: 40, text: 'Some text' });
+    expect(JSON.stringify(stored)).not.toContain('thumbnail');
+    expect(fromStoredItems(stored)[0]).toMatchObject({
+      kind: 'capture',
+      sourcePath: 'docs/a.md',
+      lastLine: 58,
+    });
   });
 });

@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import {
   applyEvent,
+  captureItem,
   decisionItem,
   finishStreaming,
   fromStoredItems,
@@ -311,6 +312,19 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
     }));
     const { resumeId } = get();
     const { model } = useAiProvider.getState();
+    // The region the message is about shows in the transcript right after the message.
+    const attached = useAiPanel.getState().attachment;
+    if (attached && showUserItem) {
+      set((s) => ({
+        items: [
+          ...s.items,
+          captureItem({
+            ...attached.capture,
+            thumbnail: attached.image ? attached.thumbnail : undefined,
+          }),
+        ],
+      }));
+    }
     try {
       // What the context bar lists for the current file, minus what the user dropped (listed
       // now if the bar has not been shown for this file), then the size of it all.

@@ -16,6 +16,7 @@ import { useUi } from '../../stores/ui';
 import { useWorkspace } from '../../stores/workspace';
 import { useAiConversation } from '../../stores/aiConversation';
 import { useAiPanel } from '../../stores/aiPanel';
+import { canCapture, useCapture } from '../../stores/capture';
 
 export type ActionId =
   | 'file.openFolder'
@@ -42,6 +43,7 @@ export type ActionId =
   | 'view.muteToasts'
   | 'help.shortcuts'
   | 'ai.chat'
+  | 'ai.capture'
   | 'ai.newConversation'
   | 'ai.history'
   | 'ai.acceptAllChanges'
@@ -191,6 +193,16 @@ export const actions: Record<ActionId, ActionDef> = {
     run: () => {
       if (!useWorkspace.getState().root) return;
       useAiPanel.getState().toggleOpen();
+    },
+  },
+  'ai.capture': {
+    label: 'Ask About a Region',
+    shortcut: 'Ctrl+Alt+R',
+    usesAi: true,
+    run: () => {
+      // Only draws the selection and attaches it; the message is sent by the user.
+      if (!canCapture()) return;
+      useCapture.getState().start();
     },
   },
   'ai.newConversation': {

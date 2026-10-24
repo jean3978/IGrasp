@@ -96,6 +96,8 @@ export interface PanelAttachment {
   capture: AiCapture;
   /** The rendered region, when the screenshot could be taken. */
   image: AiImage | null;
+  /** Small data URL of the screenshot for the chip and the transcript. */
+  thumbnail?: string;
 }
 
 /** The documents the next message carries, as `ai_context` listed them for `currentPath`. */

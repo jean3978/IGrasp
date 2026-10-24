@@ -70,7 +70,7 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
   {
     title: 'AI chat',
     rows: [
-      ...fromActions(['ai.chat', 'ai.newConversation', 'ai.history']),
+      ...fromActions(['ai.chat', 'ai.capture', 'ai.newConversation', 'ai.history']),
       { keys: 'Enter / Shift+Enter', label: 'Send / new line (message box)' },
       { keys: 'Esc', label: 'Stop the running answer; pressed again, close the chat' },
       { keys: 'Alt+arrows', label: 'Move the chat panel (its title focused)' },

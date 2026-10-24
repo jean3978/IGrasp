@@ -3,6 +3,7 @@ import { Tooltip } from 'radix-ui';
 import { backend } from './ipc/client';
 import { AboutDialog } from './features/about/AboutDialog';
 import { AiPanel } from './features/ai/AiPanel';
+import { CaptureHost } from './features/capture/CaptureHost';
 import { QuickOpenDialog } from './features/quickopen/QuickOpenDialog';
 import { ExplorerPanel } from './features/explorer/ExplorerPanel';
 import { BacklinksCount, BacklinksSection } from './features/links/BacklinksSection';
@@ -170,6 +171,7 @@ export function App() {
       <ToastHost />
       <AboutDialog />
       <AiPanel />
+      <CaptureHost />
       <QuickOpenDialog />
       <SplashOverlay ready={ready} />
     </Tooltip.Provider>

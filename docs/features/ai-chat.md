@@ -75,6 +75,23 @@ provider's status.
   update through the normal live reload.
 - Usage (tokens, and cost when the provider reports it) accumulates in the status line.
 
+## Region capture
+
+- **Start**: the region button in the toolbar, **View → Ask About a Region**, or `Ctrl+Alt+R`.
+  It needs a markdown or code tab and is disabled otherwise. The action only shows the overlay;
+  it never calls the provider.
+- **Select**: a crosshair covers the tab's scroll area. Drag a rectangle (at least 24 × 24 px),
+  or use the keyboard: arrows move a rectangle from the centre, `Shift+arrows` resize it, `Enter`
+  captures, `Escape` cancels.
+- **Lines**: in a markdown tab every block with a `data-line` marker that the rectangle touches
+  gives the range, from the first block's start line to the line before the next block (blank
+  separator lines trimmed); in a code tab, the rendered rows. A selection over an image only
+  keeps the nearest block's line with an empty text.
+- **Result**: the chat opens with a chip ("docs/a.md lines 40–58", ✕ to drop it), the draft
+  "About this region:" (an existing draft is kept) and the focus in the message box. Nothing is
+  sent until Send, which passes the region with the message; the transcript then shows a
+  "Selected region" item right after it, and the history keeps its text and range.
+
 ## How it works
 
 ```mermaid

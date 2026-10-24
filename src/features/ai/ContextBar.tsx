@@ -9,6 +9,7 @@ import { formatSize } from '../code/codeLines';
 import type { AiContextDocument } from '../../ipc/types';
 import { useAiPanel } from '../../stores/aiPanel';
 import { useTabs } from '../../stores/tabs';
+import { captureLabel } from './timeline';
 
 const baseName = (path: string) => path.split('/').pop() ?? path;
 const isMarkdown = (path: string) => /\.(md|markdown)$/i.test(path);
@@ -80,17 +81,13 @@ function AttachmentChip() {
   const setAttachment = useAiPanel((s) => s.setAttachment);
   if (!attachment) return null;
   const { capture, image } = attachment;
-  const lines =
-    capture.firstLine === capture.lastLine
-      ? `line ${String(capture.firstLine)}`
-      : `lines ${String(capture.firstLine)}–${String(capture.lastLine)}`;
-  const label = `${capture.sourcePath} ${lines}`;
+  const label = captureLabel(capture);
   return (
     <li className="ai-context-chip ai-context-attachment">
       {image && (
         <img
           className="ai-context-thumb"
-          src={`data:${image.mediaType};base64,${image.dataBase64}`}
+          src={attachment.thumbnail ?? `data:${image.mediaType};base64,${image.dataBase64}`}
           alt=""
         />
       )}

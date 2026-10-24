@@ -3,7 +3,7 @@
 // an AI operation. Only `send` (when no confirmation is needed) and Start on the confirmation
 // card add to `starts`.
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { Tooltip } from 'radix-ui';
 import { createElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -23,6 +23,9 @@ import { useSearch } from '../../stores/search';
 import { useSettings } from '../../stores/settings';
 import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
+import { CaptureHost } from '../capture/CaptureHost';
+import { CAPTURE_SOURCE, drag, mountDocument } from '../../test/captureDom';
+import { useDocuments } from '../../stores/documents';
 import { actions, runAction } from '../titlebar/menuActions';
 import { AiPanel } from './AiPanel';
 import { resetAiStores } from '../../test/resetAi';
@@ -235,5 +238,46 @@ describe('no token without a user action', () => {
     expect(starts()).toEqual(['chatMessage']);
     await useAiConversation.getState().confirmStart();
     expect(starts()).toEqual(['chatMessage', 'chatMessage']);
+  });
+
+  it('starts nothing when a region is captured; only Send does', async () => {
+    await useWorkspace.getState().openRoot(FIXTURE_ROOT);
+    await useAiProvider.getState().checkStatus();
+    useTabs.getState().openDocument('README.md');
+    await settle();
+    useDocuments.setState({
+      byPath: {
+        'README.md': {
+          status: 'ready',
+          content: CAPTURE_SOURCE,
+          size: CAPTURE_SOURCE.length,
+          modifiedMs: 0,
+          error: null,
+          revision: 1,
+        },
+      },
+    });
+    const page = mountDocument();
+    render(createElement(CaptureHost));
+    act(() => {
+      runAction('ai.capture');
+    });
+    await waitFor(() => {
+      expect(document.querySelector('.capture-overlay')).not.toBeNull();
+    });
+    act(() => {
+      drag([20, 52], [300, 76]);
+    });
+    await waitFor(() => {
+      expect(useAiPanel.getState().attachment).not.toBeNull();
+    });
+    await settle();
+    expect(starts()).toEqual([]);
+
+    // The user's Send starts the one operation, with the region.
+    await useAiConversation.getState().send('Explain this');
+    expect(starts()).toEqual(['chatMessage']);
+    expect(window.__igraspMock?.state.ai.lastRequest?.capture?.text).toBe('First paragraph.');
+    page.remove();
   });
 });

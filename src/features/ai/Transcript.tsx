@@ -10,7 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { selectBusy, useAiConversation } from '../../stores/aiConversation';
 import { ConfirmCard } from './ConfirmCard';
 import { PermissionCard } from './PermissionCard';
-import { decisionText } from './timeline';
+import { captureLabel, decisionText } from './timeline';
 import type { ChatItem } from './timeline';
 import { UsageLine } from './UsageLine';
 
@@ -58,6 +58,22 @@ export function PermissionDecidedItem(item: {
   );
 }
 
+/** The region the message is about: its place in the document, the text and the screenshot. */
+export function CaptureItem(item: Extract<ChatItem, { kind: 'capture' }>) {
+  const label = captureLabel(item);
+  return (
+    <details className="ai-capture" open={item.thumbnail !== undefined || item.text.length < 400}>
+      <summary>Selected region: {label}</summary>
+      {item.thumbnail && <img className="ai-capture-thumb" src={item.thumbnail} alt="" />}
+      {item.text ? (
+        <pre className="ai-capture-text">{item.text}</pre>
+      ) : (
+        <p className="ai-capture-empty">No text in the region.</p>
+      )}
+    </details>
+  );
+}
+
 export function Message({ item }: { item: ChatItem }) {
   switch (item.kind) {
     case 'user':
@@ -91,6 +107,8 @@ export function Message({ item }: { item: ChatItem }) {
       return <UsageLine {...item} />;
     case 'resumeFailed':
       return <ResumeFailed prompt={item.prompt} />;
+    case 'capture':
+      return <CaptureItem {...item} />;
     case 'notice':
       return (
         <div

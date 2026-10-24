@@ -765,3 +765,42 @@
   align-items: center;
   justify-content: space-between;
 }
+
+/* The region a message is about (region capture). */
+.ai-capture {
+  align-self: flex-end;
+  max-width: 92%;
+  padding: 4px 8px;
+  border: var(--border-width, 1px) solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-hover);
+  font-size: var(--font-size-small);
+}
+
+.ai-capture summary {
+  cursor: pointer;
+  color: var(--fg-muted);
+}
+
+.ai-capture-thumb {
+  display: block;
+  max-width: 100%;
+  max-height: 160px;
+  margin: 6px 0;
+  border: var(--border-width, 1px) solid var(--border);
+  border-radius: 4px;
+}
+
+.ai-capture-text {
+  margin: 6px 0 0;
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+}
+
+.ai-capture-empty {
+  margin: 6px 0 0;
+  color: var(--fg-muted);
+}

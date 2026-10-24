@@ -34,6 +34,17 @@ export type ChatItem =
     }
   | { kind: 'notice'; id: string; level: 'info' | 'error'; text: string }
   | {
+      /** The region of a document the message is about (region capture). */
+      kind: 'capture';
+      id: string;
+      sourcePath: string;
+      firstLine: number;
+      lastLine: number;
+      text: string;
+      /** Small preview of the screenshot; live only, never stored in the history. */
+      thumbnail?: string;
+    }
+  | {
       /** What the provider reported for an operation, shown under its answer. */
       kind: 'usage';
       id: string;
@@ -67,6 +78,27 @@ export function decisionItem(decision: {
 
 export function noticeItem(level: 'info' | 'error', text: string): ChatItem {
   return { kind: 'notice', id: nextId('notice'), level, text };
+}
+
+/** The region the message is about, shown after the user's message. */
+export function captureItem(capture: {
+  sourcePath: string;
+  firstLine: number;
+  lastLine: number;
+  text: string;
+  thumbnail?: string | undefined;
+}): ChatItem {
+  const { thumbnail, ...rest } = capture;
+  return { kind: 'capture', id: nextId('capture'), ...rest, ...(thumbnail ? { thumbnail } : {}) };
+}
+
+/** "docs/a.md lines 40–58" (or "line 40"). */
+export function captureLabel(c: { sourcePath: string; firstLine: number; lastLine: number }) {
+  const lines =
+    c.firstLine === c.lastLine
+      ? `line ${String(c.firstLine)}`
+      : `lines ${String(c.firstLine)}–${String(c.lastLine)}`;
+  return `${c.sourcePath} ${lines}`;
 }
 
 /** The usage line under an operation's answer. */
@@ -201,6 +233,11 @@ export function toStoredItems(items: ChatItem[]): JsonValue[] {
         if (isError !== undefined) stored.isError = isError;
         return stored;
       }
+      case 'capture': {
+        // The screenshot stays in memory for the operation; the history keeps the text.
+        const { thumbnail: _thumbnail, ...rest } = item;
+        return rest;
+      }
       case 'resumeFailed':
         return {
           kind: 'notice',
@@ -267,6 +304,17 @@ function fromStored(v: JsonRecord): ChatItem | null {
         reason: v.reason,
       };
     }
+    case 'capture':
+      return str(v.sourcePath) && num(v.firstLine) && num(v.lastLine) && str(v.text)
+        ? {
+            kind,
+            id: nextId(kind),
+            sourcePath: v.sourcePath,
+            firstLine: v.firstLine,
+            lastLine: v.lastLine,
+            text: v.text,
+          }
+        : null;
     case 'usage':
       return num(v.inputTokens) && num(v.outputTokens)
         ? {

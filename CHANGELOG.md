@@ -9,6 +9,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Region capture**: **Ask about a region** (toolbar button, View menu, `Ctrl+Alt+R`) draws a
+  rectangle over a markdown or code tab (mouse, or arrows + Enter), maps it to the source lines
+  and attaches them to the chat with the draft "About this region:". Nothing is sent until Send.
 - **AI chat (proof of concept)**: a floating chat panel (`Ctrl+Alt+C`) that talks to the AI
   provider in the open folder (Claude through the installed `claude` CLI today), streams the
   answer, shows proposed markdown edits as a diff with Accept / Reject and other tool calls with
