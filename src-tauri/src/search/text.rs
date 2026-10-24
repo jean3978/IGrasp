@@ -211,18 +211,17 @@ impl TextSearch<'_> {
                 let tx = tx.clone();
                 let matcher = matcher.clone();
                 let (files, next, root) = (&self.files, &next, self.root);
-                let (total_matches, truncated) = (&total_matches, &truncated);
+                let total_matches = &total_matches;
                 scope.spawn(move || {
                     while !stopped() {
                         let i = next.fetch_add(1, Ordering::Relaxed);
                         let Some(rel) = files.get(i) else { break };
+                        // The budget only bounds the work: the collector applies the caps
+                        // exactly. One match more than what is left lets it tell whether any
+                        // match was really left out (with nothing left, one match proves it).
                         let left = u64::from(max_results)
                             .saturating_sub(total_matches.load(Ordering::Relaxed));
-                        if left == 0 {
-                            truncated.store(true, Ordering::Relaxed);
-                            break;
-                        }
-                        let limit = usize::try_from(left).unwrap_or(usize::MAX);
+                        let limit = usize::try_from(left + 1).unwrap_or(usize::MAX);
                         let found = search_file(&matcher, &root.join(rel), limit);
                         if let Some(m) = &found {
                             total_matches.fetch_add(m.len() as u64, Ordering::Relaxed);
@@ -244,7 +243,19 @@ impl TextSearch<'_> {
                 match found {
                     None => stats.skipped += 1,
                     Some(m) if m.is_empty() => {}
-                    Some(m) => {
+                    Some(mut m) => {
+                        // Truncated only when a match is actually left out, never merely
+                        // because a cap was reached exactly.
+                        let room = usize::try_from(max_results.saturating_sub(stats.matches))
+                            .unwrap_or(usize::MAX);
+                        if room == 0 || stats.files_matched >= MAX_FILES {
+                            truncated.store(true, Ordering::Relaxed);
+                            continue;
+                        }
+                        if m.len() > room {
+                            m.truncate(room);
+                            truncated.store(true, Ordering::Relaxed);
+                        }
                         stats.files_matched += 1;
                         stats.matches += u32::try_from(m.len()).unwrap_or(u32::MAX);
                         pending += m.len();
@@ -252,9 +263,6 @@ impl TextSearch<'_> {
                             rel_path: rel,
                             matches: m,
                         });
-                        if stats.matches >= max_results || stats.files_matched >= MAX_FILES {
-                            truncated.store(true, Ordering::Relaxed);
-                        }
                     }
                 }
                 if !batch.is_empty()
@@ -448,7 +456,36 @@ mod tests {
         let batches = run(dir.path(), &files, &capped, false);
         let last = batches.last().unwrap();
         assert!(last.truncated);
-        assert!(last.stats.matches >= 25 && last.stats.matches < 25 + 10 * 8);
+        // Exactly the cap, however many workers were in flight.
+        assert_eq!(last.stats.matches, 25);
+        let total: usize = batches
+            .iter()
+            .flat_map(|b| &b.files)
+            .map(|f| f.matches.len())
+            .sum();
+        assert_eq!(total, 25);
+    }
+
+    #[test]
+    fn reaching_the_cap_exactly_is_not_truncated() {
+        let dir = tempfile::tempdir().unwrap();
+        for i in 0..5 {
+            fs::write(dir.path().join(format!("{i}.md")), "hit\n".repeat(5)).unwrap();
+        }
+        fs::write(dir.path().join("none.md"), "nothing here\n").unwrap();
+        let names: Vec<String> = (0..5).map(|i| format!("{i}.md")).collect();
+        let files: Vec<&str> = names
+            .iter()
+            .map(String::as_str)
+            .chain(["none.md"])
+            .collect();
+        let capped = TextSearchRequest {
+            max_results: Some(25),
+            ..req("hit")
+        };
+        let last = run(dir.path(), &files, &capped, false).pop().unwrap();
+        assert_eq!(last.stats.matches, 25);
+        assert!(!last.truncated);
     }
 
     #[test]

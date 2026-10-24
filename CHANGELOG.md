@@ -7,6 +7,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Search in files no longer stays on "Searching…" with no results when a small search finishes
+  before the app learns its id, and a search started while another was starting no longer mixes
+  in the older results.
+- Search results follow renamed files instead of dropping them.
+- "Stopped at the result limit" is shown only when results were really left out, and the limit
+  is now exact.
+- After a rescan (for example toggling dotfiles), open documents get their broken-link flags and
+  backlinks back; slow, outdated answers no longer overwrite newer ones.
+- Adding or removing a folder's README updates the links to that folder.
+- Open in Default Editor also checks the file's real name, so a symlink or a Windows name ending
+  with a dot or a space (`run.bat.`) can never launch a script.
+
 ## [0.2.0] - 2026-10-24
 
 Phase 2 — Navigation: find anything, follow links, and see what changed.

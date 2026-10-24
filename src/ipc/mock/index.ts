@@ -498,11 +498,20 @@ export function createMockBackend(): Backend & { controls: MockControls } {
           return;
         }
         stats.filesSearched += 1;
-        const matches = searchContent(re, state.files.get(file) ?? '', max - stats.matches);
+        // Like Rust: one match more than the room left tells whether a match is left out, and
+        // reaching a cap exactly is not truncation.
+        const room = max - stats.matches;
+        let matches = searchContent(re, state.files.get(file) ?? '', room + 1);
+        if (matches.length > 0 && (room === 0 || stats.filesMatched >= 2000)) {
+          truncated = true;
+          matches = [];
+        } else if (matches.length > room) {
+          matches = matches.slice(0, room);
+          truncated = true;
+        }
         if (matches.length > 0) {
           stats.filesMatched += 1;
           stats.matches += matches.length;
-          if (stats.matches >= max || stats.filesMatched >= 2000) truncated = true;
           emit('search://results', {
             searchId: id,
             generation,
