@@ -282,6 +282,22 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         ...structuredClone(listing),
       });
     },
+    listRecentFiles: (offset, limit) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      if (!state.index) {
+        return Promise.reject(
+          new BackendError('IndexNotReady', 'The folder is still being indexed.'),
+        );
+      }
+      const sorted = [...state.index.values()].sort(
+        (a, b) => b.modifiedMs - a.modifiedMs || (a.relPath < b.relPath ? -1 : 1),
+      );
+      return Promise.resolve({
+        generation: state.generation,
+        total: sorted.length,
+        files: structuredClone(sorted.slice(offset, offset + Math.min(limit, 5000))),
+      });
+    },
     readMarkdown: (relPath) => {
       if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
       const content = state.files.get(relPath);

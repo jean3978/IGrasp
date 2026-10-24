@@ -75,6 +75,7 @@ export const tauriBackend: Backend = {
   closeRoot: () => invoke('close_root'),
   rescan: (request) => invoke('rescan', { request }),
   listDir: (relPath) => invoke('list_dir', { relPath }),
+  listRecentFiles: (offset, limit) => invoke('list_recent_files', { offset, limit }),
   readMarkdown: (relPath) => invoke('read_markdown', { relPath }),
   assetUrl: (rootPath, relPath) => convertFileSrc(toAbsolute(rootPath, relPath)),
   openExternal: (relPath) => invoke('open_external', { relPath }),

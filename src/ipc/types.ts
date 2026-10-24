@@ -12,6 +12,7 @@ import type { IndexErrorEvent } from './generated/IndexErrorEvent';
 import type { IndexProgressEvent } from './generated/IndexProgressEvent';
 import type { IndexReadyEvent } from './generated/IndexReadyEvent';
 import type { RecentFolder } from './generated/RecentFolder';
+import type { RecentFilesListing } from './generated/RecentFilesListing';
 import type { RecoveredEvent } from './generated/RecoveredEvent';
 import type { RescanRequest } from './generated/RescanRequest';
 import type { RootInfo } from './generated/RootInfo';
@@ -31,6 +32,7 @@ export type {
   IndexErrorEvent,
   IndexProgressEvent,
   IndexReadyEvent,
+  RecentFilesListing,
   RecentFolder,
   RecoveredEvent,
   RescanRequest,
@@ -108,6 +110,8 @@ export interface Backend {
   rescan(request: RescanRequest): Promise<number>;
   /** Lists an indexed folder (root-relative path, "" for the root). */
   listDir(relPath: string): Promise<DirListing>;
+  /** Markdown files sorted by last modification, newest first. */
+  listRecentFiles(offset: number, limit: number): Promise<RecentFilesListing>;
   /** Reads a markdown file of the open folder. */
   readMarkdown(relPath: string): Promise<FileContent>;
   /** URL the webview can load a file of the open folder from (images, videos). */

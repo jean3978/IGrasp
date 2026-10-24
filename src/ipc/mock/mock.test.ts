@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createMockBackend } from '.';
 import type { Session } from '../types';
+import { FIXTURE_ROOT } from './fixture';
 
 const session: Session = {
   version: 1,
@@ -32,6 +33,21 @@ describe('mock backend', () => {
     b.controls.emit('appdata://recovered', { file: 'x.json' });
     expect(handler).toHaveBeenCalledTimes(1);
     expect(handler).toHaveBeenCalledWith({ file: 'settings.json' });
+  });
+
+  it('lists recent files newest first, paged', async () => {
+    const b = createMockBackend();
+    await b.openRoot(FIXTURE_ROOT);
+    await new Promise((r) => setTimeout(r, 5));
+    b.controls.writeFiles({ 'notes/TODO.MD': '# TODO\n' });
+    b.controls.writeFiles({ 'docs/architecture.md': '# Architecture\n' });
+    const first = await b.listRecentFiles(0, 2);
+    expect(first.files.map((f) => f.relPath)).toEqual(['docs/architecture.md', 'notes/TODO.MD']);
+    expect(first.total).toBe(7);
+    const rest = await b.listRecentFiles(2, 100);
+    expect(rest.files).toHaveLength(5);
+    // Untouched files share a time and are ordered by path.
+    expect(rest.files[0]?.relPath).toBe('CHANGELOG.md');
   });
 
   it('normalizes settings like the Rust backend', async () => {

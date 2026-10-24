@@ -71,6 +71,7 @@ pub fn run() {
             commands::workspace::close_root,
             commands::workspace::rescan,
             commands::workspace::list_dir,
+            commands::workspace::list_recent_files,
             commands::files::read_markdown,
             commands::files::open_external,
         ])

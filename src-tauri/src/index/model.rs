@@ -278,6 +278,18 @@ impl Index {
             .collect()
     }
 
+    /// Files sorted by modification time, newest first (ties by path), with the total count.
+    pub fn recent_files(&self, offset: usize, limit: usize) -> (usize, Vec<FileEntry>) {
+        let mut all: Vec<&FileEntry> = self.files.values().collect();
+        all.sort_by(|a, b| {
+            b.modified_ms
+                .cmp(&a.modified_ms)
+                .then_with(|| a.rel_path.cmp(&b.rel_path))
+        });
+        let page = all.into_iter().skip(offset).take(limit).cloned().collect();
+        (self.files.len(), page)
+    }
+
     /// What changed under `dir` between `self` (old) and `new`.
     pub fn diff_within(&self, new: &Index, dir: &str) -> Changes {
         let old_files = self.files_within(dir);
@@ -398,6 +410,24 @@ mod tests {
         assert_eq!(c.modified.len(), 1);
         assert_eq!(c.removed, ["docs/c.md"]);
         assert!(old.diff_within(&old, "").is_empty());
+    }
+
+    #[test]
+    fn recent_files_are_newest_first_and_paged() {
+        let mut i = Index::default();
+        for (rel, ms) in [("a.md", 5), ("b.md", 9), ("c.md", 5), ("d/e.md", 1)] {
+            let mut e = entry(rel);
+            e.modified_ms = ms;
+            i.insert_file(e);
+        }
+        let (total, page) = i.recent_files(0, 3);
+        assert_eq!(total, 4);
+        let names: Vec<_> = page.iter().map(|f| f.rel_path.as_str()).collect();
+        assert_eq!(names, ["b.md", "a.md", "c.md"]);
+        let (_, rest) = i.recent_files(3, 3);
+        assert_eq!(rest.len(), 1);
+        assert_eq!(rest[0].rel_path, "d/e.md");
+        assert!(i.recent_files(10, 3).1.is_empty());
     }
 
     #[test]
