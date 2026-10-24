@@ -18,6 +18,7 @@ export const KEYMAP: KeyBinding[] = [
   { key: 'f', ctrl: true, shift: true, action: 'view.search' },
   { key: 'r', ctrl: true, shift: true, action: 'view.recent' },
   { key: 'l', ctrl: true, shift: true, action: 'view.broken' },
+  { key: 'o', ctrl: true, shift: true, action: 'view.focusOutline' },
   { key: 'f1', action: 'help.shortcuts' },
   { key: 'arrowleft', alt: true, action: 'go.back' },
   { key: 'arrowright', alt: true, action: 'go.forward' },

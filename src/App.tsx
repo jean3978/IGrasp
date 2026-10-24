@@ -6,6 +6,7 @@ import { ExplorerPanel } from './features/explorer/ExplorerPanel';
 import { BrokenLinksPanel } from './features/links/BrokenLinksPanel';
 import { RecentChangesPanel } from './features/recent/RecentChangesPanel';
 import { SearchPanel } from './features/search/SearchPanel';
+import { OutlineActions, OutlinePanel } from './features/outline/OutlinePanel';
 import { PanelSection, RightPanel } from './features/rightpanel/RightPanel';
 import { ActivityBar } from './features/shell/ActivityBar';
 import { SidebarHost } from './features/shell/SidebarHost';
@@ -137,8 +138,8 @@ export function App() {
               }
               rightPanel={
                 <RightPanel>
-                  <PanelSection title="Outline" grow>
-                    <div className="panel-empty">No headings.</div>
+                  <PanelSection title="Outline" grow actions={<OutlineActions />}>
+                    <OutlinePanel />
                   </PanelSection>
                   <PanelSection title="Backlinks">
                     <div className="panel-empty">No other document links here.</div>

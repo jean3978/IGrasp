@@ -266,6 +266,7 @@ export function MenuBar() {
         <Menubar.Separator className="menu-separator" />
         <CheckItem id="view.toggleSidebar" checked={sidebarVisible} />
         <CheckItem id="view.toggleRightPanel" checked={rightPanelVisible} disabled={!hasRoot} />
+        <Item id="view.focusOutline" disabled={!hasRoot} />
         <Item id="view.focusExplorer" disabled={!hasRoot} />
         <Item id="view.search" disabled={!hasRoot} />
         <Item id="view.recent" disabled={!hasRoot} />

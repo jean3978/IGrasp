@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { useDocuments } from '../../stores/documents';
 import { useGraph } from '../../stores/graph';
+import { useOutline } from '../../stores/outline';
+import { buildOutline } from '../outline/outline';
 import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
 import { MarkdownPreview } from './MarkdownPreview';
@@ -33,6 +35,10 @@ interface RenderedProps {
 
 function Rendered({ content, relPath, getScrollContainer }: RenderedProps) {
   const { rendered, error } = useMarkdown(content);
+  // The outline panel shows exactly the headings (and ids) of this render.
+  useEffect(() => {
+    if (rendered) useOutline.getState().setOutline(relPath, buildOutline(rendered.hast));
+  }, [rendered, relPath]);
   const rootPath = useWorkspace((s) => s.root?.path ?? '');
   if (error) {
     return (

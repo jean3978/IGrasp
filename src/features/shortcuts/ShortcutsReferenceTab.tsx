@@ -26,6 +26,7 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
     rows: fromActions([
       'view.toggleSidebar',
       'view.toggleRightPanel',
+      'view.focusOutline',
       'view.focusExplorer',
       'view.search',
       'view.recent',

@@ -27,6 +27,7 @@ export type ActionId =
   | 'view.recent'
   | 'view.broken'
   | 'view.toggleRightPanel'
+  | 'view.focusOutline'
   | 'go.back'
   | 'go.forward'
   | 'view.showDotfiles'
@@ -242,6 +243,18 @@ export const actions: Record<ActionId, ActionDef> = {
     shortcut: 'Alt+Right',
     run: () => {
       useHistory.getState().forward();
+    },
+  },
+  'view.focusOutline': {
+    label: 'Focus Outline',
+    shortcut: 'Ctrl+Shift+O',
+    run: () => {
+      if (!useWorkspace.getState().root) return;
+      useWorkspace.getState().setRightPanelVisible(true);
+      // The panel mounts on the next frame when it was hidden.
+      requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>('.outline-filter')?.focus();
+      });
     },
   },
   'view.toggleRightPanel': {
