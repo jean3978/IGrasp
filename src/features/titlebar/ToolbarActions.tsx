@@ -6,6 +6,7 @@ import {
   FolderOpen,
   PanelLeft,
   PanelRight,
+  Search,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { IconButton } from '../../components/ui/IconButton';
@@ -81,6 +82,11 @@ export function ToolbarActions() {
   return (
     <div className="toolbar" role="toolbar" aria-label="Window toolbar">
       {hasRoot && <HistoryButtons />}
+      {hasRoot && (
+        <ActionButton id="go.symbol" label="Search Everything">
+          <Search aria-hidden />
+        </ActionButton>
+      )}
       <ActionButton id="file.openFolder" label="Open Folder">
         <FolderOpen aria-hidden />
       </ActionButton>

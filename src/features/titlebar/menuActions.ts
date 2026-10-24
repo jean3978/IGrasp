@@ -5,6 +5,7 @@ import { backend } from '../../ipc/client';
 import { MAX_FONT_SIZE, MIN_FONT_SIZE } from '../../ipc/defaults';
 import type { SidebarView, Theme } from '../../ipc/types';
 import { useHistory } from '../../stores/history';
+import { useQuickOpen } from '../../stores/quickOpen';
 import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
 import { useTabs } from '../../stores/tabs';
@@ -28,6 +29,7 @@ export type ActionId =
   | 'view.broken'
   | 'view.toggleRightPanel'
   | 'view.focusOutline'
+  | 'go.symbol'
   | 'go.back'
   | 'go.forward'
   | 'view.showDotfiles'
@@ -229,6 +231,13 @@ export const actions: Record<ActionId, ActionDef> = {
     shortcut: 'Ctrl+B',
     run: () => {
       useWorkspace.getState().toggleSidebar();
+    },
+  },
+  'go.symbol': {
+    label: 'Go to File or Heading…',
+    shortcut: 'Ctrl+T',
+    run: () => {
+      if (useWorkspace.getState().root) useQuickOpen.getState().openDialog();
     },
   },
   'go.back': {

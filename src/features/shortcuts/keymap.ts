@@ -11,6 +11,7 @@ export interface KeyBinding {
 
 export const KEYMAP: KeyBinding[] = [
   { key: 'o', ctrl: true, action: 'file.openFolder' },
+  { key: 't', ctrl: true, action: 'go.symbol' },
   { key: 'b', ctrl: true, action: 'view.toggleSidebar' },
   { key: 'b', ctrl: true, alt: true, action: 'view.toggleRightPanel' },
   { key: ',', ctrl: true, action: 'file.settings' },

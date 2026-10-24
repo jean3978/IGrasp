@@ -259,6 +259,8 @@ export function MenuBar() {
       <Menu value="edit">
         <Item id="edit.copy" />
         <Item id="edit.selectAll" />
+        <Menubar.Separator className="menu-separator" />
+        <Item id="go.symbol" disabled={!hasRoot} />
       </Menu>
       <Menu value="view">
         <Item id="go.back" disabled={!canGoBack} />
