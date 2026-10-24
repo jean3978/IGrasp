@@ -34,10 +34,13 @@ AI agents write these files, so the preview treats them as untrusted (see
 
 | Link | Behavior |
 |---|---|
-| `#heading` | Scrolls to the heading (or footnote). |
+| `#heading` | Scrolls to the heading (or footnote) and flashes it. |
 | `https://…`, `mailto:…` | Opens in the system browser or mail client. |
-| `other.md`, `../docs/a.md` | Opens the file in a tab if it is in the Explorer. |
-| Other files | Marked "not available yet" (a code viewer comes in phase 2). |
+| `other.md`, `../docs/a.md`, `other.md#part` | Opens the file in a tab (scrolled to the heading). |
+| `src/main.rs#L10-L20`, folders, media | Code viewer, Explorer, system viewer. |
+
+Broken links are flagged with a wavy underline. The full rules, broken links, backlinks and the
+outline are described in [links-and-graph.md](links-and-graph.md).
 
 ## Videos
 

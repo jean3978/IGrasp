@@ -1,6 +1,6 @@
 # Phase 2 — Navigation implementation plan
 
-Status: **in progress** (review answers in §16) · Target tag: `v0.2.0` · Branch: `phase-2-navigation`
+Status: **implemented** on `phase-2-navigation` (review answers in §16; deviations in the phase summary) · Target tag: `v0.2.0` · Branch: `phase-2-navigation`
 
 Phase 1 delivered a fast, live, read-only viewer. Phase 2 makes a large documentation tree
 *navigable*: find anything by name or heading (Ctrl+T), search every file's content

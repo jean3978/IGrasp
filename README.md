@@ -15,6 +15,8 @@ No Confluence, no editor plugin, no note-taking vault — just the project's own
 | | |
 |---|---|
 | ![A Mermaid diagram in the light theme](docs/screenshots/mermaid-light.png) | ![A grouped notification after an agent changed 15 files](docs/screenshots/live-changes-light.png) |
+| ![Search in files with highlighted matches, the outline and backlinks, in the dark theme](docs/screenshots/search-dark.png) | ![Search everything (Ctrl+T) over file names and headings](docs/screenshots/quick-open-light.png) |
+| ![The Broken links view next to a document with flagged links](docs/screenshots/broken-links-light.png) | |
 
 ## Features
 
@@ -30,13 +32,23 @@ No Confluence, no editor plugin, no note-taking vault — just the project's own
 - **VS Code-style workspace.** Preview and pinned tabs, a custom title bar with menus, keyboard
   shortcuts for everything, and per-folder sessions: tabs, scroll positions and expanded folders
   come back when you reopen a folder.
+- **Find anything.** `Ctrl+T` fuzzy-searches every file name and heading; `Ctrl+Shift+F`
+  searches the content of every document with regex, match case, whole word and include/exclude
+  globs, VS Code style. Both stay instant on 10,000 documents.
+- **Follow the links.** Links between documents open in the app and scroll to their heading;
+  links to source code open a read-only highlighted viewer. **Broken links** (missing file,
+  missing heading, wrong case) are flagged in the text and listed in one view, and **backlinks**
+  show who links to the document you read.
+- **Know where you are.** An outline that follows your scroll, back and forward (`Alt+←` /
+  `Alt+→`) through what you read, and a **Recent changes** view that marks what an agent just
+  touched.
 - **Themes.** Light, Dark, High Contrast and Follow System.
 - **Safe by design.** IGrasp never writes inside the folder you open. HTML in markdown is
-  sanitized, links never navigate the app, and the app reads only the folder you chose.
+  sanitized, links never navigate the app or launch programs, and the app reads only the folder
+  you chose.
 
-Coming next: search, outline and backlinks; editing; a beginner-friendly git view and "what
-changed since I last looked"; Claude integration; and a quiz about your project. See the
-[roadmap](#roadmap).
+Coming next: Claude integration, a quiz about your project, editing, and a beginner-friendly git
+view with "what changed since I last looked". See the [roadmap](#roadmap).
 
 ## Download and installation
 
@@ -57,7 +69,7 @@ it.
   Windows 10).
 - **Linux**: WebKitGTK 4.1, version **2.44 or newer** (Ubuntu 22.04 and later with updates,
   Debian 12, Fedora 39+). Mermaid diagrams need it.
-- **Claude features** (from phase 5) will use your installed
+- **Claude features** (from phase 3) will use your installed
   [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code); it is not bundled.
 
 ### Video on Linux
@@ -108,8 +120,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the details, and
 | `Ctrl+O` | Open a folder |
 | `Ctrl+,` | Settings |
 | `F1` | All keyboard shortcuts |
-| `Ctrl+B` | Show or hide the sidebar |
-| `Ctrl+Shift+E` | Focus the Explorer |
+| `Ctrl+T` | Search everything: files and headings |
+| `Ctrl+Shift+F` | Search in files |
+| `F4` / `Shift+F4` | Next / previous search result |
+| `Alt+←` / `Alt+→` | Back / forward |
+| `Ctrl+B` / `Ctrl+Alt+B` | Show or hide the sidebar / the right panel (outline, backlinks) |
+| `Ctrl+Shift+E` / `R` / `L` | Explorer / Recent changes / Broken links |
+| `Ctrl+Shift+O` | Focus the outline |
 | `Ctrl+W` | Close the tab |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab |
 | `Alt+1` … `Alt+9` | Go to a tab |
@@ -130,8 +147,9 @@ type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
 - [x] **Phase 1 — MVP** (0.1.0): open folder and recent folders, markdown-only file tree, rich
       preview (GFM, code highlighting, math, front matter, images, videos, Mermaid), tabs, live
       reload, change notifications, themes, settings, session restore, keyboard accessibility.
-- [ ] **Phase 2 — Navigation**: search everything (Ctrl+T), search in files (Ctrl+Shift+F), recent
-      changes, back/forward history, outline, internal links, code viewer, broken links, backlinks.
+- [x] **Phase 2 — Navigation** (0.2.0): search everything (Ctrl+T), search in files
+      (Ctrl+Shift+F), recent changes, back/forward history, outline, internal links, code viewer,
+      broken links, backlinks.
 - [ ] **Phase 3 — Claude**: chat through the Claude CLI, inline diff review, region capture.
 - [ ] **Phase 4 — Quiz**: a fun quiz about the project with Hoot the owl.
 - [ ] **Phase 5 — Editing**: WYSIWYG editing with lossless round-trip, file management, edit
@@ -143,3 +161,7 @@ type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
 ## License
 
 [MIT](LICENSE) © 2026 Jean-Rene Choiniere
+
+All dependencies are MIT-compatible. One is not MIT/Apache: `nucleo-matcher` (fuzzy matching for
+Ctrl+T) is MPL-2.0 and used unmodified; see
+[ADR 0011](docs/decisions/0011-fuzzy-matching-with-nucleo.md).
