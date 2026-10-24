@@ -19,6 +19,7 @@ import type { RootInfo } from './generated/RootInfo';
 import type { Session } from './generated/Session';
 import type { Settings } from './generated/Settings';
 import type { SettingsPatch } from './generated/SettingsPatch';
+import type { TextFileContent } from './generated/TextFileContent';
 import type { WatchStatusEvent } from './generated/WatchStatusEvent';
 
 export type {
@@ -40,6 +41,7 @@ export type {
   Session,
   Settings,
   SettingsPatch,
+  TextFileContent,
   WatchStatusEvent,
 };
 export type { RenamedPath } from './generated/RenamedPath';
@@ -114,6 +116,12 @@ export interface Backend {
   listRecentFiles(offset: number, limit: number): Promise<RecentFilesListing>;
   /** Reads a markdown file of the open folder. */
   readMarkdown(relPath: string): Promise<FileContent>;
+  /** Reads any text file of the open folder (NotText for binaries, TooLarge above 5 MB). */
+  readTextFile(relPath: string): Promise<TextFileContent>;
+  /** Opens a text file with the system's default app (Forbidden for programs and scripts). */
+  openWithDefaultApp(relPath: string): Promise<void>;
+  /** Shows a file or folder of the open folder in the system file manager. */
+  revealInFileManager(relPath: string): Promise<void>;
   /** URL the webview can load a file of the open folder from (images, videos). */
   assetUrl(rootPath: string, relPath: string): string;
   /** Opens a media file of the open folder with the system's default application. */

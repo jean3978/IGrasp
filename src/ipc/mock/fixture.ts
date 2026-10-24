@@ -71,6 +71,22 @@ Run \`npm install\`.
 > Remote images must use https.
 `;
 
+const MAIN_TS = `// Entry point of the demo app.
+import { greet } from './greet';
+
+interface Options {
+  name: string;
+  loud?: boolean;
+}
+
+export function main({ name, loud = false }: Options): string {
+  const message = greet(name);
+  return loud ? message.toUpperCase() : message;
+}
+
+console.log(main({ name: 'IGrasp' }));
+`;
+
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
@@ -105,6 +121,15 @@ export const FIXTURE_FILES: Record<string, string> = {
   '.github/CONTRIBUTING.md': '# Contributing\n\nA dotfolder, hidden unless dotfiles are shown.\n',
   'build/output.md': '# Build output\n\nIgnored by .gitignore.\n',
   'node_modules/some-pkg/README.md': '# some-pkg\n\nAlways skipped.\n',
-  'src/main.ts': 'console.log("no markdown here");\n',
+  'src/main.ts': MAIN_TS,
+  Makefile: 'build:\n\tnpm run build\n\ntest:\n\tnpm test\n',
+  'scripts/deploy.sh': '#!/bin/sh\necho "deploying"\n',
+  'assets/logo.bin': 'BIN\u0000\u0001\u0002\u0003',
+  'logs/huge.log': 'see FIXTURE_SIZES\n',
   '.gitignore': 'build/\n',
+};
+
+/** Files whose size on the fake disk differs from their content (too big to keep in memory). */
+export const FIXTURE_SIZES: Record<string, number> = {
+  'logs/huge.log': 6 * 1024 * 1024,
 };

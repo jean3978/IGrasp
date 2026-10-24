@@ -74,6 +74,9 @@ pub fn run() {
             commands::workspace::list_recent_files,
             commands::files::read_markdown,
             commands::files::open_external,
+            commands::files::read_text_file,
+            commands::files::open_with_default_app,
+            commands::files::reveal_in_file_manager,
         ])
         .run(tauri::generate_context!())
         .expect("error while running IGrasp");

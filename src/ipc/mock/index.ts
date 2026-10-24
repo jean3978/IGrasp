@@ -16,7 +16,8 @@ import type {
   Session,
   Settings,
 } from '../types';
-import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT, fixtureMtimes } from './fixture';
+import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT, FIXTURE_SIZES, fixtureMtimes } from './fixture';
+import { checkOpenable, readText } from './mockFiles';
 import { gitignorePatterns, isMarkdown, listFixtureDir, scanFixture } from './mockIndex';
 import type { MockScanOptions } from './mockIndex';
 
@@ -92,6 +93,17 @@ export function createMockBackend(): Backend & { controls: MockControls } {
 
   const emit: MockControls['emit'] = (event, payload) => {
     for (const h of handlers.get(event) ?? []) (h as (p: typeof payload) => void)(payload);
+  };
+
+  /** A file of the fake disk with its size and time, or undefined. */
+  const fakeFile = (relPath: string) => {
+    const content = state.files.get(relPath);
+    if (content === undefined) return undefined;
+    return {
+      content,
+      size: FIXTURE_SIZES[relPath] ?? content.length,
+      modifiedMs: state.mtimes.get(relPath) ?? 0,
+    };
   };
 
   const indexFixture = () => {
@@ -312,6 +324,28 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         size: content.length,
         modifiedMs: state.mtimes.get(relPath) ?? 0,
       });
+    },
+
+    // Async so the errors thrown by the helpers become rejections.
+    // eslint-disable-next-line @typescript-eslint/require-await
+    readTextFile: async (relPath) => {
+      if (!state.root) throw new BackendError('NoRootOpen', 'No folder is open.');
+      return readText(relPath, fakeFile(relPath));
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    openWithDefaultApp: async (relPath) => {
+      if (!state.root) throw new BackendError('NoRootOpen', 'No folder is open.');
+      checkOpenable(relPath, fakeFile(relPath));
+      state.opened.push(`editor:${relPath}`);
+    },
+    revealInFileManager: (relPath) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const isDir = [...state.files.keys()].some((k) => k.startsWith(`${relPath}/`));
+      if (relPath !== '' && !state.files.has(relPath) && !isDir) {
+        return Promise.reject(new BackendError('NotFound', `Not found: ${relPath}`));
+      }
+      state.opened.push(`reveal:${relPath}`);
+      return Promise.resolve();
     },
 
     assetUrl: (_rootPath, relPath) => {

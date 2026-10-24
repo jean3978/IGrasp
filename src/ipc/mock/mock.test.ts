@@ -51,6 +51,31 @@ describe('mock backend', () => {
     expect([...times].sort((x, y) => y - x)).toEqual(times);
   });
 
+  it('reads text files and refuses binaries and huge files like Rust', async () => {
+    const b = createMockBackend();
+    await b.openRoot(FIXTURE_ROOT);
+    const main = await b.readTextFile('src/main.ts');
+    expect(main.content).toContain('export function main');
+    expect(main.truncated).toBe(false);
+    await expect(b.readTextFile('assets/logo.bin')).rejects.toMatchObject({ code: 'NotText' });
+    await expect(b.readTextFile('logs/huge.log')).rejects.toMatchObject({ code: 'TooLarge' });
+    await expect(b.readTextFile('nope.txt')).rejects.toMatchObject({ code: 'NotFound' });
+  });
+
+  it('opens only text files that are not programs with the default app', async () => {
+    const b = createMockBackend();
+    await b.openRoot(FIXTURE_ROOT);
+    await b.openWithDefaultApp('src/main.ts');
+    await expect(b.openWithDefaultApp('scripts/deploy.sh')).rejects.toMatchObject({
+      code: 'Forbidden',
+    });
+    await expect(b.openWithDefaultApp('assets/logo.bin')).rejects.toMatchObject({
+      code: 'Forbidden',
+    });
+    await b.revealInFileManager('scripts');
+    expect(b.controls.state.opened).toEqual(['editor:src/main.ts', 'reveal:scripts']);
+  });
+
   it('normalizes settings like the Rust backend', async () => {
     const b = createMockBackend();
     const s = await b.updateSettings({ fontSize: 3, ignorePatterns: [' a ', '', '# c'] });
