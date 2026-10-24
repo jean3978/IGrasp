@@ -12,6 +12,9 @@ export interface KeyBinding {
 export const KEYMAP: KeyBinding[] = [
   { key: 'o', ctrl: true, action: 'file.openFolder' },
   { key: 'b', ctrl: true, action: 'view.toggleSidebar' },
+  { key: ',', ctrl: true, action: 'file.settings' },
+  { key: 'e', ctrl: true, shift: true, action: 'view.focusExplorer' },
+  { key: 'f1', action: 'help.shortcuts' },
   { key: '=', ctrl: true, action: 'view.zoomIn' },
   { key: '+', ctrl: true, action: 'view.zoomIn' },
   { key: '-', ctrl: true, action: 'view.zoomOut' },
@@ -28,6 +31,18 @@ export const KEYMAP: KeyBinding[] = [
     alt: true,
     action: `tabs.goto${n}`,
   })),
+];
+
+/** Shortcuts reserved for features of later phases: never bind them to anything else. */
+export const RESERVED_SHORTCUTS = [
+  'Ctrl+T',
+  'Ctrl+Shift+F',
+  'Alt+Left',
+  'Alt+Right',
+  'F2',
+  'Delete',
+  'Ctrl+S',
+  'Ctrl+E',
 ];
 
 /** Returns the action bound to a key event, if any. Modifiers must match exactly. */

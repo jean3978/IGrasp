@@ -1,5 +1,6 @@
 import { selectActiveTab, useTabs } from '../../stores/tabs';
 import { DocumentTab } from '../preview/DocumentTab';
+import { ShortcutsReferenceTab } from '../shortcuts/ShortcutsReferenceTab';
 import { EmptyState } from './EmptyState';
 import { panelDomId, tabDomId } from './tabIds';
 
@@ -19,7 +20,7 @@ export function TabContent() {
         <DocumentTab key={tab.id} tabId={tab.id} relPath={tab.relPath} />
       )}
       {tab.kind === 'settings' && <p className="placeholder">Settings arrive in a later step.</p>}
-      {tab.kind === 'shortcuts' && <p className="placeholder">Shortcuts arrive in a later step.</p>}
+      {tab.kind === 'shortcuts' && <ShortcutsReferenceTab />}
     </div>
   );
 }

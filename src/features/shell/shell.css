@@ -117,3 +117,7 @@
 .statusbar-button:hover {
   background: var(--bg-hover);
 }
+
+.main.standalone {
+  flex: 1;
+}

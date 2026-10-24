@@ -8,15 +8,25 @@ import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
 import { useTabs } from '../../stores/tabs';
 import { useToasts } from '../../stores/toasts';
+import { useTree } from '../../stores/tree';
+import { useUi } from '../../stores/ui';
 import { useWorkspace } from '../../stores/workspace';
 
 export type ActionId =
   | 'file.openFolder'
   | 'file.closeFolder'
   | 'file.clearRecent'
+  | 'file.settings'
   | 'file.exit'
+  | 'edit.copy'
+  | 'edit.selectAll'
   | 'view.toggleSidebar'
+  | 'view.focusExplorer'
+  | 'view.showDotfiles'
+  | 'view.showIgnored'
   | 'view.muteToasts'
+  | 'help.shortcuts'
+  | 'help.about'
   | 'view.zoomIn'
   | 'view.zoomOut'
   | 'view.zoomReset'
@@ -56,8 +66,71 @@ function setFontSize(size: number) {
   return useSettings.getState().update({ fontSize });
 }
 
+/** The preview of the active tab, if any. */
+const activePreview = () => document.querySelector<HTMLElement>('.tab-content .markdown-body');
+
 export const actions: Record<ActionId, ActionDef> = {
   ...gotoActions,
+  'file.settings': {
+    label: 'Settings',
+    shortcut: 'Ctrl+,',
+    run: () => {
+      useTabs.getState().openSpecial('settings');
+    },
+  },
+  'edit.copy': {
+    label: 'Copy',
+    shortcut: 'Ctrl+C',
+    run: async () => {
+      const text = window.getSelection()?.toString() ?? '';
+      if (text) await navigator.clipboard.writeText(text);
+    },
+  },
+  'edit.selectAll': {
+    label: 'Select All',
+    shortcut: 'Ctrl+A',
+    run: () => {
+      const preview = activePreview();
+      const selection = window.getSelection();
+      if (!preview || !selection) return;
+      const range = document.createRange();
+      range.selectNodeContents(preview);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    },
+  },
+  'view.focusExplorer': {
+    label: 'Focus Explorer',
+    shortcut: 'Ctrl+Shift+E',
+    run: () => {
+      useWorkspace.getState().setSidebarVisible(true);
+      // The tree mounts on the next frame when the sidebar was hidden.
+      requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>('.file-tree')?.focus();
+      });
+    },
+  },
+  'view.showDotfiles': {
+    label: 'Show Dotfiles',
+    run: () => useTree.getState().setShowDotfiles(!useTree.getState().showDotfiles),
+  },
+  'view.showIgnored': {
+    label: 'Show Ignored Files',
+    run: () => useTree.getState().setShowIgnored(!useTree.getState().showIgnored),
+  },
+  'help.shortcuts': {
+    label: 'Keyboard Shortcuts',
+    shortcut: 'F1',
+    run: () => {
+      useTabs.getState().openSpecial('shortcuts');
+    },
+  },
+  'help.about': {
+    label: 'About IGrasp',
+    run: () => {
+      useUi.getState().setAboutOpen(true);
+    },
+  },
   'tabs.close': {
     label: 'Close Tab',
     shortcut: 'Ctrl+W',

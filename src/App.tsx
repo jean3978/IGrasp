@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Tooltip } from 'radix-ui';
 import { backend } from './ipc/client';
+import { AboutDialog } from './features/about/AboutDialog';
 import { ExplorerPanel } from './features/explorer/ExplorerPanel';
 import { StatusBar } from './features/shell/StatusBar';
 import { WorkspaceLayout } from './features/shell/WorkspaceLayout';
@@ -38,6 +39,7 @@ export function App() {
   const root = useWorkspace((s) => s.root);
   const activePath = useTabs((s) => selectActiveTab(s)?.relPath ?? null);
   const openDocument = useTabs((s) => s.openDocument);
+  const hasTabs = useTabs((s) => s.tabs.length > 0);
   const title = useWindowTitle();
   const [ready, setReady] = useState(false);
 
@@ -63,6 +65,11 @@ export function App() {
         setReady(true);
       });
   }, [load]);
+
+  // "Native window frame" setting: let the OS draw the title bar and borders.
+  useEffect(() => {
+    if (ready) void backend.window.setDecorations(nativeFrame);
+  }, [ready, nativeFrame]);
 
   // The window starts hidden; show it once the theme is applied so it never flashes white.
   useEffect(() => {
@@ -93,6 +100,12 @@ export function App() {
                 </>
               }
             />
+          ) : hasTabs ? (
+            // Settings and the shortcuts reference also work without an open folder.
+            <main className="main standalone" id="main-content">
+              <TabBar />
+              <TabContent />
+            </main>
           ) : (
             <WelcomeScreen />
           )}
@@ -101,6 +114,7 @@ export function App() {
         {platform === 'linux' && !nativeFrame && <ResizeHandles />}
       </div>
       <ToastHost />
+      <AboutDialog />
       <SplashOverlay ready={ready} />
     </Tooltip.Provider>
   );

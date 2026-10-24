@@ -1,0 +1,98 @@
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4500;
+  background: var(--bg-backdrop);
+}
+
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 4501;
+  width: min(460px, 100vw - 32px);
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+  padding: 28px;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-l);
+  background: var(--bg-overlay);
+  box-shadow: var(--shadow-dialog);
+  color: var(--fg);
+  transform: translate(-50%, -50%);
+  user-select: text;
+}
+
+.dialog-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  padding: 4px;
+  border: none;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--fg-muted);
+}
+
+.dialog-close:hover {
+  background: var(--bg-hover);
+}
+
+.dialog-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.about {
+  text-align: center;
+}
+
+.about-logo {
+  width: 72px;
+  height: 72px;
+}
+
+.about-title {
+  margin: 8px 0 4px;
+  color: var(--fg-strong);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.about-tagline {
+  margin: 0 0 8px;
+  color: var(--fg-muted);
+}
+
+.about-ai {
+  margin: 0 0 16px;
+  font-weight: 600;
+}
+
+.about-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0 0 16px;
+  text-align: left;
+  font-size: var(--font-size-small);
+}
+
+.about-info dt {
+  color: var(--fg-muted);
+}
+
+.about-info dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.about-path {
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+.about-links a {
+  color: var(--link);
+}
