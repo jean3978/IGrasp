@@ -12,6 +12,8 @@ import type { Backlinks } from './generated/Backlinks';
 import type { BrokenLinksReport } from './generated/BrokenLinksReport';
 import type { DocLinks } from './generated/DocLinks';
 import type { SymbolSearchResult } from './generated/SymbolSearchResult';
+import type { SearchResultsEvent } from './generated/SearchResultsEvent';
+import type { TextSearchRequest } from './generated/TextSearchRequest';
 import type { GraphChangedEvent } from './generated/GraphChangedEvent';
 import type { GraphProgressEvent } from './generated/GraphProgressEvent';
 import type { GraphReadyEvent } from './generated/GraphReadyEvent';
@@ -66,6 +68,11 @@ export type { SessionTabKind } from './generated/SessionTabKind';
 export type { SidebarView } from './generated/SidebarView';
 export type { LinkInfo } from './generated/LinkInfo';
 export type { SymbolHit } from './generated/SymbolHit';
+export type { FileMatches } from './generated/FileMatches';
+export type { SearchResultsEvent } from './generated/SearchResultsEvent';
+export type { SearchStats } from './generated/SearchStats';
+export type { TextMatch } from './generated/TextMatch';
+export type { TextSearchRequest } from './generated/TextSearchRequest';
 export type { SymbolSearchResult } from './generated/SymbolSearchResult';
 export type { DocLinks } from './generated/DocLinks';
 export type { Backlink } from './generated/Backlink';
@@ -107,6 +114,7 @@ export interface BackendEvents {
   'graph://progress': GraphProgressEvent;
   'graph://ready': GraphReadyEvent;
   'graph://changed': GraphChangedEvent;
+  'search://results': SearchResultsEvent;
 }
 
 export type EventName = keyof BackendEvents;
@@ -174,6 +182,10 @@ export interface Backend {
   listBrokenLinks(): Promise<BrokenLinksReport>;
   /** Fuzzy search over file names and headings (Ctrl+T); `#` restricts to headings. */
   searchSymbols(request: SymbolSearchRequest): Promise<SymbolSearchResult>;
+  /** Starts a full-text search; results arrive as `search://results` batches. Resolves to its id. */
+  searchText(request: TextSearchRequest): Promise<number>;
+  /** Cancels a running text search (idempotent). */
+  cancelSearch(searchId: number): Promise<void>;
 
   getSettings(): Promise<Settings>;
   updateSettings(patch: SettingsPatch): Promise<Settings>;

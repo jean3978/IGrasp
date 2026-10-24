@@ -3,4 +3,4 @@
 /**
  * Machine-readable error code sent to the frontend.
  */
-export type ErrorCode = "NoRootOpen" | "OutsideRoot" | "NotFound" | "InvalidPath" | "TooLarge" | "IndexNotReady" | "Io" | "AppData" | "NotText" | "Forbidden";
+export type ErrorCode = "NoRootOpen" | "OutsideRoot" | "NotFound" | "InvalidPath" | "TooLarge" | "IndexNotReady" | "Io" | "AppData" | "NotText" | "Forbidden" | "InvalidPattern";

@@ -21,6 +21,7 @@ import { checkOpenable, readText } from './mockFiles';
 import { backlinksOf, brokenCount, brokenDocs, buildGraph } from './mockGraph';
 import type { MockDoc } from './mockGraph';
 import { searchSymbols } from './mockSymbols';
+import { buildRegExp, filterFiles, searchContent } from './mockText';
 import { gitignorePatterns, isMarkdown, listFixtureDir, scanFixture } from './mockIndex';
 import type { MockScanOptions } from './mockIndex';
 
@@ -100,6 +101,8 @@ function baseName(path: string): string {
 
 export function createMockBackend(): Backend & { controls: MockControls } {
   let state = initialState();
+  let searchId = 0;
+  const cancelled = new Set<number>();
   const handlers = new Map<EventName, Set<Handler>>();
 
   const emit: MockControls['emit'] = (event, payload) => {
@@ -464,6 +467,66 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         docs: graph ? structuredClone(brokenDocs(graph)) : [],
       });
     },
+    // Async so the errors thrown by the helpers become rejections.
+    // eslint-disable-next-line @typescript-eslint/require-await
+    searchText: async (request) => {
+      if (!state.root) throw new BackendError('NoRootOpen', 'No folder is open.');
+      if (!state.index)
+        throw new BackendError('IndexNotReady', 'The folder is still being indexed.');
+      const re = buildRegExp(request);
+      const files = filterFiles([...state.index.keys()], request);
+      const id = (searchId += 1);
+      cancelled.add(id - 1);
+      const generation = state.generation;
+      const max = request.maxResults ?? 20_000;
+      const stats = { filesSearched: 0, filesMatched: 0, matches: 0, skipped: 0, elapsedMs: 0 };
+      let truncated = false;
+      // One file per tick, so a test or the UI can cancel in the middle like a real search.
+      const step = (i: number) => {
+        const isCancelled = cancelled.has(id);
+        const file = files[i];
+        if (isCancelled || file === undefined || truncated) {
+          emit('search://results', {
+            searchId: id,
+            generation,
+            files: [],
+            done: true,
+            cancelled: isCancelled,
+            truncated: truncated && !isCancelled,
+            stats,
+          });
+          return;
+        }
+        stats.filesSearched += 1;
+        const matches = searchContent(re, state.files.get(file) ?? '', max - stats.matches);
+        if (matches.length > 0) {
+          stats.filesMatched += 1;
+          stats.matches += matches.length;
+          if (stats.matches >= max || stats.filesMatched >= 2000) truncated = true;
+          emit('search://results', {
+            searchId: id,
+            generation,
+            files: [{ relPath: file, matches }],
+            done: false,
+            cancelled: false,
+            truncated: false,
+            stats: { ...stats },
+          });
+        }
+        setTimeout(() => {
+          step(i + 1);
+        }, 0);
+      };
+      setTimeout(() => {
+        step(0);
+      }, 0);
+      return id;
+    },
+    cancelSearch: (id) => {
+      cancelled.add(id);
+      return Promise.resolve();
+    },
+
     searchSymbols: (request) => {
       if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
       const files = [...(state.index?.keys() ?? [])];

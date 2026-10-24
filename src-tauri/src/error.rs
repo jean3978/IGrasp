@@ -17,6 +17,7 @@ pub enum ErrorCode {
     AppData,
     NotText,
     Forbidden,
+    InvalidPattern,
 }
 
 /// Shape of every error returned by a command.
@@ -49,6 +50,8 @@ pub enum AppError {
     NotText(String),
     #[error("{0}")]
     Forbidden(String),
+    #[error("{0}")]
+    InvalidPattern(String),
 }
 
 impl AppError {
@@ -64,6 +67,7 @@ impl AppError {
             Self::AppData(_) => ErrorCode::AppData,
             Self::NotText(_) => ErrorCode::NotText,
             Self::Forbidden(_) => ErrorCode::Forbidden,
+            Self::InvalidPattern(_) => ErrorCode::InvalidPattern,
         }
     }
 }

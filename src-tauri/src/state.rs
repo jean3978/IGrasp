@@ -10,6 +10,7 @@ use crate::index::SharedIndex;
 use crate::index::scanner::ScanOptions;
 use crate::index::watcher::SharedWatch;
 use crate::paths::RootGuard;
+use crate::search::SearchRegistry;
 use crate::search::symbols::Candidates;
 
 /// The folder currently open in the app.
@@ -28,6 +29,8 @@ pub struct Workspace {
     pub graph: SharedGraph,
     /// Search candidates (Ctrl+T), rebuilt when the index or the graph changes.
     pub symbols: Mutex<Option<Candidates>>,
+    /// The running full-text search, cancelled with the workspace.
+    pub searches: SearchRegistry,
 }
 
 /// What the background scan, the watcher and the graph builder of a workspace share.
@@ -53,6 +56,7 @@ impl Workspace {
             watch: Arc::new(Mutex::new(None)),
             graph: Arc::default(),
             symbols: Mutex::new(None),
+            searches: SearchRegistry::default(),
         }
     }
 
@@ -73,6 +77,7 @@ impl Drop for Workspace {
     fn drop(&mut self) {
         // Closing or replacing the workspace stops its background work.
         self.cancel.store(true, Ordering::SeqCst);
+        self.searches.cancel_all();
         self.watch.lock().unwrap_or_else(|e| e.into_inner()).take();
     }
 }

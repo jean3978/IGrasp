@@ -84,6 +84,8 @@ pub fn run() {
             commands::graph::get_backlinks,
             commands::graph::list_broken_links,
             commands::search::search_symbols,
+            commands::search::search_text,
+            commands::search::cancel_search,
         ])
         .run(tauri::generate_context!())
         .expect("error while running IGrasp");

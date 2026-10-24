@@ -89,6 +89,8 @@ export const tauriBackend: Backend = {
   getBacklinks: (relPath) => invoke('get_backlinks', { relPath }),
   listBrokenLinks: () => invoke('list_broken_links'),
   searchSymbols: (request) => invoke('search_symbols', { ...request }),
+  searchText: (request) => invoke('search_text', { request }),
+  cancelSearch: (searchId) => invoke('cancel_search', { searchId }),
 
   getSettings: () => invoke('get_settings'),
   updateSettings: (patch) => invoke('update_settings', { patch }),
