@@ -31,6 +31,7 @@ export function buildSession(): Session {
     activeTab: tabs.find((t) => t.id === activeId)?.relPath ?? null,
     expandedDirs: [...tree.expanded].sort(),
     sidebar: { visible: sidebar.visible, widthPx: sidebar.widthPx },
+    sidebarView: sidebar.view,
     showDotfiles: tree.showDotfiles,
     showIgnored: tree.showIgnored,
     savedAtMs: Date.now(),
@@ -63,6 +64,7 @@ export function applySessionLayout(session: Session | null): void {
   if (!session) return;
   useWorkspace.getState().setSidebarVisible(session.sidebar.visible);
   useWorkspace.getState().setSidebarWidth(session.sidebar.widthPx);
+  useWorkspace.setState((s) => ({ sidebar: { ...s.sidebar, view: session.sidebarView } }));
 }
 
 async function existingFiles(paths: string[]): Promise<Set<string>> {

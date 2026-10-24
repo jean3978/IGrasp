@@ -73,7 +73,9 @@ describe('session', () => {
     useTabs.getState().activate(readme.id);
     useTree.getState().expand('docs');
     useWorkspace.getState().setSidebarWidth(321);
+    useWorkspace.getState().setSidebarView('recent');
     await useWorkspace.getState().closeRoot();
+    useWorkspace.getState().setSidebarView('explorer');
     expect(useTabs.getState().tabs).toEqual([]);
 
     window.__igraspMock?.state.files.delete('CHANGELOG.md');
@@ -88,6 +90,7 @@ describe('session', () => {
     expect(useTree.getState().expanded.has('docs')).toBe(true);
     expect(useTree.getState().listings.docs).toBeDefined();
     expect(useWorkspace.getState().sidebar.widthPx).toBe(321);
+    expect(useWorkspace.getState().sidebar.view).toBe('recent');
   });
 
   it('does not write while switching folders', async () => {

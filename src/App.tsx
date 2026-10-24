@@ -3,6 +3,11 @@ import { Tooltip } from 'radix-ui';
 import { backend } from './ipc/client';
 import { AboutDialog } from './features/about/AboutDialog';
 import { ExplorerPanel } from './features/explorer/ExplorerPanel';
+import { BrokenLinksPanel } from './features/links/BrokenLinksPanel';
+import { RecentChangesPanel } from './features/recent/RecentChangesPanel';
+import { SearchPanel } from './features/search/SearchPanel';
+import { ActivityBar } from './features/shell/ActivityBar';
+import { SidebarHost } from './features/shell/SidebarHost';
 import { StatusBar } from './features/shell/StatusBar';
 import { WorkspaceLayout } from './features/shell/WorkspaceLayout';
 import { useAppearance } from './features/shell/useAppearance';
@@ -109,7 +114,17 @@ export function App() {
         <div className="app-body">
           {root ? (
             <WorkspaceLayout
-              sidebar={<ExplorerPanel activePath={activePath} onOpen={openDocument} />}
+              activityBar={<ActivityBar />}
+              sidebar={
+                <SidebarHost
+                  views={{
+                    explorer: <ExplorerPanel activePath={activePath} onOpen={openDocument} />,
+                    search: <SearchPanel />,
+                    recent: <RecentChangesPanel />,
+                    broken: <BrokenLinksPanel />,
+                  }}
+                />
+              }
               main={
                 <>
                   <TabBar />

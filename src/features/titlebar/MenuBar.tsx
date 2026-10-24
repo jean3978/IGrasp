@@ -259,6 +259,9 @@ export function MenuBar() {
       <Menu value="view">
         <CheckItem id="view.toggleSidebar" checked={sidebarVisible} />
         <Item id="view.focusExplorer" disabled={!hasRoot} />
+        <Item id="view.search" disabled={!hasRoot} />
+        <Item id="view.recent" disabled={!hasRoot} />
+        <Item id="view.broken" disabled={!hasRoot} />
         <Menubar.Separator className="menu-separator" />
         <CheckItem id="view.showDotfiles" checked={showDotfiles} disabled={!hasRoot} />
         <CheckItem id="view.showIgnored" checked={showIgnored} disabled={!hasRoot} />

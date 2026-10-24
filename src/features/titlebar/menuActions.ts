@@ -3,7 +3,7 @@
 
 import { backend } from '../../ipc/client';
 import { MAX_FONT_SIZE, MIN_FONT_SIZE } from '../../ipc/defaults';
-import type { Theme } from '../../ipc/types';
+import type { SidebarView, Theme } from '../../ipc/types';
 import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
 import { useTabs } from '../../stores/tabs';
@@ -22,6 +22,9 @@ export type ActionId =
   | 'edit.selectAll'
   | 'view.toggleSidebar'
   | 'view.focusExplorer'
+  | 'view.search'
+  | 'view.recent'
+  | 'view.broken'
   | 'view.showDotfiles'
   | 'view.showIgnored'
   | 'view.muteToasts'
@@ -66,6 +69,18 @@ function setFontSize(size: number) {
   return useSettings.getState().update({ fontSize });
 }
 
+/** Shows a sidebar view and focuses its main element once it is mounted. */
+function showView(view: SidebarView, focusSelector: string) {
+  if (!useWorkspace.getState().root) return;
+  useWorkspace.getState().setSidebarView(view);
+  requestAnimationFrame(() => {
+    const el = document.querySelector<HTMLElement>(`#sidebar-view ${focusSelector}`);
+    (
+      el ?? document.querySelector<HTMLElement>('#sidebar-view [tabindex], #sidebar-view button')
+    )?.focus();
+  });
+}
+
 /** The preview of the active tab, if any. */
 const activePreview = () => document.querySelector<HTMLElement>('.tab-content .markdown-body');
 
@@ -100,14 +115,31 @@ export const actions: Record<ActionId, ActionDef> = {
     },
   },
   'view.focusExplorer': {
-    label: 'Focus Explorer',
+    label: 'Explorer',
     shortcut: 'Ctrl+Shift+E',
     run: () => {
-      useWorkspace.getState().setSidebarVisible(true);
-      // The tree mounts on the next frame when the sidebar was hidden.
-      requestAnimationFrame(() => {
-        document.querySelector<HTMLElement>('.file-tree')?.focus();
-      });
+      showView('explorer', '.file-tree');
+    },
+  },
+  'view.search': {
+    label: 'Search',
+    shortcut: 'Ctrl+Shift+F',
+    run: () => {
+      showView('search', '.search-input');
+    },
+  },
+  'view.recent': {
+    label: 'Recent Changes',
+    shortcut: 'Ctrl+Shift+R',
+    run: () => {
+      showView('recent', '.recent-list');
+    },
+  },
+  'view.broken': {
+    label: 'Broken Links',
+    shortcut: 'Ctrl+Shift+L',
+    run: () => {
+      showView('broken', '.broken-list');
     },
   },
   'view.showDotfiles': {

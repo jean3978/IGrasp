@@ -8,6 +8,7 @@ const session: Session = {
   activeTab: 'README.md',
   expandedDirs: [],
   sidebar: { visible: true, widthPx: 260 },
+  sidebarView: 'explorer',
   showDotfiles: false,
   showIgnored: false,
   savedAtMs: 0,

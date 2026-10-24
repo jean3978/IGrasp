@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { backend } from '../ipc/client';
-import type { IndexReadyEvent, RootInfo, WatchMode } from '../ipc/types';
+import type { IndexReadyEvent, RootInfo, SidebarView, WatchMode } from '../ipc/types';
 import { useDocuments } from './documents';
 import { useRecent } from './recent';
 import {
@@ -20,6 +20,7 @@ export const MIN_SIDEBAR_WIDTH = 170;
 interface SidebarState {
   visible: boolean;
   widthPx: number;
+  view: SidebarView;
 }
 
 export interface IndexStatus {
@@ -69,6 +70,10 @@ interface WorkspaceState {
   toggleSidebar: () => void;
   setSidebarVisible: (visible: boolean) => void;
   setSidebarWidth: (widthPx: number) => void;
+  /** Shows a view in the sidebar (and the sidebar itself). */
+  setSidebarView: (view: SidebarView) => void;
+  /** Activity bar click: switches to `view`, or hides the sidebar when it is already shown. */
+  toggleSidebarView: (view: SidebarView) => void;
 }
 
 function message(err: unknown): string {
@@ -82,7 +87,7 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
   index: IDLE,
   lastReady: null,
   watch: { mode: null, reason: null },
-  sidebar: { visible: true, widthPx: DEFAULT_SIDEBAR_WIDTH },
+  sidebar: { visible: true, widthPx: DEFAULT_SIDEBAR_WIDTH, view: 'explorer' },
 
   async openRoot(path) {
     set({ opening: true, openError: null });
@@ -179,5 +184,19 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
   setSidebarWidth(widthPx) {
     const width = Math.max(MIN_SIDEBAR_WIDTH, Math.round(widthPx));
     set((s) => (s.sidebar.widthPx === width ? s : { sidebar: { ...s.sidebar, widthPx: width } }));
+  },
+
+  setSidebarView(view) {
+    set((s) =>
+      s.sidebar.visible && s.sidebar.view === view
+        ? s
+        : { sidebar: { ...s.sidebar, visible: true, view } },
+    );
+  },
+
+  toggleSidebarView(view) {
+    const { sidebar } = get();
+    if (sidebar.visible && sidebar.view === view) get().setSidebarVisible(false);
+    else get().setSidebarView(view);
   },
 }));

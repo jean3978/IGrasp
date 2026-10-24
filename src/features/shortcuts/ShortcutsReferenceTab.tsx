@@ -26,6 +26,9 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
     rows: fromActions([
       'view.toggleSidebar',
       'view.focusExplorer',
+      'view.search',
+      'view.recent',
+      'view.broken',
       'view.zoomIn',
       'view.zoomOut',
       'view.zoomReset',

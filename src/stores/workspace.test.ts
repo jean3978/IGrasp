@@ -36,6 +36,17 @@ describe('workspace store', () => {
     expect(useWorkspace.getState().root).toBeNull();
   });
 
+  it('switches sidebar views and hides the sidebar when the active view is clicked', () => {
+    useWorkspace.setState({ sidebar: { visible: false, widthPx: 280, view: 'explorer' } });
+    const ws = useWorkspace.getState;
+    ws().toggleSidebarView('search');
+    expect(ws().sidebar).toMatchObject({ visible: true, view: 'search' });
+    ws().toggleSidebarView('search');
+    expect(ws().sidebar).toMatchObject({ visible: false, view: 'search' });
+    ws().setSidebarView('recent');
+    expect(ws().sidebar).toMatchObject({ visible: true, view: 'recent' });
+  });
+
   it('flags recent folders that no longer exist', async () => {
     await useWorkspace.getState().openRoot(FIXTURE_ROOT);
     window.__igraspMock?.state.folders.delete(FIXTURE_ROOT);
