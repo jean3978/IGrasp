@@ -324,10 +324,10 @@ impl WatchContext {
         if self.cancel.load(Ordering::SeqCst) {
             return;
         }
-        if let Some(event) = to_event(self.generation, changes, &plan) {
-            if let Err(e) = self.app.emit(EVENT_CHANGES, event) {
-                log::warn!("cannot emit {EVENT_CHANGES}: {e}");
-            }
+        if let Some(event) = to_event(self.generation, changes, &plan)
+            && let Err(e) = self.app.emit(EVENT_CHANGES, event)
+        {
+            log::warn!("cannot emit {EVENT_CHANGES}: {e}");
         }
     }
 }
@@ -440,9 +440,9 @@ mod tests {
         files: &'static [&'static str],
     ) -> impl Fn(&str) -> Option<bool> {
         move |rel: &str| {
-            if dirs.iter().any(|d| *d == rel) {
+            if dirs.contains(&rel) {
                 Some(true)
-            } else if files.iter().any(|f| *f == rel) {
+            } else if files.contains(&rel) {
                 Some(false)
             } else {
                 None
