@@ -5,6 +5,7 @@ import type { AppInfo } from './generated/AppInfo';
 import type { DirEntry } from './generated/DirEntry';
 import type { DirListing } from './generated/DirListing';
 import type { ErrorCode } from './generated/ErrorCode';
+import type { FileContent } from './generated/FileContent';
 import type { FileEntry } from './generated/FileEntry';
 import type { IndexErrorEvent } from './generated/IndexErrorEvent';
 import type { IndexProgressEvent } from './generated/IndexProgressEvent';
@@ -22,6 +23,7 @@ export type {
   DirEntry,
   DirListing,
   ErrorCode,
+  FileContent,
   FileEntry,
   IndexErrorEvent,
   IndexProgressEvent,
@@ -96,6 +98,8 @@ export interface Backend {
   rescan(request: RescanRequest): Promise<number>;
   /** Lists an indexed folder (root-relative path, "" for the root). */
   listDir(relPath: string): Promise<DirListing>;
+  /** Reads a markdown file of the open folder. */
+  readMarkdown(relPath: string): Promise<FileContent>;
 
   getSettings(): Promise<Settings>;
   updateSettings(patch: SettingsPatch): Promise<Settings>;

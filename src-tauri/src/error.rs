@@ -26,10 +26,6 @@ pub struct IpcError {
 }
 
 #[derive(Debug, thiserror::Error)]
-#[expect(
-    dead_code,
-    reason = "workspace and file commands construct the remaining variants"
-)]
 pub enum AppError {
     #[error("No folder is open.")]
     NoRootOpen,

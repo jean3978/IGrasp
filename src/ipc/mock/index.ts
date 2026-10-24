@@ -16,10 +16,12 @@ import type {
   Settings,
 } from '../types';
 import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT } from './fixture';
-import { gitignorePatterns, listFixtureDir, scanFixture } from './mockIndex';
+import { gitignorePatterns, isMarkdown, listFixtureDir, scanFixture } from './mockIndex';
 import type { MockScanOptions } from './mockIndex';
 
 type Handler = (payload: never) => void;
+
+const BOM = String.fromCharCode(0xfeff);
 
 export interface MockState {
   settings: Settings;
@@ -29,6 +31,8 @@ export interface MockState {
   folders: Set<string>;
   /** Files of the fixture project, by root-relative path. */
   files: Map<string, string>;
+  /** Modification times of the files (absent = 0). */
+  mtimes: Map<string, number>;
   root: RootInfo | null;
   generation: number;
   /** Markdown index of the open root; null while "scanning". */
@@ -60,6 +64,7 @@ function initialState(): MockState {
     sessions: new Map(),
     folders: new Set([FIXTURE_ROOT]),
     files: new Map(Object.entries(FIXTURE_FILES)),
+    mtimes: new Map(),
     root: null,
     generation: 0,
     index: null,
@@ -211,6 +216,19 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         relPath,
         generation: state.generation,
         ...structuredClone(listing),
+      });
+    },
+    readMarkdown: (relPath) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const content = state.files.get(relPath);
+      if (content === undefined || !isMarkdown(relPath)) {
+        return Promise.reject(new BackendError('NotFound', `Not found: ${relPath}`));
+      }
+      return Promise.resolve({
+        relPath,
+        content: content.startsWith(BOM) ? content.slice(1) : content,
+        size: content.length,
+        modifiedMs: state.mtimes.get(relPath) ?? 0,
       });
     },
 

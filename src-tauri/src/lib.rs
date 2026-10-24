@@ -61,6 +61,7 @@ pub fn run() {
             commands::workspace::close_root,
             commands::workspace::rescan,
             commands::workspace::list_dir,
+            commands::files::read_markdown,
         ])
         .run(tauri::generate_context!())
         .expect("error while running IGrasp");

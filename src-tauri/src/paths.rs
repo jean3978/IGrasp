@@ -51,7 +51,6 @@ impl RootGuard {
 
     /// Resolves an existing path under the root, following symlinks, and checks that the target
     /// is still inside the root.
-    #[cfg_attr(not(test), expect(dead_code, reason = "used by read_markdown"))]
     pub fn resolve(&self, rel: &str) -> AppResult<PathBuf> {
         let joined = self.join_lexical(rel)?;
         let canonical =
