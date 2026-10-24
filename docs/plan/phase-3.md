@@ -1,6 +1,6 @@
 # Phase 3 — Claude implementation plan
 
-Status: **draft for review** · Branch: `phase-3-claude` · Release: `v0.3.0`
+Status: **accepted** (§15 answered) · Branch: `phase-3-claude` · Release: `v0.3.0`
 
 Phase 3 turns the proof of concept of the `poc-claude-cli` branch ([ADR 0014](../decisions/0014-claude-cli-integration.md),
 [ADR 0015](../decisions/0015-ai-provider-abstraction-and-gateway.md)) into the first AI feature of
@@ -716,8 +716,8 @@ conversation ids are `<updatedMs>-<counter>` strings, no UUID crate.)
 
 | Package | Version | Licence | Use |
 |---|---|---|---|
-| `diff` | 8.0.x | BSD-3-Clause | `diffArrays` for block-level and `diffLines` for line-level diffs (replaces the hand-written LCS in `features/ai/diff.ts`) |
-| `modern-screenshot` | 4.6.x | MIT | DOM region → canvas → PNG for region capture |
+| `diff` | 9.0.0 | BSD-3-Clause | `diffArrays` for block-level and `diffLines` for line-level diffs (replaces the hand-written LCS in `features/ai/diff.ts`) |
+| `modern-screenshot` | 4.7.0 | MIT | DOM region → canvas → PNG for region capture |
 
 Pinned exact versions like the rest of `package.json`; both MIT-compatible. Dragging, resizing,
 the overlay and the floating panel are written with pointer events (no library).
@@ -953,3 +953,7 @@ want the card on every message.
 | 10 | **Status probe cache** of 60 s (two processes per check otherwise). | Yes; **Check again** bypasses it. |
 | 11 | **`Escape` semantics** in the panel: first press stops a running operation, second closes. | Yes, with the composer tooltip saying so. |
 | 12 | **Phase 3 writes in the folder**: only through the provider on an accepted edit. The app itself never writes there (not even a review backup). Confirm. | Confirm; the Editing phase introduces the app's own writes. |
+
+**Answers (plan review):** every recommendation above is accepted as written. The library
+versions in §8.2 were moved to the current stable releases (`diff` 9.0.0, `modern-screenshot`
+4.7.0).
