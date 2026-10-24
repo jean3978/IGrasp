@@ -5,7 +5,7 @@ import { FIXTURE_ROOT } from './fixture';
 
 const session: Session = {
   version: 1,
-  tabs: [{ relPath: 'README.md', pinned: true, scrollTop: 10 }],
+  tabs: [{ relPath: 'README.md', pinned: true, scrollTop: 10, kind: 'document' }],
   activeTab: 'README.md',
   expandedDirs: [],
   sidebar: { visible: true, widthPx: 260 },

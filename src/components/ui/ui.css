@@ -30,6 +30,32 @@
   height: 16px;
 }
 
+.text-input {
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  padding: 0 6px;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-s);
+  background: var(--bg-input);
+  color: var(--fg);
+  font: inherit;
+  font-size: var(--font-size-ui);
+}
+
+.text-input:focus {
+  border-color: var(--focus);
+  outline: none;
+}
+
+.text-input::placeholder {
+  color: var(--fg-muted);
+}
+
+.text-input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
 .tooltip {
   z-index: 1000;
   display: flex;

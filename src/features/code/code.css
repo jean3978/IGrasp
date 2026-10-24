@@ -1,0 +1,188 @@
+.code-tab {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.code-header {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px 0 16px;
+  border-bottom: var(--border-width) solid var(--border);
+  font-size: var(--font-size-small);
+}
+
+.code-path {
+  overflow: hidden;
+  color: var(--fg-strong);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.code-meta {
+  flex: none;
+  color: var(--fg-muted);
+}
+
+.code-badge {
+  flex: none;
+  padding: 0 6px;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-s);
+  color: var(--fg-muted);
+  font-size: 11px;
+}
+
+.code-actions {
+  display: flex;
+  flex: none;
+  gap: 1px;
+  margin-left: auto;
+}
+
+.code-goto {
+  flex: none;
+  padding: 6px 16px;
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.code-goto label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 360px;
+  font-size: var(--font-size-small);
+  white-space: nowrap;
+}
+
+.code-banner {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.code-scroll {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.code-scroll:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: -1px;
+}
+
+.code-lines {
+  position: relative;
+  min-width: 100%;
+  width: max-content;
+}
+
+.code-wrap .code-lines {
+  width: 100%;
+}
+
+.code-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  min-width: 100%;
+  min-height: 20px;
+  line-height: 20px;
+}
+
+.code-line[data-selected] {
+  background: var(--bg-selection);
+}
+
+.code-ln {
+  position: sticky;
+  left: 0;
+  flex: none;
+  width: calc(var(--gutter-chars, 3) * 1ch + 28px);
+  padding-right: 16px;
+  background: var(--bg-editor);
+  color: var(--fg-muted);
+  text-align: right;
+  cursor: pointer;
+  user-select: none;
+}
+
+.code-line[data-selected] .code-ln {
+  background: var(--bg-selection);
+  color: var(--fg-strong);
+}
+
+.code-text {
+  padding-right: 24px;
+  white-space: pre;
+  tab-size: 4;
+}
+
+.code-wrap .code-text {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Token colors: Shiki emits every theme as CSS variables (see preview/pipeline/highlight.ts). */
+.code-text span {
+  color: var(--shiki-light, inherit);
+  font-style: var(--shiki-light-font-style, inherit);
+  font-weight: var(--shiki-light-font-weight, inherit);
+}
+
+[data-theme='dark'] .code-text span {
+  color: var(--shiki-dark, inherit);
+  font-style: var(--shiki-dark-font-style, inherit);
+  font-weight: var(--shiki-dark-font-weight, inherit);
+}
+
+[data-theme='high-contrast'] .code-text span {
+  color: var(--shiki-hc, inherit);
+  font-style: var(--shiki-hc-font-style, inherit);
+  font-weight: var(--shiki-hc-font-weight, inherit);
+}
+
+.code-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 480px;
+  margin: 64px auto;
+  padding: 24px;
+  color: var(--fg);
+  text-align: center;
+}
+
+.code-card svg {
+  width: 40px;
+  height: 40px;
+  color: var(--fg-muted);
+}
+
+.code-card h2 {
+  margin: 12px 0 4px;
+  color: var(--fg-strong);
+  font-size: 16px;
+}
+
+.code-card p {
+  margin: 0 0 16px;
+  color: var(--fg-muted);
+}
+
+.code-card-actions {
+  display: flex;
+  gap: 8px;
+}

@@ -36,6 +36,8 @@ $$
 
 See the [architecture](docs/architecture.md) and [getting started](docs/guide/getting-started.md#install).
 
+The app starts in [the entry point](src/main.ts#L9-L12), built with the [Makefile](Makefile).
+
 [^1]: Footnotes work too.
 `;
 

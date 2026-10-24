@@ -1,4 +1,5 @@
 import { selectActiveTab, useTabs } from '../../stores/tabs';
+import { CodeTab } from '../code/CodeTab';
 import { DocumentTab } from '../preview/DocumentTab';
 import { SettingsTab } from '../settings/SettingsTab';
 import { ShortcutsReferenceTab } from '../shortcuts/ShortcutsReferenceTab';
@@ -19,6 +20,9 @@ export function TabContent() {
     >
       {tab.kind === 'document' && tab.relPath !== null && (
         <DocumentTab key={tab.id} tabId={tab.id} relPath={tab.relPath} />
+      )}
+      {tab.kind === 'code' && tab.relPath !== null && (
+        <CodeTab key={tab.id} tabId={tab.id} relPath={tab.relPath} />
       )}
       {tab.kind === 'settings' && <SettingsTab />}
       {tab.kind === 'shortcuts' && <ShortcutsReferenceTab />}

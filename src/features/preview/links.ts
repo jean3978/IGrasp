@@ -8,6 +8,7 @@ export type LinkTarget =
   | { kind: 'anchor'; id: string }
   | { kind: 'external'; url: string }
   | { kind: 'document'; relPath: string }
+  | { kind: 'code'; relPath: string; fragment: string | null }
   | { kind: 'unsupported' };
 
 /** What a link in `fromDoc` points to. */
@@ -20,6 +21,7 @@ export function classifyLink(fromDoc: string, href: string | undefined): LinkTar
   if (/^(https?:|mailto:)/i.test(href)) return { kind: 'external', url: href };
   const rel = resolveRelative(fromDoc, href);
   if (rel !== null && isMarkdownPath(rel)) return { kind: 'document', relPath: rel };
+  if (rel !== null) return { kind: 'code', relPath: rel, fragment: fragmentOf(href) };
   return { kind: 'unsupported' };
 }
 

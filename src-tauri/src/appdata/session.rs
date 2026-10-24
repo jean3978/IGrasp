@@ -7,6 +7,16 @@ use ts_rs::TS;
 
 pub const MAX_SESSIONS: usize = 50;
 
+/// What a restored tab shows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum SessionTabKind {
+    #[default]
+    Document,
+    Code,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -14,6 +24,9 @@ pub struct SessionTab {
     pub rel_path: String,
     pub pinned: bool,
     pub scroll_top: f64,
+    /// Added in 0.2.0; older sessions only have documents.
+    #[serde(default)]
+    pub kind: SessionTabKind,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -123,6 +136,7 @@ pub fn sample_session() -> Session {
             rel_path: "README.md".into(),
             pinned: true,
             scroll_top: 120.0,
+            kind: SessionTabKind::Document,
         }],
         active_tab: Some("README.md".into()),
         expanded_dirs: vec!["docs".into()],
@@ -160,6 +174,7 @@ mod tests {
         let s: Session = serde_json::from_str(json).unwrap();
         assert_eq!(s.sidebar_view, SidebarView::Explorer);
         assert!(!s.right_panel.visible);
+        assert_eq!(s.tabs[0].kind, SessionTabKind::Document);
         assert_eq!(s.tabs.len(), 1);
     }
 

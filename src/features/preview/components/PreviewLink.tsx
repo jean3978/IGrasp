@@ -2,6 +2,8 @@ import type { ComponentProps, MouseEvent } from 'react';
 import { backend } from '../../../ipc/client';
 import { classifyLink, openDocumentLink, scrollToAnchor } from '../links';
 import { usePreview } from '../previewContext';
+import { parseLineFragment } from '../../code/codeLines';
+import { useTabs } from '../../../stores/tabs';
 
 /**
  * Every link click is handled here, so the webview itself never navigates: anchors scroll the
@@ -29,6 +31,14 @@ export function PreviewLink({ href, children, title, ...rest }: ComponentProps<'
           if (!opened) console.warn(`Linked file not found: ${target.relPath}`);
         });
         break;
+      case 'code': {
+        const range = parseLineFragment(target.fragment);
+        useTabs.getState().openCode(target.relPath, {
+          pin: e.ctrlKey || e.metaKey,
+          ...(range ? { scroll: { line: range.start, endLine: range.end } } : {}),
+        });
+        break;
+      }
       case 'unsupported':
         break;
     }

@@ -41,6 +41,7 @@ function show(entry: HistoryEntry) {
     const tabs = useTabs.getState();
     const tab = tabs.tabs.find((t) => t.kind === entry.kind && t.relPath === entry.relPath);
     if (tab) tabs.activate(tab.id);
+    else if (entry.kind === 'code') tabs.openCode(entry.relPath);
     else tabs.openDocument(entry.relPath);
   } finally {
     navigating = false;
@@ -100,7 +101,7 @@ export const selectCanGoBack = (s: HistoryState) => s.position > 0;
 export const selectCanGoForward = (s: HistoryState) => s.position < s.entries.length - 1;
 
 function entryOf(tab: Tab | undefined): HistoryEntry | null {
-  if (!tab?.relPath || tab.kind !== 'document') return null;
+  if (!tab?.relPath || (tab.kind !== 'document' && tab.kind !== 'code')) return null;
   return { relPath: tab.relPath, kind: tab.kind };
 }
 

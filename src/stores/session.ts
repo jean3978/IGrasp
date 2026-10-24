@@ -5,7 +5,7 @@
 import { backend } from '../ipc/client';
 import type { Session } from '../ipc/types';
 import { dirname } from '../lib/paths';
-import { newTabId, useTabs } from './tabs';
+import { isFileTab, newTabId, useTabs } from './tabs';
 import type { Tab } from './tabs';
 import { useTree } from './tree';
 import { useWorkspace } from './workspace';
@@ -20,13 +20,14 @@ export function buildSession(): Session {
   const { tabs, activeId } = useTabs.getState();
   const tree = useTree.getState();
   const { sidebar, rightPanel } = useWorkspace.getState();
-  const documents = tabs.filter((t) => t.kind === 'document' && t.relPath !== null);
+  const files = tabs.filter((t) => isFileTab(t) && t.relPath !== null);
   return {
     version: 1,
-    tabs: documents.map((t) => ({
+    tabs: files.map((t) => ({
       relPath: t.relPath ?? '',
       pinned: t.pinned,
       scrollTop: t.scrollTop,
+      kind: t.kind === 'code' ? 'code' : 'document',
     })),
     activeTab: tabs.find((t) => t.id === activeId)?.relPath ?? null,
     expandedDirs: [...tree.expanded].sort(),
@@ -86,17 +87,22 @@ async function existingFiles(paths: string[]): Promise<Set<string>> {
   return found;
 }
 
-/** Recreates tabs and expanded folders once the index is ready. Missing files are dropped. */
+/**
+ * Recreates tabs and expanded folders once the index is ready. Missing documents are dropped;
+ * code files are not indexed, so a missing one shows "not found" when its tab is first shown
+ * (checking them all here would stat every file on startup).
+ */
 export async function restoreSession(session: Session): Promise<void> {
   restoring = true;
   try {
     useTree.getState().setExpanded(session.expandedDirs);
-    const exists = await existingFiles(session.tabs.map((t) => t.relPath));
+    const documents = session.tabs.filter((t) => t.kind === 'document');
+    const exists = await existingFiles(documents.map((t) => t.relPath));
     const tabs: Tab[] = session.tabs
-      .filter((t) => exists.has(t.relPath))
+      .filter((t) => t.kind === 'code' || exists.has(t.relPath))
       .map((t) => ({
         id: newTabId(),
-        kind: 'document',
+        kind: t.kind,
         relPath: t.relPath,
         pinned: t.pinned,
         scrollTop: t.scrollTop,

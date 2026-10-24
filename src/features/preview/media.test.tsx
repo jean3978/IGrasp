@@ -32,7 +32,11 @@ describe('links', () => {
       kind: 'document',
       relPath: 'README.md',
     });
-    expect(classifyLink('a.md', 'src/main.rs').kind).toBe('unsupported');
+    expect(classifyLink('a.md', 'src/main.rs#L3-L5')).toEqual({
+      kind: 'code',
+      relPath: 'src/main.rs',
+      fragment: 'L3-L5',
+    });
     expect(classifyLink('a.md', 'javascript:alert(1)').kind).toBe('unsupported');
   });
 
@@ -59,9 +63,9 @@ describe('links', () => {
     });
   });
 
-  it('marks links to other kinds of files as not available yet', async () => {
+  it('marks links to source files for the code viewer', async () => {
     const container = await show('[code](../../src/main.ts)');
-    expect(container.querySelector('a')?.getAttribute('title')).toContain('not available yet');
+    expect(container.querySelector('a')?.dataset.link).toBe('code');
   });
 });
 

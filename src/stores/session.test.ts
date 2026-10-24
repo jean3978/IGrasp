@@ -41,8 +41,8 @@ describe('session', () => {
     useWorkspace.getState().setSidebarWidth(333);
     const s = buildSession();
     expect(s.tabs).toEqual([
-      { relPath: 'README.md', pinned: true, scrollTop: 420 },
-      { relPath: 'docs/architecture.md', pinned: false, scrollTop: 0 },
+      { relPath: 'README.md', pinned: true, scrollTop: 420, kind: 'document' },
+      { relPath: 'docs/architecture.md', pinned: false, scrollTop: 0, kind: 'document' },
     ]);
     expect(s.activeTab).toBe('docs/architecture.md');
     expect(s.expandedDirs).toEqual(['docs']);

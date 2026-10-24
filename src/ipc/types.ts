@@ -50,6 +50,7 @@ export type { Theme } from './generated/Theme';
 export type { ReadingWidth } from './generated/ReadingWidth';
 export type { WindowFrame } from './generated/WindowFrame';
 export type { SessionTab } from './generated/SessionTab';
+export type { SessionTabKind } from './generated/SessionTabKind';
 export type { SidebarView } from './generated/SidebarView';
 export type { RightPanelState } from './generated/RightPanelState';
 
