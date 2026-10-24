@@ -110,7 +110,7 @@ pub struct AiRequest {
     pub output_schema: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct EditHunk {
@@ -120,8 +120,9 @@ pub struct EditHunk {
 }
 
 /// A change to a file the AI asks permission for, extracted from its tool call so the UI can
-/// show a diff without knowing the tool.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+/// show a diff without knowing the tool. Also the shape of a partial acceptance
+/// (`PermissionDecision::Allow { updated_edit }`).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct ProposedEdit {
@@ -131,6 +132,24 @@ pub struct ProposedEdit {
     /// The file is created or fully rewritten (`hunks` holds the whole new content).
     pub whole_file: bool,
     pub hunks: Vec<EditHunk>,
+}
+
+/// What a permission request would let the AI do. The policy and the UI key on this, never on
+/// a tool name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum AiPermissionKind {
+    /// Edit or create a markdown file inside the folder (reviewed as a diff).
+    MarkdownEdit,
+    /// Edit or create any other file inside the folder.
+    FileEdit,
+    /// Run a command or a script.
+    Command,
+    /// Fetch a URL or search the web.
+    Web,
+    /// Read outside the folder, or anything the provider cannot classify.
+    Other,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
@@ -173,9 +192,27 @@ pub enum AiEvent {
     PermissionRequest {
         request_id: String,
         tool: String,
+        /// What the tool would do; the policy and the UI key on this.
+        kind: AiPermissionKind,
         description: Option<String>,
         input: serde_json::Value,
         proposed_edit: Option<ProposedEdit>,
+    },
+    /// A permission request answered without asking (by the settings or the read-only policy):
+    /// the transcript shows every automatic decision.
+    #[serde(rename_all = "camelCase")]
+    #[allow(
+        dead_code,
+        reason = "emitted by the gateway's permission policy (next step)"
+    )]
+    PermissionDecided {
+        tool: String,
+        kind: AiPermissionKind,
+        /// The request's description (the file, the command), when it had one.
+        description: Option<String>,
+        allowed: bool,
+        /// Why, in a few words, e.g. `allowed by your settings`.
+        reason: String,
     },
     #[serde(rename_all = "camelCase")]
     Usage {
@@ -203,6 +240,9 @@ pub struct AiEventEnvelope {
     pub event: AiEvent,
 }
 
+/// What the model is told when the user rejects a tool call.
+pub const REJECTED_BY_USER: &str = "The user rejected this in IGrasp.";
+
 /// The user's answer to a permission request.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, TS)]
 #[serde(tag = "behavior", rename_all = "camelCase")]
@@ -210,8 +250,11 @@ pub struct AiEventEnvelope {
 pub enum PermissionDecision {
     #[serde(rename_all = "camelCase")]
     Allow {
-        /// A modified tool input to run with instead of the proposed one.
-        updated_input: Option<serde_json::Value>,
+        /// Run the tool on these hunks only: a subset of the proposed edit, or the whole-file
+        /// content composed by the user. The provider maps it back to its own tool input; the
+        /// frontend never builds a tool input. Absent: run the tool as proposed.
+        #[serde(default)]
+        updated_edit: Option<ProposedEdit>,
     },
     #[serde(rename_all = "camelCase")]
     Deny {

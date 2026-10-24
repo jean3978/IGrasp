@@ -78,13 +78,13 @@ function PermissionCard({ permission }: { permission: PendingPermission }) {
   const respond = useAi((s) => s.respond);
   const providerName = useAi(selectProviderName);
   const allow = () => {
-    void respond(permission.requestId, { behavior: 'allow', updatedInput: null });
+    void respond(permission.requestId, { behavior: 'allow', updatedEdit: null });
   };
   const deny = () => {
     void respond(permission.requestId, { behavior: 'deny', message: REJECTION_MESSAGE });
   };
   const edit = permission.proposedEdit;
-  if (edit?.isMarkdown) return <EditCard edit={edit} onAccept={allow} onReject={deny} />;
+  if (edit) return <EditCard edit={edit} onAccept={allow} onReject={deny} />;
   return (
     <section className="ai-permission" aria-label={`Permission for ${permission.tool}`}>
       <header className="ai-permission-header">

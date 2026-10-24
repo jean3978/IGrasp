@@ -10,6 +10,7 @@ import { BackendError } from '../ipc/types';
 import type {
   AiCapabilities,
   AiEventEnvelope,
+  AiPermissionKind,
   AiProviderStatus,
   JsonValue,
   PermissionDecision,
@@ -23,6 +24,8 @@ export interface PendingPermission {
   operationId: number;
   requestId: string;
   tool: string;
+  /** What the tool would do (the UI keys on this, never on the tool name). */
+  kind: AiPermissionKind;
   description: string | null;
   input: JsonValue;
   proposedEdit: ProposedEdit | null;
@@ -218,6 +221,7 @@ export const useAi = create<AiState>()((set, get) => ({
               operationId: envelope.operationId,
               requestId: event.requestId,
               tool: event.tool,
+              kind: event.kind,
               description: event.description,
               input: event.input,
               proposedEdit: event.proposedEdit,

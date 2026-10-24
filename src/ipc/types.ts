@@ -93,6 +93,7 @@ export type { AiEvent } from './generated/AiEvent';
 export type { AiImage } from './generated/AiImage';
 export type { AiModel } from './generated/AiModel';
 export type { AiOutcome } from './generated/AiOutcome';
+export type { AiPermissionKind } from './generated/AiPermissionKind';
 export type { AiPolicy } from './generated/AiPolicy';
 export type { EditHunk } from './generated/EditHunk';
 export type { ProposedEdit } from './generated/ProposedEdit';

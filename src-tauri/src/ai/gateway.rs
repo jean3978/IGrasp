@@ -143,7 +143,7 @@ mod tests {
     use super::*;
 
     fn gateway() -> AiGateway {
-        AiGateway::new(Box::new(MockProvider))
+        AiGateway::new(Box::new(MockProvider::default()))
     }
 
     fn request(prompt: &str) -> AiRequest {
@@ -319,9 +319,7 @@ mod tests {
         g.respond(
             id,
             &request_id,
-            &PermissionDecision::Allow {
-                updated_input: None,
-            },
+            &PermissionDecision::Allow { updated_edit: None },
         )
         .unwrap();
         let events = collect(&rx);

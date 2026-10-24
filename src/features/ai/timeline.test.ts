@@ -54,6 +54,7 @@ describe('applyEvent', () => {
         type: 'permissionRequest',
         requestId: 'r',
         tool: 'Bash',
+        kind: 'command',
         description: null,
         input: null,
         proposedEdit: null,

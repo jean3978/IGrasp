@@ -140,6 +140,7 @@ impl AiProvider for ClaudeCliProvider {
                 }
                 TurnEvent::Permission(p) => sink(AiEvent::PermissionRequest {
                     proposed_edit: protocol::proposed_edit(&p.tool_name, &p.input, &root_owned),
+                    kind: protocol::permission_kind(&p.tool_name, &p.input, &root_owned),
                     request_id: p.request_id,
                     tool: p.tool_name,
                     description: p.description,

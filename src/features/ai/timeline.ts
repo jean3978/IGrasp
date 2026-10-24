@@ -97,6 +97,7 @@ export function applyEvent(items: ChatItem[], event: AiEvent): ChatItem[] {
       return [...items, { kind: 'error', id: nextId('error'), text: event.message }];
     case 'session':
     case 'permissionRequest':
+    case 'permissionDecided':
     case 'usage':
     case 'done':
       return items;

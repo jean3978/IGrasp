@@ -18,6 +18,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `AiProvider` trait with the Claude CLI and a mock implementation, and a single gateway that
   only starts an operation for a user action and stops it when the folder, the window or the
   app closes ([ADR 0015](docs/decisions/0015-ai-provider-abstraction-and-gateway.md)).
+- **AI permission kinds**: every permission request says what it would do (markdown edit, other
+  file edit, command, web, other), and accepting an edit carries a neutral edit (all or some of
+  its hunks) that the provider maps back to its own tool input. The mock provider scripts every
+  case the UI handles (one or two hunks, rewrite, new file, code edit, command, web, image,
+  slow, crash, lost conversation).
 
 ### Changed
 

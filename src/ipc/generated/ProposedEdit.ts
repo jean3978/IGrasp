@@ -3,7 +3,8 @@ import type { EditHunk } from "./EditHunk";
 
 /**
  * A change to a file the AI asks permission for, extracted from its tool call so the UI can
- * show a diff without knowing the tool.
+ * show a diff without knowing the tool. Also the shape of a partial acceptance
+ * (`PermissionDecision::Allow { updated_edit }`).
  */
 export type ProposedEdit = { 
 /**
