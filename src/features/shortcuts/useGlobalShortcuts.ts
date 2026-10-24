@@ -6,11 +6,22 @@ import { matchBinding } from './keymap';
 const MOUSE_BACK = 3;
 const MOUSE_FORWARD = 4;
 
+function isEditable(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+  );
+}
+
 /** Dispatches application shortcuts and the mouse back/forward buttons from anywhere. */
 export function useGlobalShortcuts(): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.isComposing) return;
+      // While typing in a text box, keys without Ctrl/Alt belong to the box (F-keys still work).
+      if (isEditable(e.target) && !e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
+        return;
+      }
       const action = matchBinding(e);
       if (!action) return;
       // Also stops Alt+Left/Right from navigating the webview's own history.

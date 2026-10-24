@@ -5,6 +5,7 @@ import { useDocuments } from './documents';
 import { useGraph } from './graph';
 import { useRecent } from './recent';
 import { useRecentFiles } from './recentFiles';
+import { useSearch } from './search';
 import {
   applySessionLayout,
   clearPendingRestore,
@@ -114,6 +115,7 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
       suspendSaving();
       useTree.setState({ expanded: new Set(), focused: null });
       useTabs.getState().closeAll();
+      useSearch.getState().clear();
       useRecentFiles.getState().reset();
       useDocuments.getState().clear();
       applySessionLayout(session);
@@ -146,6 +148,7 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
     useDocuments.getState().clear();
     resetToasts();
     useRecentFiles.getState().reset();
+    useSearch.getState().clear();
     useGraph.getState().reset();
     void useRecent.getState().refresh();
   },

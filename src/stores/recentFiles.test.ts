@@ -64,6 +64,7 @@ describe('recent files store', () => {
     await useWorkspace.getState().openRoot(FIXTURE_ROOT);
     await vi.waitFor(() => {
       expect(useWorkspace.getState().index.state).toBe('ready');
+      expect(window.__igraspMock?.state.index).not.toBeNull();
     });
   });
 

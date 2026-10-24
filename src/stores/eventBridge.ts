@@ -6,6 +6,7 @@ import { applyDiskChanges } from './diskChanges';
 import { useGraph } from './graph';
 import { useHistory } from './history';
 import { useRecentFiles } from './recentFiles';
+import { useSearch } from './search';
 import { useToasts } from './toasts';
 import { useTree } from './tree';
 import { useWorkspace } from './workspace';
@@ -28,6 +29,7 @@ export async function startEventBridge(): Promise<Unsubscribe> {
       applyDiskChanges(e);
       useHistory.getState().applyChanges(e);
       useRecentFiles.getState().onChanges(e);
+      useSearch.getState().onDiskChanges(e);
       useWorkspace.getState().adjustFileCount(e.added.length - e.removed.length);
       useToasts.getState().ingestChanges(e);
     }),
@@ -39,6 +41,9 @@ export async function startEventBridge(): Promise<Unsubscribe> {
     }),
     backend.listen('graph://changed', (e) => {
       useGraph.getState().onChanged(e);
+    }),
+    backend.listen('search://results', (e) => {
+      useSearch.getState().onResults(e);
     }),
     backend.listen('fs://watch-status', (e) => {
       useWorkspace.getState().setWatchStatus(e.mode, e.reason);

@@ -39,7 +39,7 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
   {
     title: 'Navigation',
     rows: [
-      ...fromActions(['go.symbol', 'go.back', 'go.forward']),
+      ...fromActions(['go.symbol', 'go.back', 'go.forward', 'search.next', 'search.previous']),
       { keys: 'Mouse back / forward', label: 'Back / forward' },
     ],
   },

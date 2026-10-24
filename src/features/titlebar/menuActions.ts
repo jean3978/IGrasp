@@ -6,6 +6,7 @@ import { MAX_FONT_SIZE, MIN_FONT_SIZE } from '../../ipc/defaults';
 import type { SidebarView, Theme } from '../../ipc/types';
 import { useHistory } from '../../stores/history';
 import { useQuickOpen } from '../../stores/quickOpen';
+import { useSearch } from '../../stores/search';
 import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
 import { useTabs } from '../../stores/tabs';
@@ -30,6 +31,8 @@ export type ActionId =
   | 'view.toggleRightPanel'
   | 'view.focusOutline'
   | 'go.symbol'
+  | 'search.next'
+  | 'search.previous'
   | 'go.back'
   | 'go.forward'
   | 'view.showDotfiles'
@@ -132,6 +135,12 @@ export const actions: Record<ActionId, ActionDef> = {
     label: 'Search',
     shortcut: 'Ctrl+Shift+F',
     run: () => {
+      // Selected text (one line) becomes the query, like VS Code.
+      const selected = window.getSelection()?.toString().trim() ?? '';
+      if (selected !== '' && !/[\r\n]/.test(selected) && selected.length <= 200) {
+        useSearch.getState().setQuery(selected);
+        void useSearch.getState().run();
+      }
       showView('search', '.search-input');
     },
   },
@@ -238,6 +247,20 @@ export const actions: Record<ActionId, ActionDef> = {
     shortcut: 'Ctrl+T',
     run: () => {
       if (useWorkspace.getState().root) useQuickOpen.getState().openDialog();
+    },
+  },
+  'search.next': {
+    label: 'Next Search Result',
+    shortcut: 'F4',
+    run: () => {
+      useSearch.getState().step(1);
+    },
+  },
+  'search.previous': {
+    label: 'Previous Search Result',
+    shortcut: 'Shift+F4',
+    run: () => {
+      useSearch.getState().step(-1);
     },
   },
   'go.back': {

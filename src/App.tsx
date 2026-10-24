@@ -9,6 +9,7 @@ import { BrokenLinksPanel } from './features/links/BrokenLinksPanel';
 import { BrokenLinksBadge } from './features/links/BrokenLinksStatus';
 import { RecentChangesPanel } from './features/recent/RecentChangesPanel';
 import { SearchPanel } from './features/search/SearchPanel';
+import { SearchBadge } from './features/search/SearchBadge';
 import { OutlineActions, OutlinePanel } from './features/outline/OutlinePanel';
 import { PanelSection, RightPanel } from './features/rightpanel/RightPanel';
 import { ActivityBar } from './features/shell/ActivityBar';
@@ -122,7 +123,9 @@ export function App() {
         <div className="app-body">
           {root ? (
             <WorkspaceLayout
-              activityBar={<ActivityBar badges={{ broken: <BrokenLinksBadge /> }} />}
+              activityBar={
+                <ActivityBar badges={{ broken: <BrokenLinksBadge />, search: <SearchBadge /> }} />
+              }
               sidebar={
                 <SidebarHost
                   views={{
