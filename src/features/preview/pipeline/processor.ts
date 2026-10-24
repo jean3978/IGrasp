@@ -17,14 +17,14 @@ import { alertOptions } from './alerts';
 import { remarkGithubDollarMath } from './dollarMath';
 import { remarkExtractFrontMatter } from './frontmatter';
 import { highlightCode } from './highlight';
+import { ID_PREFIX } from './ids';
 import { rehypeMarkInsecureMedia } from './insecureMedia';
 import { renderMath } from './math';
 import { markMermaidBlocks } from './mermaid';
 import type { FrontMatter } from './frontmatter';
 import { sanitizeSchema } from './sanitize';
 
-/** Prefix of every id in the rendered document (anchors target `#<id>` → `user-content-<id>`). */
-export const ID_PREFIX = 'user-content-';
+export { ID_PREFIX };
 
 export interface RenderedMarkdown {
   hast: HastRoot;

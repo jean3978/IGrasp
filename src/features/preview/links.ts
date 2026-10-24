@@ -1,7 +1,7 @@
 import { backend } from '../../ipc/client';
 import { dirname, fragmentOf, isMarkdownPath, resolveRelative } from '../../lib/paths';
 import { useTabs } from '../../stores/tabs';
-import { ID_PREFIX } from './pipeline/processor';
+import { ID_PREFIX } from './pipeline/ids';
 import type { PreviewContextValue } from './previewContext';
 
 export type LinkTarget =

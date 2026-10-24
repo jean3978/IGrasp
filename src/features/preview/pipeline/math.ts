@@ -3,6 +3,7 @@
 
 import type { Element, Root } from 'hast';
 import type { Options as KatexOptions } from 'rehype-katex';
+import { unified } from 'unified';
 import type { Processor } from 'unified';
 import { visit, EXIT } from 'unist-util-visit';
 import type { VFile } from 'vfile';
@@ -32,8 +33,7 @@ export function hasMath(tree: Root): boolean {
 
 function getKatexProcessor() {
   katexProcessor ??= (async () => {
-    const [{ unified }, { default: rehypeKatex }] = await Promise.all([
-      import('unified'),
+    const [{ default: rehypeKatex }] = await Promise.all([
       import('rehype-katex'),
       import('katex/dist/katex.min.css'),
     ]);

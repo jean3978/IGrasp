@@ -11,4 +11,5 @@ are never deleted; a decision that changes gets a new record that supersedes the
 | [0004](0004-background-index-with-ignore-crate.md) | Background index built with the `ignore` crate | Accepted |
 | [0005](0005-app-data-as-versioned-json-files.md) | App data as versioned JSON files | Accepted |
 | [0006](0006-custom-title-bar-and-menu-bar.md) | Custom title bar and in-window menu bar | Accepted |
+| [0007](0007-e2e-with-playwright-and-mock-ipc.md) | End-to-end tests with Playwright and a mock backend | Accepted |
 | [0008](0008-pin-typescript-5-and-vite-8.md) | Pin TypeScript 5.9 and Vite 8 | Accepted |

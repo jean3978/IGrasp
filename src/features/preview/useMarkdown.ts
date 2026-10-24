@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
-import { renderMarkdown } from './pipeline/processor';
 import type { RenderedMarkdown } from './pipeline/processor';
+
+// The pipeline (unified, parse5, yaml…) is loaded with the first document, not at startup.
+const renderMarkdown = async (content: string) =>
+  (await import('./pipeline/processor')).renderMarkdown(content);
 
 /** Files above this size are shown as plain text: processing them would freeze the UI. */
 export const MAX_RENDERED_CHARS = 2_000_000;

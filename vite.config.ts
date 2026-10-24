@@ -20,5 +20,8 @@ export default defineConfig({
     // WebView2 is evergreen Chromium; WebKitGTK 2.44+ matches Safari 17.4.
     target: process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome105' : 'safari17',
     sourcemap: Boolean(process.env.TAURI_ENV_DEBUG),
+    // Loaded from the local disk, not the network; Mermaid, Shiki languages, KaTeX and the
+    // markdown pipeline are already split into lazily loaded chunks.
+    chunkSizeWarningLimit: 1024,
   },
 });

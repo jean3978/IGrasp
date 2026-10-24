@@ -41,6 +41,7 @@ Useful individual commands:
 |---|---|
 | `npm run lint:fix` / `npm run format` | Fix lint issues / format TypeScript, CSS, JSON and YAML. |
 | `npm run test:watch` | Vitest in watch mode. |
+| `npm run test:e2e` | Playwright smoke tests against the production build with the mock backend (run `npx playwright install chromium` once). |
 | `npm run rust:fmt` | Format the Rust code. |
 
 ## Commit convention
