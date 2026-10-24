@@ -138,6 +138,7 @@ export async function highlightCode(tree: Root): Promise<void> {
     );
     if (!newPre) continue;
     newPre.properties.dataLanguage = lang;
+    if (pre.properties.dataLine !== undefined) newPre.properties.dataLine = pre.properties.dataLine;
     parent.children[index] = newPre;
   }
 }

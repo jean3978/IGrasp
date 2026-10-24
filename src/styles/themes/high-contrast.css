@@ -39,6 +39,12 @@
   --warning-bg: #000000;
   --danger-bg: #000000;
 
+  --search-match-bg: #ffff00;
+  --search-match-fg: #000000;
+  --flash-bg: rgb(255 255 0 / 0.22);
+  --link-broken: #ff7070;
+  --link-warning: #ffd700;
+
   --border-width: 2px;
   --focus-width: 3px;
   --focus-offset: 0px;

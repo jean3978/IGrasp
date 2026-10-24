@@ -1,7 +1,7 @@
 import { backend } from '../../ipc/client';
 import { dirname, fragmentOf, isMarkdownPath, resolveRelative } from '../../lib/paths';
 import { useTabs } from '../../stores/tabs';
-import { ID_PREFIX } from './pipeline/ids';
+import { findAnchor, flash } from './reveal';
 import type { PreviewContextValue } from './previewContext';
 
 export type LinkTarget =
@@ -28,11 +28,10 @@ export function classifyLink(fromDoc: string, href: string | undefined): LinkTar
 /** Scrolls the preview to the element of an anchor (`#x` targets `user-content-x`). */
 export function scrollToAnchor(ctx: PreviewContextValue, id: string): boolean {
   const container = ctx.getScrollContainer();
-  const target =
-    container?.querySelector(`[id="${CSS.escape(ID_PREFIX + id)}"]`) ??
-    container?.querySelector(`[id="${CSS.escape(id)}"]`);
+  const target = container ? findAnchor(container, id) : null;
   if (!target) return false;
   target.scrollIntoView({ block: 'start' });
+  flash(target);
   return true;
 }
 

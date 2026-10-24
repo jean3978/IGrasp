@@ -4,6 +4,7 @@ import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
 import { MarkdownPreview } from './MarkdownPreview';
 import { MAX_RENDERED_CHARS, useMarkdown } from './useMarkdown';
+import { clearMatchHighlight, revealPending } from './reveal';
 import './document.css';
 
 interface DocumentTabProps {
@@ -52,6 +53,7 @@ function Rendered({ content, relPath, getScrollContainer }: RenderedProps) {
 export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
   const doc = useDocuments((s) => s.byPath[relPath]);
   const deleted = useTabs((s) => s.tabs.find((t) => t.id === tabId)?.deleted ?? false);
+  const pending = useTabs((s) => s.tabs.find((t) => t.id === tabId)?.pending);
   const scrollRef = useRef<HTMLDivElement>(null);
   const restored = useRef(false);
   const getScrollContainer = useCallback(() => scrollRef.current, []);
@@ -61,11 +63,47 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
     void useDocuments.getState().load(relPath);
   }, [relPath]);
 
+  // A heading or line to reveal (link with #fragment, search result, quick open, broken link):
+  // wait for the asynchronous render, then scroll and flash. It wins over the saved position.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !pending || doc?.status !== 'ready') return;
+    restored.current = true;
+    let frame = 0;
+    let handle = 0;
+    const attempt = () => {
+      frame += 1;
+      if (revealPending(el, pending) || frame > 120) {
+        useTabs.getState().takePending(tabId);
+        return;
+      }
+      handle = requestAnimationFrame(attempt);
+    };
+    attempt();
+    return () => {
+      cancelAnimationFrame(handle);
+    };
+  }, [pending, doc?.status, doc?.revision, tabId]);
+
+  // Search highlights go away with the next click or key in the document.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('pointerdown', clearMatchHighlight);
+    el.addEventListener('keydown', clearMatchHighlight);
+    return () => {
+      el.removeEventListener('pointerdown', clearMatchHighlight);
+      el.removeEventListener('keydown', clearMatchHighlight);
+      clearMatchHighlight();
+    };
+  }, []);
+
   // Restore the tab's scroll position once its content has been laid out.
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el || restored.current || doc?.status !== 'ready') return;
     const tab = useTabs.getState().tabs.find((t) => t.id === tabId);
+    if (tab?.pending) return;
     if (!tab || tab.scrollTop === 0) {
       restored.current = true;
       return;

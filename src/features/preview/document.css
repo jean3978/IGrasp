@@ -53,3 +53,33 @@
   background: var(--warning-bg);
   color: var(--fg-strong);
 }
+
+/* A heading or block the user jumped to (link, search result, outline) flashes briefly. */
+.markdown-body .flash {
+  border-radius: var(--radius-s);
+  animation: flash 1.2s ease-out;
+}
+
+@keyframes flash {
+  from {
+    background-color: var(--flash-bg);
+    box-shadow: 0 0 0 4px var(--flash-bg);
+  }
+
+  to {
+    background-color: transparent;
+    box-shadow: 0 0 0 4px transparent;
+  }
+}
+
+::highlight(igrasp-match) {
+  background-color: var(--search-match-bg);
+  color: var(--search-match-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .markdown-body .flash {
+    animation: none;
+    background-color: var(--flash-bg);
+  }
+}

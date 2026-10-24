@@ -21,6 +21,7 @@ import { ID_PREFIX } from './ids';
 import { rehypeMarkInsecureMedia } from './insecureMedia';
 import { renderMath } from './math';
 import { markMermaidBlocks } from './mermaid';
+import { rehypeSourceLines } from './lines';
 import type { FrontMatter } from './frontmatter';
 import { sanitizeSchema } from './sanitize';
 
@@ -45,6 +46,7 @@ const transformer = unified()
   .use(rehypeRaw)
   .use(rehypeGithubAlerts, alertOptions)
   .use(rehypeMarkInsecureMedia)
+  .use(rehypeSourceLines)
   .use(rehypeSanitize, sanitizeSchema)
   .use(rehypeSlug, { prefix: ID_PREFIX });
 

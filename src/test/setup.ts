@@ -37,6 +37,12 @@ Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
 });
 Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, get: () => 800 });
 
+if (typeof Element.prototype.scrollIntoView !== 'function') {
+  Element.prototype.scrollIntoView = () => {
+    /* no layout in jsdom */
+  };
+}
+
 afterEach(() => {
   cleanup();
 });
