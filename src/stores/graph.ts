@@ -42,10 +42,28 @@ interface GraphState {
   onProgress: (generation: number, parsedDocs: number, totalDocs: number) => void;
   onReady: (event: GraphReadyEvent) => void;
   onChanged: (event: GraphChangedEvent) => void;
+  /**
+   * A new scan of the same folder started: the graph is rebuilt, so status and flags are
+   * cleared, but the documents shown keep their entries so `onReady` fetches them again.
+   */
+  beginRebuild: () => void;
   reset: () => void;
 }
 
 const currentGeneration = () => useWorkspace.getState().index.generation;
+
+/** Latest request per path: a response is applied only if no newer request was sent since. */
+const docRequests = new Map<string, number>();
+const backlinkRequests = new Map<string, number>();
+let requestSeq = 0;
+
+/** Starts a request for a path; the returned check says whether its response is still wanted. */
+function track(requests: Map<string, number>, relPath: string): () => boolean {
+  const seq = ++requestSeq;
+  const generation = currentGeneration();
+  requests.set(relPath, seq);
+  return () => requests.get(relPath) === seq && currentGeneration() === generation;
+}
 
 /** Maps links by href; with duplicates, the first problem wins so the flag is never hidden. */
 export function byHref(links: LinkInfo[]): Record<string, LinkInfo> {
@@ -85,8 +103,11 @@ export const useGraph = create<GraphState>()((set, get) => ({
   },
 
   async refreshDoc(relPath) {
+    const current = track(docRequests, relPath);
     try {
       const doc = await backend.getDocLinks(relPath);
+      // A newer request for this document, or a rescan, happened meanwhile.
+      if (!current()) return;
       set((s) => ({ linksByDoc: { ...s.linksByDoc, [relPath]: byHref(doc.links) } }));
     } catch {
       // No folder open: the preview simply shows no flags.
@@ -100,8 +121,10 @@ export const useGraph = create<GraphState>()((set, get) => ({
   },
 
   async refreshBacklinks(relPath) {
+    const current = track(backlinkRequests, relPath);
     try {
       const result = await backend.getBacklinks(relPath);
+      if (!current()) return;
       set((s) => ({ backlinks: { ...s.backlinks, [relPath]: result.items } }));
     } catch {
       // No folder open.
@@ -155,7 +178,22 @@ export const useGraph = create<GraphState>()((set, get) => ({
     if (get().broken) void get().loadBroken();
   },
 
+  beginRebuild() {
+    docRequests.clear();
+    backlinkRequests.clear();
+    set((s) => ({
+      status: INITIAL,
+      // No flags until the new graph says so (the app never guesses); backlinks stay shown
+      // until they are fetched again.
+      linksByDoc: Object.fromEntries(Object.keys(s.linksByDoc).map((k) => [k, {}])),
+      broken: s.broken ? { ...s.broken, docs: [], graphReady: false } : null,
+      version: 0,
+    }));
+  },
+
   reset() {
+    docRequests.clear();
+    backlinkRequests.clear();
     set({ status: INITIAL, linksByDoc: {}, backlinks: {}, broken: null, version: 0 });
   },
 }));

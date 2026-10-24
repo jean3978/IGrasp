@@ -155,7 +155,9 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
 
   beginScan(generation) {
     set({ index: { ...IDLE, state: 'scanning', generation } });
-    useGraph.getState().reset();
+    // Open tabs keep their entries so the new graph's `ready` refreshes them (a rescan does
+    // not re-render documents, so nothing else would fetch their links again).
+    useGraph.getState().beginRebuild();
     const early = get().lastReady;
     if (early?.generation === generation) get().setIndexReady(early);
   },
