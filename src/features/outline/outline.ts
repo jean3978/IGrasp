@@ -4,7 +4,7 @@
 import type { Element, Root } from 'hast';
 import { visit } from 'unist-util-visit';
 import { ID_PREFIX } from '../preview/pipeline/ids';
-import { textContent } from '../preview/pipeline/highlight';
+import { textContent } from '../preview/pipeline/hastText';
 
 export interface OutlineItem {
   /** DOM id of the heading (with the `user-content-` prefix). */

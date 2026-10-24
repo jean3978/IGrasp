@@ -4,9 +4,10 @@
 // WASM) and loads languages on demand. All three themes are emitted at once as CSS variables
 // (`--shiki-light`, `--shiki-dark`, `--shiki-hc`), so switching the app theme never re-renders.
 
-import type { Element, Nodes, Root } from 'hast';
+import type { Element, Root } from 'hast';
 import type { HighlighterCore } from 'shiki/core';
 import { visit } from 'unist-util-visit';
+import { textContent } from './hastText';
 
 // GitHub's current (Primer) palettes: the older github-light/github-dark themes have tokens
 // below the WCAG AA contrast ratio on the code background.
@@ -92,11 +93,7 @@ export async function tokenizeCode(code: string, lang: string): Promise<ThemedTo
   );
 }
 
-export function textContent(node: Nodes): string {
-  if (node.type === 'text') return node.value;
-  if ('children' in node) return node.children.map((c) => textContent(c as Nodes)).join('');
-  return '';
-}
+export { textContent };
 
 /** The language of a `pre > code.language-x` block, or null. */
 export function codeLanguage(pre: Element): string | null {
