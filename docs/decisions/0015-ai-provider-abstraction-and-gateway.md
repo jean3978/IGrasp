@@ -1,6 +1,6 @@
 # 0015 — AI provider abstraction and the "no token without a user action" gateway
 
-- Status: Accepted (proof of concept on the `poc-claude-cli` branch, before Phase 3)
+- Status: Accepted (proof of concept on the `poc-claude-cli` branch; completed in Phase 3, 0.3.0)
 - Date: 2026-10-24
 
 ## Context
@@ -23,16 +23,22 @@ Rust module `src-tauri/src/ai/`:
   `start(request, root, sink) -> AiOperation`. `AiOperation` has `respond(request_id, decision)`,
   `cancel` and `is_done`; dropping it must stop whatever runs behind it.
 - `types.rs`, exported to TypeScript by ts-rs, names nothing provider-specific:
-  - `AiRequest { prompt, model, resume_id, context_files, images, policy (Interactive | ReadOnly), output_schema }`
+  - `AiRequest { prompt, model, resume_id, context (instruction files and current file),
+    capture, images, policy (Interactive | ReadOnly), output_schema }`. The frontend sends an
+    `AiStartRequest` with context *paths*, and the backend builds the `AiRequest` (Phase 3).
   - `AiEvent`: `Session { resume_id, model }`, `TextDelta`, `Text`, `ToolUse`, `ToolResult`,
-    `PermissionRequest { request_id, tool, description, input, proposed_edit }`, `Usage`, `Error`,
-    `Done { outcome: Completed | Cancelled | Failed, detail }`.
+    `PermissionRequest { request_id, tool, kind, description, input, proposed_edit }`,
+    `PermissionDecided { tool, kind, allowed, reason }` (an automatic answer, Phase 3), `Usage`,
+    `Error`, `Done { outcome: Completed | Cancelled | Failed, detail }`.
   - `ProposedEdit { path (root-relative), is_markdown, whole_file, hunks[{ old_text, new_text }] }`
     is extracted by the provider from its tool call, so the UI shows a diff without knowing the
     tool.
-  - `PermissionDecision`: `Allow { updated_input }` | `Deny { message }`.
+  - `PermissionDecision`: `Allow { updated_edit }` (a subset of the proposed edit, which the
+    provider maps back to its own tool input; the frontend never builds a tool input, see
+    [ADR 0019](0019-permission-policy-history-and-floating-chat.md)) | `Deny { message }`.
   - `AiCapabilities`: streaming, resume, structured output, image input, permission prompts,
-    read-only mode, usage and cost reporting, suggested models, context file names.
+    read-only mode, usage and cost reporting, suggested models (each says whether it reads
+    images), context file names.
   - `AiProviderStatus`: installed, logged in, version, account, plan, `problem`, `help`.
 - `providers/claude_cli/` implements the trait: `cli.rs` (find and probe the executable),
   `turn.rs` (one process per operation), `protocol.rs` (the only code that reads `stream-json`,
@@ -41,7 +47,7 @@ Rust module `src-tauri/src/ai/`:
   frontend's mock backend (`src/ipc/mock/mockAi.ts`) speaks the same neutral events and powers
   the browser dev mode and the UI tests.
 
-The frontend (`src/stores/ai.ts`, `src/features/ai/`) consumes `AiEvent`s only. UI labels use
+The frontend (`src/stores/ai{Provider,Conversation,Panel}.ts`, `src/features/ai/`) consumes `AiEvent`s only. UI labels use
 `AiProviderStatus.display_name` ("Claude" today), the model list comes from the capabilities, and a
 Vitest test (`neutrality.test.ts`) fails if a provider name or a wire-format token appears in the
 AI feature, store, IPC or mock files.
@@ -97,14 +103,18 @@ tied to "a CLI with a prompt tool": a provider that runs its own tools emits the
 
 - Features never import a provider: the chat, and later the quiz and tutorials, depend on
   `ai::types` and the gateway only. Adding a provider is one module plus a line in the gateway's
-  constructor (a settings-driven selector comes with Phase 3).
+  constructor; the provider id lives in `settings.ai.provider` (`ai_providers`, `ai_set_provider`).
 - The CLI's wire format is isolated in `protocol.rs` with tests on recorded samples; a CLI update
   that changes it breaks one file.
 - The frontend lost its protocol parser and became simpler; the Rust side gained ~400 lines of
   types, gateway and mapping.
 - The mock provider exists twice (Rust for gateway tests, TypeScript for the UI), which is the
   price of keeping Rust out of the Vitest suite.
-- Not done in the proof of concept and left to Phase 3: the "uses AI" marker on every AI control
-  (the Send button already says so in its tooltip), the confirmation card with a size estimate
-  for large operations, the "AI provider" setting, recording provider and model in app data,
-  per-model capabilities (image input varies by model), and keychain storage for future API keys.
+- The proof of concept left a list for Phase 3. Resolved in 0.3.0: the "uses AI" marker on every
+  AI control (the sparkle, with the provider's name in its tooltip); the confirmation card with
+  a size estimate (`ai/estimate.rs`, `src/features/ai/ConfirmCard.tsx`, `settings.ai.confirmFrom`);
+  the "AI provider" setting (`settings.ai.provider`, Settings → AI); recording provider and model
+  in app data (every stored conversation in `appdata/conversations.rs` keeps both, and
+  `settings.ai.model` remembers the picker); per-model capabilities (a model says whether it
+  accepts images). Still open on purpose: keychain storage for API keys, which only a provider
+  with an API key needs (out of scope of Phase 3).

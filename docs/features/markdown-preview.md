@@ -55,7 +55,7 @@ diff module and its limits are described in
   one unit, "2 edits in this paragraph"), one per changed block group of a `Write`. Each unit
   has **Accept** / **Reject** at its top right, then its state with **Undo**. A focused unit
   (`Tab`) takes `A` / `R`; a live region announces each decision.
-- **Review bar**: "Claude proposes 3 changes to docs/a.md", the count decided, **Accept all**
+- **Review bar**: "Claude proposes 3 changes to docs/a.md" (the provider's name), the count decided, **Accept all**
   (accepts the undecided units and answers, `Alt+Shift+A`), **Reject all** (answers at once,
   `Alt+Shift+R`), **Open in chat**, and **Apply** once every unit is decided and one is accepted.
 - **Answer**: the accepted hunks (or, for a `Write`, the content composed from the accepted

@@ -1,6 +1,6 @@
 # 0014 — Claude integration through the `claude` CLI and its `stream-json` protocol
 
-- Status: Accepted for Phase 3 (proof of concept on the `poc-claude-cli` branch; Linux verification pending). Lives behind the provider abstraction of [ADR 0015](0015-ai-provider-abstraction-and-gateway.md).
+- Status: Accepted, Linux verification pending (the Linux run was deferred in Phase 3, 0.3.0; Windows 11 is verified). Lives behind the provider abstraction of [ADR 0015](0015-ai-provider-abstraction-and-gateway.md).
 - Date: 2026-10-24
 
 ## Context
@@ -114,12 +114,11 @@ to end by Playwright against the production build with the scripted CLI, and by 
 | Not logged in (`CLAUDE_CONFIG_DIR` pointing at an empty folder) → clear message | ✔ | not run |
 | Wrong model name → the CLI's error result is shown | ✔ | not run |
 
-**Linux was not verified**: the development machine has neither WSL nor a running Docker engine,
+**Linux was not verified, and the run was deferred past Phase 3 (0.3.0)**: the development machine has neither WSL nor a running Docker engine,
 so no Linux environment with the CLI was available. The Linux-specific code is small and
 conventional (`which` on `PATH`, the `~/.local/bin` fallback, a process group per child and
 `kill -TERM -- -<pgid>` on cancel), and the protocol itself is platform-independent, but the
-table above must be completed on a Linux machine before Phase 3 relies on it: run the four
-ignored tests there and the not-installed / not-logged-in probes. CI runs the non-ignored tests
+table above must be completed on a Linux machine: run the ignored tests there and the not-installed / not-logged-in probes. CI runs the non-ignored tests
 on Ubuntu on every push.
 
 ## Consequences and limitations
@@ -135,10 +134,11 @@ on Ubuntu on every push.
 - `--include-partial-messages` gives token-level streaming (`TextDelta`); the complete
   `assistant` message that follows becomes a `Text` event that replaces the streamed text, so
   the UI never shows a stale partial.
-- A `Write` of a markdown file is shown as all-new content; comparing it with the current file
-  needs the rendered markdown diff component planned for Phase 3.
+- A `Write` of a markdown file used to be shown as all-new content; since Phase 3 it is compared
+  with the current file in the rendered diff ([ADR 0017](0017-rendered-markdown-diff-at-block-level.md)).
 - The CLI's permission suggestions (`permission_suggestions`, e.g. "accept edits for this
-  session") are ignored for now; they are the natural hook for the settings the specification
-  describes.
-- Chat history, model persistence, CLAUDE.md context and region capture are out of scope of the
-  proof of concept and remain Phase 3 work.
+  session") are still ignored: the app's permission settings and "Allow for this conversation"
+  rules replace them ([ADR 0019](0019-permission-policy-history-and-floating-chat.md)).
+- Chat history, model persistence, instruction-file context and region capture, left out of the
+  proof of concept, were delivered in Phase 3 (ADR 0019, [ADR 0018](0018-region-capture-by-dom-rendering.md),
+  [the feature page](../features/ai-chat.md)).

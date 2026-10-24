@@ -18,9 +18,12 @@ IGrasp can be used entirely from the keyboard. Press **F1** for the full list of
 | `Ctrl+Shift+L` | Broken Links view |
 | `Ctrl+Shift+O` | Focus the outline (opens the right panel) |
 | `Ctrl+Alt+C` | Show or hide the AI chat panel |
+| `Ctrl+Alt+R` | Ask about a region: select a rectangle of the tab (markdown or code) and attach it to the chat |
 | `Ctrl+Alt+N` / `Ctrl+Alt+H` | New AI conversation / show or hide the history (chat panel open) |
 | `Alt+arrows` / `Alt+Shift+arrows` | Move / resize the AI chat panel (its title focused) |
+| `Enter` / `Shift+Enter` (message box) | Send / new line |
 | `Escape` (AI chat panel) | Stop the running answer; pressed again, close the panel |
+| `Alt+Shift+A` / `Alt+Shift+R` | Accept all / Reject all proposed changes (while an AI edit is shown in review mode) |
 | `Ctrl+T` | Search everything: files and headings |
 | `Alt+←` / `Alt+→`, mouse back / forward | Back / forward through the documents read |
 | `F4` / `Shift+F4` | Next / previous search result |
@@ -40,6 +43,8 @@ In a view or dialog:
 | Search view | `Alt+C` match case, `Alt+W` whole word, `Alt+R` regex; Enter searches now; ↑ / ↓ recall searches; Esc clears; Delete dismisses a result |
 | Ctrl+T dialog | ↑ / ↓, PageUp / PageDown; Enter opens, `Ctrl+Enter` keeps the tab open, `Alt+Enter` opens and keeps searching |
 | Code viewer | `Ctrl+G` go to line |
+| Review mode (an AI edit in the preview) | `Tab` moves between the changes and their buttons; `A` / `R` on a focused change accepts / rejects it |
+| Region selection | Arrows move a 200 × 120 rectangle from the centre, `Shift+arrows` resize it, `Enter` captures, `Esc` cancels (a mouse drag works too) |
 | Links, results, backlinks | `Ctrl+click`, middle click, double click or `Ctrl+Enter` open in a kept tab |
 
 While typing in a text box, plain keys are never taken by shortcuts (F-keys and Ctrl/Alt
@@ -66,6 +71,13 @@ Reserved for upcoming features (not bound yet, so they never need to be re-learn
 - **Document**: the preview is focusable, so PageUp / PageDown / arrows scroll it. Code blocks are
   focusable to scroll them horizontally. Mermaid diagrams have their own keys (`+`, `-`, `F`, `0`,
   Enter).
+- **AI chat panel**: a floating dialog (`aria-modal="false"`), movable and resizable from the
+  keyboard (above); the focus returns to the AI Chat button when it closes. The transcript is a
+  polite live region.
+- **Review mode**: each change is a focusable group labelled "Change 2 of 3: replaced paragraph"
+  with Accept, Reject and Undo buttons, and a polite live region announces each decision.
+- **Region selection**: operable without a mouse (above), with its instruction as the overlay's
+  accessible name.
 - **Menus and dialogs** (radix-ui) trap focus, close with Esc and return focus where it was.
 
 ## Accessibility checklist

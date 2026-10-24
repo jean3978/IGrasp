@@ -31,10 +31,16 @@ For every folder, IGrasp remembers (in the app-data folder, `sessions.json`):
 - the expanded folders of the Explorer;
 - the sidebar visibility and width, and its view (Explorer, Search, Recent Changes, Broken Links);
 - the right panel visibility and width;
-- the AI chat panel: open or closed, position and size (0.3.0);
+- the AI chat panel: open or closed, and its rectangle (position and size, in window pixels), added
+  in 0.3.0. The rectangle is clamped to the window on restore and whenever the window is resized,
+  so a panel saved on a large screen never opens out of sight; without one, the default is
+  420 × 560 in the bottom-right corner. The conversations themselves are not part of the session
+  (see [ai-chat.md](ai-chat.md#history));
 - the "show dotfiles" and "show ignored files" toggles.
 
-The fields added in 0.2.0 have defaults, so sessions saved by 0.1.0 load unchanged. The
+The fields added in 0.2.0 and 0.3.0 have defaults, so sessions saved by earlier versions load
+unchanged. A tab in review mode (an AI edit being decided) is not saved as such: after a restart
+the file opens normally. The
 back / forward history is not saved.
 
 The session is saved 750 ms after any change, when the folder is closed or another one is

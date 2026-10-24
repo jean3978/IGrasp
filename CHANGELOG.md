@@ -7,80 +7,76 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-24
+
+Phase 3 — Claude: an AI chat that understands the open folder, edits you review in the rendered
+document, and questions about a region of the screen. The AI layer is provider-neutral (Claude
+through your installed `claude` CLI is the first provider) and spends tokens only when you ask.
+
 ### Added
 
-- **Region capture**: **Ask about a region** (toolbar button, View menu, `Ctrl+Alt+R`) draws a
-  rectangle over a markdown or code tab (mouse, or arrows + Enter), maps it to the source lines
-  and attaches them, with a screenshot of the region (selection outlined) when the model reads
-  images, to the chat with the draft "About this region:". Nothing is sent until Send.
-- **AI chat (proof of concept)**: a floating chat panel (`Ctrl+Alt+C`) that talks to the AI
-  provider in the open folder (Claude through the installed `claude` CLI today), streams the
-  answer, shows proposed markdown edits as a diff with Accept / Reject and other tool calls with
-  Allow / Deny, resumes the conversation between messages, and explains a missing or logged-out
-  provider ([ADR 0014](docs/decisions/0014-claude-cli-integration.md)).
+- **AI chat**: a floating, movable and resizable panel (`Ctrl+Alt+C`) that talks to the AI
+  provider in the open folder, streams the answer, resumes the conversation between messages,
+  shows the usage of each answer (tokens, cost, duration) and explains a missing or logged-out
+  provider ([ADR 0014](docs/decisions/0014-claude-cli-integration.md)). `Escape` stops a running
+  answer, then closes the panel; with the chat closed the status bar shows the running operation
+  with Stop and a badge when a permission waits. The panel's place and size are remembered per
+  folder in the session.
 - **AI provider abstraction and gateway**: provider-neutral contracts and events, an
   `AiProvider` trait with the Claude CLI and a mock implementation, and a single gateway that
   only starts an operation for a user action and stops it when the folder, the window or the
-  app closes ([ADR 0015](docs/decisions/0015-ai-provider-abstraction-and-gateway.md)).
-- **"Uses AI" marker**: a small sparkle (with the provider's name in its tooltip) on every control that can start an AI operation and on the AI Chat button and menu item.
-- **Confirmation, usage and stop**: a message whose estimated size reaches the "confirm from"
-  threshold (`settings.ai.confirmFrom`, default large) shows a confirmation card (provider,
-  model, documents, size class) and starts only on Start; each answer shows its token usage,
-  cost and duration; with the chat closed, a status bar item shows the running operation with
-  Stop and a badge when a permission waits.
-- **AI permission kinds**: every permission request says what it would do (markdown edit, other
-  file edit, command, web, other), and accepting an edit carries a neutral edit (all or some of
-  its hunks) that the provider maps back to its own tool input. The mock provider scripts every
-  case the UI handles (one or two hunks, rewrite, new file, code edit, command, web, image,
-  slow, crash, lost conversation).
-- **AI permission policy and settings**: `settings.ai` (provider, model, permission rules per
-  kind, confirmation threshold, history limit). The gateway answers a request by itself when the
-  settings say Allow or Deny, refuses every write of a read-only operation, and the chat shows
-  each automatic decision ("Allowed by your settings: Bash …"). The CLI runs with
-  `--permission-mode default` so its own default mode never bypasses the app's policy.
-- **AI context and size estimate**: `ai_context` lists what a message carries (the provider's
-  instruction files from the root down to the current file's folder, then the current file,
-  with sizes); `ai_start` takes the paths the user kept and reads them in Rust through the root
-  guard, inlining up to 32 KB per instruction file and 96 KB for the current file (larger files
-  are listed for the model to read). `ai_estimate` sizes a message from metadata (small /
-  medium / large). A region capture (source lines and text) can travel with a message.
-- **AI provider setting and remembered model**: the gateway is built from `settings.ai.provider`
-  (unknown ids fall back to Claude) and `ai_set_provider` switches it, refused while an
-  operation runs; `ai_providers` lists the choices. The model picked in the chat is remembered
-  in `settings.ai.model`. Models declare whether they accept images. The provider status check
-  is reused for 60 s; **Check again** bypasses it.
-- **AI conversations per folder** (app data): `conversations/index.json` maps each folder to a
-  file of its conversations (title, provider and model, resume id, usage, transcript items),
-  newest first, trimmed to `settings.ai.historyLimit` conversations and 400 items each, and
-  recovered like the other app-data files when corrupt. Commands `list_conversations`,
-  `get_conversation`, `save_conversation`, `delete_conversation`, `forget_conversations`.
-- **Floating AI chat panel**: the chat is a movable, resizable panel over the window (drag its
-  header or press Alt+arrows on its title; resize from any edge or corner, or Alt+Shift+arrows),
-  kept inside the window, and remembered per folder with its open state in the session.
-  `Escape` stops a running answer, then closes the panel; the focus returns to the AI Chat
-  button.
-- **AI conversation history per folder**: each conversation is saved (app data) when an
-  operation ends and on New conversation; the panel's **History** (`Ctrl+Alt+H`) lists them with
-  date, model and tokens, filters, deletes, and reopens one to continue it; New conversation is
-  `Ctrl+Alt+N`. A conversation the provider no longer knows offers **Start a new conversation
-  from here**. Settings → AI → **Forget this folder's conversations**. The chat store is split
-  into provider, conversation and panel stores.
-- **AI context bar**: above the message box, the instruction files from the root down to the
-  current file's folder and the current file, with sizes, listed when the panel opens and when
-  the active tab changes (never on disk changes); ✕ leaves a document out of the messages sent
-  from that file, and Send passes exactly the paths still listed to `ai_start`.
-- **AI permission prompts and settings**: a prompt shows the tool, a summary and its input with
-  Allow, Deny and **Allow for this conversation** (a rule listed in the panel header with a ✕,
-  cleared by New conversation; matching requests are answered without asking and shown in the
-  transcript). Settings → AI gains the provider status, the provider and default model, one
-  Ask / Allow / Deny row per permission category with warnings and Reset to defaults, the
-  confirmation threshold and the history limit.
-- **AI edit review in the preview**: a markdown edit inside the folder opens its tab in review
-  mode, a rendered diff with Accept / Reject per change (`A` / `R` on a focused change), a review
-  bar with Accept all (`Alt+Shift+A`), Reject all (`Alt+Shift+R`), Open in chat and Apply; only
-  the accepted changes are written. The chat shows an Edit card with **Review in preview**, the
-  status bar leads to the review when the chat is closed, and other edits keep the line-diff
-  card. GitHub alerts, display math and footnotes keep their own blocks in the rendered diff.
+  app closes ([ADR 0015](docs/decisions/0015-ai-provider-abstraction-and-gateway.md)). The
+  provider is chosen by `settings.ai.provider` (`ai_providers`, `ai_set_provider`); the model
+  picked in the chat is remembered in `settings.ai.model`; the provider status is cached for
+  60 s (**Check again** bypasses it).
+- **"Uses AI" marker**: a small sparkle (with the provider's name in its tooltip) on every
+  control that can start an AI operation.
+- **Confirmation card**: a message whose estimated size (`ai_estimate`, from metadata only:
+  small / medium / large) reaches `settings.ai.confirmFrom` (default large) asks for a
+  confirmation before it starts.
+- **Context**: a bar above the message box lists what the message carries, the provider's
+  instruction files from the root down to the current file's folder and the current file, with
+  sizes; ✕ leaves a document out. The list is computed when the panel opens and when the active
+  tab changes, never on disk changes. `ai_start` receives the paths still listed and Rust reads
+  them through the root guard, inlining up to 32 KB per instruction file and 96 KB for the
+  current file (larger files are listed for the model to read).
+- **Permissions**: every permission request says what it would do (markdown edit, other file
+  edit, command, web, other). `settings.ai.permissions` sets Ask / Allow / Deny per kind (all Ask
+  by default); the gateway answers by itself when the settings say Allow or Deny, refuses every
+  write of a read-only operation, and the chat shows each automatic decision. A prompt also
+  offers **Allow for this conversation** (a rule listed in the panel header, cleared by New
+  conversation). The CLI runs with `--permission-mode default` so its own default mode never
+  bypasses the app's policy; its own allow rules are documented as a limit
+  ([ADR 0019](docs/decisions/0019-permission-policy-history-and-floating-chat.md)).
+- **Settings → AI**: the provider status, the provider and default model, one Ask / Allow / Deny
+  row per permission category with warnings and Reset to defaults, the confirmation threshold,
+  the conversations kept per folder and **Forget this folder's conversations**.
+- **Inline edit review**: a markdown edit inside the folder opens its tab in review mode, a
+  rendered diff at block level with Accept / Reject per change (`A` / `R` on a focused change), a
+  review bar with Accept all (`Alt+Shift+A`), Reject all (`Alt+Shift+R`), Open in chat and
+  Apply. Only the accepted changes are written, by the provider: the app sends a neutral edit
+  (the accepted hunks, or the composed content of a `Write`) and the provider maps it to its own
+  tool input. The chat shows an Edit card with **Review in preview**, the status bar leads to the
+  review when the chat is closed, and other edits keep the line-diff card
+  ([ADR 0017](docs/decisions/0017-rendered-markdown-diff-at-block-level.md)).
+- **Region capture**: **Ask about a region** (toolbar button, View menu, `Ctrl+Alt+R`) draws a
+  rectangle over a markdown or code tab (mouse, or arrows + Enter), maps it to the source lines
+  and attaches them, with a screenshot of the region (selection outlined) when the model reads
+  images, to the chat with the draft "About this region:". Nothing is sent until Send
+  ([ADR 0018](docs/decisions/0018-region-capture-by-dom-rendering.md)).
+- **Conversation history per folder** (app data, `conversations/`): each conversation is saved
+  when an operation ends and on New conversation (`Ctrl+Alt+N`), trimmed to
+  `settings.ai.historyLimit` conversations and 400 items each, and recovered like the other
+  app-data files when corrupt. **History** (`Ctrl+Alt+H`) lists, filters, deletes and reopens
+  them; a conversation the provider no longer knows offers **Start a new conversation from
+  here**. Commands `list_conversations`, `get_conversation`, `save_conversation`,
+  `delete_conversation`, `forget_conversations`.
+- **Mock AI provider** for the browser dev mode and the tests, scripting every case the UI
+  handles (one or two hunks, rewrite, new file, code edit, command, web, image, slow, crash, lost
+  conversation) and applying the same permission policy as the gateway.
+- Tests: the "no token without a user action" checks (Rust over the whole backend, Vitest over
+  the UI), the provider-neutrality scan of the frontend, Playwright smoke tests for the chat,
+  the inline review and region capture, and ignored tests against the real CLI.
 
 ### Changed
 
@@ -88,6 +84,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Mermaid visual editor move to Phases 6, 7 and 8. The quiz and tutorials are grounded in the
   whole project, not only its markdown files
   ([ADR 0016](docs/decisions/0016-learning-features-grounded-in-the-project.md)).
+- Sessions also remember the AI panel (open, position, size); sessions saved by 0.2.0 load
+  unchanged.
+- The preview keeps source line markers (`data-line`) on lists and GitHub alert blocks.
+
+### Performance
+
+- A 400-item conversation renders a streamed event in one frame (about 17 ms); the block diff of
+  a 5 000-line document takes about 130 ms.
+
+### Known limitations
+
+- The Claude CLI integration and the capture of asset images were verified on Windows only; the
+  Linux run is pending ([ADR 0014](docs/decisions/0014-claude-cli-integration.md),
+  [ADR 0018](docs/decisions/0018-region-capture-by-dom-rendering.md)).
+- Allow rules in the user's own Claude CLI settings let the CLI run those tools without asking;
+  every call still appears in the chat.
 
 ## [0.2.0] - 2026-10-24
 
