@@ -132,12 +132,12 @@ type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
       reload, change notifications, themes, settings, session restore, keyboard accessibility.
 - [ ] **Phase 2 — Navigation**: search everything (Ctrl+T), search in files (Ctrl+Shift+F), recent
       changes, back/forward history, outline, internal links, code viewer, broken links, backlinks.
-- [ ] **Phase 3 — Editing**: WYSIWYG editing with lossless round-trip, file management, edit
+- [ ] **Phase 3 — Claude**: chat through the Claude CLI, inline diff review, region capture.
+- [ ] **Phase 4 — Quiz**: a fun quiz about the project with Hoot the owl.
+- [ ] **Phase 5 — Editing**: WYSIWYG editing with lossless round-trip, file management, edit
       conflicts.
-- [ ] **Phase 4 — Git**: branch graph, commit details, status panel, stash, beginner-friendly
+- [ ] **Phase 6 — Git**: branch graph, commit details, status panel, stash, beginner-friendly
       operations, and "what changed since I last looked".
-- [ ] **Phase 5 — Claude**: chat through the Claude CLI, inline diff review, region capture.
-- [ ] **Phase 6 — Quiz**: a fun quiz about the project with Hoot the owl.
 - [ ] **Phase 7 — Mermaid visual editor**: flowcharts first.
 
 ## License
