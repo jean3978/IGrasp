@@ -9,6 +9,7 @@ const session: Session = {
   expandedDirs: [],
   sidebar: { visible: true, widthPx: 260 },
   sidebarView: 'explorer',
+  rightPanel: { visible: false, widthPx: 260 },
   showDotfiles: false,
   showIgnored: false,
   savedAtMs: 0,

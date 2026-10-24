@@ -190,6 +190,7 @@ export function MenuBar() {
   const theme = useSettings((s) => s.settings.theme);
   const toastsMuted = useSettings((s) => s.settings.toastsMuted);
   const sidebarVisible = useWorkspace((s) => s.sidebar.visible);
+  const rightPanelVisible = useWorkspace((s) => s.rightPanel.visible);
   const hasRoot = useWorkspace((s) => s.root !== null);
   const openRoot = useWorkspace((s) => s.openRoot);
   const showDotfiles = useTree((s) => s.showDotfiles);
@@ -258,6 +259,7 @@ export function MenuBar() {
       </Menu>
       <Menu value="view">
         <CheckItem id="view.toggleSidebar" checked={sidebarVisible} />
+        <CheckItem id="view.toggleRightPanel" checked={rightPanelVisible} disabled={!hasRoot} />
         <Item id="view.focusExplorer" disabled={!hasRoot} />
         <Item id="view.search" disabled={!hasRoot} />
         <Item id="view.recent" disabled={!hasRoot} />

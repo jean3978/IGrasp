@@ -36,6 +36,24 @@ pub enum SidebarView {
     Broken,
 }
 
+/// The right panel (Outline and Backlinks).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct RightPanelState {
+    pub visible: bool,
+    pub width_px: f64,
+}
+
+impl Default for RightPanelState {
+    fn default() -> Self {
+        Self {
+            visible: false,
+            width_px: 260.0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -49,6 +67,9 @@ pub struct Session {
     /// Added in 0.2.0; older sessions load with the Explorer.
     #[serde(default)]
     pub sidebar_view: SidebarView,
+    /// Added in 0.2.0; older sessions load with the panel hidden.
+    #[serde(default)]
+    pub right_panel: RightPanelState,
     pub show_dotfiles: bool,
     pub show_ignored: bool,
     pub saved_at_ms: i64,
@@ -110,6 +131,7 @@ pub fn sample_session() -> Session {
             width_px: 280.0,
         },
         sidebar_view: SidebarView::Search,
+        right_panel: RightPanelState::default(),
         show_dotfiles: false,
         show_ignored: false,
         saved_at_ms: 0,
@@ -137,6 +159,7 @@ mod tests {
             "showDotfiles":false,"showIgnored":false,"savedAtMs":1}"#;
         let s: Session = serde_json::from_str(json).unwrap();
         assert_eq!(s.sidebar_view, SidebarView::Explorer);
+        assert!(!s.right_panel.visible);
         assert_eq!(s.tabs.len(), 1);
     }
 

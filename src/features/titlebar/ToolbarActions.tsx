@@ -1,4 +1,4 @@
-import { Bell, BellOff, FolderOpen, PanelLeft } from 'lucide-react';
+import { Bell, BellOff, FolderOpen, PanelLeft, PanelRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { IconButton } from '../../components/ui/IconButton';
 import { useSettings } from '../../stores/settings';
@@ -35,6 +35,8 @@ function ActionButton({
 
 export function ToolbarActions() {
   const sidebarVisible = useWorkspace((s) => s.sidebar.visible);
+  const rightPanelVisible = useWorkspace((s) => s.rightPanel.visible);
+  const hasRoot = useWorkspace((s) => s.root !== null);
   const muted = useSettings((s) => s.settings.toastsMuted);
 
   return (
@@ -45,6 +47,11 @@ export function ToolbarActions() {
       <ActionButton id="view.toggleSidebar" pressed={sidebarVisible}>
         <PanelLeft aria-hidden />
       </ActionButton>
+      {hasRoot && (
+        <ActionButton id="view.toggleRightPanel" pressed={rightPanelVisible}>
+          <PanelRight aria-hidden />
+        </ActionButton>
+      )}
       <ActionButton
         id="view.muteToasts"
         label={muted ? 'Unmute notifications' : 'Mute notifications'}

@@ -16,11 +16,18 @@ import { useTree } from './tree';
 
 export const DEFAULT_SIDEBAR_WIDTH = 280;
 export const MIN_SIDEBAR_WIDTH = 170;
+export const DEFAULT_RIGHT_PANEL_WIDTH = 260;
+export const MIN_RIGHT_PANEL_WIDTH = 200;
 
 interface SidebarState {
   visible: boolean;
   widthPx: number;
   view: SidebarView;
+}
+
+interface RightPanelState {
+  visible: boolean;
+  widthPx: number;
 }
 
 export interface IndexStatus {
@@ -54,6 +61,8 @@ interface WorkspaceState {
   /** How the folder is watched for changes ("poll" when native watching is unavailable). */
   watch: { mode: WatchMode | null; reason: string | null };
   sidebar: SidebarState;
+  /** The right panel with the Outline and Backlinks of the active document. */
+  rightPanel: RightPanelState;
 
   openRoot: (path: string) => Promise<void>;
   /** Shows the folder picker and opens the chosen folder. */
@@ -74,6 +83,9 @@ interface WorkspaceState {
   setSidebarView: (view: SidebarView) => void;
   /** Activity bar click: switches to `view`, or hides the sidebar when it is already shown. */
   toggleSidebarView: (view: SidebarView) => void;
+  toggleRightPanel: () => void;
+  setRightPanelVisible: (visible: boolean) => void;
+  setRightPanelWidth: (widthPx: number) => void;
 }
 
 function message(err: unknown): string {
@@ -88,6 +100,7 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
   lastReady: null,
   watch: { mode: null, reason: null },
   sidebar: { visible: true, widthPx: DEFAULT_SIDEBAR_WIDTH, view: 'explorer' },
+  rightPanel: { visible: false, widthPx: DEFAULT_RIGHT_PANEL_WIDTH },
 
   async openRoot(path) {
     set({ opening: true, openError: null });
@@ -198,5 +211,22 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
     const { sidebar } = get();
     if (sidebar.visible && sidebar.view === view) get().setSidebarVisible(false);
     else get().setSidebarView(view);
+  },
+
+  toggleRightPanel() {
+    get().setRightPanelVisible(!get().rightPanel.visible);
+  },
+
+  setRightPanelVisible(visible) {
+    set((s) =>
+      s.rightPanel.visible === visible ? s : { rightPanel: { ...s.rightPanel, visible } },
+    );
+  },
+
+  setRightPanelWidth(widthPx) {
+    const width = Math.max(MIN_RIGHT_PANEL_WIDTH, Math.round(widthPx));
+    set((s) =>
+      s.rightPanel.widthPx === width ? s : { rightPanel: { ...s.rightPanel, widthPx: width } },
+    );
   },
 }));

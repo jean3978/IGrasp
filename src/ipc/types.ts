@@ -47,6 +47,7 @@ export type { ReadingWidth } from './generated/ReadingWidth';
 export type { WindowFrame } from './generated/WindowFrame';
 export type { SessionTab } from './generated/SessionTab';
 export type { SidebarView } from './generated/SidebarView';
+export type { RightPanelState } from './generated/RightPanelState';
 
 /** Error raised by any backend call. */
 export class BackendError extends Error {

@@ -6,6 +6,7 @@ import { ExplorerPanel } from './features/explorer/ExplorerPanel';
 import { BrokenLinksPanel } from './features/links/BrokenLinksPanel';
 import { RecentChangesPanel } from './features/recent/RecentChangesPanel';
 import { SearchPanel } from './features/search/SearchPanel';
+import { PanelSection, RightPanel } from './features/rightpanel/RightPanel';
 import { ActivityBar } from './features/shell/ActivityBar';
 import { SidebarHost } from './features/shell/SidebarHost';
 import { StatusBar } from './features/shell/StatusBar';
@@ -130,6 +131,16 @@ export function App() {
                   <TabBar />
                   <TabContent />
                 </>
+              }
+              rightPanel={
+                <RightPanel>
+                  <PanelSection title="Outline" grow>
+                    <div className="panel-empty">No headings.</div>
+                  </PanelSection>
+                  <PanelSection title="Backlinks">
+                    <div className="panel-empty">No other document links here.</div>
+                  </PanelSection>
+                </RightPanel>
               }
             />
           ) : hasTabs ? (

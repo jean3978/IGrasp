@@ -25,6 +25,7 @@ export type ActionId =
   | 'view.search'
   | 'view.recent'
   | 'view.broken'
+  | 'view.toggleRightPanel'
   | 'view.showDotfiles'
   | 'view.showIgnored'
   | 'view.muteToasts'
@@ -224,6 +225,13 @@ export const actions: Record<ActionId, ActionDef> = {
     shortcut: 'Ctrl+B',
     run: () => {
       useWorkspace.getState().toggleSidebar();
+    },
+  },
+  'view.toggleRightPanel': {
+    label: 'Toggle Right Panel',
+    shortcut: 'Ctrl+Alt+B',
+    run: () => {
+      useWorkspace.getState().toggleRightPanel();
     },
   },
   'view.muteToasts': {

@@ -47,6 +47,17 @@ describe('workspace store', () => {
     expect(ws().sidebar).toMatchObject({ visible: true, view: 'recent' });
   });
 
+  it('toggles the right panel and clamps its width', () => {
+    const ws = useWorkspace.getState;
+    ws().setRightPanelVisible(false);
+    ws().toggleRightPanel();
+    expect(ws().rightPanel.visible).toBe(true);
+    ws().setRightPanelWidth(50);
+    expect(ws().rightPanel.widthPx).toBe(200);
+    ws().toggleRightPanel();
+    expect(ws().rightPanel.visible).toBe(false);
+  });
+
   it('flags recent folders that no longer exist', async () => {
     await useWorkspace.getState().openRoot(FIXTURE_ROOT);
     window.__igraspMock?.state.folders.delete(FIXTURE_ROOT);

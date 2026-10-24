@@ -19,7 +19,7 @@ let restoring = false;
 export function buildSession(): Session {
   const { tabs, activeId } = useTabs.getState();
   const tree = useTree.getState();
-  const { sidebar } = useWorkspace.getState();
+  const { sidebar, rightPanel } = useWorkspace.getState();
   const documents = tabs.filter((t) => t.kind === 'document' && t.relPath !== null);
   return {
     version: 1,
@@ -32,6 +32,7 @@ export function buildSession(): Session {
     expandedDirs: [...tree.expanded].sort(),
     sidebar: { visible: sidebar.visible, widthPx: sidebar.widthPx },
     sidebarView: sidebar.view,
+    rightPanel: { visible: rightPanel.visible, widthPx: rightPanel.widthPx },
     showDotfiles: tree.showDotfiles,
     showIgnored: tree.showIgnored,
     savedAtMs: Date.now(),
@@ -65,6 +66,8 @@ export function applySessionLayout(session: Session | null): void {
   useWorkspace.getState().setSidebarVisible(session.sidebar.visible);
   useWorkspace.getState().setSidebarWidth(session.sidebar.widthPx);
   useWorkspace.setState((s) => ({ sidebar: { ...s.sidebar, view: session.sidebarView } }));
+  useWorkspace.getState().setRightPanelVisible(session.rightPanel.visible);
+  useWorkspace.getState().setRightPanelWidth(session.rightPanel.widthPx);
 }
 
 async function existingFiles(paths: string[]): Promise<Set<string>> {
@@ -154,7 +157,7 @@ export function startSessionSync(): () => void {
       }
     }),
     useWorkspace.subscribe((s, prev) => {
-      if (s.sidebar !== prev.sidebar) scheduleSave();
+      if (s.sidebar !== prev.sidebar || s.rightPanel !== prev.rightPanel) scheduleSave();
     }),
   ];
   return () => {
