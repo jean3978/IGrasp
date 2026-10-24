@@ -13,6 +13,8 @@ const BLOCKS = new Set([
   'h4',
   'h5',
   'h6',
+  'ul',
+  'ol',
   'li',
   'pre',
   'blockquote',

@@ -39,6 +39,11 @@
   --warning-bg: #000000;
   --danger-bg: #000000;
 
+  --diff-added-bg: #000000;
+  --diff-added-fg: #6cf06c;
+  --diff-removed-bg: #000000;
+  --diff-removed-fg: #ff7070;
+
   --search-match-bg: #ffff00;
   --search-match-fg: #000000;
   --search-match-border: #ffffff;

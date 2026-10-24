@@ -38,6 +38,11 @@
   --warning-bg: #272115;
   --danger-bg: #2d1416;
 
+  --diff-added-bg: #12261e;
+  --diff-added-fg: #56d364;
+  --diff-removed-bg: #2d1416;
+  --diff-removed-fg: #ff7b72;
+
   --search-match-bg: #7a6400;
   --search-match-fg: #ffffff;
   --search-match-border: #e3c000;
