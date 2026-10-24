@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AiEvent } from '../../ipc/types';
-import { applyEvent, finishStreaming } from './timeline';
+import { applyEvent, decisionText, finishStreaming } from './timeline';
 import type { ChatItem } from './timeline';
 
 const reduce = (events: AiEvent[], start: ChatItem[] = []) => events.reduce(applyEvent, start);
@@ -77,6 +77,26 @@ describe('applyEvent', () => {
     expect(reduce([{ type: 'error', message: 'Not logged in' }])).toEqual([
       expect.objectContaining({ kind: 'error', text: 'Not logged in' }),
     ]);
+  });
+
+  it('lists automatic permission decisions as transcript lines', () => {
+    const [item] = reduce([
+      {
+        type: 'permissionDecided',
+        tool: 'Edit',
+        kind: 'markdownEdit',
+        description: 'notes.md',
+        allowed: true,
+        reason: 'allowed by your settings',
+      },
+    ]);
+    expect(item).toMatchObject({ kind: 'decision', permissionKind: 'markdownEdit', allowed: true });
+    expect(item?.kind === 'decision' && decisionText(item)).toBe(
+      'Allowed by your settings: Edit notes.md',
+    );
+    expect(
+      decisionText({ tool: 'Bash', description: null, reason: 'denied by your settings' }),
+    ).toBe('Denied by your settings: Bash');
   });
 
   it('finishes streaming items when the operation ends early', () => {

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { backend } from '../ipc/client';
-import { DEFAULT_SETTINGS } from '../ipc/defaults';
+import { DEFAULT_SETTINGS, applySettingsPatch } from '../ipc/defaults';
 import type { Settings, SettingsPatch, Theme } from '../ipc/types';
 
 export type EffectiveTheme = Exclude<Theme, 'system'>;
@@ -40,7 +40,7 @@ export const useSettings = create<SettingsState>()((set, get) => ({
 
   async update(patch) {
     const previous = get().settings;
-    const optimistic: Settings = { ...previous, ...patch };
+    const optimistic: Settings = applySettingsPatch(previous, patch);
     set({ settings: optimistic });
     try {
       const saved = await backend.updateSettings(patch);

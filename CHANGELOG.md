@@ -23,6 +23,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   its hunks) that the provider maps back to its own tool input. The mock provider scripts every
   case the UI handles (one or two hunks, rewrite, new file, code edit, command, web, image,
   slow, crash, lost conversation).
+- **AI permission policy and settings**: `settings.ai` (provider, model, permission rules per
+  kind, confirmation threshold, history limit). The gateway answers a request by itself when the
+  settings say Allow or Deny, refuses every write of a read-only operation, and the chat shows
+  each automatic decision ("Allowed by your settings: Bash …"). The CLI runs with
+  `--permission-mode default` so its own default mode never bypasses the app's policy.
 
 ### Changed
 

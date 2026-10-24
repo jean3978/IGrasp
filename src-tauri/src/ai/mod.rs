@@ -6,6 +6,7 @@
 //! so no other code can spawn a CLI or call an API.
 
 pub mod gateway;
+pub mod policy;
 mod process;
 mod providers;
 pub mod types;

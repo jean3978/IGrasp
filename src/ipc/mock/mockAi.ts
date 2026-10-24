@@ -21,6 +21,8 @@ import type {
   AiEventEnvelope,
   AiOutcome,
   AiPermissionKind,
+  AiPermissionSettings,
+  AiPolicy,
   AiProviderStatus,
   AiRequest,
   AiUserAction,
@@ -30,6 +32,7 @@ import type {
   JsonValue,
   PermissionDecision,
   ProposedEdit,
+  Settings,
 } from '../types';
 
 export interface MockAiState {
@@ -67,14 +70,66 @@ export const MOCK_NEW_FILE_CONTENT = '# New note\n\nWritten by the AI on request
 export const MOCK_REJECTED_BY_USER = 'The user rejected this in IGrasp.';
 /** Delay between the deltas of the `slow` script: ten of them take two seconds. */
 export const MOCK_SLOW_STEP_MS = 200;
+// The gateway's policy texts, the same as in Rust (`ai/policy.rs`).
+export const DENIED_BY_SETTINGS = "Denied by the user's IGrasp settings.";
+export const DENIED_READ_ONLY =
+  'This is a read-only operation: IGrasp does not allow changing files, running commands or browsing during it.';
+export const REASON_ALLOWED_BY_SETTINGS = 'allowed by your settings';
+export const REASON_DENIED_BY_SETTINGS = 'denied by your settings';
+export const REASON_READ_ONLY = 'read-only operation';
 
 type Emit = <E extends EventName>(event: E, payload: BackendEvents[E]) => void;
 
 interface Deps {
   emit: Emit;
   ai: () => MockAiState;
+  settings: () => Settings;
   fileContent: (relPath: string) => string | undefined;
   writeFiles: (files: Record<string, string>) => void;
+}
+
+/** Like the Rust gateway: a markdown edit is reviewed only with its edit, inside the folder. */
+function effectiveKind(kind: AiPermissionKind, edit: ProposedEdit | null): AiPermissionKind {
+  if (kind !== 'markdownEdit') return kind;
+  const inside =
+    edit !== null &&
+    edit.isMarkdown &&
+    !/^\/|\\|:/.test(edit.path) &&
+    edit.path.split('/').every((s) => s !== '' && s !== '.' && s !== '..');
+  return inside ? kind : 'other';
+}
+
+const RULE_OF: Record<AiPermissionKind, keyof AiPermissionSettings> = {
+  markdownEdit: 'markdownEdits',
+  fileEdit: 'fileEdits',
+  command: 'commands',
+  web: 'web',
+  other: 'other',
+};
+
+/** Like the Rust gateway: the answer given without asking, or null when the user must answer. */
+function answerAutomatically(
+  policy: AiPolicy,
+  kind: AiPermissionKind,
+  permissions: AiPermissionSettings,
+): { decision: PermissionDecision; reason: string } | null {
+  if (policy === 'readOnly') {
+    return { decision: { behavior: 'deny', message: DENIED_READ_ONLY }, reason: REASON_READ_ONLY };
+  }
+  switch (permissions[RULE_OF[kind]]) {
+    case 'ask':
+      return null;
+    case 'allow':
+      return {
+        decision: { behavior: 'allow', updatedEdit: null },
+        reason: REASON_ALLOWED_BY_SETTINGS,
+      };
+    case 'deny':
+      return {
+        decision: { behavior: 'deny', message: DENIED_BY_SETTINGS },
+        reason: REASON_DENIED_BY_SETTINGS,
+      };
+  }
 }
 
 /** A step of the script; returning `'wait'` pauses it until the permission is answered. */
@@ -98,6 +153,9 @@ class ScriptedOperation {
     readonly id: number,
     readonly resumeId: string,
     private readonly stepMs: () => number,
+    readonly policy: AiPolicy,
+    /** The permission settings when the operation started (a later change does not apply). */
+    readonly permissions: AiPermissionSettings,
   ) {}
 
   start(steps: Step[]) {
@@ -180,7 +238,7 @@ function acceptedHunks(proposed: ProposedEdit, decision: PermissionDecision): Ed
   return proposed.hunks.filter((p) => !left.includes(p));
 }
 
-export function createMockAi({ emit, ai, fileContent, writeFiles }: Deps) {
+export function createMockAi({ emit, ai, settings, fileContent, writeFiles }: Deps) {
   let nextId = 0;
   let sessions = 0;
   let counter = 0;
@@ -249,7 +307,7 @@ export function createMockAi({ emit, ai, fileContent, writeFiles }: Deps) {
       },
       (op) => {
         const requestId = uid('req');
-        op.wait(requestId, (decision) => {
+        const onDecision = (decision: PermissionDecision) => {
           const result = decision.behavior === 'allow' ? call.run(decision) : null;
           send(op, {
             type: 'toolResult',
@@ -258,12 +316,28 @@ export function createMockAi({ emit, ai, fileContent, writeFiles }: Deps) {
               result ?? (decision.behavior === 'deny' ? decision.message : MOCK_REJECTED_BY_USER),
             isError: result === null,
           });
-        });
+        };
+        // The gateway's policy step, like Rust: some requests never reach the user.
+        const kind = effectiveKind(call.kind, call.proposedEdit);
+        const automatic = answerAutomatically(op.policy, kind, op.permissions);
+        if (automatic) {
+          send(op, {
+            type: 'permissionDecided',
+            tool: call.tool,
+            kind,
+            description: call.description,
+            allowed: automatic.decision.behavior === 'allow',
+            reason: automatic.reason,
+          });
+          onDecision(automatic.decision);
+          return undefined;
+        }
+        op.wait(requestId, onDecision);
         send(op, {
           type: 'permissionRequest',
           requestId,
           tool: call.tool,
-          kind: call.kind,
+          kind,
           description: call.description,
           input: call.input,
           proposedEdit: call.proposedEdit,
@@ -526,7 +600,13 @@ export function createMockAi({ emit, ai, fileContent, writeFiles }: Deps) {
         resumeId = `00000000-0000-4000-8000-${String(++sessions).padStart(12, '0')}`;
         issued.add(resumeId);
       }
-      const op = new ScriptedOperation(++nextId, resumeId, () => ai().stepMs);
+      const op = new ScriptedOperation(
+        ++nextId,
+        resumeId,
+        () => ai().stepMs,
+        request.policy,
+        structuredClone(settings().ai.permissions),
+      );
       running = op;
       op.start(script(request));
       return Promise.resolve(op.id);

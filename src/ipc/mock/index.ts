@@ -1,7 +1,14 @@
 // In-memory backend used in a plain browser (`npm run dev`), in unit tests and in the Playwright
 // end-to-end tests. Tests drive it through `window.__igraspMock`.
 
-import { DEFAULT_SETTINGS, MAX_FONT_SIZE, MIN_FONT_SIZE } from '../defaults';
+import {
+  DEFAULT_SETTINGS,
+  MAX_FONT_SIZE,
+  MAX_HISTORY_LIMIT,
+  MIN_FONT_SIZE,
+  MIN_HISTORY_LIMIT,
+  applySettingsPatch,
+} from '../defaults';
 import { BackendError } from '../types';
 import type {
   AppInfo,
@@ -189,6 +196,7 @@ export function createMockBackend(): Backend & { controls: MockControls } {
   const ai = createMockAi({
     emit,
     ai: () => state.ai,
+    settings: () => state.settings,
     fileContent: (relPath) => state.files.get(relPath),
     writeFiles: (files) => {
       controls.writeFiles(files);
@@ -559,11 +567,18 @@ export function createMockBackend(): Backend & { controls: MockControls } {
 
     getSettings: () => Promise.resolve(structuredClone(state.settings)),
     updateSettings: (patch) => {
-      const next: Settings = { ...state.settings, ...patch };
+      const next: Settings = applySettingsPatch(state.settings, patch);
       next.fontSize = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, next.fontSize));
       next.ignorePatterns = next.ignorePatterns
         .map((p) => p.trim())
         .filter((p) => p !== '' && !p.startsWith('#'));
+      // Like `Settings::normalize` in Rust.
+      next.ai.model = next.ai.model.trim();
+      if (!/^[A-Za-z0-9.:/_][A-Za-z0-9.:/_-]*$/.test(next.ai.model)) next.ai.model = '';
+      next.ai.historyLimit = Math.min(
+        MAX_HISTORY_LIMIT,
+        Math.max(MIN_HISTORY_LIMIT, next.ai.historyLimit),
+      );
       state.settings = next;
       return Promise.resolve(structuredClone(next));
     },

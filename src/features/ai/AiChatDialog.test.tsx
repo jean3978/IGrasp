@@ -128,6 +128,18 @@ describe('AiChatDialog', () => {
     expect(await screen.findByText('Here is what I found.')).toBeInTheDocument();
   });
 
+  it('runs a command the settings allow without asking, and says so', async () => {
+    const user = userEvent.setup();
+    if (window.__igraspMock) window.__igraspMock.state.settings.ai.permissions.commands = 'allow';
+    renderDialog();
+    await screen.findByText(statusLine);
+
+    await user.type(composer(), 'Run a command to list recent commits{Enter}');
+    expect(await screen.findByText(/^Allowed by your settings: Bash git log/)).toBeInTheDocument();
+    expect(await screen.findByText('Here is what I found.')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Permission for Bash' })).not.toBeInTheDocument();
+  });
+
   it('stops a running operation', async () => {
     const user = userEvent.setup();
     if (window.__igraspMock) window.__igraspMock.state.ai.stepMs = 500;

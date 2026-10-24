@@ -201,10 +201,6 @@ pub enum AiEvent {
     /// A permission request answered without asking (by the settings or the read-only policy):
     /// the transcript shows every automatic decision.
     #[serde(rename_all = "camelCase")]
-    #[allow(
-        dead_code,
-        reason = "emitted by the gateway's permission policy (next step)"
-    )]
     PermissionDecided {
         tool: String,
         kind: AiPermissionKind,

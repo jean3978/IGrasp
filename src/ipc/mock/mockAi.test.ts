@@ -3,12 +3,17 @@ import { createMockBackend } from '.';
 import type { AiEvent, AiRequest, PermissionDecision } from '../types';
 import { FIXTURE_ROOT } from './fixture';
 import {
+  DENIED_BY_SETTINGS,
+  DENIED_READ_ONLY,
   MOCK_APPLIED_TEXT,
   MOCK_CRASH_DETAIL,
   MOCK_EDIT_SUFFIX,
   MOCK_NEW_FILE_CONTENT,
   MOCK_NO_CONVERSATION,
   MOCK_REJECTED_TEXT,
+  REASON_ALLOWED_BY_SETTINGS,
+  REASON_DENIED_BY_SETTINGS,
+  REASON_READ_ONLY,
 } from './mockAi';
 
 type Mock = ReturnType<typeof createMockBackend>;
@@ -169,6 +174,70 @@ describe('mock AI scripts', () => {
       resumeId: session?.type === 'session' ? session.resumeId : '',
     });
     expect(events.some((e) => e.type === 'error')).toBe(false);
+  });
+
+  it('applies the permission settings like the gateway, from a snapshot', async () => {
+    const b = await backend();
+    const rules = b.controls.state.settings.ai.permissions;
+    rules.markdownEdits = 'deny';
+    const before = b.controls.state.files.get('README.md');
+    const asked: string[] = [];
+    let events = await run(b, { prompt: 'edit README.md' }, (p) => {
+      asked.push(p.tool);
+      return { behavior: 'allow', updatedEdit: null };
+    });
+    expect(asked).toEqual([]);
+    expect(events.find((e) => e.type === 'permissionDecided')).toEqual({
+      type: 'permissionDecided',
+      tool: 'Edit',
+      kind: 'markdownEdit',
+      description: 'README.md',
+      allowed: false,
+      reason: REASON_DENIED_BY_SETTINGS,
+    });
+    expect(events.find((e) => e.type === 'toolResult')).toMatchObject({
+      content: DENIED_BY_SETTINGS,
+      isError: true,
+    });
+    expect(b.controls.state.files.get('README.md')).toBe(before);
+
+    rules.markdownEdits = 'ask';
+    rules.commands = 'allow';
+    events = await run(b, { prompt: 'run a command' });
+    expect(events.find((e) => e.type === 'permissionDecided')).toMatchObject({
+      kind: 'command',
+      allowed: true,
+      reason: REASON_ALLOWED_BY_SETTINGS,
+    });
+    expect(events.some((e) => e.type === 'permissionRequest')).toBe(false);
+
+    // A change during an operation applies to the next one only.
+    rules.commands = 'ask';
+    const pending = run(b, { prompt: 'edit README.md' }, () => {
+      rules.commands = 'deny';
+      return { behavior: 'deny', message: 'no' };
+    });
+    expect(permissionOf(await pending)?.kind).toBe('markdownEdit');
+  });
+
+  it('refuses every write of a read-only operation, whatever the settings', async () => {
+    const b = await backend();
+    const rules = b.controls.state.settings.ai.permissions;
+    rules.markdownEdits = 'allow';
+    rules.commands = 'allow';
+    const before = b.controls.state.files.get('README.md');
+    for (const prompt of ['edit README.md', 'create notes/new.md', 'run a command']) {
+      const events = await run(b, { prompt, policy: 'readOnly' });
+      expect(events.find((e) => e.type === 'permissionDecided')).toMatchObject({
+        allowed: false,
+        reason: REASON_READ_ONLY,
+      });
+      expect(events.find((e) => e.type === 'toolResult')).toMatchObject({
+        content: DENIED_READ_ONLY,
+      });
+    }
+    expect(b.controls.state.files.get('README.md')).toBe(before);
+    expect(b.controls.state.files.has('notes/new.md')).toBe(false);
   });
 
   it('streams the slow script as ten deltas', async () => {

@@ -1,7 +1,7 @@
 // Turns the provider-neutral event stream of an operation into the items the chat shows.
 // Pure: the same array comes back when an event changes nothing visible.
 
-import type { AiEvent, JsonValue } from '../../ipc/types';
+import type { AiEvent, AiPermissionKind, JsonValue } from '../../ipc/types';
 
 export type ChatItem =
   | { kind: 'user'; id: string; text: string }
@@ -15,6 +15,16 @@ export type ChatItem =
       result?: string;
       isError?: boolean;
     }
+  | {
+      /** A permission answered without asking (settings, read-only policy). */
+      kind: 'decision';
+      id: string;
+      tool: string;
+      permissionKind: AiPermissionKind;
+      description: string | null;
+      allowed: boolean;
+      reason: string;
+    }
   | { kind: 'error'; id: string; text: string }
   | { kind: 'notice'; id: string; level: 'info' | 'error'; text: string };
 
@@ -27,6 +37,17 @@ export function userItem(text: string): ChatItem {
 
 export function noticeItem(level: 'info' | 'error', text: string): ChatItem {
   return { kind: 'notice', id: nextId('notice'), level, text };
+}
+
+/** The transcript line of an automatic decision: `Allowed by your settings: Edit notes.md`. */
+export function decisionText(item: {
+  tool: string;
+  description: string | null;
+  reason: string;
+}): string {
+  const reason = item.reason.charAt(0).toUpperCase() + item.reason.slice(1);
+  const what = item.description ? `${item.tool} ${item.description}` : item.tool;
+  return `${reason}: ${what}`;
 }
 
 function lastStreaming(items: ChatItem[]): number {
@@ -95,9 +116,21 @@ export function applyEvent(items: ChatItem[], event: AiEvent): ChatItem[] {
     }
     case 'error':
       return [...items, { kind: 'error', id: nextId('error'), text: event.message }];
+    case 'permissionDecided':
+      return [
+        ...items,
+        {
+          kind: 'decision',
+          id: nextId('decision'),
+          tool: event.tool,
+          permissionKind: event.kind,
+          description: event.description,
+          allowed: event.allowed,
+          reason: event.reason,
+        },
+      ];
     case 'session':
     case 'permissionRequest':
-    case 'permissionDecided':
     case 'usage':
     case 'done':
       return items;

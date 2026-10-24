@@ -17,6 +17,7 @@ import type { PendingPermission } from '../../stores/ai';
 import { useWorkspace } from '../../stores/workspace';
 import { diffStats, lineDiff } from './diff';
 import type { DiffLine } from './diff';
+import { decisionText } from './timeline';
 import type { ChatItem } from './timeline';
 import './ai.css';
 
@@ -124,6 +125,15 @@ function Message({ item }: { item: ChatItem }) {
           </summary>
           {item.result !== undefined && <pre className="ai-json">{item.result}</pre>}
         </details>
+      );
+    case 'decision':
+      return (
+        <div
+          className={clsx('ai-notice', 'ai-decision', { 'ai-notice-error': !item.allowed })}
+          role="status"
+        >
+          {decisionText(item)}
+        </div>
       );
     case 'error':
       return (

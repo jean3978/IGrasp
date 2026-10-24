@@ -108,6 +108,10 @@ pub fn build_args(request: &TurnRequest) -> AppResult<Vec<String>> {
         "--include-partial-messages",
         "--permission-prompt-tool",
         "stdio",
+        // Explicit, so a default mode in the user's CLI settings (e.g. acceptEdits) never
+        // bypasses the app's permission policy.
+        "--permission-mode",
+        "default",
     ]
     .into_iter()
     .map(String::from)
@@ -477,6 +481,10 @@ mod tests {
         assert!(
             args.windows(2)
                 .any(|w| w == ["--permission-prompt-tool", "stdio"])
+        );
+        assert!(
+            args.windows(2)
+                .any(|w| w == ["--permission-mode", "default"])
         );
         assert!(!args.contains(&"--model".to_string()));
         assert!(!args.contains(&"--resume".to_string()));

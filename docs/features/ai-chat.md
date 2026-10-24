@@ -64,6 +64,7 @@ sequenceDiagram
 | Neutral contracts (`AiRequest`, `AiEvent`, `AiCapabilities`, `AiProviderStatus`, …) | `src-tauri/src/ai/types.rs` → `src/ipc/generated/` |
 | `AiProvider` / `AiOperation` traits | `src-tauri/src/ai/mod.rs` |
 | Gateway: user action required, one operation at a time, cancel on close | `src-tauri/src/ai/gateway.rs` |
+| Permission policy: each request's kind (markdown edit, file edit, command, web, other) → Ask / Allow / Deny from `settings.ai.permissions` (snapshot at start); read-only operations refuse every prompt; automatic answers emit `permissionDecided` | `src-tauri/src/ai/policy.rs`, `gateway.rs` |
 | Child processes die with the app (job object on Windows) | `src-tauri/src/ai/process.rs` |
 | Claude provider: CLI discovery and probes, one process per operation, wire-format mapping | `src-tauri/src/ai/providers/claude_cli/{cli,turn,protocol}.rs` |
 | Rust mock provider (gateway tests) | `src-tauri/src/ai/providers/mock.rs` |
@@ -75,6 +76,8 @@ sequenceDiagram
 
 In the browser dev mode (`npm run dev`), the mock provider ("Mock AI") answers: mentioning a
 fixture file such as `README.md` proposes an edit to it; mentioning "command" asks to run one.
+The full list of its scripts is at the top of `src/ipc/mock/mockAi.ts`; it applies the same
+permission policy as the Rust gateway.
 
 ## Failure handling
 

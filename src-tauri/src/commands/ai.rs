@@ -35,10 +35,13 @@ pub fn ai_start(
     request: AiRequest,
 ) -> AppResult<u32> {
     let root = state.with_workspace(|ws| Ok(ws.guard.root().to_path_buf()))?;
+    // The permission settings of this moment: a later change never alters this operation.
+    let permissions = state.appdata.settings()?.ai.permissions;
     state.ai.start(
         action,
         request,
         &root,
+        permissions,
         Box::new(move |operation_id, event| {
             if let Err(e) = app.emit(
                 EVENT_AI,
