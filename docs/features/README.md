@@ -9,3 +9,4 @@ are updated together with the code.
 | [file-tree.md](file-tree.md) | Markdown-only Explorer, ignore rules, toggles, keyboard |
 | [mermaid.md](mermaid.md) | Mermaid diagrams: rendering, zoom, pan, full screen |
 | [live-reload-and-toasts.md](live-reload-and-toasts.md) | Watching the folder, live reload, change notifications |
+| [themes-and-settings.md](themes-and-settings.md) | Themes and the Settings tab |

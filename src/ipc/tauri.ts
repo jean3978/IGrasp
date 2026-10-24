@@ -88,6 +88,7 @@ export const tauriBackend: Backend = {
   getSession: (rootPath) => invoke('get_session', { rootPath }),
   saveSession: (rootPath, session) => invoke('save_session', { rootPath, session }),
   getAppInfo: () => invoke('get_app_info'),
+  openAppDataDir: () => invoke('open_app_data_dir'),
 
   listen: (event, handler) =>
     tauriListen<Parameters<typeof handler>[0]>(event, (e) => {

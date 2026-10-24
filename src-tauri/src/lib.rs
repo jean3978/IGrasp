@@ -58,6 +58,7 @@ pub fn run() {
             commands::appdata::get_session,
             commands::appdata::save_session,
             commands::appdata::get_app_info,
+            commands::appdata::open_app_data_dir,
             commands::workspace::open_root,
             commands::workspace::close_root,
             commands::workspace::rescan,

@@ -123,6 +123,8 @@ export interface Backend {
   getSession(rootPath: string): Promise<Session | null>;
   saveSession(rootPath: string, session: Session): Promise<void>;
   getAppInfo(): Promise<AppInfo>;
+  /** Opens the app-data folder in the system file manager. */
+  openAppDataDir(): Promise<void>;
 
   listen<E extends EventName>(
     event: E,

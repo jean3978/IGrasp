@@ -339,6 +339,10 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       return Promise.resolve();
     },
     getAppInfo: () => Promise.resolve(appInfo),
+    openAppDataDir: () => {
+      state.opened.push(appInfo.appDataDir);
+      return Promise.resolve();
+    },
 
     listen(event, handler) {
       let set = handlers.get(event);

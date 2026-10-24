@@ -109,6 +109,15 @@ pub fn save_session(
         .with_sessions(|s| s.put(&root_path, session, now_ms()))
 }
 
+/// Opens the app-data folder (settings, sessions, logs) in the system file manager.
+#[tauri::command]
+pub fn open_app_data_dir(state: State<'_, AppState>) -> AppResult<()> {
+    let dir = state.appdata.dir();
+    std::fs::create_dir_all(dir)?;
+    tauri_plugin_opener::open_path(dir, None::<&str>)
+        .map_err(|e| crate::error::AppError::Io(std::io::Error::other(e.to_string())))
+}
+
 #[tauri::command]
 pub fn get_app_info(app: AppHandle, state: State<'_, AppState>) -> AppInfo {
     let log_dir = app
