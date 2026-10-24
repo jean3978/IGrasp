@@ -84,6 +84,12 @@ through your installed `claude` CLI is the first provider) and spends tokens onl
   Mermaid visual editor move to Phases 6, 7 and 8. The quiz and tutorials are grounded in the
   whole project, not only its markdown files
   ([ADR 0016](docs/decisions/0016-learning-features-grounded-in-the-project.md)).
+- Accessibility of the AI features: events reach screen readers through one polite live region
+  (streamed text is not read as it arrives); the chat panel follows the toolbar in the Tab
+  order; focus moves to the first undecided change when a review opens, to the document when it
+  is answered, to the message box when a card is answered, and back where it was when a capture
+  is cancelled; the keyboard capture announces the selection size; the review toolbar sits on
+  its own row above each change and decided changes show the version not kept dashed and muted.
 - Sessions also remember the AI panel (open, position, size); sessions saved by 0.2.0 load
   unchanged.
 - The preview keeps source line markers (`data-line`) on lists and GitHub alert blocks.

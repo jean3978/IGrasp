@@ -19,7 +19,7 @@ CSS variables, so switching themes never re-renders documents; Mermaid diagrams 
 once with the matching diagram theme.
 
 The AI review adds four tokens, `--diff-added-bg`, `--diff-added-fg`, `--diff-removed-bg` and
-`--diff-removed-fg`, defined in each theme and used by the rendered diff of a proposed edit and by
+`--diff-removed-fg`, defined in each theme (Light removed background `#fff0ef`) and used by the rendered diff of a proposed edit and by
 the line-diff cards. Colour is not the only cue: in High Contrast, removed blocks get a dashed
 border and added blocks a solid one, and the flash after a decision is off under
 `prefers-reduced-motion`. Capture selections and screenshots outline the region with the accent

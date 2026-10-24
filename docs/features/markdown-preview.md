@@ -53,17 +53,19 @@ diff module and its limits are described in
 
 - **Change units**: one per hunk of an `Edit` / `MultiEdit` (hunks in the same paragraph form
   one unit, "2 edits in this paragraph"), one per changed block group of a `Write`. Each unit
-  has **Accept** / **Reject** at its top right, then its state with **Undo**. A focused unit
-  (`Tab`) takes `A` / `R`; a live region announces each decision.
+  has **Accept** / **Reject** on its own row above it (never over the text), then its state with
+  **Undo**. A decided unit shows the version that was not kept without tint, with a dashed bar
+  and muted text. A focused unit (`Tab`) takes `A` / `R`; a live region announces each decision.
 - **Review bar**: "Claude proposes 3 changes to docs/a.md" (the provider's name), the count decided, **Accept all**
   (accepts the undecided units and answers, `Alt+Shift+A`), **Reject all** (answers at once,
   `Alt+Shift+R`), **Open in chat**, and **Apply** once every unit is decided and one is accepted.
 - **Answer**: the accepted hunks (or, for a `Write`, the content composed from the accepted
   blocks) go to the provider, which writes the file; nothing accepted is a rejection. The tab
-  leaves review mode at once and the live reload shows the written file; the chat says "Applied
+  leaves review mode at once, the focus goes to the document, and the live reload shows the written file; the chat says "Applied
   2 of 3 changes to docs/a.md". A rejected new file closes its tab.
 - The chat shows an **Edit card** with **Review in preview**, Accept all and Reject all; with the
-  chat closed, the status bar item ("1 edit to review") leads to the review.
+  chat closed, the status bar item ("1 edit to review") leads to the review. Both focus the first undecided
+  change.
 - **Fallbacks**: an edit of another file, outside the folder, of a document too large to render,
   or whose text is no longer in the file is shown as a line diff in the chat, accepted or
   rejected as a whole.

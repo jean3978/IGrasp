@@ -56,7 +56,7 @@ Reserved for upcoming features (not bound yet, so they never need to be re-learn
 ## Moving around
 
 - **Tab order** follows the screen: "Skip to document" link, menu bar, title-bar toolbar,
-  window controls, activity bar, the active sidebar view (its header actions, its boxes, then
+  the AI chat panel when open, window controls, activity bar, the active sidebar view (its header actions, its boxes, then
   its tree or list), sidebar resizer (arrow keys resize it), tabs, the document, the right
   panel resizer and the right panel (Outline, then Backlinks), then the status bar items.
 - **Activity bar**: one tab stop; ↑ / ↓ move between views, Enter or Space opens one.
@@ -72,12 +72,17 @@ Reserved for upcoming features (not bound yet, so they never need to be re-learn
   focusable to scroll them horizontally. Mermaid diagrams have their own keys (`+`, `-`, `F`, `0`,
   Enter).
 - **AI chat panel**: a floating dialog (`aria-modal="false"`), movable and resizable from the
-  keyboard (above); the focus returns to the AI Chat button when it closes. The transcript is a
-  polite live region.
+  keyboard (above); the focus returns to the AI Chat button when it closes. AI events are announced
+  through one polite live region (streamed text is not read as it arrives). When a card is
+  answered the focus goes to the message box.
 - **Review mode**: each change is a focusable group labelled "Change 2 of 3: replaced paragraph"
-  with Accept, Reject and Undo buttons, and a polite live region announces each decision.
+  with Accept, Reject and Undo buttons, and a polite live region announces each decision. "Review in preview" and the status bar
+  item focus the first undecided change; once the review is answered the focus goes to the
+  document.
 - **Region selection**: operable without a mouse (above), with its instruction as the overlay's
-  accessible name.
+  accessible name
+  and the selection size announced while it is resized; cancelling returns the focus where it
+  was.
 - **Menus and dialogs** (radix-ui) trap focus, close with Esc and return focus where it was.
 
 ## Accessibility checklist

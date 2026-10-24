@@ -42,6 +42,10 @@ provider, with the input the app sends back.
   nothing running) it closes the panel and the focus returns to the AI Chat button. Closing the
   panel never stops an answer: the status bar shows it with **Stop**, and a badge when a
   permission waits.
+- **Screen readers**: events of an operation (a tool call, a permission request, the end of an
+  answer) reach assistive technology through one polite live region; streamed text is not read
+  as it arrives, and the usage line is not a live region of its own. The panel comes right after
+  the toolbar in the Tab order. When a card is answered, the focus goes to the message box.
 - **New conversation** (+, `Ctrl+Alt+N`) saves the conversation in the history and starts an
   empty one; otherwise every message continues the same conversation (the provider's resume id),
   even after a stop or a crash.
@@ -97,7 +101,7 @@ A markdown edit inside the folder opens the file's tab in **review mode**: the r
 document with the removed and added blocks in place, Accept / Reject per change, and a review
 bar (Accept all, Reject all, Open in chat, Apply). Only the accepted changes are written. The
 chat shows an Edit card with **Review in preview**; with the chat closed, the status bar item
-("1 edit to review") leads to the review. The details are in
+("1 edit to review") leads to the review; both focus the first undecided change. The details are in
 [markdown-preview.md](markdown-preview.md#review-mode-an-ai-edit); the diff itself is
 [ADR 0017](../decisions/0017-rendered-markdown-diff-at-block-level.md). Edits of other files, of
 files outside the folder, of documents too large to render, or whose text is no longer in the
@@ -110,7 +114,8 @@ file keep the line-diff card in the chat.
   it never calls the provider.
 - **Select**: a crosshair covers the tab's scroll area. Drag a rectangle (at least 24 × 24 px),
   or use the keyboard: arrows move a rectangle from the centre, `Shift+arrows` resize it, `Enter`
-  captures, `Escape` cancels.
+  captures, `Escape` cancels (the focus returns where it was). The size of the selection is
+  announced as it changes.
 - **Lines**: in a markdown tab every block with a `data-line` marker that the rectangle touches
   gives the range, from the first block's start line to the line before the next block (blank
   separator lines trimmed); in a code tab, the rendered rows. A selection over an image only
