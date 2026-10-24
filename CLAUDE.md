@@ -29,8 +29,8 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 - `src-tauri/src/`: `commands/` (IPC commands), `index/` (model, scanner, watcher), `graph/`
   (document graph: parser, slugger, link resolution, build and incremental updates), `search/`
   (Ctrl+T symbols, full-text search, globs), `appdata/` (settings, recents, sessions as JSON),
-  `claude/` (the `claude` CLI: discovery, one `stream-json` process per turn, permission
-  round trip), `paths.rs` (root guard), `state.rs`, `error.rs`, `perf.rs` (ignored performance
+  `ai/` (AI providers behind one trait and the gateway that requires a user action per
+  operation; `providers/claude_cli/` spawns the `claude` CLI), `paths.rs` (root guard), `state.rs`, `error.rs`, `perf.rs` (ignored performance
   tests).
 - `src/ipc/`: `types.ts` (the `Backend` interface), `tauri.ts` (the only module that calls
   `invoke`/`listen` or imports `@tauri-apps/*`), `mock/` (in-memory backend + fixture project),

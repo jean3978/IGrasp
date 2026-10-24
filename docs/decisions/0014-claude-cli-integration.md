@@ -1,6 +1,6 @@
 # 0014 — Claude integration through the `claude` CLI and its `stream-json` protocol
 
-- Status: Accepted for Phase 3 (proof of concept on the `poc-claude-cli` branch; Linux verification pending)
+- Status: Accepted for Phase 3 (proof of concept on the `poc-claude-cli` branch; Linux verification pending). Lives behind the provider abstraction of [ADR 0015](0015-ai-provider-abstraction-and-gateway.md).
 - Date: 2026-10-24
 
 ## Context
@@ -31,7 +31,7 @@ claude -p --output-format stream-json --input-format stream-json --verbose
 with the opened folder as working directory. The message is written to stdin as a
 `{"type":"user","message":{"role":"user","content":…}}` line; the CLI prints one JSON object per
 line on stdout (`system/init` with the session id, `assistant`, `user` tool results, `result`),
-which Rust forwards untouched as `claude://message` events. The session id of the first turn is
+which the provider translates into neutral `AiEvent`s (`protocol.rs`) forwarded as `ai://event`. The session id of the first turn is
 passed back with `--resume` for the next ones, so a conversation survives a cancelled or crashed
 turn, and the CLI (not the app) owns the transcript. A long-lived process would avoid the
 start-up cost of each turn (about one second) but would make cancel and crash recovery harder;
@@ -52,8 +52,9 @@ permission prompt arrives on stdout as
 
 and the app answers on stdin with
 `{"type":"control_response","response":{"subtype":"success","request_id":"…","response":
-{"behavior":"allow","updatedInput":{…}}}}` or `{"behavior":"deny","message":"…"}`. Rust turns the
-request into a `claude://permission` event and `claude_respond_permission` writes the answer.
+{"behavior":"allow","updatedInput":{…}}}}` or `{"behavior":"deny","message":"…"}`. The provider turns the
+request into an `AiEvent::PermissionRequest` (with the proposed edit extracted from the tool
+input) and the gateway's `respond` writes the answer.
 Stdin stays open until the CLI prints its `result`, so a late answer still reaches it; if stdin
 closes while a prompt is pending, the CLI denies the tool itself ("Tool permission stream
 closed") and finishes the turn, which is a safe default. Control requests of a kind the app does
@@ -62,7 +63,7 @@ not understand are refused with an error response so the CLI never waits forever
 The flag is not listed in `claude --help` (only mentioned by `--permission-prompts`), so this
 relies on a documented-but-hidden option; the Agent SDK uses the same path, which makes it
 unlikely to disappear without notice. Every protocol shape the app depends on is recorded in
-tests (`src-tauri/src/claude/turn.rs`, `src/features/claude/stream.test.ts`) so a CLI update
+tests (`src-tauri/src/ai/providers/claude_cli/{turn,protocol}.rs`) so a CLI update
 that changes them is caught.
 
 ### The permission model is the CLI's default
@@ -97,8 +98,8 @@ pre-approved) will build on the same hook.
 ## Results of the proof of concept
 
 Verified on **Windows 11** with the real CLI (model `haiku`) through the two `#[ignore]` tests in
-`src-tauri/src/claude/turn.rs` (`cargo test --manifest-path src-tauri/Cargo.toml -- --ignored
-claude::`), by shell probes of the protocol, and in the app (launch; the chat itself is driven end
+`src-tauri/src/ai/providers/claude_cli/turn.rs` (`cargo test --manifest-path src-tauri/Cargo.toml --
+--ignored claude_cli::`), by shell probes of the protocol, and in the app (launch; the chat itself is driven end
 to end by Playwright against the production build with the scripted CLI, and by Vitest).
 
 | Case | Windows 11 | Linux |
@@ -129,8 +130,9 @@ on Ubuntu on every push.
 - Permission prompts are **modal for the CLI**: it waits for the answer (or for stdin to close).
   The app must always answer, including when the dialog is closed; closing the folder cancels
   the turn for that reason.
-- `--include-partial-messages` gives token-level streaming; the complete `assistant` message
-  that follows replaces the streamed text, so the UI never shows a stale partial.
+- `--include-partial-messages` gives token-level streaming (`TextDelta`); the complete
+  `assistant` message that follows becomes a `Text` event that replaces the streamed text, so
+  the UI never shows a stale partial.
 - A `Write` of a markdown file is shown as all-new content; comparing it with the current file
   needs the rendered markdown diff component planned for Phase 3.
 - The CLI's permission suggestions (`permission_suggestions`, e.g. "accept edits for this

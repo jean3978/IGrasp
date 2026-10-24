@@ -19,3 +19,4 @@ are never deleted; a decision that changes gets a new record that supersedes the
 | [0012](0012-activity-bar-sidebar-views-and-right-panel.md) | Activity bar with sidebar views, and a right panel for the active document | Accepted |
 | [0013](0013-opening-files-with-the-default-app.md) | Opening files with the default application: text only, deny-listed, user-initiated | Accepted |
 | [0014](0014-claude-cli-integration.md) | Claude through the `claude` CLI: one `stream-json` process per turn, permissions over stdio | Accepted (proof of concept; Linux verification pending) |
+| [0015](0015-ai-provider-abstraction-and-gateway.md) | AI provider abstraction (`AiProvider`, neutral events) and the "no token without a user action" gateway | Accepted (proof of concept) |
