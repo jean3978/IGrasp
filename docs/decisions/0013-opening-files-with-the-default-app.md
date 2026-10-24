@@ -22,6 +22,10 @@ button is clicked:
    `exe com bat cmd ps1 psm1 vbs vbe js jse wsf wsh msi msp scr pif lnk reg hta cpl inf url
    application gadget jar sh run appimage desktop command app`. `.js` and `.sh` are on it
    because Windows Script Host and some desktops execute them instead of opening an editor.
+   The check applies to the requested name and to the canonical file name (what the system
+   actually opens, so symlinks count as their target), ignoring trailing dots and spaces, which
+   Windows strips (`run.bat.` opens `run.bat`); on Windows, names with `:` (NTFS alternate data
+   streams) are refused.
 3. On Unix, it has no execute bit.
 4. It passes the same text check as `read_text_file` (no NUL byte and at most 10 % invalid UTF-8
    in the first 8 KiB, the heuristic git uses), so a binary is never launched.

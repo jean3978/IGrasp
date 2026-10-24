@@ -220,7 +220,9 @@ const NEVER_OPENED: [&str; 31] = [
 ];
 
 pub fn is_never_opened(name: &str) -> bool {
-    name.rsplit_once('.')
+    // Windows ignores trailing dots and spaces: `run.bat.` and `run.bat ` open `run.bat`.
+    name.trim_end_matches(['.', ' '])
+        .rsplit_once('.')
         .is_some_and(|(_, ext)| NEVER_OPENED.iter().any(|x| ext.eq_ignore_ascii_case(x)))
 }
 
@@ -237,6 +239,10 @@ fn is_executable(_metadata: &std::fs::Metadata) -> bool {
 
 /// Checks that a resolved file may be handed to the default application: a regular text file,
 /// not executable, with no extension that would make the system run it.
+///
+/// `path` is the canonical path (`RootGuard::resolve`), which is what the system opens: its
+/// name is checked as well as the requested one, so a symlink `notes.txt` to `x.sh` or a
+/// Windows name with trailing dots or spaces never gets past the extension check.
 pub fn check_openable(path: &Path, rel_path: &str) -> AppResult<()> {
     let name = rel_path.rsplit('/').next().unwrap_or(rel_path);
     let refuse = |why: &str| {
@@ -244,8 +250,14 @@ pub fn check_openable(path: &Path, rel_path: &str) -> AppResult<()> {
             "{rel_path} is not opened from IGrasp ({why}). Use Reveal in file manager instead."
         )))
     };
-    if is_never_opened(name) {
+    // A name that is not valid UTF-8 cannot be checked, so it is refused too.
+    let resolved_name = path.file_name().and_then(|n| n.to_str());
+    if is_never_opened(name) || resolved_name.is_none_or(is_never_opened) {
         return refuse("programs and scripts are never launched");
+    }
+    // `name:stream` addresses an alternate data stream on NTFS.
+    if cfg!(windows) && (name.contains(':') || resolved_name.is_some_and(|n| n.contains(':'))) {
+        return refuse("alternate data streams are never opened");
     }
     let metadata = std::fs::metadata(path)?;
     if !metadata.is_file() {
@@ -366,6 +378,23 @@ mod tests {
             assert!(
                 matches!(check_openable(&p, name), Err(AppError::Forbidden(_))),
                 "{name}"
+            );
+        }
+        // Windows strips trailing dots and spaces, so these names are run.bat.
+        for name in ["run.bat.", "run.bat ", "run.bat. .", "x.SH.."] {
+            assert!(is_never_opened(name), "{name}");
+        }
+        // The resolved (canonical) name counts, whatever name the link used: a symlink or a
+        // trailing-dot name resolves to the real script.
+        let script = dir.path().join("run.bat");
+        std::fs::write(&script, "echo hi\n").unwrap();
+        for requested in ["run.bat.", "notes.txt"] {
+            assert!(
+                matches!(
+                    check_openable(&script, requested),
+                    Err(AppError::Forbidden(_))
+                ),
+                "{requested}"
             );
         }
         let ok = dir.path().join("main.rs");

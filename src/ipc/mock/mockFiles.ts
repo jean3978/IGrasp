@@ -14,7 +14,8 @@ const NEVER_OPENED = new Set(
 );
 
 const extension = (relPath: string) => {
-  const name = relPath.slice(relPath.lastIndexOf('/') + 1);
+  // Like Rust: Windows ignores trailing dots and spaces (`run.bat.` is `run.bat`).
+  const name = relPath.slice(relPath.lastIndexOf('/') + 1).replace(/[. ]+$/, '');
   const dot = name.lastIndexOf('.');
   return dot < 0 ? '' : name.slice(dot + 1).toLowerCase();
 };

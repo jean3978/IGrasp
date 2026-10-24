@@ -51,7 +51,9 @@ The file is opened only when, at the moment of the click:
 - it is not executable (Unix);
 - its extension is not a program, installer, shortcut or script host: `exe com bat cmd ps1 psm1
   vbs vbe js jse wsf wsh msi msp scr pif lnk reg hta cpl inf url application gadget jar sh run
-  appimage desktop command app`.
+  appimage desktop command app`. Both the name in the link and the real name of the file are
+  checked (a symlink counts as its target), and trailing dots and spaces are ignored like
+  Windows does (`run.bat.` is `run.bat`).
 
 Otherwise a message explains why, and **Reveal in File Manager** always works. A link in a
 document can never open a file this way: only the button does.
