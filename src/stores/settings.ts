@@ -10,10 +10,11 @@ interface SettingsState {
   loaded: boolean;
   /** Whether the OS currently prefers a dark color scheme (for `theme: 'system'`). */
   systemDark: boolean;
-  load(): Promise<void>;
+  // Actions are function-typed properties (not methods) so components can select them unbound.
+  load: () => Promise<void>;
   /** Applies `patch` immediately, persists it, and rolls back if persisting fails. */
-  update(patch: SettingsPatch): Promise<void>;
-  setSystemDark(dark: boolean): void;
+  update: (patch: SettingsPatch) => Promise<void>;
+  setSystemDark: (dark: boolean) => void;
 }
 
 export function resolveTheme(theme: Theme, systemDark: boolean): EffectiveTheme {

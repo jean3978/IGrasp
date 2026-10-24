@@ -1,0 +1,44 @@
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  --bg-titlebar: #f8f8f8;
+  --bg-sidebar: #f8f8f8;
+  --bg-editor: #ffffff;
+  --bg-tab-inactive: #f8f8f8;
+  --bg-tab-active: #ffffff;
+  --bg-statusbar: #f8f8f8;
+  --bg-overlay: #ffffff;
+  --bg-input: #ffffff;
+  --bg-hover: rgb(0 0 0 / 0.06);
+  --bg-active: rgb(0 0 0 / 0.1);
+  --bg-selection: #e4e6f1;
+  --bg-selection-focus: #cce4f7;
+  --bg-code: #f6f8fa;
+  --bg-backdrop: rgb(0 0 0 / 0.35);
+
+  --fg: #3b3b3b;
+  --fg-strong: #1f1f1f;
+  --fg-muted: #6e6e6e;
+  --fg-disabled: #a0a0a0;
+  --fg-on-accent: #ffffff;
+
+  --border: #e5e5e5;
+  --border-strong: #cecece;
+  --accent: #005fb8;
+  --accent-hover: #0258a8;
+  --focus: #005fb8;
+  --link: #005fb8;
+
+  --success: #1a7f37;
+  --info: #0969da;
+  --warning: #9a6700;
+  --danger: #cf222e;
+  --success-bg: #dafbe1;
+  --info-bg: #ddf4ff;
+  --warning-bg: #fff8c5;
+  --danger-bg: #ffebe9;
+
+  --titlebar-inactive-opacity: 0.6;
+  --window-close-hover: #c42b1c;
+}

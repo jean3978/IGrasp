@@ -2,8 +2,9 @@
 
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { listen as tauriListen } from '@tauri-apps/api/event';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { BackendError } from './types';
-import type { Backend, ErrorCode } from './types';
+import type { AppWindow, Backend, ErrorCode } from './types';
 
 function isIpcError(value: unknown): value is { code: ErrorCode; message: string } {
   return (
@@ -24,7 +25,45 @@ async function invoke<T>(command: string, args?: Record<string, unknown>): Promi
   }
 }
 
+// Resolved lazily: this module is imported (but unused) outside Tauri, where the runtime is absent.
+const win = () => getCurrentWindow();
+
+const appWindow: AppWindow = {
+  show: () => win().show(),
+  minimize: () => win().minimize(),
+  toggleMaximize: () => win().toggleMaximize(),
+  close: () => win().close(),
+  destroy: () => win().destroy(),
+  isMaximized: () => win().isMaximized(),
+  startResizeDragging: (direction) => win().startResizeDragging(direction),
+  setDecorations: (decorations) => win().setDecorations(decorations),
+  setTitle: (title) => win().setTitle(title),
+  onResized: (handler) =>
+    win().onResized(() => {
+      handler();
+    }),
+  onFocusChanged: (handler) =>
+    win().onFocusChanged((e) => {
+      handler(e.payload);
+    }),
+  onThemeChanged: (handler) =>
+    win().onThemeChanged((e) => {
+      handler(e.payload === 'dark');
+    }),
+  onCloseRequested: (handler) =>
+    win().onCloseRequested(async (e) => {
+      e.preventDefault();
+      try {
+        await handler();
+      } finally {
+        await win().destroy();
+      }
+    }),
+};
+
 export const tauriBackend: Backend = {
+  window: appWindow,
+
   getSettings: () => invoke('get_settings'),
   updateSettings: (patch) => invoke('update_settings', { patch }),
   getRecentFolders: () => invoke('get_recent_folders'),

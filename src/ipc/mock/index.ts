@@ -4,6 +4,7 @@
 import { DEFAULT_SETTINGS, MAX_FONT_SIZE, MIN_FONT_SIZE } from '../defaults';
 import type {
   AppInfo,
+  AppWindow,
   Backend,
   BackendEvents,
   EventName,
@@ -65,8 +66,30 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     logDir: '/mock/app-data/logs',
   };
 
+  const noop = () => Promise.resolve();
+  const noopListener = () => Promise.resolve(() => undefined);
+  const appWindow: AppWindow = {
+    show: noop,
+    minimize: noop,
+    toggleMaximize: noop,
+    close: noop,
+    destroy: noop,
+    isMaximized: () => Promise.resolve(false),
+    startResizeDragging: noop,
+    setDecorations: noop,
+    setTitle: (title) => {
+      document.title = title;
+      return Promise.resolve();
+    },
+    onResized: noopListener,
+    onFocusChanged: noopListener,
+    onThemeChanged: noopListener,
+    onCloseRequested: noopListener,
+  };
+
   return {
     controls,
+    window: appWindow,
     getSettings: () => Promise.resolve(structuredClone(state.settings)),
     updateSettings: (patch) => {
       const next: Settings = { ...state.settings, ...patch };

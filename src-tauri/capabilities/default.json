@@ -3,5 +3,19 @@
   "identifier": "default",
   "description": "Permissions of the main window.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-set-title",
+    "core:window:allow-close",
+    "core:window:allow-destroy",
+    "core:window:allow-theme",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-internal-toggle-maximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging",
+    "core:window:allow-set-decorations"
+  ]
 }

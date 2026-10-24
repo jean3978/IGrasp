@@ -34,7 +34,32 @@ export interface BackendEvents {
 export type EventName = keyof BackendEvents;
 export type Unsubscribe = () => void;
 
+export type ResizeDirection =
+  'North' | 'South' | 'East' | 'West' | 'NorthEast' | 'NorthWest' | 'SouthEast' | 'SouthWest';
+
+/** The main application window (no-ops outside Tauri). */
+export interface AppWindow {
+  show(): Promise<void>;
+  minimize(): Promise<void>;
+  toggleMaximize(): Promise<void>;
+  close(): Promise<void>;
+  /** Closes without running close-requested handlers (after they flushed state). */
+  destroy(): Promise<void>;
+  isMaximized(): Promise<boolean>;
+  startResizeDragging(direction: ResizeDirection): Promise<void>;
+  setDecorations(decorations: boolean): Promise<void>;
+  setTitle(title: string): Promise<void>;
+  onResized(handler: () => void): Promise<Unsubscribe>;
+  onFocusChanged(handler: (focused: boolean) => void): Promise<Unsubscribe>;
+  /** Called with `true` when the OS switches to a dark theme. */
+  onThemeChanged(handler: (dark: boolean) => void): Promise<Unsubscribe>;
+  /** Runs `handler` before the window closes; the window closes once it resolves. */
+  onCloseRequested(handler: () => Promise<void>): Promise<Unsubscribe>;
+}
+
 export interface Backend {
+  window: AppWindow;
+
   getSettings(): Promise<Settings>;
   updateSettings(patch: SettingsPatch): Promise<Settings>;
   getRecentFolders(): Promise<RecentFolder[]>;
