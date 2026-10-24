@@ -68,6 +68,13 @@ interface SearchState {
 }
 
 let timer: ReturnType<typeof setTimeout> | null = null;
+/** Bumped by every run and clear: a run whose number is no longer current is abandoned. */
+let runSeq = 0;
+/**
+ * Batches received while the current run's `searchText` call is in flight: Rust can emit them
+ * before the command returns the search id. Replayed (those of that id) once the id is known.
+ */
+let early: SearchResultsEvent[] = [];
 
 /** The matched substrings of a match line, to highlight them in the preview. */
 export function matchedTexts(match: TextMatch): string[] {
@@ -150,6 +157,8 @@ export const useSearch = create<SearchState>()((set, get) => ({
       get().clear();
       return;
     }
+    const seq = ++runSeq;
+    early = [];
     set({
       status: 'running',
       error: null,
@@ -163,13 +172,18 @@ export const useSearch = create<SearchState>()((set, get) => ({
     });
     try {
       const id = await backend.searchText({ query, matchCase, wholeWord, regex, include, exclude });
-      // Typing again while the command was in flight started another search.
-      if (get().query !== query || get().status !== 'running') {
+      // Another run (typing, an option toggled) or a clear happened while the command was in
+      // flight: this search is no longer wanted.
+      if (seq !== runSeq) {
         void backend.cancelSearch(id);
         return;
       }
       set({ searchId: id });
+      const buffered = early.filter((e) => e.searchId === id);
+      early = [];
+      for (const event of buffered) get().onResults(event);
     } catch (err) {
+      if (seq !== runSeq) return;
       const message = err instanceof Error ? err.message : String(err);
       set({
         status: 'error',
@@ -185,6 +199,8 @@ export const useSearch = create<SearchState>()((set, get) => ({
 
   clear() {
     get().cancel();
+    runSeq++;
+    early = [];
     set({
       status: 'idle',
       error: null,
@@ -198,9 +214,16 @@ export const useSearch = create<SearchState>()((set, get) => ({
   },
 
   onResults(event) {
-    // Batches of another search or another folder generation are stale.
-    if (event.searchId !== get().searchId) return;
+    // Batches of another folder generation are stale.
     if (event.generation !== useWorkspace.getState().index.generation) return;
+    const { searchId, status } = get();
+    if (searchId === null && status === 'running') {
+      // The id of the running search is not known yet: keep the batch until it is.
+      early.push(event);
+      return;
+    }
+    // Batches of another search are stale.
+    if (event.searchId !== searchId) return;
     set((s) => ({
       results: mergeResults(s.results, event.files),
       stats: event.stats,
@@ -211,13 +234,23 @@ export const useSearch = create<SearchState>()((set, get) => ({
 
   onDiskChanges(event) {
     if (get().results.length === 0) return;
-    const removed = new Set(event.removed);
-    const changed = new Set(get().changed);
+    // A renamed file is also in `removed` (old path): follow it instead of dropping it.
+    const renamed = new Map(event.renamed.map((r) => [r.from, r.to]));
+    const removed = new Set(event.removed.filter((p) => !renamed.has(p)));
+    const follow = (path: string) => renamed.get(path) ?? path;
+    const changed = new Set([...get().changed].map(follow));
     for (const f of event.modified) changed.add(f.relPath);
-    for (const r of event.renamed) changed.add(r.from);
+    for (const to of renamed.values()) changed.add(to);
     set((s) => ({
-      results: s.results.filter((f) => !removed.has(f.relPath)),
+      results: mergeResults(
+        [],
+        s.results
+          .filter((f) => !removed.has(f.relPath))
+          .map((f) => (renamed.has(f.relPath) ? { ...f, relPath: follow(f.relPath) } : f)),
+      ),
       changed,
+      collapsed: new Set([...s.collapsed].map(follow)),
+      selected: s.selected ? { ...s.selected, path: follow(s.selected.path) } : null,
     }));
   },
 
