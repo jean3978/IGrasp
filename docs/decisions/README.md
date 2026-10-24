@@ -21,3 +21,5 @@ are never deleted; a decision that changes gets a new record that supersedes the
 | [0014](0014-claude-cli-integration.md) | Claude through the `claude` CLI: one `stream-json` process per turn, permissions over stdio | Accepted (proof of concept; Linux verification pending) |
 | [0015](0015-ai-provider-abstraction-and-gateway.md) | AI provider abstraction (`AiProvider`, neutral events) and the "no token without a user action" gateway | Accepted (proof of concept) |
 | [0016](0016-learning-features-grounded-in-the-project.md) | Learning features (quiz, tutorials) grounded in the whole project | Accepted |
+| [0017](0017-rendered-markdown-diff-at-block-level.md) | Rendered markdown diff at block level, shared by AI review, tutorials and Git | Accepted |
+| [0018](0018-region-capture-by-dom-rendering.md) | Region capture by rendering the DOM (modern-screenshot) with `data-line` mapping | Accepted (Linux verification pending) |
