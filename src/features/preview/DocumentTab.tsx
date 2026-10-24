@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { useDocuments } from '../../stores/documents';
 import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
@@ -55,6 +55,11 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const restored = useRef(false);
   const getScrollContainer = useCallback(() => scrollRef.current, []);
+
+  // Restored tabs are loaded lazily, when they are first shown.
+  useEffect(() => {
+    void useDocuments.getState().load(relPath);
+  }, [relPath]);
 
   // Restore the tab's scroll position once its content has been laid out.
   useLayoutEffect(() => {

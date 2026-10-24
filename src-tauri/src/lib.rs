@@ -9,6 +9,7 @@ mod state;
 
 use tauri::Manager;
 use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
+use tauri_plugin_window_state::StateFlags;
 
 use crate::appdata::AppData;
 use crate::state::AppState;
@@ -31,6 +32,13 @@ pub fn run() {
         .plugin(log)
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        // Size, position and maximized state are restored; visibility is not, because the
+        // frontend shows the window once the theme is applied.
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE)
+                .build(),
+        )
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             app.manage(AppState::new(AppData::new(dir)));

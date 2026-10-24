@@ -3,6 +3,13 @@ import { backend } from '../ipc/client';
 import type { IndexReadyEvent, RootInfo, WatchMode } from '../ipc/types';
 import { useDocuments } from './documents';
 import { useRecent } from './recent';
+import {
+  applySessionLayout,
+  clearPendingRestore,
+  flushSession,
+  setPendingRestore,
+  suspendSaving,
+} from './session';
 import { useTabs } from './tabs';
 import { resetToasts } from './toasts';
 import { useTree } from './tree';
@@ -80,10 +87,16 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
   async openRoot(path) {
     set({ opening: true, openError: null });
     try {
+      // Keep the folder being left exactly as it was.
+      await flushSession();
       const root = await backend.openRoot(path);
+      const session = await backend.getSession(root.path).catch(() => null);
+      suspendSaving();
       useTree.setState({ expanded: new Set(), focused: null });
       useTabs.getState().closeAll();
       useDocuments.getState().clear();
+      applySessionLayout(session);
+      setPendingRestore(root.generation, session);
       set({ root, opening: false });
       useTree.getState().reset(root.generation, {
         showDotfiles: root.showDotfiles,
@@ -103,7 +116,9 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
 
   async closeRoot() {
     if (!get().root) return;
+    await flushSession();
     await backend.closeRoot();
+    clearPendingRestore();
     set({ root: null, index: IDLE });
     useTree.getState().reset(0, { showDotfiles: false, showIgnored: false });
     useTabs.getState().closeAll();

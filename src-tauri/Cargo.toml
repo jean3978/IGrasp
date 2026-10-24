@@ -30,6 +30,7 @@ ignore = "0.4.33"
 tauri-plugin-opener = "2.7.2"
 notify = "8.2.0"
 notify-debouncer-full = "0.7.0"
+tauri-plugin-window-state = "2.5.0"
 
 [lints.rust]
 unsafe_code = "deny"

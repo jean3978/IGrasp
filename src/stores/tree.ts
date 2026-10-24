@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { backend } from '../ipc/client';
 import type { DirListing, FsChangesEvent } from '../ipc/types';
+import { restorePending } from './session';
 import { useWorkspace } from './workspace';
 
 export interface TreeRow {
@@ -137,6 +138,8 @@ export const useTree = create<TreeState>()((set, get) => ({
     // Reload expanded folders in parallel; drop the ones that no longer exist.
     const dirs = [...get().expanded];
     await Promise.all(dirs.map((d) => get().ensureLoaded(d)));
+    // First index of a freshly opened folder: bring back its tabs and expanded folders.
+    await restorePending(generation);
   },
 
   async ensureLoaded(dir) {
