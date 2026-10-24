@@ -16,7 +16,7 @@ Second setext
 
 ## The `run()` function and $x^2$ math
 
-## A [link](other.md) inside
+## A [link](gfm.md) inside
 
 ## An image ![alt text](logo.png) inside
 
