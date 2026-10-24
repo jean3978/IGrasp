@@ -87,6 +87,13 @@ provider's status.
   gives the range, from the first block's start line to the line before the next block (blank
   separator lines trimmed); in a code tab, the rendered rows. A selection over an image only
   keeps the nearest block's line with an empty text.
+- **Screenshot**: after the overlay is removed, the visible part of the tab is rendered with
+  `modern-screenshot`, cut to the rectangle plus a 12 px margin, the selection outlined in the
+  accent colour, at most 1568 px on the long edge (PNG, JPEG above 1.5 MB). The chip and the
+  transcript item show a thumbnail. If it cannot be taken (an image the webview refuses to
+  draw, a render error) the text alone is attached with the notice "The screenshot could not be
+  taken; the text was attached." A model that cannot read images (`imageInput: false`) gets no
+  screenshot, with a notice saying so; switching to such a model before Send drops it too.
 - **Result**: the chat opens with a chip ("docs/a.md lines 40–58", ✕ to drop it), the draft
   "About this region:" (an existing draft is kept) and the focus in the message box. Nothing is
   sent until Send, which passes the region with the message; the transcript then shows a

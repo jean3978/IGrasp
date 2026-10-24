@@ -42,6 +42,12 @@ let modelSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const selectUsable = (s: AiProviderState) =>
   s.status !== null && s.status.installed && s.status.loggedIn && s.status.problem === null;
+/** The selected model reads images (unknown models and an unloaded list are given the chance). */
+export const selectModelAcceptsImages = (s: AiProviderState): boolean => {
+  const info = s.capabilities?.models.find((m) => m.id === s.model);
+  if (info) return info.imageInput;
+  return s.capabilities?.imageInput ?? true;
+};
 export const selectProviderName = (s: AiProviderState) => s.status?.displayName ?? 'AI';
 
 export function errorMessage(err: unknown): string {

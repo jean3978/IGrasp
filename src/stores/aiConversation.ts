@@ -43,7 +43,12 @@ import type {
 import { BackendError } from '../ipc/types';
 import { useAiPanel } from './aiPanel';
 import { useDocuments } from './documents';
-import { errorMessage, selectProviderName, useAiProvider } from './aiProvider';
+import {
+  errorMessage,
+  selectModelAcceptsImages,
+  selectProviderName,
+  useAiProvider,
+} from './aiProvider';
 import { useSettings } from './settings';
 import { selectActiveTab, useTabs } from './tabs';
 import { useToasts } from './toasts';
@@ -145,6 +150,8 @@ interface AiConversationState {
   pendingReview: PendingReview | null;
 
   send: (text: string) => Promise<void>;
+  /** Adds a line to the transcript (nothing is sent). */
+  addNotice: (level: 'info' | 'error', text: string) => void;
   /** Start of the confirmation card: the only way a confirmed operation begins. */
   confirmStart: () => Promise<void>;
   cancelConfirm: () => void;
@@ -314,14 +321,21 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
     const { model } = useAiProvider.getState();
     // The region the message is about shows in the transcript right after the message.
     const attached = useAiPanel.getState().attachment;
+    // A model that cannot read images gets the text of the region only, and the user is told.
+    const image = attached?.image && selectModelAcceptsImages(useAiProvider.getState());
     if (attached && showUserItem) {
       set((s) => ({
         items: [
           ...s.items,
-          captureItem({
-            ...attached.capture,
-            thumbnail: attached.image ? attached.thumbnail : undefined,
-          }),
+          ...(attached.image && !image
+            ? [
+                noticeItem(
+                  'info',
+                  `${model || 'The selected model'} cannot read images: the screenshot was left out and the text of the region was sent.`,
+                ),
+              ]
+            : []),
+          captureItem({ ...attached.capture, thumbnail: image ? attached.thumbnail : undefined }),
         ],
       }));
     }
@@ -341,7 +355,7 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
       const request: AiStartRequest = {
         prompt,
         contextPaths,
-        images: attachment?.image ? [attachment.image] : [],
+        images: attachment?.image && image ? [attachment.image] : [],
         ...(attachment ? { capture: attachment.capture } : {}),
         policy: 'interactive',
         ...(model ? { model } : {}),
@@ -454,6 +468,10 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
       const prompt = text.trim();
       if (!prompt || selectBusy(get()) || get().pendingConfirm) return;
       await startMessage(prompt, true);
+    },
+
+    addNotice(level, text) {
+      set((s) => ({ items: [...s.items, noticeItem(level, text)] }));
     },
 
     async confirmStart() {
