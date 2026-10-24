@@ -1,0 +1,82 @@
+.filter-chips {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 8px 6px 12px;
+}
+
+.filter-chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: 11px;
+  background: transparent;
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.filter-chip svg {
+  width: 12px;
+  height: 12px;
+}
+
+.filter-chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--bg-selection);
+  color: var(--fg-strong);
+}
+
+.filter-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.filter-chip:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 1px;
+}
+
+.filter-chip-count {
+  font-weight: 600;
+}
+
+.broken-chevron {
+  transition: transform var(--duration-fast);
+}
+
+.broken-chevron.open {
+  transform: rotate(90deg);
+}
+
+.broken-link {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  padding-left: 22px;
+}
+
+.broken-link svg {
+  color: var(--link-broken);
+}
+
+.broken-link[data-kind='caseMismatch'] svg {
+  color: var(--link-warning);
+}
+
+.broken-link .list-row-action svg {
+  color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .broken-chevron {
+    transition: none;
+  }
+}

@@ -18,6 +18,7 @@ export async function startEventBridge(): Promise<Unsubscribe> {
     backend.listen('index://ready', (e) => {
       useWorkspace.getState().setIndexReady(e);
       void useTree.getState().onIndexReady(e.generation);
+      void useGraph.getState().loadStatus();
     }),
     backend.listen('index://error', (e) => {
       useWorkspace.getState().setIndexError(e.generation, e.message);

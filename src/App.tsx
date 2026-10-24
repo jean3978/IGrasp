@@ -5,6 +5,7 @@ import { AboutDialog } from './features/about/AboutDialog';
 import { ExplorerPanel } from './features/explorer/ExplorerPanel';
 import { BacklinksCount, BacklinksSection } from './features/links/BacklinksSection';
 import { BrokenLinksPanel } from './features/links/BrokenLinksPanel';
+import { BrokenLinksBadge } from './features/links/BrokenLinksStatus';
 import { RecentChangesPanel } from './features/recent/RecentChangesPanel';
 import { SearchPanel } from './features/search/SearchPanel';
 import { OutlineActions, OutlinePanel } from './features/outline/OutlinePanel';
@@ -120,7 +121,7 @@ export function App() {
         <div className="app-body">
           {root ? (
             <WorkspaceLayout
-              activityBar={<ActivityBar />}
+              activityBar={<ActivityBar badges={{ broken: <BrokenLinksBadge /> }} />}
               sidebar={
                 <SidebarHost
                   views={{

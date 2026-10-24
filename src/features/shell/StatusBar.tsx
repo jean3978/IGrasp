@@ -1,4 +1,5 @@
 import { BellOff, Eye, FileText, Link2, LoaderCircle, TriangleAlert } from 'lucide-react';
+import { BrokenLinksStatus } from '../links/BrokenLinksStatus';
 import { THEME_OPTIONS } from '../titlebar/menuActions';
 import { useSettings } from '../../stores/settings';
 import { useToasts } from '../../stores/toasts';
@@ -88,6 +89,7 @@ export function StatusBar() {
         {hovered ? <HoveredLink target={hovered} /> : <IndexItem />}
       </div>
       <div className="statusbar-end">
+        <BrokenLinksStatus />
         <MutedItem />
         <span className="statusbar-item">{themeLabel}</span>
       </div>
