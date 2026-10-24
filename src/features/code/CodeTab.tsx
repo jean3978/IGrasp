@@ -5,7 +5,6 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react';
 import { Button } from '../../components/ui/Button';
 import { IconButton } from '../../components/ui/IconButton';
-import { backend } from '../../ipc/client';
 import { toAbsolute } from '../../lib/paths';
 import { useTabs } from '../../stores/tabs';
 import { useTextFiles } from '../../stores/textFiles';
@@ -62,7 +61,7 @@ function Header({ relPath, wrap, onWrap, onGoToLine }: HeaderProps) {
         <IconButton
           label="Reveal in File Manager"
           onClick={() => {
-            backend.revealInFileManager(relPath).catch(report);
+            void useTextFiles.getState().revealInFileManager(relPath);
           }}
         >
           <FolderOpen aria-hidden />
@@ -70,7 +69,7 @@ function Header({ relPath, wrap, onWrap, onGoToLine }: HeaderProps) {
         <IconButton
           label="Open in Default Editor"
           onClick={() => {
-            backend.openWithDefaultApp(relPath).catch(report);
+            void useTextFiles.getState().openWithDefaultApp(relPath);
           }}
         >
           <ExternalLink aria-hidden />
@@ -113,7 +112,7 @@ function ErrorCard({ relPath, tabId }: { relPath: string; tabId: string }) {
         {file.errorCode !== 'NotFound' && (
           <Button
             onClick={() => {
-              backend.revealInFileManager(relPath).catch(report);
+              void useTextFiles.getState().revealInFileManager(relPath);
             }}
           >
             Reveal in File Manager

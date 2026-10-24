@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { backend } from '../ipc/client';
 import { BackendError } from '../ipc/types';
 import type { ErrorCode } from '../ipc/types';
+import { useToasts } from './toasts';
 
 export interface TextFileState {
   status: 'loading' | 'ready' | 'error';
@@ -27,8 +28,15 @@ interface TextFilesState {
    * calls this when it is shown again; it never replaces the content by itself.
    */
   checkStale: (relPath: string) => Promise<void>;
+  /** The viewer's "Open in Default Editor" (refusals are reported in a toast). */
+  openWithDefaultApp: (relPath: string) => Promise<void>;
+  revealInFileManager: (relPath: string) => Promise<void>;
   retain: (keep: Set<string>) => void;
   clear: () => void;
+}
+
+function report(err: unknown) {
+  useToasts.getState().notify('error', err instanceof Error ? err.message : String(err));
 }
 
 const LOADING: TextFileState = {
@@ -101,6 +109,14 @@ export const useTextFiles = create<TextFilesState>()((set, get) => {
       } catch {
         patch(relPath, { stale: true });
       }
+    },
+
+    async openWithDefaultApp(relPath) {
+      await backend.openWithDefaultApp(relPath).catch(report);
+    },
+
+    async revealInFileManager(relPath) {
+      await backend.revealInFileManager(relPath).catch(report);
     },
 
     retain(keep) {
