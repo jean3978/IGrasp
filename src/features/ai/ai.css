@@ -251,6 +251,17 @@
   }
 }
 
+/* The global rule shortens animations; these are turned off. */
+@media (prefers-reduced-motion: reduce) {
+  .ai-messages {
+    scroll-behavior: auto;
+  }
+
+  .ai-cursor {
+    animation: none;
+  }
+}
+
 .ai-notice {
   align-self: center;
   color: var(--fg-muted);
@@ -641,16 +652,19 @@
   background: var(--bg-input);
 }
 
+/* --link rather than --accent: the dark accent is under 3:1 on the input background. */
 .ai-context-current {
-  border-color: var(--accent);
+  border-color: var(--link);
 }
 
+/* Left out: dashed and struck through, muted but still readable (no opacity: contrast). */
 .ai-context-removed {
   border-style: dashed;
-  opacity: 0.6;
 }
 
-.ai-context-removed .ai-context-name {
+.ai-context-removed .ai-context-name,
+.ai-context-removed .ai-context-size {
+  color: var(--fg-muted);
   text-decoration: line-through;
 }
 
@@ -777,9 +791,10 @@
   font-size: var(--font-size-small);
 }
 
+/* --fg: muted text on the hover tint is under 4.5:1 in the light theme. */
 .ai-capture summary {
   cursor: pointer;
-  color: var(--fg-muted);
+  color: var(--fg);
 }
 
 .ai-capture-thumb {

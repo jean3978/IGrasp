@@ -8,6 +8,7 @@ import { Plus, X } from 'lucide-react';
 import { formatSize } from '../code/codeLines';
 import type { AiContextDocument } from '../../ipc/types';
 import { useAiPanel } from '../../stores/aiPanel';
+import { selectProviderName, useAiProvider } from '../../stores/aiProvider';
 import { useTabs } from '../../stores/tabs';
 import { captureLabel } from './timeline';
 
@@ -22,9 +23,10 @@ function open(path: string) {
 function DocumentChip({ doc, removed }: { doc: AiContextDocument; removed: boolean }) {
   const removeContext = useAiPanel((s) => s.removeContext);
   const restoreContext = useAiPanel((s) => s.restoreContext);
+  const providerName = useAiProvider(selectProviderName);
   const name = baseName(doc.path);
   const role = doc.role === 'currentFile' ? 'current file' : 'instructions';
-  const note = doc.truncated ? ', too large to include: the AI is asked to read it' : '';
+  const note = doc.truncated ? `, too large to include: ${providerName} is asked to read it` : '';
   return (
     <li
       className={clsx('ai-context-chip', {
@@ -98,6 +100,7 @@ function AttachmentChip() {
         type="button"
         className="ai-context-toggle"
         aria-label="Remove the selected region"
+        title="Remove the selected region"
         onClick={() => {
           setAttachment(null);
         }}

@@ -6,6 +6,7 @@ import { selectProviderName, useAiProvider } from '../../stores/aiProvider';
 import { selectBusy, useAiConversation } from '../../stores/aiConversation';
 import { useAiPanel } from '../../stores/aiPanel';
 import { CancelButton } from './CancelButton';
+import { focusReview } from './reviewFocus';
 import './ai.css';
 
 export function AiActivityItem() {
@@ -27,14 +28,18 @@ export function AiActivityItem() {
         className="statusbar-item statusbar-button"
         title={reviewing ? 'Show the proposed edit' : 'Open the chat'}
         onClick={() => {
-          if (reviewing) showReview();
-          else setOpen(true);
+          if (reviewing) {
+            showReview();
+            focusReview();
+          } else setOpen(true);
         }}
       >
         <LoaderCircle className={busy ? 'spin' : ''} aria-hidden />
         {busy ? `${providerName} is working…` : 'Waiting for your confirmation'}
+        {/* Part of the button's name; `AiAnnouncer` announces new requests. */}
+        {waiting > 0 && <span className="visually-hidden">, </span>}
         {waiting > 0 && (
-          <span className="ai-activity-badge" role="status">
+          <span className="ai-activity-badge">
             {reviewing
               ? waiting === 1
                 ? '1 edit to review'

@@ -151,6 +151,21 @@ export function InlineEditReview({ pending, getScrollContainer }: Props) {
     };
   }, []);
 
+  // Answered (Apply, Accept all, Reject all, A / R on the last unit): the review leaves the page
+  // with the focus; it goes to the document that replaces it rather than to nowhere.
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    return () => {
+      if (!root?.contains(document.activeElement)) return;
+      setTimeout(() => {
+        const active = document.activeElement;
+        if (active !== null && active !== document.body) return;
+        const container = getScrollContainer();
+        if (container?.isConnected) container.focus({ preventScroll: true });
+      }, 0);
+    };
+  }, [getScrollContainer]);
+
   const decide = useCallback(
     (unit: ChangeUnit, decision: UnitDecision | null) => {
       decideUnit(unit.id, decision);

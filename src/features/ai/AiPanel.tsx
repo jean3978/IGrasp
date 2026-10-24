@@ -190,6 +190,24 @@ export function AiPanel() {
     else panelRef.current?.focus();
   }, [open]);
 
+  // A card, the history list or the Send / Stop button answered and went away with the focus
+  // (removed from the page): the focus goes to the message box rather than to nowhere.
+  const lastFocus = useRef<HTMLElement | null>(null);
+  const confirming = useAiConversation((s) => s.pendingConfirm !== null);
+  const waiting = useAiConversation((s) => s.permissions.length);
+  const itemCount = useAiConversation((s) => s.items.length);
+  const ruleCount = useAiConversation((s) => s.rules.length);
+  useEffect(() => {
+    const last = lastFocus.current;
+    if (!open || !last || last.isConnected) return;
+    const active = document.activeElement;
+    if (active !== null && active !== document.body) return;
+    lastFocus.current = null;
+    const input = inputRef.current;
+    if (input && !input.disabled) input.focus();
+    else panelRef.current?.focus();
+  }, [open, confirming, waiting, itemCount, ruleCount, historyOpen, busy]);
+
   // Closed while the focus was inside (Ctrl+Alt+C, Escape): it goes back to the toolbar button.
   const wasOpen = useRef(open);
   useEffect(() => {
@@ -243,6 +261,14 @@ export function AiPanel() {
       tabIndex={-1}
       style={style}
       onKeyDown={onKeyDown}
+      onFocus={(e) => {
+        lastFocus.current = e.target;
+      }}
+      onBlur={(e) => {
+        // Moved elsewhere (the review, the document): nothing to bring back.
+        const next = e.relatedTarget;
+        if (next instanceof Node && !e.currentTarget.contains(next)) lastFocus.current = null;
+      }}
     >
       <PanelHeader titleId={titleId} onClose={close} />
       <StatusLine />

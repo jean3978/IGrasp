@@ -373,7 +373,10 @@ describe('permission prompts and conversation rules', () => {
     expect(within(popover).getByText('Bash')).toBeInTheDocument();
     await user.click(within(popover).getByRole('button', { name: 'Stop allowing Bash' }));
     expect(useAiConversation.getState().rules).toEqual([]);
-    await user.keyboard('{Escape}');
+    // The popover went away with the last rule: the focus is not lost, it is in the message box.
+    await waitFor(() => {
+      expect(composer()).toHaveFocus();
+    });
     expect(useAiPanel.getState().open).toBe(true);
     await user.type(composer(), 'Last command{Enter}');
     await user.click(within(await card()).getByRole('button', { name: 'Allow' }));

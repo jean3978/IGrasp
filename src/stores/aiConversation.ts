@@ -124,7 +124,7 @@ export interface PendingConfirm {
   model: string;
 }
 
-interface AiConversationState {
+export interface AiConversationState {
   /** Id of this conversation in the history; null until its first message. */
   id: string | null;
   createdMs: number;

@@ -172,4 +172,19 @@ describe('CaptureOverlay', () => {
     fireEvent.keyDown(overlay, { key: 'Enter' });
     expect(onCapture).toHaveBeenCalledWith({ x: 216, y: 140, width: 200, height: 136 });
   });
+
+  it('announces the keyboard selection and gives the focus back when it goes away', () => {
+    const button = document.createElement('button');
+    button.dataset['testContainer'] = '';
+    document.body.append(button);
+    button.focus();
+    const { overlay, view } = setup();
+    expect(overlay).toHaveFocus();
+    fireEvent.keyDown(overlay, { key: 'ArrowRight' });
+    expect(overlay.querySelector('[role="status"]')).toHaveTextContent(
+      'Selection 200 by 120 pixels. Enter captures it.',
+    );
+    view.unmount();
+    expect(button).toHaveFocus();
+  });
 });

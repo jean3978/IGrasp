@@ -12,6 +12,7 @@ import { REJECTION_MESSAGE, useAiConversation } from '../../stores/aiConversatio
 import type { PendingPermission, PendingReview } from '../../stores/aiConversation';
 import { diffStats, lineDiff } from './diff';
 import type { DiffLine } from './diff';
+import { focusReview } from './reviewFocus';
 
 function baseName(path: string): string {
   return path.split(/[\\/]/).filter(Boolean).pop() ?? path;
@@ -25,6 +26,9 @@ function DiffView({ lines }: { lines: DiffLine[] }) {
           <span className="ai-diff-sign" aria-hidden>
             {line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' '}
           </span>
+          {line.type !== 'same' && (
+            <span className="visually-hidden">{line.type === 'add' ? 'Added: ' : 'Removed: '}</span>
+          )}
           <span className="ai-diff-text">{line.text || ' '}</span>
         </div>
       ))}
@@ -99,7 +103,14 @@ export function EditCard({ review }: { review: PendingReview }) {
         )}
       </header>
       <footer className="ai-permission-actions">
-        <Button variant="primary" disabled={loading} onClick={showReview}>
+        <Button
+          variant="primary"
+          disabled={loading}
+          onClick={() => {
+            showReview();
+            focusReview();
+          }}
+        >
           <Eye aria-hidden /> Review in preview
         </Button>
         <Button

@@ -49,10 +49,7 @@ export function PermissionDecidedItem(item: {
   reason: string;
 }) {
   return (
-    <div
-      className={clsx('ai-notice', 'ai-decision', { 'ai-notice-error': !item.allowed })}
-      role="status"
-    >
+    <div className={clsx('ai-notice', 'ai-decision', { 'ai-notice-error': !item.allowed })}>
       {decisionText(item)}
     </div>
   );
@@ -82,7 +79,7 @@ export function Message({ item }: { item: ChatItem }) {
       return (
         <div className="ai-msg ai-msg-assistant">
           {item.text}
-          {item.streaming && <span className="ai-cursor" aria-label="Writing" />}
+          {item.streaming && <span className="ai-cursor" aria-hidden />}
         </div>
       );
     case 'tool':
@@ -113,7 +110,7 @@ export function Message({ item }: { item: ChatItem }) {
       return (
         <div
           className={clsx('ai-notice', { 'ai-notice-error': item.level === 'error' })}
-          role={item.level === 'error' ? 'alert' : 'status'}
+          role={item.level === 'error' ? 'alert' : undefined}
         >
           {item.text}
         </div>
@@ -137,7 +134,9 @@ export function Transcript() {
   }, [items, permissions, pendingConfirm]);
 
   return (
-    <div className="ai-messages" ref={listRef} aria-live="polite">
+    // No live region here: streamed text would be read word by word. `AiAnnouncer` says what
+    // happens instead.
+    <div className="ai-messages" ref={listRef}>
       {items.length === 0 && permissions.length === 0 && !pendingConfirm && (
         <p className="ai-empty">
           Ask {providerName} about this folder. Each message you send spends tokens; nothing runs on

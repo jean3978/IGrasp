@@ -177,7 +177,7 @@ describe('usage', () => {
       '5 in · 1 out',
     );
     render(<UsageLine inputTokens={5} outputTokens={1} costUsd={null} />);
-    expect(screen.getByRole('status')).toHaveTextContent('5 in · 1 out');
+    expect(screen.getByText('5 in · 1 out')).toHaveClass('ai-usage');
     expect(confirmSummary({ provider: 'P', model: '', documents: [], images: 0 })).toBe(
       'P will receive your message.',
     );

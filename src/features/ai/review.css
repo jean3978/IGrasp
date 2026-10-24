@@ -41,6 +41,12 @@
   top: calc(var(--review-bar-height) + 4px);
 }
 
+/* A change focused or scrolled to is not hidden under the review bar. */
+.inline-review .rendered-diff .diff-group,
+.inline-review .review-invisible-unit {
+  scroll-margin-top: calc(var(--review-bar-height) + 8px);
+}
+
 .review-toolbar {
   display: inline-flex;
   gap: 2px;

@@ -47,7 +47,7 @@ export function HistoryList() {
   };
 
   return (
-    <div className="ai-history" aria-label="Conversation history">
+    <div className="ai-history" role="group" aria-label="Conversation history">
       <input
         className="text-input ai-history-filter"
         type="search"

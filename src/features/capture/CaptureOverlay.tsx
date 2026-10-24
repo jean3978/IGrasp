@@ -27,6 +27,8 @@ export function CaptureOverlay({ container, onCapture, onCancel }: CaptureOverla
     toCaptureRect(container.getBoundingClientRect()),
   );
   const [rect, setRect] = useState<CaptureRect | null>(null);
+  // Keyboard users hear the size of the selection; mouse drags are not announced.
+  const [byKey, setByKey] = useState(false);
   const drag = useRef<{ x: number; y: number } | null>(null);
   const root = useRef<HTMLDivElement>(null);
   const onCancelRef = useRef(onCancel);
@@ -41,7 +43,10 @@ export function CaptureOverlay({ container, onCapture, onCancel }: CaptureOverla
     window.addEventListener('resize', update);
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
     observer?.observe(container);
-    root.current?.focus();
+    // Cancelled, the focus goes back where it was (a capture moves it to the chat's message box).
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const overlay = root.current;
+    overlay?.focus();
     const onEscape = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
@@ -53,6 +58,11 @@ export function CaptureOverlay({ container, onCapture, onCancel }: CaptureOverla
       document.removeEventListener('keydown', onEscape, true);
       window.removeEventListener('resize', update);
       observer?.disconnect();
+      const active = document.activeElement;
+      const lost = active === null || active === document.body || overlay?.contains(active);
+      if (lost && before?.isConnected) {
+        before.focus({ preventScroll: true });
+      }
     };
   }, [container]);
 
@@ -69,6 +79,7 @@ export function CaptureOverlay({ container, onCapture, onCancel }: CaptureOverla
     e.preventDefault();
     const start = clampPoint(e.clientX, e.clientY);
     drag.current = start;
+    setByKey(false);
     setRect({ x: start.x, y: start.y, width: 0, height: 0 });
   };
   const onMouseMove = (e: ReactMouseEvent) => {
@@ -107,6 +118,7 @@ export function CaptureOverlay({ container, onCapture, onCancel }: CaptureOverla
     };
     const d = delta[e.key];
     if (!d) return;
+    setByKey(true);
     e.preventDefault();
     const current =
       rect ??
@@ -157,6 +169,13 @@ export function CaptureOverlay({ container, onCapture, onCancel }: CaptureOverla
           }}
         />
       )}
+      <p className="visually-hidden" role="status" aria-live="polite">
+        {rect && byKey
+          ? `Selection ${String(Math.round(rect.width))} by ${String(Math.round(rect.height))} pixels${
+              isBigEnough(rect) ? '. Enter captures it.' : ', too small to capture.'
+            }`
+          : ''}
+      </p>
       {!rect && (
         <p className="capture-hint">
           Drag to select a region, or use the arrow keys. Enter captures, Escape cancels.

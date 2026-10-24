@@ -6,9 +6,6 @@ import type { UsageValues } from './usageFormat';
 export type UsageLineProps = UsageValues;
 
 export function UsageLine(props: UsageLineProps) {
-  return (
-    <div className="ai-usage" role="status">
-      {usageText(props)}
-    </div>
-  );
+  // Not a live region: the chat's `AiAnnouncer` reads it once when the answer ends.
+  return <div className="ai-usage">{usageText(props)}</div>;
 }

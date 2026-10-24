@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Tooltip } from 'radix-ui';
 import { backend } from './ipc/client';
 import { AboutDialog } from './features/about/AboutDialog';
+import { AiAnnouncer } from './features/ai/AiAnnouncer';
 import { AiPanel } from './features/ai/AiPanel';
 import { CaptureHost } from './features/capture/CaptureHost';
 import { QuickOpenDialog } from './features/quickopen/QuickOpenDialog';
@@ -122,6 +123,8 @@ export function App() {
           Skip to document
         </a>
         <TitleBar title={title} />
+        {/* Right after the toolbar in the tab order (plan §6.12); fixed, so placed anywhere. */}
+        <AiPanel />
         <div className="app-body">
           {root ? (
             <WorkspaceLayout
@@ -170,8 +173,8 @@ export function App() {
       </div>
       <ToastHost />
       <AboutDialog />
-      <AiPanel />
       <CaptureHost />
+      <AiAnnouncer />
       <QuickOpenDialog />
       <SplashOverlay ready={ready} />
     </Tooltip.Provider>

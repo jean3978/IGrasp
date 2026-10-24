@@ -43,20 +43,23 @@
   font-size: 0.9em;
 }
 
-/* Decided changes: the version that was not kept fades. */
+/* Decided changes: the version that was not kept loses its tint and its bar turns dashed. No
+   opacity, which would take its text under 4.5:1. */
 .rendered-diff .diff-group--accepted .diff-part--removed,
 .rendered-diff .diff-group--rejected .diff-part--added {
-  opacity: 0.5;
+  background: transparent;
+  border-left-style: dashed;
+  color: var(--fg-muted);
 }
 
-/* Position of the controls a caller renders. */
+/* Position of the controls a caller renders: a row of its own above the group, so they never
+   cover its text, kept in view (sticky) while a tall group scrolls by. */
 .rendered-diff .diff-toolbar {
   position: sticky;
   top: 4px;
   z-index: 2;
   display: flex;
   justify-content: flex-end;
-  height: 0;
   padding-right: 6px;
   pointer-events: none;
 }
@@ -115,7 +118,6 @@
 
 [data-theme='high-contrast'] .rendered-diff .diff-group--accepted .diff-part--removed,
 [data-theme='high-contrast'] .rendered-diff .diff-group--rejected .diff-part--added {
-  opacity: 1;
   border-style: dotted;
 }
 
