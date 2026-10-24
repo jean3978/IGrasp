@@ -45,8 +45,39 @@ function getKatexProcessor() {
   return katexProcessor;
 }
 
+const isDisplayMathBlock = (node: Element): boolean =>
+  node.tagName === 'pre' &&
+  node.children.some(
+    (c) =>
+      c.type === 'element' &&
+      isMath(c) &&
+      Array.isArray(c.properties.className) &&
+      c.properties.className.includes('math-display'),
+  );
+
 export async function renderMath(tree: Root, file: VFile): Promise<void> {
   if (!hasMath(tree)) return;
+  // KaTeX replaces each display block: its source line (`data-line`) is carried over, in order.
+  const lines: unknown[] = [];
+  visit(tree, 'element', (node) => {
+    if (isDisplayMathBlock(node)) lines.push(node.properties.dataLine);
+  });
   const processor = await getKatexProcessor();
   await processor.run(tree, file);
+  const displays: Element[] = [];
+  visit(tree, 'element', (node) => {
+    const classes = node.properties.className;
+    if (Array.isArray(classes) && classes.includes('katex-display')) {
+      displays.push(node);
+      return 'skip';
+    }
+    return undefined;
+  });
+  if (displays.length !== lines.length) return;
+  displays.forEach((node, i) => {
+    const line = lines[i];
+    if (typeof line === 'number' && node.properties.dataLine === undefined) {
+      node.properties.dataLine = line;
+    }
+  });
 }

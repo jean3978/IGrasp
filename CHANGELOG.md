@@ -71,6 +71,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   transcript). Settings → AI gains the provider status, the provider and default model, one
   Ask / Allow / Deny row per permission category with warnings and Reset to defaults, the
   confirmation threshold and the history limit.
+- **AI edit review in the preview**: a markdown edit inside the folder opens its tab in review
+  mode, a rendered diff with Accept / Reject per change (`A` / `R` on a focused change), a review
+  bar with Accept all (`Alt+Shift+A`), Reject all (`Alt+Shift+R`), Open in chat and Apply; only
+  the accepted changes are written. The chat shows an Edit card with **Review in preview**, the
+  status bar leads to the review when the chat is closed, and other edits keep the line-diff
+  card. GitHub alerts, display math and footnotes keep their own blocks in the rendered diff.
 
 ### Changed
 

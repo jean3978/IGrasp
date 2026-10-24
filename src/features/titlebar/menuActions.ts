@@ -44,6 +44,8 @@ export type ActionId =
   | 'ai.chat'
   | 'ai.newConversation'
   | 'ai.history'
+  | 'ai.acceptAllChanges'
+  | 'ai.rejectAllChanges'
   | 'help.about'
   | 'view.zoomIn'
   | 'view.zoomOut'
@@ -98,6 +100,13 @@ function showView(view: SidebarView, focusSelector: string) {
       el ?? document.querySelector<HTMLElement>('#sidebar-view [tabindex], #sidebar-view button')
     )?.focus();
   });
+}
+
+/** The active tab shows the markdown edit under review. */
+function reviewShown(): boolean {
+  const review = useAiConversation.getState().pendingReview;
+  const tab = useTabs.getState().tabs.find((t) => t.id === useTabs.getState().activeId);
+  return review?.status === 'ready' && tab?.kind === 'document' && tab.relPath === review.path;
 }
 
 /** The preview of the active tab, if any. */
@@ -200,6 +209,21 @@ export const actions: Record<ActionId, ActionDef> = {
     run: () => {
       if (!useWorkspace.getState().root || !useAiPanel.getState().open) return;
       useAiPanel.getState().toggleHistory();
+    },
+  },
+  // Review mode: answering a permission spends nothing (the operation is already running).
+  'ai.acceptAllChanges': {
+    label: 'Accept All Proposed Changes',
+    shortcut: 'Alt+Shift+A',
+    run: () => {
+      if (reviewShown()) return useAiConversation.getState().acceptAllChanges();
+    },
+  },
+  'ai.rejectAllChanges': {
+    label: 'Reject All Proposed Changes',
+    shortcut: 'Alt+Shift+R',
+    run: () => {
+      if (reviewShown()) return useAiConversation.getState().rejectAllChanges();
     },
   },
   'help.shortcuts': {

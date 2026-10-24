@@ -16,22 +16,32 @@ export function AiActivityItem() {
   const setOpen = useAiPanel((s) => s.setOpen);
   const cancel = useAiConversation((s) => s.cancel);
   const confirming = useAiConversation((s) => s.pendingConfirm !== null);
+  // A markdown edit under review: the item leads to the review instead of the chat.
+  const reviewing = useAiConversation((s) => s.pendingReview?.status === 'ready');
+  const showReview = useAiConversation((s) => s.showReview);
   if (open || (!busy && !confirming)) return null;
   return (
     <span className="statusbar-item ai-activity">
       <button
         type="button"
         className="statusbar-item statusbar-button"
-        title="Open the chat"
+        title={reviewing ? 'Show the proposed edit' : 'Open the chat'}
         onClick={() => {
-          setOpen(true);
+          if (reviewing) showReview();
+          else setOpen(true);
         }}
       >
         <LoaderCircle className={busy ? 'spin' : ''} aria-hidden />
         {busy ? `${providerName} is working…` : 'Waiting for your confirmation'}
         {waiting > 0 && (
           <span className="ai-activity-badge" role="status">
-            {waiting === 1 ? '1 permission waiting' : `${String(waiting)} permissions waiting`}
+            {reviewing
+              ? waiting === 1
+                ? '1 edit to review'
+                : `1 edit to review, ${String(waiting - 1)} more waiting`
+              : waiting === 1
+                ? '1 permission waiting'
+                : `${String(waiting)} permissions waiting`}
           </span>
         )}
       </button>

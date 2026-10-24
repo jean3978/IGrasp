@@ -1,14 +1,15 @@
 // A permission the provider asks for: what it would do, and the user's answer (Allow, Deny, or
-// Allow for this conversation for anything but an edit). A proposed edit is shown as a line diff to accept or reject as a whole (the inline review in the preview
-// takes over markdown edits in a later step; this card stays the fallback).
+// Allow for this conversation for anything but an edit). A markdown edit inside the folder is
+// reviewed in the preview (`EditCard` points to it); any other proposed edit is shown as a line
+// diff to accept or reject as a whole.
 
 import { clsx } from 'clsx';
-import { Check } from 'lucide-react';
+import { Check, Eye } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import type { ProposedEdit } from '../../ipc/types';
 import { selectProviderName, useAiProvider } from '../../stores/aiProvider';
 import { REJECTION_MESSAGE, useAiConversation } from '../../stores/aiConversation';
-import type { PendingPermission } from '../../stores/aiConversation';
+import type { PendingPermission, PendingReview } from '../../stores/aiConversation';
 import { diffStats, lineDiff } from './diff';
 import type { DiffLine } from './diff';
 
@@ -67,16 +68,78 @@ export function LineDiffCard({
   );
 }
 
+/**
+ * A markdown edit reviewed in the preview: what it changes, "Review in preview", and the answers
+ * for the whole edit (the review itself decides per change).
+ */
+export function EditCard({ review }: { review: PendingReview }) {
+  const providerName = useAiProvider(selectProviderName);
+  const showReview = useAiConversation((s) => s.showReview);
+  const acceptAll = useAiConversation((s) => s.acceptAllChanges);
+  const rejectAll = useAiConversation((s) => s.rejectAllChanges);
+  const units = review.review?.units ?? [];
+  const decided = units.filter((u) => u.id in review.decisions).length;
+  const loading = review.status === 'loading';
+  const what = review.isNew
+    ? `a new file ${review.path}`
+    : `${units.length === 1 ? '1 change' : `${String(units.length)} changes`} to ${review.path}`;
+  return (
+    <section
+      className="ai-permission ai-edit-card"
+      aria-label={`Proposed edit to ${baseName(review.path)}`}
+    >
+      <header className="ai-permission-header">
+        <span className="ai-permission-title">
+          {loading ? `Preparing the review of ${review.path}…` : `${providerName} proposes ${what}`}
+        </span>
+        {!loading && units.length > 1 && (
+          <span className="ai-diff-stats">
+            {String(decided)} of {String(units.length)} decided
+          </span>
+        )}
+      </header>
+      <footer className="ai-permission-actions">
+        <Button variant="primary" disabled={loading} onClick={showReview}>
+          <Eye aria-hidden /> Review in preview
+        </Button>
+        <Button
+          disabled={loading}
+          onClick={() => {
+            void acceptAll();
+          }}
+        >
+          <Check aria-hidden /> Accept all
+        </Button>
+        <Button
+          disabled={loading}
+          onClick={() => {
+            void rejectAll();
+          }}
+        >
+          Reject all
+        </Button>
+      </footer>
+    </section>
+  );
+}
+
 export function PermissionCard({ permission }: { permission: PendingPermission }) {
   const respond = useAiConversation((s) => s.respond);
   const allowForConversation = useAiConversation((s) => s.allowForConversation);
   const providerName = useAiProvider(selectProviderName);
+  const review = useAiConversation((s) =>
+    s.pendingReview?.requestId === permission.requestId && s.pendingReview.status !== 'fallback'
+      ? s.pendingReview
+      : null,
+  );
   const allow = () => {
     void respond(permission.requestId, { behavior: 'allow', updatedEdit: null });
   };
   const deny = () => {
     void respond(permission.requestId, { behavior: 'deny', message: REJECTION_MESSAGE });
   };
+  if (review) return <EditCard review={review} />;
+  // Non-markdown or outside-root edits, and markdown edits the preview cannot review.
   const edit = permission.proposedEdit;
   if (edit) return <LineDiffCard edit={edit} onAccept={allow} onReject={deny} />;
   return (

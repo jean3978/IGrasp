@@ -17,6 +17,14 @@ import {
   userItem,
 } from '../features/ai/timeline';
 import type { ChatItem } from '../features/ai/timeline';
+import {
+  acceptedUnits,
+  prepareReview,
+  reviewDecision,
+  reviewOutcome,
+} from '../features/ai/editReview';
+import type { UnitDecision } from '../features/ai/editReview';
+import type { Review } from '../features/diff/changes';
 import { backend } from '../ipc/client';
 import type {
   AiEventEnvelope,
@@ -31,7 +39,9 @@ import type {
   PermissionDecision,
   ProposedEdit,
 } from '../ipc/types';
+import { BackendError } from '../ipc/types';
 import { useAiPanel } from './aiPanel';
+import { useDocuments } from './documents';
 import { errorMessage, selectProviderName, useAiProvider } from './aiProvider';
 import { useSettings } from './settings';
 import { selectActiveTab, useTabs } from './tabs';
@@ -74,6 +84,28 @@ export const REASON_CONVERSATION_RULE = 'allowed for this conversation';
 export const ruleMatches = (rule: ConversationRule, p: { tool: string; kind: AiPermissionKind }) =>
   rule.tool === p.tool && rule.kind === p.kind;
 
+/**
+ * The markdown edit under review in the preview (plan §6.9): one at a time, the others wait in
+ * `permissions` (their cards show the line diff until their turn comes).
+ */
+export interface PendingReview {
+  operationId: number;
+  requestId: string;
+  path: string;
+  edit: ProposedEdit;
+  /** The file does not exist yet: its old content is empty. */
+  isNew: boolean;
+  /**
+   * `loading` while the current content is read; `fallback` when the edit cannot be reviewed in
+   * the preview (a hunk not found, a file too large): the chat card shows the line diff.
+   */
+  status: 'loading' | 'ready' | 'fallback';
+  oldContent: string;
+  review: Review | null;
+  /** Decision per change unit id; missing means undecided. */
+  decisions: Record<number, UnitDecision>;
+}
+
 /** An operation waiting for the user's Start (the estimate reached `settings.ai.confirmFrom`). */
 export interface PendingConfirm {
   title: string;
@@ -109,6 +141,7 @@ interface AiConversationState {
   rules: ConversationRule[];
   /** This folder's saved conversations, newest first; null until listed. */
   history: ConversationSummary[] | null;
+  pendingReview: PendingReview | null;
 
   send: (text: string) => Promise<void>;
   /** Start of the confirmation card: the only way a confirmed operation begins. */
@@ -118,6 +151,16 @@ interface AiConversationState {
   /** Allows this request and, until New conversation, the same tool for the same kind. */
   allowForConversation: (requestId: string) => Promise<void>;
   removeRule: (rule: ConversationRule) => void;
+  /** Opens or focuses the tab of the edit under review (preview tab semantics). */
+  showReview: () => void;
+  /** Accepts or rejects one change unit of the review; null makes it undecided again. */
+  decideUnit: (unitId: number, decision: UnitDecision | null) => void;
+  /** Accepts every undecided unit and answers with what is accepted. */
+  acceptAllChanges: () => Promise<void>;
+  /** Rejects the whole edit at once (Deny). */
+  rejectAllChanges: () => Promise<void>;
+  /** Answers with the decided units (every unit decided, at least one accepted). */
+  applyReview: () => Promise<void>;
   cancel: () => Promise<void>;
   /** Saves this conversation (if it has a message), stops its operation, starts an empty one. */
   newConversation: () => void;
@@ -163,6 +206,7 @@ const EMPTY = {
   buffered: [],
   permissions: [],
   rules: [],
+  pendingReview: null,
 } satisfies Partial<AiConversationState>;
 
 let idCounter = 0;
@@ -214,6 +258,24 @@ async function write(conversation: Conversation | null): Promise<void> {
 export function activeFilePath(): string | null {
   const tab = selectActiveTab(useTabs.getState());
   return tab && tab.relPath !== null ? tab.relPath : null;
+}
+
+/** A markdown edit inside the folder, for the review in the preview. */
+const reviewable = (
+  p: PendingPermission,
+): p is PendingPermission & { proposedEdit: ProposedEdit } =>
+  p.kind === 'markdownEdit' && p.proposedEdit !== null && p.proposedEdit.isMarkdown;
+
+/** The current content of a document: the open tab's, else read from disk; null if absent. */
+async function currentContent(path: string): Promise<string | null> {
+  const doc = useDocuments.getState().byPath[path];
+  if (doc?.status === 'ready') return doc.content;
+  try {
+    return (await backend.readMarkdown(path)).content;
+  } catch (err) {
+    if (err instanceof BackendError && err.code === 'NotFound') return null;
+    throw err;
+  }
 }
 
 /** Calls `ai_start` (the only call that spends tokens) and hands buffered events over. */
@@ -298,6 +360,69 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
     }
   };
 
+  /** Starts the review of the next markdown edit waiting, if none is under review. */
+  const nextReview = () => {
+    if (get().pendingReview) return;
+    const p = get().permissions.find(reviewable);
+    if (!p) return;
+    const edit = p.proposedEdit;
+    const base: PendingReview = {
+      operationId: p.operationId,
+      requestId: p.requestId,
+      path: edit.path,
+      edit,
+      isNew: false,
+      status: 'loading',
+      oldContent: '',
+      review: null,
+      decisions: {},
+    };
+    set({ pendingReview: base });
+    const current = () => get().pendingReview?.requestId === p.requestId;
+    void (async () => {
+      let content: string | null;
+      try {
+        content = await currentContent(edit.path);
+      } catch (err) {
+        console.warn(`Cannot read ${edit.path} for the review`, err);
+        if (current()) set({ pendingReview: { ...base, status: 'fallback' } });
+        return;
+      }
+      if (!current()) return;
+      const oldContent = content ?? '';
+      const review = prepareReview(edit, oldContent);
+      set({
+        pendingReview: {
+          ...base,
+          isNew: content === null,
+          oldContent,
+          review,
+          status: review ? 'ready' : 'fallback',
+        },
+      });
+      if (review) get().showReview();
+    })();
+  };
+
+  /** Answers the edit under review and says in the transcript what was applied. */
+  const answerReview = async (accepted: ReadonlySet<number>) => {
+    const pending = get().pendingReview;
+    if (pending?.status !== 'ready' || !pending.review) return;
+    const { review } = pending;
+    const decision = reviewDecision(pending.edit, review, accepted, REJECTION_MESSAGE);
+    const count = review.units.filter((u) => accepted.has(u.id)).length;
+    const outcome = reviewOutcome(pending.path, review.units.length, count);
+    set((s) => ({ items: [...s.items, noticeItem('info', outcome)] }));
+    // A new file that is not created leaves no tab behind.
+    if (pending.isNew && count === 0) {
+      const tab = useTabs
+        .getState()
+        .tabs.find((t) => t.kind === 'document' && t.relPath === pending.path);
+      if (tab) useTabs.getState().close(tab.id);
+    }
+    await get().respond(pending.requestId, decision);
+  };
+
   /** Back to an empty conversation; the running operation's last events are ignored. */
   const reset = () => {
     const { operationId } = get();
@@ -339,7 +464,12 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
     async respond(requestId, decision) {
       const pending = get().permissions.find((p) => p.requestId === requestId);
       if (!pending) return;
-      set((s) => ({ permissions: s.permissions.filter((p) => p.requestId !== requestId) }));
+      set((s) => ({
+        permissions: s.permissions.filter((p) => p.requestId !== requestId),
+        // The tab leaves review mode on the decision; the written file arrives by live reload.
+        pendingReview: s.pendingReview?.requestId === requestId ? null : s.pendingReview,
+      }));
+      nextReview();
       try {
         await backend.aiRespondPermission(pending.operationId, requestId, decision);
       } catch (err) {
@@ -359,6 +489,46 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
 
     removeRule(rule) {
       set((s) => ({ rules: s.rules.filter((r) => !ruleMatches(r, rule)) }));
+    },
+
+    showReview() {
+      const pending = get().pendingReview;
+      if (pending?.status !== 'ready') return;
+      useTabs.getState().openDocument(pending.path);
+    },
+
+    decideUnit(unitId, decision) {
+      const pending = get().pendingReview;
+      if (pending?.status !== 'ready' || !pending.review?.units.some((u) => u.id === unitId)) {
+        return;
+      }
+      const decisions = Object.fromEntries(
+        Object.entries(pending.decisions).filter(([id]) => Number(id) !== unitId),
+      ) as Record<number, UnitDecision>;
+      if (decision !== null) decisions[unitId] = decision;
+      set({ pendingReview: { ...pending, decisions } });
+    },
+
+    async acceptAllChanges() {
+      const pending = get().pendingReview;
+      if (pending?.status !== 'ready' || !pending.review) return;
+      const decisions = { ...pending.decisions };
+      for (const unit of pending.review.units) decisions[unit.id] ??= 'accepted';
+      set({ pendingReview: { ...pending, decisions } });
+      await answerReview(acceptedUnits(decisions));
+    },
+
+    async rejectAllChanges() {
+      await answerReview(new Set());
+    },
+
+    async applyReview() {
+      const pending = get().pendingReview;
+      if (pending?.status !== 'ready' || !pending.review) return;
+      const { decisions } = pending;
+      const accepted = acceptedUnits(decisions);
+      if (pending.review.units.some((u) => !(u.id in decisions)) || accepted.size === 0) return;
+      await answerReview(accepted);
     },
 
     async cancel() {
@@ -428,6 +598,8 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
               },
             ],
           });
+          // A markdown edit inside the folder is reviewed in the preview.
+          nextReview();
           return;
         case 'usage':
           set({
@@ -465,6 +637,8 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
             items,
             operationId: null,
             permissions: s.permissions.filter((p) => p.operationId !== envelope.operationId),
+            pendingReview:
+              s.pendingReview?.operationId === envelope.operationId ? null : s.pendingReview,
           });
           // The history copy is written once per operation, not per delta.
           void write(snapshot(get()));

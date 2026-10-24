@@ -9,6 +9,7 @@ import type { Conversation } from '../ipc/types';
 import { resetAiStores } from '../test/resetAi';
 import { useAiConversation } from './aiConversation';
 import { useAiProvider } from './aiProvider';
+import { useDocuments } from './documents';
 import { startEventBridge } from './eventBridge';
 import { useSettings } from './settings';
 import { useTabs } from './tabs';
@@ -236,5 +237,90 @@ describe('stored items', () => {
     ]);
     expect(back.map((i) => i.id)).not.toContain('u1');
     expect(back[3]).toMatchObject({ permissionKind: 'command', allowed: false });
+  });
+});
+
+describe('markdown edit review', () => {
+  const ready = () =>
+    vi.waitFor(() => {
+      expect(conv().pendingReview?.status).toBe('ready');
+    });
+
+  it('records the edit with the current content and opens its tab', async () => {
+    await conv().send('edit README.md');
+    await ready();
+    const review = conv().pendingReview;
+    expect(review).toMatchObject({ path: 'README.md', isNew: false, decisions: {} });
+    expect(review?.oldContent).toBe(mock().state.files.get('README.md'));
+    expect(review?.review?.units).toHaveLength(1);
+    expect(review?.requestId).toBe(conv().permissions[0]?.requestId);
+    expect(useTabs.getState().tabs.map((t) => t.relPath)).toEqual(['README.md']);
+    expect(useTabs.getState().tabs[0]?.pinned).toBe(false);
+
+    conv().decideUnit(0, 'rejected');
+    expect(conv().pendingReview?.decisions).toEqual({ 0: 'rejected' });
+    conv().decideUnit(0, null);
+    expect(conv().pendingReview?.decisions).toEqual({});
+    // Nothing decided: Apply does nothing.
+    await conv().applyReview();
+    expect(conv().permissions).toHaveLength(1);
+
+    await conv().rejectAllChanges();
+    expect(conv().pendingReview).toBeNull();
+    expect(conv().permissions).toHaveLength(0);
+    await idle();
+    expect(mock().state.ai.starts).toEqual(['chatMessage']);
+  });
+
+  it('treats an absent file as a new one with empty old content', async () => {
+    await conv().send('create notes/new.md');
+    await ready();
+    expect(conv().pendingReview).toMatchObject({
+      path: 'notes/new.md',
+      isNew: true,
+      oldContent: '',
+    });
+    await conv().acceptAllChanges();
+    await idle();
+    expect(mock().state.files.has('notes/new.md')).toBe(true);
+  });
+
+  it('leaves code edits to the line-diff card and ends the review with the operation', async () => {
+    await conv().send('edit src/main.ts');
+    await vi.waitFor(() => {
+      expect(conv().permissions).toHaveLength(1);
+    });
+    expect(conv().pendingReview).toBeNull();
+    await conv().cancel();
+    await idle();
+
+    await conv().send('edit README.md');
+    await ready();
+    await conv().cancel();
+    await idle();
+    expect(conv().pendingReview).toBeNull();
+  });
+
+  it('falls back to the line diff when a hunk is not in the file', async () => {
+    // The open tab's content wins over the disk: a hunk the tab's content lacks cannot be shown.
+    useDocuments.setState({
+      byPath: {
+        'README.md': {
+          status: 'ready',
+          content: '# Something else\n',
+          size: 17,
+          modifiedMs: 0,
+          error: null,
+          revision: 1,
+        },
+      },
+    });
+    await conv().send('edit README.md');
+    await vi.waitFor(() => {
+      expect(conv().pendingReview?.status).toBe('fallback');
+    });
+    expect(useTabs.getState().tabs).toEqual([]);
+    await conv().cancel();
+    await idle();
   });
 });

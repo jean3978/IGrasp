@@ -21,12 +21,15 @@ export function applyDiskChanges(changes: FsChangesEvent): void {
   }
   // Open files refresh live; the previous render stays on screen until the new one is ready.
   for (const file of changes.modified) void docs.reload(file.relPath);
-  // A deleted file that reappears loses its "deleted" banner.
+  // A deleted file that reappears loses its "deleted" banner; a tab opened before its file
+  // existed (a new file under review) shows it once it is created.
   for (const file of changes.added) {
     if (movedTo.has(file.relPath)) continue;
     const tab = useTabs.getState().tabs.find((t) => t.relPath === file.relPath);
     if (tab?.deleted) {
       tabs.markDeleted(file.relPath, false);
+      void docs.reload(file.relPath);
+    } else if (docs.byPath[file.relPath]?.status === 'error') {
       void docs.reload(file.relPath);
     }
   }

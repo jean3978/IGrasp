@@ -48,6 +48,11 @@ export interface RenderedDiffProps {
   states?: readonly (ChangeState | undefined)[];
   /** Replaces the default `aria-label` detail ("replaced paragraph") per change-group index. */
   labels?: readonly (string | undefined)[];
+  /**
+   * Replaces the whole `aria-label` of a change group (the review numbers its change units, which
+   * may span several groups).
+   */
+  ariaLabel?: (slot: ChangeSlot) => string | undefined;
   /** Controls drawn at the top right of each change group (sticky while the group is visible). */
   renderToolbar?: (slot: ChangeSlot) => ReactNode;
   /** Key presses inside a change group (A / R shortcuts of the review). */
@@ -93,8 +98,14 @@ function sliceBlocks(rendered: RenderedMarkdown, blocks: Block[], dropIds: boole
   const byLine = new Map(blocks.map((b) => [b.startLine, b.index]));
   const elements = new Map<number, ElementContent[]>();
   let current = blocks.find((b) => b.kind !== 'yaml')?.index ?? -1;
+  // The footnotes section is generated at the end: it belongs to the first footnote definition.
+  const footnotes = blocks.find((b) => b.kind === 'footnoteDefinition')?.index;
   for (const child of hast.children) {
     if (child.type !== 'element') continue;
+    if (child.properties['dataFootnotes'] !== undefined && footnotes !== undefined) {
+      elements.set(footnotes, [...(elements.get(footnotes) ?? []), child]);
+      continue;
+    }
     const line = lineOf(child);
     const index = line === undefined ? undefined : byLine.get(line);
     if (index !== undefined) current = index;
@@ -136,6 +147,7 @@ export function RenderedDiff({
   diff: given,
   states,
   labels,
+  ariaLabel,
   renderToolbar,
   onGroupKeyDown,
   flashIndex = null,
@@ -229,7 +241,7 @@ export function RenderedDiff({
               }
               role="group"
               tabIndex={0}
-              aria-label={`Change ${index + 1} of ${count}: ${detail}`}
+              aria-label={ariaLabel?.(slot) ?? `Change ${index + 1} of ${count}: ${detail}`}
               className={`diff-group diff-group--${group.kind} diff-group--${state}${
                 flashIndex === index ? ' diff-group--flash' : ''
               }`}

@@ -24,6 +24,8 @@ export const KEYMAP: KeyBinding[] = [
   { key: 'c', ctrl: true, alt: true, action: 'ai.chat' },
   { key: 'n', ctrl: true, alt: true, action: 'ai.newConversation' },
   { key: 'h', ctrl: true, alt: true, action: 'ai.history' },
+  { key: 'a', alt: true, shift: true, action: 'ai.acceptAllChanges' },
+  { key: 'r', alt: true, shift: true, action: 'ai.rejectAllChanges' },
   { key: 'f4', action: 'search.next' },
   { key: 'f4', shift: true, action: 'search.previous' },
   { key: 'arrowleft', alt: true, action: 'go.back' },

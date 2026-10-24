@@ -1,0 +1,118 @@
+/* Review mode of a document tab: the bar on top and the controls of each change unit. */
+
+.inline-review {
+  --review-bar-height: 48px;
+}
+
+.review-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: var(--border-width) solid var(--accent);
+  background: var(--bg-overlay);
+  color: var(--fg-strong);
+  box-shadow: var(--shadow-menu);
+}
+
+.review-bar-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.review-bar-count {
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.review-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* Below the review bar rather than under it. */
+.inline-review .rendered-diff .diff-toolbar {
+  top: calc(var(--review-bar-height) + 4px);
+}
+
+.review-toolbar {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  margin-top: 4px;
+  padding: 2px;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-m);
+  background: var(--bg-overlay);
+  box-shadow: var(--shadow-menu);
+  font-size: var(--font-size-small);
+  font-family: var(--font-ui);
+  line-height: 1.4;
+}
+
+.review-toolbar .button {
+  padding: 2px 8px;
+}
+
+.review-toolbar svg {
+  width: 14px;
+  height: 14px;
+}
+
+.review-toolbar-note {
+  padding: 0 6px;
+  color: var(--fg-muted);
+}
+
+.review-accept {
+  color: var(--success);
+}
+
+.review-reject {
+  color: var(--danger);
+}
+
+.review-state {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 0 6px;
+  font-weight: 600;
+}
+
+.review-state--accepted {
+  color: var(--success);
+}
+
+.review-state--rejected {
+  color: var(--danger);
+}
+
+.review-invisible {
+  max-width: var(--reading-width);
+  margin: 16px auto 0;
+  padding: 0 40px;
+}
+
+.review-invisible-unit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border: var(--border-width) dashed var(--border-strong);
+  border-radius: var(--radius-m);
+  color: var(--fg-muted);
+}
+
+.review-invisible-unit:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 2px;
+}

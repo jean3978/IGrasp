@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { RenderedDiff } from './RenderedDiff';
 
@@ -33,6 +33,30 @@ describe('RenderedDiff', () => {
     expect(container.querySelector('.diff-part--added')?.textContent).toContain('Uno.');
     // Lists carry their start line like the other blocks.
     expect(container.querySelector('ul[data-line="7"]')).not.toBeNull();
+  });
+
+  it('keeps a GitHub alert next to a change as its own common block', async () => {
+    const before = '# T\n\nOne.\n\n> [!NOTE]\n> Kept.\n\nEnd.\n';
+    const after = '# T\n\nUno.\n\n> [!NOTE]\n> Kept.\n\nEnd.\n';
+    const { container } = render(<RenderedDiff oldText={before} newText={after} />);
+    const group = await screen.findByRole('group');
+    expect(group.querySelector('.markdown-alert')).toBeNull();
+    expect(container.querySelectorAll('.markdown-alert')).toHaveLength(1);
+    expect(container.querySelector('.diff-source')).toBeNull();
+  });
+
+  it('keeps display math and footnotes with their own blocks', async () => {
+    const tail = '$$\nx^2\n$$\n\nEnd[^1].\n\n[^1]: A note.\n';
+    const { container } = render(
+      <RenderedDiff oldText={`One.\n\n${tail}`} newText={`Uno.\n\n${tail}`} />,
+    );
+    const group = await screen.findByRole('group');
+    await waitFor(() => {
+      expect(container.querySelectorAll('.katex-display')).toHaveLength(1);
+    });
+    expect(group.querySelector('.katex-display, .footnotes')).toBeNull();
+    expect(container.querySelectorAll('section.footnotes')).toHaveLength(1);
+    expect(container.querySelector('.diff-source')).toBeNull();
   });
 
   it('shows the whole document as added for a new file', async () => {

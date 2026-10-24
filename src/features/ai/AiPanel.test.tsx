@@ -83,14 +83,14 @@ describe('AiPanel', () => {
     expect(composer()).toHaveValue('');
   });
 
-  it('shows a proposed markdown edit as a diff and applies it when accepted', async () => {
+  it('shows a proposed code edit as a line diff and applies it when accepted', async () => {
     const user = userEvent.setup();
     renderPanel();
     await screen.findByText(statusLine);
 
-    await user.type(composer(), 'Please edit README.md{Enter}');
-    const card = await screen.findByRole('region', { name: 'Proposed edit to README.md' });
-    expect(within(card).getByText(/Proposed edit · README.md/)).toBeInTheDocument();
+    await user.type(composer(), 'Please edit src/main.ts{Enter}');
+    const card = await screen.findByRole('region', { name: 'Proposed edit to main.ts' });
+    expect(within(card).getByText(/Proposed edit · src\/main.ts/)).toBeInTheDocument();
     expect(within(card).getByText(/\(edited by the AI\)/)).toBeInTheDocument();
     expect(within(card).getByText('+1')).toBeInTheDocument();
     expect(within(card).getByText('−1')).toBeInTheDocument();
@@ -98,22 +98,47 @@ describe('AiPanel', () => {
     await user.click(within(card).getByRole('button', { name: /Accept/ }));
     expect(await screen.findByText(MOCK_APPLIED_TEXT)).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: /Proposed edit/ })).not.toBeInTheDocument();
-    expect(window.__igraspMock?.state.files.get('README.md')).toContain('(edited by the AI)');
-    expect(screen.getByText('Edit README.md')).toBeInTheDocument();
+    expect(window.__igraspMock?.state.files.get('src/main.ts')).toContain('(edited by the AI)');
+    expect(screen.getByText('Edit src/main.ts')).toBeInTheDocument();
+    // Not a markdown edit: nothing is reviewed in the preview.
+    expect(useAiConversation.getState().pendingReview).toBeNull();
   });
 
   it('leaves the file alone when the edit is rejected', async () => {
     const user = userEvent.setup();
-    const before = window.__igraspMock?.state.files.get('README.md');
+    const before = window.__igraspMock?.state.files.get('src/main.ts');
+    renderPanel();
+    await screen.findByText(statusLine);
+
+    await user.type(composer(), 'Please edit src/main.ts{Enter}');
+    const card = await screen.findByRole('region', { name: 'Proposed edit to main.ts' });
+    await user.click(within(card).getByRole('button', { name: 'Reject' }));
+    expect(await screen.findByText(MOCK_REJECTED_TEXT)).toBeInTheDocument();
+    expect(window.__igraspMock?.state.files.get('src/main.ts')).toBe(before);
+    expect(screen.getByText(/Edit src\/main.ts — refused or failed/)).toBeInTheDocument();
+  });
+
+  it('points a markdown edit to the review in the preview, and accepts it from the card', async () => {
+    const user = userEvent.setup();
     renderPanel();
     await screen.findByText(statusLine);
 
     await user.type(composer(), 'Please edit README.md{Enter}');
     const card = await screen.findByRole('region', { name: 'Proposed edit to README.md' });
-    await user.click(within(card).getByRole('button', { name: 'Reject' }));
-    expect(await screen.findByText(MOCK_REJECTED_TEXT)).toBeInTheDocument();
-    expect(window.__igraspMock?.state.files.get('README.md')).toBe(before);
-    expect(screen.getByText(/Edit README.md — refused or failed/)).toBeInTheDocument();
+    expect(
+      await within(card).findByText(`${MOCK_PROVIDER_NAME} proposes 1 change to README.md`),
+    ).toBeInTheDocument();
+    // The review opened the document's tab.
+    expect(useTabs.getState().tabs.map((t) => t.relPath)).toEqual(['README.md']);
+    useTabs.setState({ tabs: [], activeId: null });
+    await user.click(within(card).getByRole('button', { name: /Review in preview/ }));
+    expect(useTabs.getState().tabs.map((t) => t.relPath)).toEqual(['README.md']);
+
+    await user.click(within(card).getByRole('button', { name: /Accept all/ }));
+    expect(await screen.findByText(MOCK_APPLIED_TEXT)).toBeInTheDocument();
+    expect(screen.getByText('Applied the change to README.md.')).toBeInTheDocument();
+    expect(window.__igraspMock?.state.files.get('README.md')).toContain('(edited by the AI)');
+    expect(useAiConversation.getState().pendingReview).toBeNull();
   });
 
   it('asks before running a command, naming the provider', async () => {

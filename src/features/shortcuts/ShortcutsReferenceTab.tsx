@@ -78,6 +78,14 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
     ],
   },
   {
+    title: 'Edit review (a proposed edit shown in the preview)',
+    rows: [
+      ...fromActions(['ai.acceptAllChanges', 'ai.rejectAllChanges']),
+      { keys: 'A / R', label: 'Accept / reject the focused change' },
+      { keys: 'Tab', label: 'Next change or button' },
+    ],
+  },
+  {
     title: 'Mermaid diagrams (diagram focused)',
     rows: [
       { keys: '+ / -', label: 'Zoom in / out' },

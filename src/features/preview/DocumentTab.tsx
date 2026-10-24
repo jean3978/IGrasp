@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useAiConversation } from '../../stores/aiConversation';
+import type { PendingReview } from '../../stores/aiConversation';
 import { useDocuments } from '../../stores/documents';
+import type { Review } from '../diff/changes';
+import { InlineEditReview } from '../ai/InlineEditReview';
 import { useGraph } from '../../stores/graph';
 import { useOutline } from '../../stores/outline';
 import { buildOutline } from '../outline/outline';
@@ -9,6 +13,8 @@ import { MarkdownPreview } from './MarkdownPreview';
 import { MAX_RENDERED_CHARS, useMarkdown } from './useMarkdown';
 import { clearMatchHighlight, revealPending } from './reveal';
 import './document.css';
+
+type ReviewShown = PendingReview & { review: Review };
 
 interface DocumentTabProps {
   tabId: string;
@@ -64,6 +70,13 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const restored = useRef(false);
   const getScrollContainer = useCallback(() => scrollRef.current, []);
+  const review = useAiConversation((s): ReviewShown | null =>
+    s.pendingReview?.path === relPath &&
+    s.pendingReview.status === 'ready' &&
+    s.pendingReview.review
+      ? (s.pendingReview as ReviewShown)
+      : null,
+  );
 
   // Restored tabs are loaded lazily, when they are first shown.
   useEffect(() => {
@@ -141,11 +154,41 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
       tabIndex={0}
       aria-label={relPath}
       onScroll={(e) => {
-        if (restored.current) {
+        if (restored.current && !review) {
           useTabs.getState().setScroll(tabId, Math.round(e.currentTarget.scrollTop));
         }
       }}
     >
+      {review ? (
+        // Review mode: the proposed edit replaces the preview until it is answered (a new file
+        // has no content on disk yet).
+        <InlineEditReview pending={review} getScrollContainer={getScrollContainer} />
+      ) : (
+        <DocumentBody
+          tabId={tabId}
+          relPath={relPath}
+          deleted={deleted}
+          getScrollContainer={getScrollContainer}
+        />
+      )}
+    </div>
+  );
+}
+
+function DocumentBody({
+  tabId,
+  relPath,
+  deleted,
+  getScrollContainer,
+}: {
+  tabId: string;
+  relPath: string;
+  deleted: boolean;
+  getScrollContainer: () => HTMLElement | null;
+}) {
+  const doc = useDocuments((s) => s.byPath[relPath]);
+  return (
+    <>
       {deleted && (
         <div className="deleted-banner" role="status">
           <span>This file was deleted on disk. The last version is still shown.</span>
@@ -175,6 +218,6 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
             getScrollContainer={getScrollContainer}
           />
         ))}
-    </div>
+    </>
   );
 }

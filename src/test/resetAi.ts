@@ -27,6 +27,7 @@ export function resetAiStores(): void {
     permissions: [],
     rules: [],
     history: null,
+    pendingReview: null,
   });
   useAiPanel.setState({
     open: false,
