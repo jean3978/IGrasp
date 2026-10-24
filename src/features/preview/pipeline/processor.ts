@@ -19,6 +19,7 @@ import { remarkExtractFrontMatter } from './frontmatter';
 import { highlightCode } from './highlight';
 import { rehypeMarkInsecureMedia } from './insecureMedia';
 import { renderMath } from './math';
+import { markMermaidBlocks } from './mermaid';
 import type { FrontMatter } from './frontmatter';
 import { sanitizeSchema } from './sanitize';
 
@@ -55,5 +56,6 @@ export async function renderMarkdown(content: string): Promise<RenderedMarkdown>
   // Trusted generators run after sanitization, so their markup is never stripped.
   await renderMath(hast, file);
   await highlightCode(hast);
+  markMermaidBlocks(hast);
   return { hast, frontMatter: file.data.frontMatter ?? null };
 }
