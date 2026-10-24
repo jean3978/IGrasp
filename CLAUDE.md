@@ -20,6 +20,8 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 | Frontend unit tests | `npm test` (Vitest + jsdom) |
 | End-to-end smoke tests | `npm run test:e2e` (Playwright, production build, mock backend) |
 | Rust tests | `npm run rust:test` (also regenerates `src/ipc/generated`) |
+| Performance tests (10k documents) | `cargo test --release --manifest-path src-tauri/Cargo.toml -- --ignored --nocapture` |
+| Large project to open in the app | `node scripts/gen-large-project.mjs [folder]` |
 | Lint / format | `npm run lint`, `npm run format`, `npm run rust:fmt`, `npm run rust:clippy` |
 
 ## Project structure
@@ -37,7 +39,8 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   sections build on `src/components/VirtualRows.tsx` (virtualized rows, keyboard focus).
 - `src/features/titlebar/menuActions.ts`: every user action. Menus, toolbar buttons and
   shortcuts (`features/shortcuts/keymap.ts`) dispatch through it.
-- `e2e/`: Playwright smoke tests. `docs/`: architecture, ADRs, feature pages.
+- `e2e/`: Playwright smoke tests. `scripts/`: the large-project generator. `docs/`:
+  architecture, ADRs, feature pages, and one implementation plan per phase in `docs/plan/`.
 
 ## IPC conventions
 

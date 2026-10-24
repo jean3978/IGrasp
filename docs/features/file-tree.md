@@ -1,7 +1,7 @@
 # File tree
 
-The left panel (Explorer) shows **only the markdown files** of the open folder, in their
-hierarchy.
+The Explorer view of the sidebar shows **only the markdown files** of the open folder, in their
+hierarchy. (The other sidebar views are described in [navigation.md](navigation.md).)
 
 ## What is shown
 
@@ -13,7 +13,7 @@ hierarchy.
 - `.git` and `node_modules` are always skipped.
 - The extra ignore patterns from Settings (gitignore syntax) always apply.
 
-Two toggles in the Explorer toolbar (and, later, the View menu) change this per folder:
+Two toggles in the Explorer toolbar and the View menu change this per folder:
 
 | Toggle | Effect |
 |---|---|
@@ -51,3 +51,7 @@ the rendered window.
 | Letters | Jump to the next row starting with the typed text |
 
 Mouse: a click opens a preview tab, a double click pins it; clicking a folder toggles it.
+
+A link to a folder in a document switches the sidebar to the Explorer, then reveals and expands
+that folder, and opens its `README.md` when it has one (see
+[links-and-graph.md](links-and-graph.md)).
