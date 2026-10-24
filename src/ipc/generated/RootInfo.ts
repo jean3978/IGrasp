@@ -8,4 +8,8 @@ path: string,
 /**
  * Folder name, shown in the title bar.
  */
-name: string, isGitRepo: boolean, generation: number, };
+name: string, isGitRepo: boolean, generation: number, 
+/**
+ * Effective toggles for this folder (from its saved session, else the settings defaults).
+ */
+showDotfiles: boolean, showIgnored: boolean, };

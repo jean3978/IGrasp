@@ -31,10 +31,6 @@ impl RootGuard {
 
     /// Joins a `/`-separated relative path to the root without touching the file system.
     /// Rejects absolute paths, drive or UNC prefixes, `.`/`..` components and empty segments.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "used by list_dir and read_markdown")
-    )]
     pub fn join_lexical(&self, rel: &str) -> AppResult<PathBuf> {
         if rel.is_empty() {
             return Ok(self.root.clone());
@@ -55,10 +51,7 @@ impl RootGuard {
 
     /// Resolves an existing path under the root, following symlinks, and checks that the target
     /// is still inside the root.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "used by list_dir and read_markdown")
-    )]
+    #[cfg_attr(not(test), expect(dead_code, reason = "used by read_markdown"))]
     pub fn resolve(&self, rel: &str) -> AppResult<PathBuf> {
         let joined = self.join_lexical(rel)?;
         let canonical =
@@ -67,20 +60,6 @@ impl RootGuard {
             return Err(AppError::OutsideRoot(rel.to_owned()));
         }
         Ok(canonical)
-    }
-
-    /// Converts an absolute path under the root to a `/`-separated relative path.
-    #[cfg_attr(not(test), expect(dead_code, reason = "used by the scanner"))]
-    pub fn to_rel(&self, abs: &Path) -> Option<String> {
-        let rel = abs.strip_prefix(&self.root).ok()?;
-        let parts: Option<Vec<&str>> = rel
-            .components()
-            .map(|c| match c {
-                Component::Normal(s) => s.to_str(),
-                _ => None,
-            })
-            .collect();
-        Some(parts?.join("/"))
     }
 }
 
@@ -102,7 +81,6 @@ mod tests {
         let (_d, g) = guard();
         let p = g.resolve("docs/a.md").unwrap();
         assert!(p.ends_with("a.md"));
-        assert_eq!(g.to_rel(&p).unwrap(), "docs/a.md");
         assert_eq!(g.resolve("").unwrap(), g.root());
     }
 

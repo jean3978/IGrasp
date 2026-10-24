@@ -2,9 +2,16 @@
 // Types under ./generated are exported from Rust by ts-rs; never edit them by hand.
 
 import type { AppInfo } from './generated/AppInfo';
+import type { DirEntry } from './generated/DirEntry';
+import type { DirListing } from './generated/DirListing';
 import type { ErrorCode } from './generated/ErrorCode';
+import type { FileEntry } from './generated/FileEntry';
+import type { IndexErrorEvent } from './generated/IndexErrorEvent';
+import type { IndexProgressEvent } from './generated/IndexProgressEvent';
+import type { IndexReadyEvent } from './generated/IndexReadyEvent';
 import type { RecentFolder } from './generated/RecentFolder';
 import type { RecoveredEvent } from './generated/RecoveredEvent';
+import type { RescanRequest } from './generated/RescanRequest';
 import type { RootInfo } from './generated/RootInfo';
 import type { Session } from './generated/Session';
 import type { Settings } from './generated/Settings';
@@ -12,9 +19,16 @@ import type { SettingsPatch } from './generated/SettingsPatch';
 
 export type {
   AppInfo,
+  DirEntry,
+  DirListing,
   ErrorCode,
+  FileEntry,
+  IndexErrorEvent,
+  IndexProgressEvent,
+  IndexReadyEvent,
   RecentFolder,
   RecoveredEvent,
+  RescanRequest,
   RootInfo,
   Session,
   Settings,
@@ -39,6 +53,9 @@ export class BackendError extends Error {
 /** Events pushed by the backend, keyed by event name. */
 export interface BackendEvents {
   'appdata://recovered': RecoveredEvent;
+  'index://progress': IndexProgressEvent;
+  'index://ready': IndexReadyEvent;
+  'index://error': IndexErrorEvent;
 }
 
 export type EventName = keyof BackendEvents;
@@ -72,8 +89,13 @@ export interface Backend {
 
   /** Shows the system folder picker; resolves to the chosen absolute path or null. */
   pickFolder(): Promise<string | null>;
+  /** Opens a folder and starts indexing it in the background (see the index:// events). */
   openRoot(path: string): Promise<RootInfo>;
   closeRoot(): Promise<void>;
+  /** Restarts indexing with new toggles; resolves to the new generation. */
+  rescan(request: RescanRequest): Promise<number>;
+  /** Lists an indexed folder (root-relative path, "" for the root). */
+  listDir(relPath: string): Promise<DirListing>;
 
   getSettings(): Promise<Settings>;
   updateSettings(patch: SettingsPatch): Promise<Settings>;

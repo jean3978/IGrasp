@@ -71,6 +71,8 @@ export const tauriBackend: Backend = {
   },
   openRoot: (path) => invoke('open_root', { path }),
   closeRoot: () => invoke('close_root'),
+  rescan: (request) => invoke('rescan', { request }),
+  listDir: (relPath) => invoke('list_dir', { relPath }),
 
   getSettings: () => invoke('get_settings'),
   updateSettings: (patch) => invoke('update_settings', { patch }),

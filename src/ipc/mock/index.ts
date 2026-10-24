@@ -9,12 +9,15 @@ import type {
   Backend,
   BackendEvents,
   EventName,
+  FileEntry,
   RecentFolder,
   RootInfo,
   Session,
   Settings,
 } from '../types';
 import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT } from './fixture';
+import { gitignorePatterns, listFixtureDir, scanFixture } from './mockIndex';
+import type { MockScanOptions } from './mockIndex';
 
 type Handler = (payload: never) => void;
 
@@ -28,6 +31,11 @@ export interface MockState {
   files: Map<string, string>;
   root: RootInfo | null;
   generation: number;
+  /** Markdown index of the open root; null while "scanning". */
+  index: Map<string, FileEntry> | null;
+  scan: MockScanOptions;
+  /** Delay of the fake scan, in milliseconds. */
+  scanDelayMs: number;
   /** What the next folder picker returns (null = cancelled). */
   pickFolderResult: string | null;
 }
@@ -54,6 +62,9 @@ function initialState(): MockState {
     files: new Map(Object.entries(FIXTURE_FILES)),
     root: null,
     generation: 0,
+    index: null,
+    scan: { showDotfiles: false, showIgnored: false, ignorePatterns: [] },
+    scanDelayMs: 0,
     pickFolderResult: FIXTURE_ROOT,
   };
 }
@@ -110,6 +121,31 @@ export function createMockBackend(): Backend & { controls: MockControls } {
   const recentList = (): RecentFolder[] =>
     state.recent.map((r) => ({ ...r, exists: state.folders.has(r.path) }));
 
+  /** Starts a fake background scan of the fixture for the current generation. */
+  const startScan = () => {
+    const generation = state.generation;
+    state.index = null;
+    setTimeout(() => {
+      if (state.generation !== generation || !state.root) return;
+      controls.emit('index://progress', {
+        generation,
+        scannedEntries: state.files.size,
+        markdownFiles: 0,
+        elapsedMs: 1,
+      });
+      state.index = scanFixture(state.files, state.scan, Date.now());
+      const dirs = new Set([...state.index.keys()].map((k) => k.split('/').slice(0, -1).join('/')));
+      dirs.delete('');
+      controls.emit('index://ready', {
+        generation,
+        markdownFiles: state.index.size,
+        dirs: dirs.size,
+        elapsedMs: 2,
+        skipped: 0,
+      });
+    }, state.scanDelayMs);
+  };
+
   return {
     controls,
     window: appWindow,
@@ -121,16 +157,61 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       }
       state.generation += 1;
       const name = path === FIXTURE_ROOT ? FIXTURE_NAME : baseName(path);
-      state.root = { path, name, isGitRepo: true, generation: state.generation };
+      const session = state.sessions.get(path);
+      state.scan = {
+        showDotfiles: session?.showDotfiles ?? state.settings.showDotfiles,
+        showIgnored: session?.showIgnored ?? state.settings.showIgnored,
+        ignorePatterns: state.settings.ignorePatterns,
+      };
+      state.root = {
+        path,
+        name,
+        isGitRepo: true,
+        generation: state.generation,
+        showDotfiles: state.scan.showDotfiles,
+        showIgnored: state.scan.showIgnored,
+      };
       state.recent = [
         { path, name, lastOpenedMs: Date.now() },
         ...state.recent.filter((r) => r.path !== path),
       ].slice(0, 10);
+      startScan();
       return Promise.resolve({ ...state.root });
     },
     closeRoot: () => {
       state.root = null;
+      state.index = null;
       return Promise.resolve();
+    },
+    rescan: (request) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      state.generation += 1;
+      state.scan = {
+        showDotfiles: request.showDotfiles ?? state.scan.showDotfiles,
+        showIgnored: request.showIgnored ?? state.scan.showIgnored,
+        ignorePatterns: state.settings.ignorePatterns,
+      };
+      startScan();
+      return Promise.resolve(state.generation);
+    },
+    listDir: (relPath) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      if (!state.index) {
+        return Promise.reject(
+          new BackendError('IndexNotReady', 'The folder is still being indexed.'),
+        );
+      }
+      const listing = listFixtureDir(
+        state.index,
+        relPath,
+        state.scan.showIgnored ? gitignorePatterns(state.files) : [],
+      );
+      if (!listing) return Promise.reject(new BackendError('NotFound', `Not found: ${relPath}`));
+      return Promise.resolve({
+        relPath,
+        generation: state.generation,
+        ...structuredClone(listing),
+      });
     },
 
     getSettings: () => Promise.resolve(structuredClone(state.settings)),

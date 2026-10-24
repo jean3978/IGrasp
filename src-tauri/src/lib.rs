@@ -3,6 +3,7 @@
 mod appdata;
 mod commands;
 mod error;
+mod index;
 mod paths;
 mod state;
 
@@ -58,6 +59,8 @@ pub fn run() {
             commands::appdata::get_app_info,
             commands::workspace::open_root,
             commands::workspace::close_root,
+            commands::workspace::rescan,
+            commands::workspace::list_dir,
         ])
         .run(tauri::generate_context!())
         .expect("error while running IGrasp");
