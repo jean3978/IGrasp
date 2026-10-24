@@ -1,6 +1,7 @@
 //! IGrasp backend: Tauri setup, commands and background services.
 
 mod appdata;
+mod claude;
 mod commands;
 mod error;
 mod graph;
@@ -88,6 +89,10 @@ pub fn run() {
             commands::search::search_symbols,
             commands::search::search_text,
             commands::search::cancel_search,
+            commands::claude::claude_status,
+            commands::claude::claude_start_turn,
+            commands::claude::claude_respond_permission,
+            commands::claude::claude_cancel,
         ])
         .run(tauri::generate_context!())
         .expect("error while running IGrasp");

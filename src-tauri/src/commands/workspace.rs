@@ -99,6 +99,15 @@ pub fn open_root(app: AppHandle, state: State<'_, AppState>, path: String) -> Ap
 
 #[tauri::command]
 pub fn close_root(state: State<'_, AppState>) {
+    // A Claude turn works in the folder being closed: stop it.
+    if let Some(turn) = state
+        .claude
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+    {
+        turn.cancel();
+    }
     let mut ws = state.workspace.write().unwrap_or_else(|e| e.into_inner());
     if let Some(old) = ws.take() {
         log::info!("closed {}", old.guard.root().display());
