@@ -1788,6 +1788,7 @@ dependencies = [
  "log",
  "notify",
  "notify-debouncer-full",
+ "regex",
  "serde",
  "serde_json",
  "tauri",

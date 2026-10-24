@@ -1,0 +1,57 @@
+[
+  {
+    "name": "plain words",
+    "headings": ["Getting Started", "Install the App"],
+    "slugs": ["getting-started", "install-the-app"]
+  },
+  {
+    "name": "punctuation",
+    "headings": ["What’s new? (v2.0)", "C++ & C#: a comparison!", "Q&A / FAQ", "foo.bar_baz-qux"],
+    "slugs": ["whats-new-v20", "c--c-a-comparison", "qa--faq", "foobar_baz-qux"]
+  },
+  {
+    "name": "duplicates",
+    "headings": ["Setup", "Setup", "Setup", "Setup-1", "setup"],
+    "slugs": ["setup", "setup-1", "setup-2", "setup-1-1", "setup-3"]
+  },
+  {
+    "name": "emoji",
+    "headings": ["🚀 Launch", "Done ✅", "❤️ Love 💯"],
+    "slugs": ["-launch", "done-", "️-love-"]
+  },
+  {
+    "name": "accents and case",
+    "headings": ["Éléphant Ça Marche", "ÜBER Straße", "Ἀθῆναι"],
+    "slugs": ["éléphant-ça-marche", "über-straße", "ἀθῆναι"]
+  },
+  {
+    "name": "cjk",
+    "headings": ["日本語の見出し", "中文 标题", "한국어 제목"],
+    "slugs": ["日本語の見出し", "中文-标题", "한국어-제목"]
+  },
+  {
+    "name": "inline code text",
+    "headings": ["The `run()` function", "Use --force"],
+    "slugs": ["the-run-function", "use---force"]
+  },
+  {
+    "name": "spaces",
+    "headings": ["  Leading and trailing  ", "two  spaces", "tab\there"],
+    "slugs": ["leading-and-trailing", "two--spaces", "tabhere"]
+  },
+  {
+    "name": "numbers only",
+    "headings": ["2024", "1.2.3", "42"],
+    "slugs": ["2024", "123", "42"]
+  },
+  {
+    "name": "symbols",
+    "headings": ["100% & more", "less < more > equal", "~tilde~ `back`", "¿Qué?", "a—b–c"],
+    "slugs": ["100--more", "less--more--equal", "tilde-back", "qué", "abc"]
+  },
+  {
+    "name": "empty after cleanup",
+    "headings": ["!!!", "???"],
+    "slugs": ["", "-1"]
+  }
+]

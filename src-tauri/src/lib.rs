@@ -3,6 +3,9 @@
 mod appdata;
 mod commands;
 mod error;
+// Wired into the workspace once the graph builder lands; until then only its tests use it.
+#[cfg_attr(not(test), allow(dead_code))]
+mod graph;
 mod index;
 mod paths;
 mod state;
