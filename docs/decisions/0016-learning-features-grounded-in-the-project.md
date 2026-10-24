@@ -1,4 +1,4 @@
-# 0015 — Learning features grounded in the whole project
+# 0016 — Learning features grounded in the whole project
 
 - Status: Accepted
 - Date: 2026-10-24
@@ -39,10 +39,10 @@ programmed. Generic lessons about a technology are everywhere online; what is mi
 - A **project profile** (kinds, engines, frameworks, languages, modules, build and test setup) is
   detected **locally, without AI**, from markers in the scan, shown to the user, correctable, and
   sent with every generation. Subject proposals are built from it, also without AI.
-- Every AI call of these features follows [ADR 0014](0014-ai-provider-layer-and-user-action-gateway.md):
-  only on a user action, read-only. Tutorials are never changed or marked as verified by the AI:
-  freshness is checked locally for free, an AI review runs only when asked, and its proposed
-  changes are accepted or rejected by the user.
+- Every AI call of these features goes through the AI provider abstraction and its gateway
+  (ADR 0015, from the Phase 3 proof of concept): only on a user action, read-only. Tutorials
+  are never changed or marked as verified by the AI: freshness is checked locally for free, an
+  AI review runs only when asked, and its proposed changes are accepted or rejected by the user.
 - Private tutorials and all progress live in app data. Sharing a tutorial with the project is an
   explicit action that writes markdown files into the opened folder after a confirmation; it is
   the first feature that writes in the project, and only on that action. The exact format is

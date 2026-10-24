@@ -74,7 +74,7 @@ it.
   [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code); it is not bundled. Claude is
   the only supported provider for now; the AI layer is provider-neutral so others can be added
   later. IGrasp never spends tokens in the background: only when you click a control marked as
-  using AI ([ADR 0014](docs/decisions/0014-ai-provider-layer-and-user-action-gateway.md)).
+  using AI.
 
 ### Video on Linux
 

@@ -81,11 +81,11 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 - Nothing the app does on its own may write inside the opened folder; app state lives in the OS
   app-data folder. Only explicit user actions on files (later phases: editing, accepted AI
   edits, quiz "Save as…", sharing a tutorial) write there.
-- AI (from Phase 3, ADR 0014): no token without a user action. Every AI call goes through the
+- AI (from Phase 3): no token without a user action. Every AI call goes through the
   single backend gateway, triggered by an explicit IPC request from a user action; never from
   watchers, timers, startup or event handlers. Features use the provider-neutral `AiProvider`
   layer only, never the `claude` CLI directly; Claude is the only provider for now.
-- Quiz and tutorials (ADR 0015) are grounded in the whole project: every item cites project
+- Quiz and tutorials (ADR 0016) are grounded in the whole project: every item cites project
   files, nothing generic, written for developers.
 - Keep docs current: `docs/architecture.md`, the `docs/features/` page of the area you touch, an
   ADR in `docs/decisions/` for significant choices, and `CHANGELOG.md` under `[Unreleased]`.
