@@ -107,7 +107,7 @@ function initialState(): MockState {
     graph: null,
     graphDelayMs: 0,
     pickFolderResult: FIXTURE_ROOT,
-    ai: { ...DEFAULT_MOCK_AI, starts: [] },
+    ai: { ...DEFAULT_MOCK_AI, starts: [], conversations: new Map() },
   };
 }
 
@@ -201,7 +201,7 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     emit,
     ai: () => state.ai,
     settings: () => state.settings,
-    hasRoot: () => state.root !== null,
+    rootPath: () => state.root?.path ?? null,
     file: (relPath) => {
       const found = fakeFile(relPath);
       return found && { content: found.content, size: found.size };
@@ -616,6 +616,11 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     aiStart: ai.aiStart,
     aiRespondPermission: ai.aiRespondPermission,
     aiCancel: ai.aiCancel,
+    listConversations: ai.listConversations,
+    getConversation: ai.getConversation,
+    saveConversation: ai.saveConversation,
+    deleteConversation: ai.deleteConversation,
+    forgetConversations: ai.forgetConversations,
 
     openAppDataDir: () => {
       state.opened.push(appInfo.appDataDir);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createMockBackend } from '.';
-import type { AiEvent, AiStartRequest, PermissionDecision } from '../types';
+import type { AiEvent, AiStartRequest, Conversation, PermissionDecision } from '../types';
 import { FIXTURE_ROOT } from './fixture';
 import {
   DENIED_BY_SETTINGS,
@@ -310,5 +310,52 @@ describe('mock AI context and estimate', () => {
     expect(b.controls.state.ai.lastRequest?.capture).toEqual(capture);
     expect(b.controls.state.ai.lastRequest?.images).toHaveLength(1);
     expect(lastText(events)).toBe('I see 1 attached image (4 bytes).');
+  });
+});
+
+describe('mock conversations', () => {
+  const conversation = (id: string, updatedMs: number): Conversation => ({
+    id,
+    title: `About ${id}`,
+    createdMs: updatedMs - 10,
+    updatedMs,
+    providerId: 'mock',
+    model: 'mock-fast',
+    resumeId: null,
+    usage: { inputTokens: 1, outputTokens: 2, costUsd: null },
+    items: [{ kind: 'user', id: 'u1', text: 'hello' }],
+  });
+
+  it('stores conversations per folder like Rust, newest first and trimmed', async () => {
+    const b = await backend();
+    await b.saveConversation(conversation('a', 1));
+    await b.saveConversation({ ...conversation('b', 2), title: 'é'.repeat(100) });
+    expect((await b.listConversations()).map((s) => s.id)).toEqual(['b', 'a']);
+    expect((await b.getConversation('b')).title).toHaveLength(80);
+    await b.saveConversation({
+      ...conversation('a', 3),
+      items: Array.from({ length: 450 }, (_, n) => ({ n })),
+    });
+    const a = await b.getConversation('a');
+    expect(a.items).toHaveLength(400);
+    expect(a.items[0]).toEqual({ n: 50 });
+    expect((await b.listConversations())[0]?.id).toBe('a');
+
+    b.controls.state.settings.ai.historyLimit = 2;
+    await b.saveConversation(conversation('c', 4));
+    expect((await b.listConversations()).map((s) => s.id)).toEqual(['c', 'a']);
+
+    await b.deleteConversation('a');
+    await expect(b.getConversation('a')).rejects.toMatchObject({ code: 'NotFound' });
+    await expect(b.saveConversation(conversation('../x', 5))).rejects.toMatchObject({
+      code: 'AppData',
+    });
+    expect(b.controls.state.ai.conversations.get(FIXTURE_ROOT)).toHaveLength(1);
+
+    await b.forgetConversations();
+    expect(await b.listConversations()).toEqual([]);
+    await b.closeRoot();
+    await expect(b.listConversations()).rejects.toMatchObject({ code: 'NoRootOpen' });
+    expect(b.controls.state.ai.starts).toEqual([]);
   });
 });

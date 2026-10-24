@@ -39,6 +39,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   operation runs; `ai_providers` lists the choices. The model picked in the chat is remembered
   in `settings.ai.model`. Models declare whether they accept images. The provider status check
   is reused for 60 s; **Check again** bypasses it.
+- **AI conversations per folder** (app data): `conversations/index.json` maps each folder to a
+  file of its conversations (title, provider and model, resume id, usage, transcript items),
+  newest first, trimmed to `settings.ai.historyLimit` conversations and 400 items each, and
+  recovered like the other app-data files when corrupt. Commands `list_conversations`,
+  `get_conversation`, `save_conversation`, `delete_conversation`, `forget_conversations`.
 
 ### Changed
 

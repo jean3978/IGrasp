@@ -17,6 +17,7 @@
 import { BackendError } from '../types';
 import { collectContext, contextDocuments, estimateSize, requestFrom } from './mockContext';
 import type { FileLookup } from './mockContext';
+import { summaryOf, upsert } from './mockConversations';
 import type {
   AiCapabilities,
   AiEvent,
@@ -35,6 +36,8 @@ import type {
   AiStartRequest,
   AiUserAction,
   BackendEvents,
+  Conversation,
+  ConversationSummary,
   EditHunk,
   EventName,
   JsonValue,
@@ -54,6 +57,8 @@ export interface MockAiState {
   lastRequest: AiRequest | null;
   /** Status checks that ran the provider's probes (not served from the cache). */
   statusChecks: number;
+  /** Saved conversations by root path, newest first (the app's history copy). */
+  conversations: Map<string, Conversation[]>;
 }
 
 export const DEFAULT_MOCK_AI: MockAiState = {
@@ -63,6 +68,7 @@ export const DEFAULT_MOCK_AI: MockAiState = {
   starts: [],
   lastRequest: null,
   statusChecks: 0,
+  conversations: new Map(),
 };
 
 export const MOCK_PROVIDER_ID = 'mock';
@@ -108,7 +114,8 @@ interface Deps {
   emit: Emit;
   ai: () => MockAiState;
   settings: () => Settings;
-  hasRoot: () => boolean;
+  /** The open folder's path, or null. */
+  rootPath: () => string | null;
   /** A file of the fake disk with its size. */
   file: FileLookup;
   fileContent: (relPath: string) => string | undefined;
@@ -265,7 +272,15 @@ function acceptedHunks(proposed: ProposedEdit, decision: PermissionDecision): Ed
   return proposed.hunks.filter((p) => !left.includes(p));
 }
 
-export function createMockAi({ emit, ai, settings, hasRoot, file, fileContent, writeFiles }: Deps) {
+export function createMockAi({
+  emit,
+  ai,
+  settings,
+  rootPath,
+  file,
+  fileContent,
+  writeFiles,
+}: Deps) {
   let nextId = 0;
   let sessions = 0;
   let counter = 0;
@@ -273,6 +288,13 @@ export function createMockAi({ emit, ai, settings, hasRoot, file, fileContent, w
   /** Resume ids this mock issued: resuming any other fails like a lost provider session. */
   const issued = new Set<string>();
   const uid = (prefix: string) => `${prefix}_${String(++counter).padStart(4, '0')}`;
+
+  const requireRoot = (): string => {
+    const root = rootPath();
+    if (root === null) throw new BackendError('NoRootOpen', 'No folder is open.');
+    return root;
+  };
+  const conversationsOf = (root: string) => ai().conversations.get(root) ?? [];
 
   const send = (op: ScriptedOperation, event: AiEvent) => {
     const envelope: AiEventEnvelope = { operationId: op.id, event };
@@ -645,18 +667,18 @@ export function createMockAi({ emit, ai, settings, hasRoot, file, fileContent, w
     // Async so the errors thrown by the helpers become rejections.
     // eslint-disable-next-line @typescript-eslint/require-await
     aiContext: async (currentPath: string | null): Promise<AiContextDocument[]> => {
-      if (!hasRoot()) throw new BackendError('NoRootOpen', 'No folder is open.');
+      requireRoot();
       return collectContext(file, currentPath, MOCK_CONTEXT_FILE_NAMES);
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     aiEstimate: async (input: AiEstimateInput): Promise<AiSizeEstimate> => {
-      if (!hasRoot()) throw new BackendError('NoRootOpen', 'No folder is open.');
+      requireRoot();
       const docs = contextDocuments(file, input.contextPaths, MOCK_CONTEXT_FILE_NAMES, false);
       return estimateSize(input.promptBytes, docs, input.images);
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     aiStart: async (action: AiUserAction, start: AiStartRequest): Promise<number> => {
-      if (!hasRoot()) throw new BackendError('NoRootOpen', 'No folder is open.');
+      requireRoot();
       const request = requestFrom(file, MOCK_CONTEXT_FILE_NAMES, start);
       if (!ai().installed) throw new BackendError('Ai', MOCK_NOT_INSTALLED);
       if (running) {
@@ -694,8 +716,34 @@ export function createMockAi({ emit, ai, settings, hasRoot, file, fileContent, w
       if (running?.id === operationId) end(running, 'Cancelled', null);
       return Promise.resolve();
     },
-    /** Whether an operation runs (the gateway refuses some changes meanwhile). */
-    isRunning: () => running !== null,
+    // Conversations: app data, no provider involved.
+    // eslint-disable-next-line @typescript-eslint/require-await
+    listConversations: async (): Promise<ConversationSummary[]> =>
+      conversationsOf(requireRoot()).map(summaryOf),
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getConversation: async (id: string): Promise<Conversation> => {
+      const found = conversationsOf(requireRoot()).find((c) => c.id === id);
+      if (!found) throw new BackendError('NotFound', `Not found: conversation ${id}`);
+      return structuredClone(found);
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    saveConversation: async (conversation: Conversation): Promise<void> => {
+      const root = requireRoot();
+      const limit = settings().ai.historyLimit;
+      ai().conversations.set(root, upsert(conversationsOf(root), conversation, limit));
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    deleteConversation: async (id: string): Promise<void> => {
+      const root = requireRoot();
+      ai().conversations.set(
+        root,
+        conversationsOf(root).filter((c) => c.id !== id),
+      );
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    forgetConversations: async (): Promise<void> => {
+      ai().conversations.delete(requireRoot());
+    },
     /** Stops any running operation (for `reset`). */
     reset: () => {
       running?.stop();

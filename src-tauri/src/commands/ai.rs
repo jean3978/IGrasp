@@ -9,7 +9,9 @@ use crate::ai::types::{
     AiCapabilities, AiContextDocument, AiEstimateInput, AiEventEnvelope, AiProviderInfo,
     AiProviderStatus, AiSizeEstimate, AiStartRequest, AiUserAction, PermissionDecision,
 };
+use crate::appdata::conversations::{Conversation, ConversationSummary};
 use crate::appdata::settings::Settings;
+use crate::commands::appdata::notify_recovered;
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 
@@ -131,4 +133,58 @@ pub fn ai_respond_permission(
 pub fn ai_cancel(state: State<'_, AppState>, operation_id: u32) -> AppResult<()> {
     state.ai.cancel(operation_id);
     Ok(())
+}
+
+/// The key of the open folder's conversations: its canonical path.
+fn root_key(state: &AppState) -> AppResult<String> {
+    state.with_workspace(|ws| Ok(ws.guard.root().display().to_string()))
+}
+
+/// The conversations of the open folder, newest first. Reads app data only.
+#[tauri::command]
+pub fn list_conversations(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> AppResult<Vec<ConversationSummary>> {
+    let list = state.appdata.list_conversations(&root_key(&state)?);
+    notify_recovered(&app, &state.appdata);
+    list
+}
+
+#[tauri::command]
+pub fn get_conversation(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> AppResult<Conversation> {
+    let conversation = state.appdata.get_conversation(&root_key(&state)?, &id);
+    notify_recovered(&app, &state.appdata);
+    conversation
+}
+
+/// Adds or replaces a conversation of the open folder, trimmed to the history limit.
+#[tauri::command]
+pub fn save_conversation(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    conversation: Conversation,
+) -> AppResult<()> {
+    let limit = state.appdata.settings()?.ai.history_limit as usize;
+    let saved = state
+        .appdata
+        .save_conversation(&root_key(&state)?, conversation, limit);
+    notify_recovered(&app, &state.appdata);
+    saved
+}
+
+/// Deletes every conversation of the open folder (Settings → "Forget this folder's
+/// conversations").
+#[tauri::command]
+pub fn forget_conversations(state: State<'_, AppState>) -> AppResult<()> {
+    state.appdata.forget_conversations(&root_key(&state)?)
+}
+
+#[tauri::command]
+pub fn delete_conversation(state: State<'_, AppState>, id: String) -> AppResult<()> {
+    state.appdata.delete_conversation(&root_key(&state)?, &id)
 }

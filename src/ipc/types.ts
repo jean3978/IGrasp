@@ -35,6 +35,8 @@ import type { AiCapabilities } from './generated/AiCapabilities';
 import type { AiEventEnvelope } from './generated/AiEventEnvelope';
 import type { AiProviderStatus } from './generated/AiProviderStatus';
 import type { AiProviderInfo } from './generated/AiProviderInfo';
+import type { Conversation } from './generated/Conversation';
+import type { ConversationSummary } from './generated/ConversationSummary';
 import type { AiRequest } from './generated/AiRequest';
 import type { AiContextDocument } from './generated/AiContextDocument';
 import type { AiEstimateInput } from './generated/AiEstimateInput';
@@ -111,6 +113,7 @@ export type { AiContextRole } from './generated/AiContextRole';
 export type { AiSizeBucket } from './generated/AiSizeBucket';
 export type { EditHunk } from './generated/EditHunk';
 export type { ProposedEdit } from './generated/ProposedEdit';
+export type { ConversationUsage } from './generated/ConversationUsage';
 export type {
   AiCapabilities,
   AiEventEnvelope,
@@ -122,6 +125,8 @@ export type {
   AiSizeEstimate,
   AiStartRequest,
   AiUserAction,
+  Conversation,
+  ConversationSummary,
   PermissionDecision,
 };
 
@@ -273,6 +278,15 @@ export interface Backend {
   ): Promise<void>;
   /** Stops the running operation (idempotent); a `done` event follows. */
   aiCancel(operationId: number): Promise<void>;
+
+  /** The AI conversations of the open folder, newest first (app data only). */
+  listConversations(): Promise<ConversationSummary[]>;
+  getConversation(id: string): Promise<Conversation>;
+  /** Adds or replaces a conversation of the open folder; trimmed to `settings.ai.historyLimit`. */
+  saveConversation(conversation: Conversation): Promise<void>;
+  deleteConversation(id: string): Promise<void>;
+  /** Deletes every conversation of the open folder. */
+  forgetConversations(): Promise<void>;
 
   listen<E extends EventName>(
     event: E,

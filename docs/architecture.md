@@ -50,9 +50,9 @@ flowchart LR
 | `index/watcher.rs` | Debounced `notify` events → classification → targeted re-walk → `fs://changes`; then the same batch (with the raw event paths) goes to the graph; poll fallback. |
 | `graph/` | The document graph ([ADR 0009](decisions/0009-document-graph-in-rust.md)): `parse.rs` (pulldown-cmark → headings, anchors, links with lines), `slug.rs` (github-slugger port), `links.rs` (target and status of a link), `mod.rs` (graph with a reverse target map, parallel build, incremental `apply`, events). |
 | `search/` | `symbols.rs` (Ctrl+T, nucleo-matcher, cached candidates), `text.rs` (Ctrl+Shift+F, grep crates, streamed batches), `globs.rs` (VS Code-style include/exclude), `SearchRegistry` (one running search, cancellation). |
-| `commands/` | `workspace.rs` (open/close/rescan/list, recent files), `files.rs` (read markdown and text files, open media externally, open with the default app, reveal in the file manager), `graph.rs` (link status, backlinks, broken links, status), `search.rs` (symbols, text, cancel), `appdata.rs` (settings, recents, sessions, app info), `ai.rs` (provider status and capabilities, start an operation for a user action, answer a permission, cancel). |
-| `appdata/` | Versioned JSON files in the OS app-data folder, written atomically, recovered when corrupt. |
-| `ai/` | AI providers behind one trait ([ADR 0015](decisions/0015-ai-provider-abstraction-and-gateway.md)): `types.rs` (neutral request, events, capabilities, status), `gateway.rs` (the only door: a user action per operation, one at a time, cancelled when the folder, window or app closes), `process.rs` (children die with the app), `providers/claude_cli/` ([ADR 0014](decisions/0014-claude-cli-integration.md): `cli.rs` probes, `turn.rs` one process per operation, `protocol.rs` wire format → events), `providers/mock.rs` (tests). |
+| `commands/` | `workspace.rs` (open/close/rescan/list, recent files), `files.rs` (read markdown and text files, open media externally, open with the default app, reveal in the file manager), `graph.rs` (link status, backlinks, broken links, status), `search.rs` (symbols, text, cancel), `appdata.rs` (settings, recents, sessions, app info), `ai.rs` (provider status, capabilities and choice, context and size estimate, start an operation for a user action, answer a permission, cancel, conversations per folder). |
+| `appdata/` | Versioned JSON files in the OS app-data folder, written atomically, recovered when corrupt; `conversations.rs` keeps the AI conversations per folder. |
+| `ai/` | AI providers behind one trait ([ADR 0015](decisions/0015-ai-provider-abstraction-and-gateway.md)): `types.rs` (neutral request, events, capabilities, status), `gateway.rs` (the only door: provider chosen in the settings, a user action per operation, one at a time, the permission policy, cancelled when the folder, window or app closes), `policy.rs` (permission kind → Ask / Allow / Deny), `context.rs` (instruction files and current file, bounded), `estimate.rs` (size buckets), `process.rs` (children die with the app), `providers/claude_cli/` ([ADR 0014](decisions/0014-claude-cli-integration.md): `cli.rs` probes, `turn.rs` one process per operation, `protocol.rs` wire format → events), `providers/mock.rs` (tests). |
 | `error.rs` | `AppError`, serialized as `{ code, message }`. |
 
 The frontend never reads files directly: there is no fs plugin and no shell plugin
@@ -69,7 +69,8 @@ The frontend never reads files directly: there is no fs plugin and no shell plug
 | `get_graph_status`, `get_doc_links`, `get_backlinks`, `list_broken_links` | Graph progress and broken count, a document's links with status, documents linking to one, every broken link. |
 | `search_symbols` | Ctrl+T hits (files and headings) for a query, with a request id. |
 | `search_text`, `cancel_search` | Starts a full-text search (returns its id) / stops it. |
-| `ai_status`, `ai_capabilities`, `ai_start`, `ai_respond_permission`, `ai_cancel` | Provider installed and logged in / what it supports / starts an operation for a user action in the open folder (returns its id) / answers a permission request / stops the operation. |
+| `ai_status`, `ai_capabilities`, `ai_providers`, `ai_set_provider`, `ai_context`, `ai_estimate`, `ai_start`, `ai_respond_permission`, `ai_cancel` | Provider installed and logged in (cached 60 s) / what it supports / the providers / switch provider / what a message carries / its size / starts an operation for a user action in the open folder (returns its id) / answers a permission request / stops the operation. |
+| `list_conversations`, `get_conversation`, `save_conversation`, `delete_conversation`, `forget_conversations` | The AI conversations of the open folder (app data only). |
 | `get_settings`, `update_settings`, `get_recent_folders`, …, `get_session`, `save_session` | App data. |
 
 | Event | When |
@@ -202,7 +203,8 @@ sequenceDiagram
 
 All state lives in the OS app-data folder (`%APPDATA%\io.github.jean3978.igrasp` on Windows,
 `~/.local/share/io.github.jean3978.igrasp` on Linux), never in the opened folder:
-`settings.json`, `recent-folders.json`, `sessions.json`, and `logs/` (in the OS log folder).
+`settings.json`, `recent-folders.json`, `sessions.json`, `conversations/` (`index.json` maps each
+folder to a `c0001.json` of its AI conversations), and `logs/` (in the OS log folder).
 
 ## Decisions
 

@@ -98,6 +98,11 @@ pub fn run() {
             commands::ai::ai_start,
             commands::ai::ai_respond_permission,
             commands::ai::ai_cancel,
+            commands::ai::list_conversations,
+            commands::ai::get_conversation,
+            commands::ai::save_conversation,
+            commands::ai::delete_conversation,
+            commands::ai::forget_conversations,
         ])
         .build(tauri::generate_context!())
         .expect("error while building IGrasp")

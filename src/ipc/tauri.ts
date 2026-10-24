@@ -112,6 +112,11 @@ export const tauriBackend: Backend = {
   aiRespondPermission: (operationId, requestId, decision) =>
     invoke('ai_respond_permission', { operationId, requestId, decision }),
   aiCancel: (operationId) => invoke('ai_cancel', { operationId }),
+  listConversations: () => invoke('list_conversations'),
+  getConversation: (id) => invoke('get_conversation', { id }),
+  saveConversation: (conversation) => invoke('save_conversation', { conversation }),
+  deleteConversation: (id) => invoke('delete_conversation', { id }),
+  forgetConversations: () => invoke('forget_conversations'),
 
   listen: (event, handler) =>
     tauriListen<Parameters<typeof handler>[0]>(event, (e) => {
