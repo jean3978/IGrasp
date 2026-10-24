@@ -1,6 +1,6 @@
 # Phase 1 — MVP implementation plan
 
-Status: **proposed** (awaiting review) · Target tag: `v0.1.0` · Branch: `phase-1-mvp`
+Status: **approved** (review answers recorded in §19 on 2026-10-23) · Target tag: `v0.1.0` · Branch: `phase-1-mvp`
 
 IGrasp is a Tauri v2 desktop app (Windows + Linux) that shows only the markdown
 files of a folder hierarchy, with a reading experience designed to help a human
@@ -16,13 +16,14 @@ the read-only viewer. Nothing in this phase writes inside the opened folder.
 | Area | Deliverable |
 |---|---|
 | Open folder | Pick a folder with the system dialog; remember it in "Open Recent" (max 10, MRU, remove entry, missing-folder detection). |
-| File tree | Markdown-only hierarchy (`.md`, `.markdown`, case-insensitive); folders without markdown descendants hidden; `.gitignore` respected; `.git` and `node_modules` always skipped; "show hidden" toggle; background index with progress; lazy loading per folder; virtualized rendering; smooth at 10k+ files. |
+| File tree | Markdown-only hierarchy (`.md`, `.markdown`, case-insensitive); folders without markdown descendants hidden; `.gitignore` respected; `.git` and `node_modules` always skipped; separate "show dotfiles" and "show ignored" toggles; background index with progress; lazy loading per folder; virtualized rendering; smooth at 10k+ files. |
 | Preview | GFM (tables, task lists, footnotes, strikethrough, autolinks), GitHub alerts (`> [!NOTE]` …), Shiki code highlighting, KaTeX math, YAML front matter as a header card, images and videos (relative paths and URLs) with a video fallback card and "Open externally", HTML sanitization, anchor links, external links in the system browser. |
 | Mermaid | Diagrams rendered with `securityLevel: 'strict'`; per-diagram toolbar: zoom in/out, pan, fit, reset, full screen, copy source. |
 | Tabs | VS Code behavior: single click = preview tab (reused), double click = pinned; close, switch, middle-click close, keyboard. |
 | Live reload | Open files refresh when changed on disk, keeping scroll position; deleted files show a banner. |
 | Toasts | Added (green) / modified (blue) / deleted (red); grouped toast when many files change, clickable to list them; mute toggle in View menu and Settings. |
-| Themes | Light, Dark, High Contrast, Follow System; toolbar button. |
+| Themes | Light, Dark, High Contrast, Follow System; button in the title bar toolbar. |
+| Window chrome | VS Code-style custom title bar: logo, in-window menu bar (File, Edit, View, Help), window title, toolbar actions, window controls; drag, double-click to maximize, edge resizing; "native frame" fallback setting. |
 | Branding | SVG logo, generated app icons, animated in-app splash (CSS, never blurry, respects reduced motion). |
 | Settings | Theme, font size, reading width, toast muting, extra ignore patterns. Stored in app data. |
 | Session restore | Per folder: open tabs, pinned state, active tab, scroll positions, expanded folders, sidebar width/visibility. Window size/position restored. |
@@ -113,7 +114,9 @@ src/
 ├─ features/
 │  ├─ splash/        SplashOverlay, logo animation
 │  ├─ welcome/       WelcomeScreen, RecentFolders
-│  ├─ shell/         WorkspaceLayout, Sidebar, StatusBar, Toolbar, ThemeMenu
+│  ├─ shell/         WorkspaceLayout, StatusBar
+│  ├─ titlebar/      TitleBar, MenuBar (radix Menubar), WindowControls, ToolbarActions, ThemeMenu,
+│  │                 ResizeHandles (Linux), menuActions.ts (single source of truth for all actions)
 │  ├─ explorer/      ExplorerPanel, FileTree, TreeRow, ExplorerToolbar
 │  ├─ tabs/          TabBar, Tab, TabContextMenu, EmptyState
 │  ├─ preview/       MarkdownPreview, useMarkdown, pipeline/ (unified setup, sanitize schema,
@@ -123,7 +126,6 @@ src/
 │  ├─ toasts/        ToastHost, Toast, GroupedToastDetails
 │  ├─ settings/      SettingsTab, sections
 │  ├─ shortcuts/     keymap.ts, useGlobalShortcuts, ShortcutsReferenceTab
-│  ├─ menu/          menuActions.ts (shared by native menu events, buttons, shortcuts)
 │  └─ about/         AboutDialog
 ├─ components/ui/                  Button, IconButton, Menu, Dialog, Tooltip, Switch, Select,
 │                                  VisuallyHidden (thin wrappers over radix-ui)
@@ -157,10 +159,9 @@ src-tauri/
    │  ├─ model.rs                  Index, DirNode, FileMeta, diff
    │  ├─ scanner.rs                ignore::WalkBuilder parallel scan, progress, cancellation
    │  └─ watcher.rs                notify-debouncer-full, event classification, re-walk, batching
-   ├─ appdata/
-   │  ├─ mod.rs                    atomic JSON file store, versioning, corruption recovery
-   │  ├─ settings.rs  recent.rs  session.rs
-   └─ menu.rs                      native menu bar, emits "menu://action"
+   └─ appdata/
+      ├─ mod.rs                    atomic JSON file store, versioning, corruption recovery
+      └─ settings.rs  recent.rs  session.rs
 ```
 
 ### 3.4 Configuration decisions
@@ -246,7 +247,7 @@ AppState
    Workspace {
      root: PathBuf (canonical, via dunce),
      generation: u64,              // bumps on every open/rescan; stale results are dropped
-     options: ScanOptions { show_hidden, extra_ignores },
+     options: ScanOptions { show_dotfiles, show_ignored, extra_ignores },
      index: Arc<RwLock<Index>>,
      scan: ScanHandle { cancel: Arc<AtomicBool>, join: JoinHandle },
      watcher: Option<WatchHandle>,  // debouncer + handler thread + stop flag
@@ -284,8 +285,8 @@ yields `added / modified / removed`, used by both rescans and the watcher.
 
 ### 6.4 Scanner (`index/scanner.rs`)
 
-- `ignore::WalkBuilder::new(root)` with `hidden(!show_hidden)`, `git_ignore(!show_hidden)`,
-  `git_exclude(true)`, `git_global(false)`, `require_git(false)` (so `.gitignore` works
+- `ignore::WalkBuilder::new(root)` with `hidden(!show_dotfiles)`, `git_ignore(!show_ignored)`,
+  `git_exclude(!show_ignored)`, `git_global(false)`, `require_git(false)` (so `.gitignore` works
   when a subfolder of a repo is opened), `follow_links(false)`, `threads(min(cpus, 8))`,
   `overrides` built from the user's extra ignore patterns (each pattern added as
   `!pattern`, the override syntax for "ignore"), and `filter_entry` that always skips
@@ -332,7 +333,7 @@ change after the first release, see §17). Files:
 
 | File | Content |
 |---|---|
-| `settings.json` | `{ version: 1, theme, fontSize, readingWidth, toastsMuted, ignorePatterns, showHiddenFiles }` |
+| `settings.json` | `{ version: 1, theme, fontSize, readingWidth, toastsMuted, ignorePatterns, showDotfiles, showIgnored, windowFrame }` |
 | `recent-folders.json` | `{ version: 1, entries: [{ path, name, lastOpenedMs }] }` (max 10) |
 | `sessions.json` | `{ version: 1, sessions: { [canonicalRootPath]: Session } }` (max 50, LRU) |
 | `logs/igrasp.log` | `tauri-plugin-log`, rotated at 2 MB, keep 3 |
@@ -343,22 +344,16 @@ defaults are used, and `appdata://recovered` is emitted (toast). `version` enabl
 future migrations. Unit tests: round trip, atomicity (no partial file after simulated
 failure), corruption recovery, LRU trimming.
 
-### 6.7 Native menu (`menu.rs`)
+### 6.7 Window configuration (no native menu)
 
-Built with `tauri::menu::MenuBuilder` at setup, attached to the main window:
-
-- **File**: Open Folder… (`Ctrl+O`), Open Recent ▸ (rebuilt when recents change),
-  Close Folder, separator, Settings (`Ctrl+,`), separator, Exit (`Alt+F4` predefined).
-- **Edit**: predefined Copy, Select All (nothing else to edit yet).
-- **View**: Toggle Sidebar (`Ctrl+B`), Show Hidden Files (check item), Mute Toasts
-  (check item), Theme ▸ (radio: Light/Dark/High Contrast/Follow System), Zoom In/Out/Reset.
-- **Help**: Keyboard Shortcuts (`F1`), About IGrasp.
-- Git menu is **omitted until Phase 4** (an empty disabled menu would be confusing; see §17).
-
-`on_menu_event` emits `menu://action { id }`; the frontend routes it through the
-same `menuActions.ts` used by toolbar buttons and keyboard shortcuts, so behavior
-has a single source of truth. Check/radio state is pushed back to the menu via
-`set_menu_checked` when settings change.
+The menu bar is part of the frontend (§12.8), so the backend only configures the
+window in `tauri.conf.json`: `decorations: false`, `shadow: true`, `transparent: false`,
+`visible: false` (shown by the frontend once the theme is applied), `title: "IGrasp"`,
+`width 1280`, `height 800`, `minWidth 800`, `minHeight 500`, `dragDropEnabled: false`.
+When the "native window frame" setting is on, the frontend calls `setDecorations(true)`
+at startup and hides its own window controls; no Rust code is involved. Menu actions,
+accelerators and check/radio state live entirely in `menuActions.ts` and the stores.
+The Git menu is **omitted until Phase 4** (an empty disabled menu would be confusing).
 
 ---
 
@@ -375,13 +370,13 @@ the contract, not the final code.
 |---|---|---|---|
 | `open_root` | `{ path: string }` (absolute, from dialog) | `RootInfo { path, name, isGitRepo, generation }` | Validates dir, canonicalizes, stops previous workspace, adds root to asset-protocol scope, starts scan + watcher, updates recents. Returns before the scan ends. |
 | `close_root` | — | `void` | Cancels scan, stops watcher, clears index. |
-| `rescan` | `{ showHidden?: boolean }` | `void` | Restarts the scan with new options (hidden toggle, ignore patterns changed). |
+| `rescan` | `{ showDotfiles?: boolean, showIgnored?: boolean }` | `void` | Restarts the scan with new options (dotfiles/ignored toggles, ignore patterns changed). |
 | `list_dir` | `{ relPath: string }` | `DirListing { relPath, generation, dirs: DirEntry[], files: FileEntry[] }` | Only dirs with `mdCount > 0`. Sorted: dirs first, then natural order, case-insensitive. Errors `IndexNotReady` if called before `ready`. |
 | `read_markdown` | `{ relPath: string }` | `FileContent { relPath, content, size, modifiedMs }` | UTF-8 with BOM stripped, invalid bytes replaced (lossy), line endings preserved. Files > 20 MB return `TooLarge`; between 2 and 20 MB the UI renders plain text with a "large file" notice (§9.2). |
 | `open_external` | `{ relPath: string }` | `void` | Opens a project file with the OS default app (video fallback). Guarded. |
 | `open_url` | — | — | Not a custom command: uses `@tauri-apps/plugin-opener` `openUrl`, scoped to `http(s)` in capabilities. |
 | `get_settings` | — | `Settings` | |
-| `update_settings` | `{ patch: Partial<Settings> }` | `Settings` | Merges, persists, emits `settings://changed` (keeps native menu in sync). |
+| `update_settings` | `{ patch: Partial<Settings> }` | `Settings` | Merges and persists. |
 | `get_recent_folders` | — | `RecentFolder[]` | Each with `exists: boolean`. |
 | `remove_recent_folder` / `clear_recent_folders` | `{ path }` / — | `RecentFolder[]` | |
 | `get_session` | `{ rootPath }` | `Session \| null` | |
@@ -399,8 +394,6 @@ Errors are `AppError` → `{ code: 'NoRootOpen' | 'OutsideRoot' | 'NotFound' | '
 | `index://error` | `{ generation, message }` |
 | `fs://changes` | `{ generation, added: FileEntry[], modified: FileEntry[], removed: string[], renamed: {from,to}[], dirsChanged: string[] }` |
 | `fs://watch-status` | `{ mode: 'native' \| 'poll' \| 'off', reason?: string }` |
-| `menu://action` | `{ id: MenuActionId }` |
-| `settings://changed` | `Settings` |
 | `appdata://recovered` | `{ file: string }` |
 
 ### 7.3 Shared types
@@ -409,11 +402,12 @@ Errors are `AppError` → `{ code: 'NoRootOpen' | 'OutsideRoot' | 'NotFound' | '
 type Theme = 'light' | 'dark' | 'high-contrast' | 'system';
 type ReadingWidth = 'narrow' | 'medium' | 'wide' | 'full';
 interface Settings { version: 1; theme: Theme; fontSize: number /* 12–24 */; readingWidth: ReadingWidth;
-  toastsMuted: boolean; ignorePatterns: string[]; showHiddenFiles: boolean; }
+  toastsMuted: boolean; ignorePatterns: string[]; showDotfiles: boolean; showIgnored: boolean;
+  windowFrame: 'custom' | 'native'; }
 interface DirEntry  { name: string; relPath: string; mdCount: number; hidden: boolean }
 interface FileEntry { name: string; relPath: string; size: number; modifiedMs: number; hidden: boolean }
 interface Session { version: 1; tabs: SessionTab[]; activeTab: string | null; expandedDirs: string[];
-  sidebar: { visible: boolean; widthPx: number }; showHidden: boolean; savedAtMs: number }
+  sidebar: { visible: boolean; widthPx: number }; showDotfiles: boolean; showIgnored: boolean; savedAtMs: number }
 interface SessionTab { relPath: string; pinned: boolean; scrollTop: number }
 ```
 
@@ -432,9 +426,9 @@ the presence of `window.__TAURI_INTERNALS__`. Nothing else imports `@tauri-apps/
 | Control | Decision |
 |---|---|
 | File access | No `plugin-fs`, no `plugin-shell`. Every project read goes through Rust commands guarded by `RootGuard` (§6.2). App data is only touched by the `appdata` module. |
-| Capabilities (`capabilities/default.json`, window `main`) | `core:default`, `core:window:allow-show`, `core:window:allow-set-title`, `core:window:allow-close`, `core:window:allow-destroy`, `core:window:allow-theme`, `dialog:allow-open`, `opener:allow-open-url` with scope `https://**` and `http://**` only, `window-state:default`, `log:default`. No `opener:allow-open-path` (done in Rust after the guard). |
+| Capabilities (`capabilities/default.json`, window `main`) | `core:default`, `core:window:allow-show`, `core:window:allow-set-title`, `core:window:allow-close`, `core:window:allow-destroy`, `core:window:allow-theme`, `core:window:allow-minimize`, `core:window:allow-toggle-maximize`, `core:window:allow-internal-toggle-maximize`, `core:window:allow-is-maximized`, `core:window:allow-start-dragging`, `core:window:allow-start-resize-dragging`, `core:window:allow-set-decorations` (custom title bar, §12.8), `dialog:allow-open`, `opener:allow-open-url` with scope `https://**` and `http://**` only, `window-state:default`, `log:default`. No `opener:allow-open-path` (done in Rust after the guard). |
 | Asset protocol | `assetProtocol.enable: true`, static `scope: []`. When a root is opened, Rust calls `app.asset_protocol_scope().allow_directory(root, true)`. The scope has no "un-allow", so roots opened in the same session stay readable until exit; this is acceptable (the user opened them) and recorded in an ADR. Paths are resolved by the frontend with `convertFileSrc(abs)` only after a lexical containment check. |
-| CSP | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost https: http: data: blob:; media-src 'self' asset: http://asset.localhost https: http: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; frame-src 'none'; form-action 'none'`. `dangerousDisableAssetCspModification: ["style-src"]` so Tauri does not inject a style nonce (a nonce would make browsers ignore `'unsafe-inline'`, breaking Shiki/KaTeX/Mermaid inline styles). Scripts stay hash-protected. |
+| CSP | `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost https: data: blob:; media-src 'self' asset: http://asset.localhost https: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'self'; frame-src 'none'; form-action 'none'`. `dangerousDisableAssetCspModification: ["style-src"]` so Tauri does not inject a style nonce (a nonce would make browsers ignore `'unsafe-inline'`, breaking Shiki/KaTeX/Mermaid inline styles). Scripts stay hash-protected. |
 | HTML in markdown | `rehype-sanitize` with an explicit schema (§9.3), applied **before** trusted generators run. |
 | Mermaid | `securityLevel: 'strict'` (DOMPurify inside Mermaid, no click handlers, no HTML labels). |
 | Navigation | All anchor clicks intercepted; the webview never navigates. `dragDropEnabled: false` (no accidental file drops navigating the webview). |
@@ -484,7 +478,7 @@ hook boundary is designed so the processor can move to one later.
 - Allow attributes: `img[src alt title width height loading]`, `video[src controls poster width height muted loop preload]`,
   `source[src type]`, `a[href title]`, `input[type checked disabled]`, `div[data-alert]`, `td/th[align]`,
   `*[id]` only for headings and footnotes (`clobberPrefix: 'user-content-'`).
-- Protocols: `href: ['http','https','mailto']`, `src: ['http','https']` (relative paths pass).
+- Protocols: `href: ['http','https','mailto']`, `src: ['https']` (relative paths pass; plain `http:` remote media is dropped).
 - Strip: `style` attributes, `script`, `iframe`, `object`, `embed`, `form`, event handlers (default).
 
 ### 9.4 Component mapping
@@ -493,7 +487,7 @@ hook boundary is designed so the processor can move to one later.
 |---|---|---|
 | `pre > code.language-mermaid` | `MermaidBlock` | §10. |
 | `pre > code` (other) | `CodeBlock` | Copy button, language badge; Shiki already applied. |
-| `img` | `AssetImage` | Resolves `src`: `http(s)` as-is; relative → `root/dir(file)/src`; leading `/` → root-relative; containment check → `convertFileSrc`. Broken image → inline placeholder with path. |
+| `img` | `AssetImage` | Resolves `src`: `https:` as-is (plain `http:` is blocked by the sanitizer and the CSP and shows a "blocked insecure image" placeholder); relative → `root/dir(file)/src`; leading `/` → root-relative; containment check → `convertFileSrc`. Broken image → inline placeholder with path. |
 | `video` / `source` | `AssetVideo` | Same resolution, `controls preload="metadata"`. On `error` or unsupported type → `VideoFallback` card: file name, "Open externally" (→ `open_external`), and on Linux a hint to install GStreamer packages (link to README section). |
 | `a` | `PreviewLink` | `#anchor` → scroll to `user-content-<id>` in the preview container; `http(s)/mailto` → `openUrl`; relative `.md` link that exists in the index → open in tab (minimal; full resolution, anchors across files and broken-link flags are Phase 2); otherwise tooltip "Not available yet". |
 | `input[type=checkbox]` | `TaskCheckbox` | Read-only, accessible label. |
@@ -522,10 +516,11 @@ code block.
 ## 10. Mermaid preview
 
 - `mermaid` 12 is dynamically imported on the first diagram (it is the largest dependency).
-  `initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'dark' : 'default',
-  look: 'classic', fontFamily: var(--font-ui) })`. Mermaid 12 switched to the `neo` look
-  and ELK layout by default; `classic` look keeps diagrams familiar, and ELK vs dagre is
-  evaluated during implementation (§17).
+  `initialize({ startOnLoad: false, securityLevel: 'strict', look: 'neo',
+  theme: light ? 'redux-color' : 'redux-dark-color', fontFamily: var(--font-ui) })`;
+  High Contrast uses `theme: 'base'` with black/white/yellow `themeVariables`.
+  Mermaid 12's defaults (`neo` look, ELK layout) are kept for the most modern rendering;
+  `layout: 'dagre'` is only a fallback if ELK proves too slow on large diagrams (§17).
 - Rendering: `mermaid.parse(src, { suppressErrors: true })` → if invalid, show an
   error card with the message and the source; else `mermaid.render(uniqueId, src)` →
   inject `svg` string (already sanitized by Mermaid in strict mode) into a container.
@@ -550,12 +545,17 @@ code block.
 ```
 <App>
 ├─ <SplashOverlay/>                         until settings loaded + min 1.2 s, then fades
+├─ <TitleBar/>                              VS Code style, on every screen (§12.8)
+│  ├─ <AppLogo/> <MenuBar/>                 radix Menubar: File, Edit, View, Help (Git arrives in Phase 4)
+│  ├─ <WindowTitle/>                        "file — folder — IGrasp", centered, drag region
+│  ├─ <ToolbarActions/>                     Open Folder, theme menu, toggle sidebar, mute toasts
+│  └─ <WindowControls/>                     minimize, maximize/restore, close (hidden with native frame)
+├─ <ResizeHandles/>                         Linux only: invisible edges → startResizeDragging
 ├─ <WelcomeScreen/>                         when no root: logo, Open Folder, Open Recent, shortcuts hint, version
 └─ <WorkspaceLayout/>                       when root open
-   ├─ <Toolbar/>                            root name, Open Folder, theme menu, toggle sidebar, mute toasts
    ├─ <Group orientation="horizontal">      react-resizable-panels v4
    │  ├─ <Panel id="sidebar" collapsible>  <ExplorerPanel/>
-   │  │     ├─ <ExplorerToolbar/>           show hidden, collapse all, refresh
+   │  │     ├─ <ExplorerToolbar/>           show dotfiles, show ignored, collapse all, refresh
    │  │     └─ <FileTree/>                  role="tree", virtualized rows, roving tabindex
    │  ├─ <Separator/>
    │  └─ <Panel id="main">
@@ -574,7 +574,7 @@ code block.
 | Store | State | Key actions |
 |---|---|---|
 | `workspace` | `root: RootInfo \| null`, `indexStatus: idle/scanning/ready/error + counts`, `watchMode`, `sidebar {visible,width}` | `openRoot`, `closeRoot`, `setIndexProgress`, `setReady` |
-| `tree` | `listings: Map<relDir, DirListing>`, `expanded: Set<relDir>`, `focusedRow`, `showHidden` | `ensureLoaded(dir)`, `toggle(dir)`, `applyChanges(FsChanges)` (patch loaded listings, re-fetch `dirsChanged` ∩ loaded), `flatRows` selector (memoized) |
+| `tree` | `listings: Map<relDir, DirListing>`, `expanded: Set<relDir>`, `focusedRow`, `showDotfiles`, `showIgnored` | `ensureLoaded(dir)`, `toggle(dir)`, `applyChanges(FsChanges)` (patch loaded listings, re-fetch `dirsChanged` ∩ loaded), `flatRows` selector (memoized) |
 | `tabs` | `tabs: Tab[]` (`kind: 'document' \| 'settings' \| 'shortcuts'`, `relPath`, `pinned`, `scrollTop`, `deleted`), `activeId`, `previewTabId` | `openDocument(relPath, {pin})`, `pin`, `close`, `closeOthers`, `activate`, `move`, `setScroll`, `markDeleted`, `renamePath` |
 | `documents` | `byPath: Map<relPath, {content, modifiedMs, status, error}>` | `load(relPath)`, `reload(relPath)` (on `fs://changes`), `evict` (when no tab uses it) |
 | `toasts` | `items`, `pendingBatch`, `muted` | `ingestChanges(FsChanges)` (§12.3), `dismiss`, `openDetails` |
@@ -608,9 +608,12 @@ with the mock IPC.
 - Lazy: expanding a folder calls `list_dir` once; a spinner row shows while loading.
 - Sorting: folders first; natural, case-insensitive. Hidden/ignored entries (when shown)
   are dimmed with an "ignored" tooltip.
-- Hidden toggle semantics: shows dot-prefixed entries **and** gitignored entries;
-  `.git` and `node_modules` stay excluded; user ignore patterns stay applied (§17).
-  Toggling calls `rescan` (fast, parallel) and keeps the expanded set.
+- Two independent toggles in the explorer toolbar and the View menu: **Show dotfiles**
+  (eye icon: dot-prefixed files and folders) and **Show ignored** (filter icon: entries
+  matched by `.gitignore`, `.ignore` or `.git/info/exclude`). `.git` and `node_modules`
+  stay excluded and the user's ignore patterns stay applied in every mode. Each toggle
+  calls `rescan` (fast, parallel) and keeps the expanded set; the state is saved per
+  session, with defaults in Settings.
 - Index status row at the top while scanning ("Indexing… 1,240 files"); tree is usable
   as soon as `ready` (no partial trees, which avoids flicker and wrong folder pruning).
 
@@ -648,15 +651,16 @@ with the mock IPC.
   shadows, underlined links; contrast ≥ 7:1 for text.
 - Shiki dual-theme variables; HC uses `github-dark-high-contrast`. Mermaid uses
   `dark` / `default` and, for HC, `base` with `themeVariables` for black/white/yellow.
-- Toolbar theme button opens a radix dropdown with the four options (radio items);
+- The theme button in the title bar toolbar opens a radix dropdown with the four options (radio items);
   also in View menu. Choice persisted in settings immediately.
 - System font stack (`Segoe UI`, `system-ui`, `Ubuntu`, `Cantarell`, sans-serif; monospace
   `Cascadia Code`, `Consolas`, `DejaVu Sans Mono`); no bundled fonts (license hygiene, size).
 
 ### 12.5 Settings tab
 Sections: Appearance (theme, font size slider 12–24 with live preview, reading width
-narrow/medium/wide/full), Notifications (mute toasts), Files (extra ignore patterns,
-one gitignore-style glob per line; show hidden files by default), Data (app data
+narrow/medium/wide/full, window frame Custom/Native), Notifications (mute toasts),
+Files (extra ignore patterns, one gitignore-style glob per line; defaults for
+"show dotfiles" and "show ignored"), Data (app data
 folder path with "Open folder", "Reset settings"), About (version, links). Changes
 apply instantly and persist through `update_settings`; ignore-pattern changes trigger
 `rescan`. Future settings (beginner mode, Claude, quiz, shortcuts) arrive with their phases.
@@ -665,6 +669,9 @@ apply instantly and persist through `update_settings`; ignore-pattern changes tr
 - Global: `Ctrl+O` open folder, `Ctrl+,` settings, `Ctrl+B` sidebar, `Ctrl+W` close tab,
   `Ctrl+Tab`/`Ctrl+Shift+Tab` switch tabs, `Ctrl+Shift+E` focus explorer, `Ctrl+=`/`Ctrl+-`/`Ctrl+0`
   font size, `F1` shortcuts reference, `Esc` closes overlays/menus/full screen.
+- Menu bar: `F10` or `Alt` focuses the first menu, `Alt+F/E/V/H` open a menu (underlined
+  mnemonics), arrows move between menus and items, `Enter` activates, `Esc` closes;
+  accelerators are displayed on items. Window controls are reachable by Tab.
 - Tree (`role="tree"`, APG pattern): `↑/↓` move, `→` expand or go to first child,
   `←` collapse or go to parent, `Home/End`, `Enter` open (pinned), `Space` preview,
   type-ahead by first letters, `*` expand siblings.
@@ -685,6 +692,31 @@ apply instantly and persist through `update_settings`; ignore-pattern changes tr
   content loaded, scrollTop applied in a layout effect and re-applied once after
   images/Mermaid settle (ResizeObserver, max 1 s).
 - Window size/position/maximized: `tauri-plugin-window-state`.
+
+### 12.8 Window chrome (VS Code style)
+- The window runs undecorated (`decorations: false`, `shadow: true`); the frontend draws a
+  32 px title bar on every screen (Welcome included): logo (mono, 16 px), menu bar,
+  centered title ("file — folder — IGrasp"), toolbar actions (Open Folder, theme menu,
+  toggle sidebar, mute toasts) and window controls (minimize, maximize/restore, close)
+  drawn as SVG glyphs. The bar dims when the window is inactive (`onFocusChanged`).
+- Moving: `data-tauri-drag-region` on the empty areas and the title (plus `app-region: drag`
+  for touch/pen on Windows); double-click toggles maximize through Tauri's internal handler
+  (`core:window:allow-internal-toggle-maximize`). Maximized state is tracked with
+  `isMaximized()` on `onResized` to swap the maximize/restore glyph.
+- Resizing: Windows hit-tests the edges of undecorated resizable windows natively. On Linux,
+  invisible 6 px edge and corner handles call `startResizeDragging(direction)`
+  (`core:window:allow-start-resize-dragging`); handles are disabled while maximized.
+- Menu bar: radix `Menubar` with File (Open Folder… `Ctrl+O`, Open Recent ▸, Close Folder,
+  Settings `Ctrl+,`, Exit `Alt+F4`), Edit (Copy, Select All), View (Toggle Sidebar `Ctrl+B`,
+  Show Dotfiles ✓, Show Ignored Files ✓, Mute Toasts ✓, Theme ▸ radio, Zoom In/Out/Reset),
+  Help (Keyboard Shortcuts `F1`, About IGrasp). Git arrives in Phase 4. Every item
+  dispatches through `menuActions.ts`, which toolbar buttons and `useGlobalShortcuts` also
+  use, so behavior has one source of truth and check/radio state comes straight from the stores.
+- Fallback: Settings › Appearance › "Window frame: Custom / Native". Native calls
+  `setDecorations(true)`, hides the custom controls, drag region and resize handles, and
+  keeps the in-window menu bar (VS Code's own default on Linux). Known limitations of the
+  custom frame, documented in the README: no Windows 11 snap-layout flyout on hover, no
+  `Alt+Space` system menu.
 
 ---
 
@@ -839,7 +871,7 @@ added later for Linux.
 3. `0003-markdown-pipeline-sanitize-before-generators.md` (unified order, CSP `style-src` choice)
 4. `0004-background-index-with-ignore-crate.md` (lazy `list_dir`, targeted re-walk on events)
 5. `0005-app-data-as-versioned-json-files.md` (vs `tauri-plugin-store`)
-6. `0006-native-menu-bar-for-mvp.md` (vs custom VS Code-style title bar)
+6. `0006-custom-title-bar-and-menu-bar.md` (VS Code style; native-frame fallback setting)
 7. `0007-e2e-with-playwright-and-mock-ipc.md`
 8. `0008-pin-typescript-5-and-vite-8.md`
 
@@ -858,16 +890,16 @@ added later for Linux.
 | 7 | **Windows path quirks** (`\\?\` prefix, case-insensitive FS, separators). | `dunce`; compare canonical paths; `/`-separated rel paths in IPC; tests on Windows CI. |
 | 8 | **Asset scope cannot be narrowed** after a folder is opened. | Accept for the session (user chose those folders); ADR; custom URI scheme with Range support as a future option. |
 | 9 | **Large markdown files** block the main thread during processing. | > 2 MB rendered as plain text; processor memoized; design keeps a Web Worker possible. |
-| 10 | **Mermaid bundle size and render errors**. | Dynamic import; `parse` first; error card; cache per (source, theme). |
+| 10 | **Mermaid bundle size and render errors**; the default ELK layout is heavier than dagre. | Dynamic import; `parse` first; error card; cache per (source, theme); if ELK exceeds ~1 s on a large diagram, re-render that diagram with `layout: 'dagre'`. |
 | 11 | **Scroll restore flicker / wrong position** after images and diagrams load. | Apply in layout effect, re-apply once when layout settles (ResizeObserver, ≤ 1 s). |
 | 12 | **Playwright cannot drive the WebView.** | Mock IPC e2e (ADR); manual checklist on real builds; optional tauri-driver later. |
 | 13 | **High-contrast legibility** of third-party output (Shiki, Mermaid, KaTeX). | Dedicated HC Shiki theme, Mermaid `base` theme variables, manual contrast audit in step 26. |
-| 14 | **Native menu looks different per OS** and not VS Code-like. | Accept for MVP (ADR 0006); actions are centralized so a custom menu bar can replace it later without touching behavior. |
+| 14 | **Custom title bar quirks**: Linux window managers (GNOME, KDE, X11 vs Wayland) differ in undecorated-window move/resize behavior; Windows 11 loses the snap-layout flyout and `Alt+Space`. | `startResizeDragging` edge handles on Linux, `data-tauri-drag-region` with Tauri's double-click handling, manual tests on GNOME (X11 and Wayland) and KDE in the Ubuntu VM; the "native window frame" setting restores OS decorations while keeping the in-window menu bar (ADR 0006). |
 | 15 | **MSI build needs WiX + VBScript**; AppImage glibc compatibility. | MSI only built in CI (`windows-latest` has it) and documented locally; AppImage built on Ubuntu 22.04. |
-| 16 | **Node version**: jsdom 30 needs Node ≥ 24.15; the dev machine has 24.7. | `engines` + `engine-strict`; update Node before step 2; `happy-dom` 21 (MIT) is the fallback DOM if jsdom causes trouble. |
+| 16 | **Node version**: jsdom 30 needs Node ≥ 24.15; the dev machine has 24.7. | Decided: require Node ≥ 24.15 (`engines` + `engine-strict`) and update Node before step 2; `happy-dom` 21 (MIT) stays the fallback DOM if jsdom misbehaves. |
 | 17 | **ts-rs drift** between Rust and TS. | Bindings generated in `cargo test`, committed, `git diff --exit-code` in CI. |
 | 18 | **Toast storms** from agents writing hundreds of files. | Two-level batching (200 ms backend, 1.5 s frontend quiet window), max 4 visible, grouped toast updated in place, mute. |
-| 19 | **Remote images over plain `http:`** leak the user's IP / mixed content. | Allowed per requirements (URLs); documented; a "block remote images" setting is a candidate for a later phase. |
+| 19 | **Remote media privacy**: remote images reveal the reader's IP to the host; plain `http:` is also mixed content. | Only `https:` remote images and videos are allowed (sanitizer protocol list + CSP); plain `http:` shows a blocked placeholder; local files under the root are unaffected. A "block all remote images" setting is a candidate for a later phase. |
 | 20 | **Session file growth** across many folders. | LRU 50 entries; scroll positions only (no content). |
 
 ---
@@ -891,13 +923,13 @@ before committing.
 8. `feat(frontend): IPC client layer, generated types and mock backend` — `ipc/client.ts`, `ipc/events.ts`, `ipc/tauri`, `ipc/mock` with a fixture project; `settings` store; tests.
 
 **M2 — Shell, theme, branding**
-9. `feat: theme system and app shell` — tokens, three theme files, `system` resolution, `ThemeMenu`, `WorkspaceLayout` with resizable sidebar, `StatusBar`, `Toolbar`, radix-based `components/ui`. Verify: switch themes live; HC renders.
+9. `feat: theme system, app shell and custom title bar` — tokens, three theme files, `system` resolution, `ThemeMenu`, window `decorations: false` + `shadow`, `TitleBar` with drag region, `WindowControls`, Linux `ResizeHandles`, `MenuBar` shell (File and View entries needed so far), `WorkspaceLayout` with resizable sidebar, `StatusBar`, radix-based `components/ui`. Verify: themes switch live; HC renders; move, resize, maximize, double-click and close work on Windows and Linux.
 10. `feat: SVG logo, app icons and animated splash` — `assets/branding/*.svg`, `tauri icon`, window `visible:false` + show after theme applied, `SplashOverlay` with CSS animation and reduced-motion path. ADR note in features doc. Verify: no white flash; sharp at 200 % scaling.
 11. `feat: welcome screen with open folder and open recent` — dialog plugin, `open_root`/`close_root` with `RootGuard` and asset-scope widening, recents MRU with missing detection and removal, `workspace` store. Verify: open, close, reopen from recents, missing folder greyed.
 
 **M3 — Index and tree**
 12. `feat(backend): background markdown index with ignore rules` — `index/model.rs`, `index/scanner.rs`, `list_dir`, `rescan`, progress/ready events; fixture tests incl. 12k budget. ADR 0004.
-13. `feat(frontend): lazy virtualized file tree with keyboard navigation` — `tree` store, `FileTree` (ARIA tree, roving tabindex, type-ahead), `ExplorerToolbar` (show hidden → `rescan`, collapse all), index status row. Verify on a real large repo.
+13. `feat(frontend): lazy virtualized file tree with keyboard navigation` — `tree` store, `FileTree` (ARIA tree, roving tabindex, type-ahead), `ExplorerToolbar` (show dotfiles / show ignored → `rescan`, collapse all), index status row. Verify on a real large repo.
 
 **M4 — Reading**
 14. `feat(backend): read_markdown command` — BOM, lossy UTF-8, size limits, tests.
@@ -914,7 +946,7 @@ before committing.
 23. `feat: toasts with batching, details and muting` — `toasts` store (fake-timer tests), `ToastHost`, grouped details, mute in status bar + settings; `aria-live`. Verify with a script writing 50 files.
 
 **M6 — Menu, shortcuts, settings, session**
-24. `feat: native menu bar and centralized actions` — `menu.rs`, `menu://action`, `menuActions.ts`, `useGlobalShortcuts`, `ShortcutsReferenceTab`, `AboutDialog`. ADR 0006.
+24. `feat: complete menu bar, shortcuts reference and about` — all menus with accelerators and mnemonics, Open Recent submenu, check/radio items bound to stores through `menuActions.ts`, `useGlobalShortcuts`, `ShortcutsReferenceTab`, `AboutDialog`, "native window frame" fallback setting. ADR 0006.
 25. `feat: settings tab` — appearance, notifications, files (ignore patterns → rescan), data section; persisted via `update_settings`; tests.
 26. `feat: session restore and window state` — `session` module, restore sequence, flush on close, `tauri-plugin-window-state`. Verify: close with 3 tabs scrolled, reopen, same state.
 27. `feat: accessibility pass` — focus rings, skip link, tab order audit, HC contrast audit of Shiki/Mermaid/KaTeX/toasts, reduced motion everywhere, screen-reader labels. Document in `docs/features/keyboard.md`.
@@ -930,20 +962,17 @@ Mermaid keyboard zoom.
 
 ---
 
-## 19. Open questions for review
+## 19. Decisions from the plan review (2026-10-23)
 
-1. **Name**: the README title and the GitHub remote use "IGrasph"; everything else says
-   "IGrasp". The plan assumes **IGrasp** and fixes the README; the repository name is
-   the owner's call.
-2. **Bundle identifier** `io.github.jean3978.igrasp` (determines the app-data folder;
-   cannot change later without a migration).
-3. **Menu bar**: native OS menu (proposed for MVP) vs a custom VS Code-style title bar
-   and menu now.
-4. **Git menu**: omit until Phase 4 (proposed) or show it disabled.
-5. **"Show hidden" semantics**: one toggle for dotfiles + gitignored entries (proposed)
-   vs two separate toggles.
-6. **Mermaid look**: `classic` look (proposed) vs Mermaid 12's new `neo` look; dagre vs ELK layout.
-7. **Internal `.md` links** in Phase 1: minimal "open if it exists" (proposed) or strictly nothing until Phase 2.
-8. **Plain `http:` remote images**: allow (proposed, per requirements) or https-only.
-9. **GStreamer in the AppImage** (`bundleMediaFramework`, +15–35 MB): not bundled (proposed; README lists packages) or bundled.
-10. **Node**: require ≥ 24.15 (proposed) or switch the DOM test environment to `happy-dom`.
+| # | Question | Decision | Applied in |
+|---|---|---|---|
+| 1 | Project name "IGrasph" vs "IGrasp" | Typo fixed by the owner in the repository and README; the plan uses **IGrasp**. | §4 |
+| 2 | Bundle identifier | **`io.github.jean3978.igrasp`** confirmed. | §6.6 |
+| 3 | Native OS menu vs VS Code-style chrome | **VS Code-style**: custom title bar with in-window menu bar and window controls, plus a "native window frame" fallback setting. | §6.7, §8, §11.1, §12.8, §16, §17 #14, §18 steps 9 and 24 |
+| 4 | Git menu | **Omitted until Phase 4.** | §6.7, §12.8 |
+| 5 | "Show hidden" semantics | **Two separate toggles**: show dotfiles, show ignored. | §1.1, §6.1, §6.4, §7, §12.1, §12.5 |
+| 6 | Mermaid look | **Most modern**: Mermaid 12 defaults (`neo` look, ELK layout) with the redux color themes; dagre only as a performance fallback. | §10, §17 #10 |
+| 7 | Internal `.md` links in Phase 1 | **Open if the target exists**; full resolution in Phase 2. | §9.4 |
+| 8 | Remote images | **`https:` only** for remote images and videos; local images under the opened folder keep working through the asset protocol. | §8, §9.3, §9.4, §17 #19 |
+| 9 | GStreamer in the AppImage | **Not bundled**; the README lists the packages to install. | §4, §5.2 |
+| 10 | Node version | **Require Node ≥ 24.15** and keep jsdom; `happy-dom` stays the fallback. | §2, §17 #16 |
