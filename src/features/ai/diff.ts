@@ -1,6 +1,7 @@
-// A small line diff for the proposed-edit cards (longest common subsequence). The proposed edits
-// of the Edit tool are short snippets, so a quadratic diff is fine here; the Git phase will
-// bring a real rendered markdown diff.
+// A line diff for the proposed-edit cards (non-markdown or outside-root edits), on `diffLines`
+// from the `diff` package. The rendered markdown diff lives in src/features/diff.
+
+import { diffLines } from 'diff';
 
 export interface DiffLine {
   type: 'same' | 'add' | 'del';
@@ -16,40 +17,16 @@ function splitLines(text: string): string[] {
 }
 
 export function lineDiff(before: string, after: string): DiffLine[] {
-  const a = splitLines(before);
-  const b = splitLines(after);
-  const n = a.length;
-  const m = b.length;
-  // lcs[i * (m + 1) + j] = length of the LCS of a[i..] and b[j..].
-  const width = m + 1;
-  const lcs = new Uint32Array((n + 1) * width);
-  const at = (i: number, j: number) => lcs[i * width + j] ?? 0;
-  for (let i = n - 1; i >= 0; i--) {
-    for (let j = m - 1; j >= 0; j--) {
-      lcs[i * width + j] =
-        a[i] === b[j] ? at(i + 1, j + 1) + 1 : Math.max(at(i + 1, j), at(i, j + 1));
-    }
-  }
+  // Normalized so that line endings and a missing final newline never show as changes.
+  const normalize = (text: string) => {
+    const lines = splitLines(text);
+    return lines.length === 0 ? '' : `${lines.join('\n')}\n`;
+  };
   const out: DiffLine[] = [];
-  let i = 0;
-  let j = 0;
-  while (i < n && j < m) {
-    const left = a[i] ?? '';
-    const right = b[j] ?? '';
-    if (left === right) {
-      out.push({ type: 'same', text: left });
-      i++;
-      j++;
-    } else if (at(i + 1, j) >= at(i, j + 1)) {
-      out.push({ type: 'del', text: left });
-      i++;
-    } else {
-      out.push({ type: 'add', text: right });
-      j++;
-    }
+  for (const part of diffLines(normalize(before), normalize(after))) {
+    const type = part.added ? 'add' : part.removed ? 'del' : 'same';
+    for (const text of splitLines(part.value)) out.push({ type, text });
   }
-  for (; i < n; i++) out.push({ type: 'del', text: a[i] ?? '' });
-  for (; j < m; j++) out.push({ type: 'add', text: b[j] ?? '' });
   return out;
 }
 
