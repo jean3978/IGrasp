@@ -82,6 +82,7 @@ function Menu({
 
 export function MenuBar() {
   const theme = useSettings((s) => s.settings.theme);
+  const toastsMuted = useSettings((s) => s.settings.toastsMuted);
   const sidebarVisible = useWorkspace((s) => s.sidebar.visible);
   const hasRoot = useWorkspace((s) => s.root !== null);
   const openRoot = useWorkspace((s) => s.openRoot);
@@ -134,6 +135,7 @@ export function MenuBar() {
       </Menu>
       <Menu value="view" title="View" mnemonic="V">
         <CheckItem id="view.toggleSidebar" checked={sidebarVisible} />
+        <CheckItem id="view.muteToasts" checked={toastsMuted} />
         <Menubar.Separator className="menu-separator" />
         <Menubar.Sub>
           <Menubar.SubTrigger className="menu-item">

@@ -100,3 +100,20 @@
 .skip-link:focus {
   top: 4px;
 }
+
+.statusbar-warning {
+  color: var(--warning);
+}
+
+.statusbar-button {
+  padding: 0 4px;
+  border: none;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+}
+
+.statusbar-button:hover {
+  background: var(--bg-hover);
+}

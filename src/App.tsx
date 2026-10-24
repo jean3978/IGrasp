@@ -9,6 +9,7 @@ import { useGlobalShortcuts } from './features/shortcuts/useGlobalShortcuts';
 import { SplashOverlay } from './features/splash/SplashOverlay';
 import { TabBar } from './features/tabs/TabBar';
 import { TabContent } from './features/tabs/TabContent';
+import { ToastHost } from './features/toasts/ToastHost';
 import { ResizeHandles } from './features/titlebar/ResizeHandles';
 import { TitleBar } from './features/titlebar/TitleBar';
 import { WelcomeScreen } from './features/welcome/WelcomeScreen';
@@ -99,6 +100,7 @@ export function App() {
         <StatusBar />
         {platform === 'linux' && !nativeFrame && <ResizeHandles />}
       </div>
+      <ToastHost />
       <SplashOverlay ready={ready} />
     </Tooltip.Provider>
   );

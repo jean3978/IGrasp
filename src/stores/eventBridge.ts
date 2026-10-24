@@ -3,6 +3,7 @@
 import { backend } from '../ipc/client';
 import type { Unsubscribe } from '../ipc/types';
 import { applyDiskChanges } from './diskChanges';
+import { useToasts } from './toasts';
 import { useTree } from './tree';
 import { useWorkspace } from './workspace';
 
@@ -19,14 +20,18 @@ export async function startEventBridge(): Promise<Unsubscribe> {
       useWorkspace.getState().setIndexError(e.generation, e.message);
     }),
     backend.listen('fs://changes', (e) => {
+      if (e.generation !== useTree.getState().generation) return;
       applyDiskChanges(e);
+      useWorkspace.getState().adjustFileCount(e.added.length - e.removed.length);
+      useToasts.getState().ingestChanges(e);
     }),
     backend.listen('fs://watch-status', (e) => {
       useWorkspace.getState().setWatchStatus(e.mode, e.reason);
     }),
     backend.listen('appdata://recovered', (e) => {
-      // Shown as a toast once toasts exist; logged meanwhile.
-      console.warn(`${e.file} was unreadable and has been reset to defaults.`);
+      useToasts
+        .getState()
+        .notify('error', `${e.file} was unreadable and has been reset to defaults.`);
     }),
   ]);
   return () => {

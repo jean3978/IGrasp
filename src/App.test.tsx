@@ -14,13 +14,13 @@ describe('App', () => {
   it('starts on the welcome screen', async () => {
     render(<App />);
     expect(await screen.findByRole('heading', { name: 'IGrasp' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Open Folder/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Open Folder…/ })).toBeInTheDocument();
     expect(await screen.findByText('Folders you open will appear here.')).toBeInTheDocument();
   });
 
   it('opens a folder from the welcome screen', async () => {
     render(<App />);
-    await userEvent.click(screen.getByRole('button', { name: /Open Folder/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Open Folder…/ }));
     expect(
       await screen.findByRole('heading', { level: 2, name: 'igrasp-demo' }),
     ).toBeInTheDocument();

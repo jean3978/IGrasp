@@ -4,6 +4,7 @@ import type { IndexReadyEvent, RootInfo, WatchMode } from '../ipc/types';
 import { useDocuments } from './documents';
 import { useRecent } from './recent';
 import { useTabs } from './tabs';
+import { resetToasts } from './toasts';
 import { useTree } from './tree';
 
 export const DEFAULT_SIDEBAR_WIDTH = 280;
@@ -56,6 +57,8 @@ interface WorkspaceState {
   setIndexReady: (event: IndexReadyEvent) => void;
   setIndexError: (generation: number, message: string) => void;
   setWatchStatus: (mode: WatchMode, reason: string | null) => void;
+  /** Keeps the markdown file count current as files appear and disappear. */
+  adjustFileCount: (delta: number) => void;
   toggleSidebar: () => void;
   setSidebarVisible: (visible: boolean) => void;
   setSidebarWidth: (widthPx: number) => void;
@@ -105,6 +108,7 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
     useTree.getState().reset(0, { showDotfiles: false, showIgnored: false });
     useTabs.getState().closeAll();
     useDocuments.getState().clear();
+    resetToasts();
     void useRecent.getState().refresh();
   },
 
@@ -141,6 +145,12 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
 
   setWatchStatus(mode, reason) {
     set({ watch: { mode, reason } });
+  },
+
+  adjustFileCount(delta) {
+    const { index } = get();
+    if (index.state !== 'ready' || delta === 0) return;
+    set({ index: { ...index, markdownFiles: Math.max(0, index.markdownFiles + delta) } });
   },
 
   toggleSidebar() {

@@ -7,6 +7,7 @@ import type { Theme } from '../../ipc/types';
 import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
 import { useTabs } from '../../stores/tabs';
+import { useToasts } from '../../stores/toasts';
 import { useWorkspace } from '../../stores/workspace';
 
 export type ActionId =
@@ -15,6 +16,7 @@ export type ActionId =
   | 'file.clearRecent'
   | 'file.exit'
   | 'view.toggleSidebar'
+  | 'view.muteToasts'
   | 'view.zoomIn'
   | 'view.zoomOut'
   | 'view.zoomReset'
@@ -117,6 +119,14 @@ export const actions: Record<ActionId, ActionDef> = {
     shortcut: 'Ctrl+B',
     run: () => {
       useWorkspace.getState().toggleSidebar();
+    },
+  },
+  'view.muteToasts': {
+    label: 'Mute Notifications',
+    run: () => {
+      const muted = useSettings.getState().settings.toastsMuted;
+      if (muted) useToasts.getState().resetMutedCount();
+      return useSettings.getState().update({ toastsMuted: !muted });
     },
   },
   'view.zoomIn': {
