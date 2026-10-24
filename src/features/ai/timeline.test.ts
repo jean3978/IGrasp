@@ -1,0 +1,87 @@
+import { describe, expect, it } from 'vitest';
+import type { AiEvent } from '../../ipc/types';
+import { applyEvent, finishStreaming } from './timeline';
+import type { ChatItem } from './timeline';
+
+const reduce = (events: AiEvent[], start: ChatItem[] = []) => events.reduce(applyEvent, start);
+
+describe('applyEvent', () => {
+  it('streams deltas into one item that the complete text then replaces', () => {
+    let items = reduce([
+      { type: 'session', resumeId: 's1', model: 'm' },
+      { type: 'textDelta', text: 'The edit ' },
+      { type: 'textDelta', text: 'was rejected' },
+    ]);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      kind: 'assistant',
+      text: 'The edit was rejected',
+      streaming: true,
+    });
+    items = reduce(
+      [{ type: 'text', text: 'The edit was rejected, so the file is unchanged.' }],
+      items,
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      kind: 'assistant',
+      text: 'The edit was rejected, so the file is unchanged.',
+      streaming: false,
+    });
+  });
+
+  it('lists a tool call, attaches its result and keeps text blocks apart', () => {
+    const items = reduce([
+      { type: 'text', text: 'Let me look.' },
+      { type: 'toolUse', toolId: 't1', tool: 'Edit', summary: 'Edit notes.md', input: { a: 1 } },
+      { type: 'toolResult', toolId: 't1', content: 'The user rejected this.', isError: true },
+      { type: 'text', text: 'Understood.' },
+    ]);
+    expect(items.map((i) => i.kind)).toEqual(['assistant', 'tool', 'assistant']);
+    expect(items[1]).toMatchObject({
+      tool: 'Edit',
+      summary: 'Edit notes.md',
+      result: 'The user rejected this.',
+      isError: true,
+    });
+  });
+
+  it('shows provider errors and ignores session, permission, usage and done', () => {
+    const items: ChatItem[] = [];
+    expect(applyEvent(items, { type: 'session', resumeId: 's', model: 'm' })).toBe(items);
+    expect(
+      applyEvent(items, {
+        type: 'permissionRequest',
+        requestId: 'r',
+        tool: 'Bash',
+        description: null,
+        input: null,
+        proposedEdit: null,
+      }),
+    ).toBe(items);
+    expect(
+      applyEvent(items, {
+        type: 'usage',
+        inputTokens: 1,
+        outputTokens: 1,
+        costUsd: null,
+        durationMs: 1,
+      }),
+    ).toBe(items);
+    expect(applyEvent(items, { type: 'done', outcome: 'Completed', detail: null })).toBe(items);
+    expect(applyEvent(items, { type: 'textDelta', text: '' })).toBe(items);
+    expect(
+      applyEvent(items, { type: 'toolResult', toolId: 'nope', content: '', isError: false }),
+    ).toBe(items);
+    expect(reduce([{ type: 'error', message: 'Not logged in' }])).toEqual([
+      expect.objectContaining({ kind: 'error', text: 'Not logged in' }),
+    ]);
+  });
+
+  it('finishes streaming items when the operation ends early', () => {
+    const items = reduce([{ type: 'textDelta', text: 'Hi' }]);
+    expect(finishStreaming(items)[0]).toMatchObject({ streaming: false, text: 'Hi' });
+    const done = reduce([{ type: 'text', text: 'Hi' }]);
+    expect(finishStreaming(done)).toBe(done);
+  });
+});

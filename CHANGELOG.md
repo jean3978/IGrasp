@@ -7,6 +7,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **AI chat (proof of concept)**: a floating chat panel (`Ctrl+Alt+C`) that talks to the AI
+  provider in the open folder (Claude through the installed `claude` CLI today), streams the
+  answer, shows proposed markdown edits as a diff with Accept / Reject and other tool calls with
+  Allow / Deny, resumes the conversation between messages, and explains a missing or logged-out
+  provider ([ADR 0014](docs/decisions/0014-claude-cli-integration.md)).
+- **AI provider abstraction and gateway**: provider-neutral contracts and events, an
+  `AiProvider` trait with the Claude CLI and a mock implementation, and a single gateway that
+  only starts an operation for a user action and stops it when the folder, the window or the
+  app closes ([ADR 0015](docs/decisions/0015-ai-provider-abstraction-and-gateway.md)).
+
 ### Changed
 
 - Roadmap: a **Tutorials** phase (Hoot's Academy) is added as Phase 5; Editing, Git and the

@@ -24,7 +24,11 @@ flowchart LR
     Search --> Index
     Search --> Graph
     Commands --> AppData[(App data<br/>appdata/*)]
+    Commands --> Gateway[AI gateway<br/>ai/gateway.rs]
+    Gateway --> Provider[AiProvider<br/>ai/providers/*]
   end
+  Provider -- "subprocess, cwd = opened folder" --> CLI[claude CLI]
+  Gateway -- "ai://event" --> Bridge
   Client -- invoke --> Commands
   Scanner -- "index://progress, ready" --> Bridge
   Watcher -- "fs://changes" --> Bridge
@@ -46,8 +50,9 @@ flowchart LR
 | `index/watcher.rs` | Debounced `notify` events → classification → targeted re-walk → `fs://changes`; then the same batch (with the raw event paths) goes to the graph; poll fallback. |
 | `graph/` | The document graph ([ADR 0009](decisions/0009-document-graph-in-rust.md)): `parse.rs` (pulldown-cmark → headings, anchors, links with lines), `slug.rs` (github-slugger port), `links.rs` (target and status of a link), `mod.rs` (graph with a reverse target map, parallel build, incremental `apply`, events). |
 | `search/` | `symbols.rs` (Ctrl+T, nucleo-matcher, cached candidates), `text.rs` (Ctrl+Shift+F, grep crates, streamed batches), `globs.rs` (VS Code-style include/exclude), `SearchRegistry` (one running search, cancellation). |
-| `commands/` | `workspace.rs` (open/close/rescan/list, recent files), `files.rs` (read markdown and text files, open media externally, open with the default app, reveal in the file manager), `graph.rs` (link status, backlinks, broken links, status), `search.rs` (symbols, text, cancel), `appdata.rs` (settings, recents, sessions, app info). |
+| `commands/` | `workspace.rs` (open/close/rescan/list, recent files), `files.rs` (read markdown and text files, open media externally, open with the default app, reveal in the file manager), `graph.rs` (link status, backlinks, broken links, status), `search.rs` (symbols, text, cancel), `appdata.rs` (settings, recents, sessions, app info), `ai.rs` (provider status and capabilities, start an operation for a user action, answer a permission, cancel). |
 | `appdata/` | Versioned JSON files in the OS app-data folder, written atomically, recovered when corrupt. |
+| `ai/` | AI providers behind one trait ([ADR 0015](decisions/0015-ai-provider-abstraction-and-gateway.md)): `types.rs` (neutral request, events, capabilities, status), `gateway.rs` (the only door: a user action per operation, one at a time, cancelled when the folder, window or app closes), `process.rs` (children die with the app), `providers/claude_cli/` ([ADR 0014](decisions/0014-claude-cli-integration.md): `cli.rs` probes, `turn.rs` one process per operation, `protocol.rs` wire format → events), `providers/mock.rs` (tests). |
 | `error.rs` | `AppError`, serialized as `{ code, message }`. |
 
 The frontend never reads files directly: there is no fs plugin and no shell plugin
@@ -64,6 +69,7 @@ The frontend never reads files directly: there is no fs plugin and no shell plug
 | `get_graph_status`, `get_doc_links`, `get_backlinks`, `list_broken_links` | Graph progress and broken count, a document's links with status, documents linking to one, every broken link. |
 | `search_symbols` | Ctrl+T hits (files and headings) for a query, with a request id. |
 | `search_text`, `cancel_search` | Starts a full-text search (returns its id) / stops it. |
+| `ai_status`, `ai_capabilities`, `ai_start`, `ai_respond_permission`, `ai_cancel` | Provider installed and logged in / what it supports / starts an operation for a user action in the open folder (returns its id) / answers a permission request / stops the operation. |
 | `get_settings`, `update_settings`, `get_recent_folders`, …, `get_session`, `save_session` | App data. |
 
 | Event | When |
@@ -72,6 +78,7 @@ The frontend never reads files directly: there is no fs plugin and no shell plug
 | `fs://changes`, `fs://watch-status` | A batch of changes on disk; how the folder is watched. |
 | `graph://progress`, `graph://ready`, `graph://changed` | Graph build (≤ 4/s), done, and documents whose links changed with the broken count. |
 | `search://results` | A batch of full-text results (`done` on the last one). |
+| `ai://event` | One provider-neutral event of an operation (`session`, `textDelta`, `text`, `toolUse`, `toolResult`, `permissionRequest`, `usage`, `error`, `done`). |
 | `appdata://recovered` | A corrupt app-data file was reset. |
 
 ## Frontend (`src`)
@@ -79,8 +86,8 @@ The frontend never reads files directly: there is no fs plugin and no shell plug
 | Folder | Role |
 |---|---|
 | `ipc/` | The `Backend` interface, its Tauri implementation (the only code calling `invoke`/`listen`) and the in-memory mock used in the browser and in tests. `generated/` holds the TypeScript types exported from Rust by ts-rs. |
-| `stores/` | zustand stores: `workspace` (layout: sidebar view, right panel), `tree`, `tabs` (document and code tabs, pending scroll targets), `documents`, `textFiles`, `history`, `recentFiles`, `graph`, `outline`, `quickOpen`, `search`, `settings`, `toasts`, `recent`, `ui`; `session.ts` (save/restore), `diskChanges.ts`, `eventBridge.ts` (backend events → stores). |
-| `features/` | UI by feature: `titlebar` (menu bar, toolbar, window controls, `menuActions.ts`), `shell` (layout, activity bar, sidebar host, status bar), `explorer`, `search`, `recent`, `links` (broken links, backlinks), `outline`, `rightpanel`, `quickopen`, `code` (code viewer), `tabs`, `preview` (markdown pipeline, link resolver, reveal helpers), `mermaid`, `toasts`, `settings`, `shortcuts`, `welcome`, `splash`, `about`. |
+| `stores/` | zustand stores: `workspace` (layout: sidebar view, right panel), `tree`, `tabs` (document and code tabs, pending scroll targets), `documents`, `textFiles`, `history`, `recentFiles`, `graph`, `outline`, `quickOpen`, `search`, `settings`, `toasts`, `recent`, `ui`, `ai` (provider status and capabilities, conversation, pending permissions, usage); `session.ts` (save/restore), `diskChanges.ts`, `eventBridge.ts` (backend events → stores). |
+| `features/` | UI by feature: `titlebar` (menu bar, toolbar, window controls, `menuActions.ts`), `shell` (layout, activity bar, sidebar host, status bar), `explorer`, `search`, `recent`, `links` (broken links, backlinks), `outline`, `rightpanel`, `quickopen`, `code` (code viewer), `tabs`, `preview` (markdown pipeline, link resolver, reveal helpers), `mermaid`, `toasts`, `settings`, `shortcuts`, `welcome`, `splash`, `about`, `ai` (chat panel, event reducer, line diff). |
 | `components/` | Shared UI: buttons and `VirtualRows` (the virtualized, keyboard-navigable list behind every new view). |
 | `styles/` | Design tokens and the three themes. |
 | `lib/` | Pure helpers (paths, link classification, platform). |

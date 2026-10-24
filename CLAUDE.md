@@ -29,7 +29,9 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 - `src-tauri/src/`: `commands/` (IPC commands), `index/` (model, scanner, watcher), `graph/`
   (document graph: parser, slugger, link resolution, build and incremental updates), `search/`
   (Ctrl+T symbols, full-text search, globs), `appdata/` (settings, recents, sessions as JSON),
-  `paths.rs` (root guard), `state.rs`, `error.rs`, `perf.rs` (ignored performance tests).
+  `ai/` (AI providers behind one trait and the gateway that requires a user action per
+  operation; `providers/claude_cli/` spawns the `claude` CLI), `paths.rs` (root guard), `state.rs`, `error.rs`, `perf.rs` (ignored performance
+  tests).
 - `src/ipc/`: `types.ts` (the `Backend` interface), `tauri.ts` (the only module that calls
   `invoke`/`listen` or imports `@tauri-apps/*`), `mock/` (in-memory backend + fixture project),
   `generated/` (ts-rs output: never edit by hand).
@@ -57,8 +59,9 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 - Heading anchors must stay identical between Rust and the preview: `src/test/fixtures/slugs.json`
   and `src/test/fixtures/markdown/headings.json` are asserted by both `cargo test` and Vitest.
   When a markdown fixture changes, update `headings.json` with what the Vitest test receives.
-- `cargo test` filtered by name skips the ts-rs export tests: run it unfiltered before committing
-  so `src/ipc/generated` is current.
+- `cargo test` filtered by name may skip the ts-rs export tests (they are named
+  `<module>::export_bindings_*`): run it unfiltered before committing so `src/ipc/generated` is
+  current.
 
 ## Coding conventions
 

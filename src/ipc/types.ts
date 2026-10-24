@@ -31,6 +31,12 @@ import type { Settings } from './generated/Settings';
 import type { SettingsPatch } from './generated/SettingsPatch';
 import type { TextFileContent } from './generated/TextFileContent';
 import type { WatchStatusEvent } from './generated/WatchStatusEvent';
+import type { AiCapabilities } from './generated/AiCapabilities';
+import type { AiEventEnvelope } from './generated/AiEventEnvelope';
+import type { AiProviderStatus } from './generated/AiProviderStatus';
+import type { AiRequest } from './generated/AiRequest';
+import type { AiUserAction } from './generated/AiUserAction';
+import type { PermissionDecision } from './generated/PermissionDecision';
 
 export type {
   AppInfo,
@@ -82,6 +88,22 @@ export type { BrokenLinksReport } from './generated/BrokenLinksReport';
 export type { LinkStatus } from './generated/LinkStatus';
 export type { LinkTarget } from './generated/LinkTarget';
 export type { RightPanelState } from './generated/RightPanelState';
+export type { JsonValue } from './generated/serde_json/JsonValue';
+export type { AiEvent } from './generated/AiEvent';
+export type { AiImage } from './generated/AiImage';
+export type { AiModel } from './generated/AiModel';
+export type { AiOutcome } from './generated/AiOutcome';
+export type { AiPolicy } from './generated/AiPolicy';
+export type { EditHunk } from './generated/EditHunk';
+export type { ProposedEdit } from './generated/ProposedEdit';
+export type {
+  AiCapabilities,
+  AiEventEnvelope,
+  AiProviderStatus,
+  AiRequest,
+  AiUserAction,
+  PermissionDecision,
+};
 
 export interface SymbolSearchRequest {
   query: string;
@@ -115,6 +137,7 @@ export interface BackendEvents {
   'graph://ready': GraphReadyEvent;
   'graph://changed': GraphChangedEvent;
   'search://results': SearchResultsEvent;
+  'ai://event': AiEventEnvelope;
 }
 
 export type EventName = keyof BackendEvents;
@@ -197,6 +220,23 @@ export interface Backend {
   getAppInfo(): Promise<AppInfo>;
   /** Opens the app-data folder in the system file manager. */
   openAppDataDir(): Promise<void>;
+
+  /** Whether the AI provider is installed and signed in (runs its probes; spends no tokens). */
+  aiStatus(): Promise<AiProviderStatus>;
+  aiCapabilities(): Promise<AiCapabilities>;
+  /**
+   * Starts an AI operation in the open folder on behalf of a user action; resolves to its id.
+   * Its events arrive as `ai://event`, ending with `done`.
+   */
+  aiStart(action: AiUserAction, request: AiRequest): Promise<number>;
+  /** Answers a `permissionRequest` event of the running operation. */
+  aiRespondPermission(
+    operationId: number,
+    requestId: string,
+    decision: PermissionDecision,
+  ): Promise<void>;
+  /** Stops the running operation (idempotent); a `done` event follows. */
+  aiCancel(operationId: number): Promise<void>;
 
   listen<E extends EventName>(
     event: E,

@@ -1,5 +1,6 @@
 //! IGrasp backend: Tauri setup, commands and background services.
 
+mod ai;
 mod appdata;
 mod commands;
 mod error;
@@ -88,7 +89,27 @@ pub fn run() {
             commands::search::search_symbols,
             commands::search::search_text,
             commands::search::cancel_search,
+            commands::ai::ai_status,
+            commands::ai::ai_capabilities,
+            commands::ai::ai_start,
+            commands::ai::ai_respond_permission,
+            commands::ai::ai_cancel,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running IGrasp");
+        .build(tauri::generate_context!())
+        .expect("error while building IGrasp")
+        .run(|app, event| {
+            // No AI process outlives the window or the app (ADR 0015).
+            let closing = matches!(
+                event,
+                tauri::RunEvent::ExitRequested { .. }
+                    | tauri::RunEvent::Exit
+                    | tauri::RunEvent::WindowEvent {
+                        event: tauri::WindowEvent::Destroyed,
+                        ..
+                    }
+            );
+            if closing {
+                app.state::<AppState>().ai.cancel_all();
+            }
+        });
 }

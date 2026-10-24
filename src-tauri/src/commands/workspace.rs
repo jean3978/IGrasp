@@ -99,6 +99,8 @@ pub fn open_root(app: AppHandle, state: State<'_, AppState>, path: String) -> Ap
 
 #[tauri::command]
 pub fn close_root(state: State<'_, AppState>) {
+    // An AI operation works in the folder being closed: stop it.
+    state.ai.cancel_all();
     let mut ws = state.workspace.write().unwrap_or_else(|e| e.into_inner());
     if let Some(old) = ws.take() {
         log::info!("closed {}", old.guard.root().display());

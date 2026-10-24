@@ -102,6 +102,13 @@ export const tauriBackend: Backend = {
   getAppInfo: () => invoke('get_app_info'),
   openAppDataDir: () => invoke('open_app_data_dir'),
 
+  aiStatus: () => invoke('ai_status'),
+  aiCapabilities: () => invoke('ai_capabilities'),
+  aiStart: (action, request) => invoke('ai_start', { action, request }),
+  aiRespondPermission: (operationId, requestId, decision) =>
+    invoke('ai_respond_permission', { operationId, requestId, decision }),
+  aiCancel: (operationId) => invoke('ai_cancel', { operationId }),
+
   listen: (event, handler) =>
     tauriListen<Parameters<typeof handler>[0]>(event, (e) => {
       handler(e.payload);

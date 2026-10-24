@@ -3,6 +3,7 @@
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 
+use crate::ai::gateway::AiGateway;
 use crate::appdata::AppData;
 use crate::error::{AppError, AppResult};
 use crate::graph::SharedGraph;
@@ -86,6 +87,8 @@ pub struct AppState {
     pub appdata: AppData,
     pub workspace: RwLock<Option<Workspace>>,
     generation: AtomicU64,
+    /// The only door to the AI providers (ADR 0015).
+    pub ai: AiGateway,
 }
 
 impl AppState {
@@ -94,6 +97,7 @@ impl AppState {
             appdata,
             workspace: RwLock::new(None),
             generation: AtomicU64::new(0),
+            ai: AiGateway::with_default_provider(),
         }
     }
 
