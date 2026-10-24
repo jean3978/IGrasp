@@ -23,3 +23,4 @@ are never deleted; a decision that changes gets a new record that supersedes the
 | [0016](0016-learning-features-grounded-in-the-project.md) | Learning features (quiz, tutorials) grounded in the whole project | Accepted |
 | [0017](0017-rendered-markdown-diff-at-block-level.md) | Rendered markdown diff at block level, shared by AI review, tutorials and Git | Accepted |
 | [0018](0018-region-capture-by-dom-rendering.md) | Region capture by rendering the DOM (modern-screenshot) with `data-line` mapping | Accepted (Linux verification pending) |
+| [0019](0019-permission-policy-history-and-floating-chat.md) | Permission policy in the gateway, conversation history owned by the app, chat as an in-page floating panel | Accepted |

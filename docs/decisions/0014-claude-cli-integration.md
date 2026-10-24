@@ -97,7 +97,7 @@ pre-approved) will build on the same hook.
 
 ## Results of the proof of concept
 
-Verified on **Windows 11** with the real CLI (model `haiku`) through the two `#[ignore]` tests in
+Verified on **Windows 11** with the real CLI (model `haiku`) through the `#[ignore]` tests (two in the proof of concept, two more in Phase 3) in
 `src-tauri/src/ai/providers/claude_cli/turn.rs` (`cargo test --manifest-path src-tauri/Cargo.toml --
 --ignored claude_cli::`), by shell probes of the protocol, and in the app (launch; the chat itself is driven end
 to end by Playwright against the production build with the scripted CLI, and by Vitest).
@@ -108,6 +108,8 @@ to end by Playwright against the production build with the scripted CLI, and by 
 | Permission prompt → deny → file untouched, turn completes | ✔ | not run |
 | Permission prompt → allow → file edited | ✔ | not run |
 | Cancel with a prompt pending → process tree gone, `Cancelled` event | ✔ (`taskkill /T`) | not run (`process_group` + `kill -- -pgid`) |
+| Partial accept of a two-place change → only the accepted hunk on disk (`updatedInput` honoured for `Edit`; Phase 3, [ADR 0019](0019-permission-policy-history-and-floating-chat.md)) | ✔ (2.1.310) | not run |
+| `Write` allowed with composed content → the composed content on disk (Phase 3) | ✔ (2.1.310) | not run |
 | CLI not installed → clear message | ✔ | not run |
 | Not logged in (`CLAUDE_CONFIG_DIR` pointing at an empty folder) → clear message | ✔ | not run |
 | Wrong model name → the CLI's error result is shown | ✔ | not run |
@@ -116,7 +118,7 @@ to end by Playwright against the production build with the scripted CLI, and by 
 so no Linux environment with the CLI was available. The Linux-specific code is small and
 conventional (`which` on `PATH`, the `~/.local/bin` fallback, a process group per child and
 `kill -TERM -- -<pgid>` on cancel), and the protocol itself is platform-independent, but the
-table above must be completed on a Linux machine before Phase 3 relies on it: run the two
+table above must be completed on a Linux machine before Phase 3 relies on it: run the four
 ignored tests there and the not-installed / not-logged-in probes. CI runs the non-ignored tests
 on Ubuntu on every push.
 
