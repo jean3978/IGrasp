@@ -1,7 +1,7 @@
 {
   "name": "igrasp",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Read the markdown documentation of a project and grasp what AI agents are writing.",
   "license": "MIT",
   "type": "module",
