@@ -5,7 +5,7 @@
 //! are answered on stdin. Stdin stays open until the CLI printed its `result`, so a late answer
 //! still reaches it; closing stdin early makes the CLI deny the pending request and finish.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::process::{Child, ChildStdin, Stdio};
@@ -15,8 +15,33 @@ use std::sync::{Arc, Mutex};
 use serde_json::{Value, json};
 
 use super::cli;
-use super::{ClaudePermissionDecision, ClaudeTurnOutcome, ClaudeTurnRequest};
+use crate::ai::process::ProcessGuard;
+use crate::ai::types::{AiImage, AiPolicy, PermissionDecision};
 use crate::error::{AppError, AppResult};
+
+/// What one turn needs from the neutral request.
+#[derive(Debug, Clone, Default)]
+pub struct TurnRequest {
+    pub prompt: String,
+    pub model: Option<String>,
+    pub resume_session_id: Option<String>,
+    pub images: Vec<AiImage>,
+    pub policy: AiPolicy,
+    pub output_schema: Option<Value>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TurnOutcome {
+    /// The CLI printed its `result` and exited.
+    Completed,
+    Cancelled,
+    /// The process exited without a `result`.
+    Crashed,
+}
+
+/// Tools allowed when the operation is read-only.
+const READ_ONLY_TOOLS: &str = "Read,Glob,Grep";
+const WRITE_TOOLS: &str = "Bash,PowerShell,Edit,Write,MultiEdit,NotebookEdit,WebFetch,WebSearch";
 
 /// Lines of stderr kept to explain a crash.
 const STDERR_TAIL_LINES: usize = 40;
@@ -35,7 +60,7 @@ pub enum TurnEvent {
     Message(Value),
     Permission(PermissionRequest),
     End {
-        outcome: ClaudeTurnOutcome,
+        outcome: TurnOutcome,
         exit_code: Option<i32>,
         stderr: Option<String>,
     },
@@ -45,9 +70,10 @@ pub type EventSink = Box<dyn FnMut(TurnEvent) + Send + 'static>;
 
 /// A running (or finished) turn. Dropping it kills the process if it is still running.
 pub struct ClaudeTurn {
-    pub id: u32,
     pid: u32,
     stdin: Arc<Mutex<Option<ChildStdin>>>,
+    /// Inputs of the permission requests not answered yet, echoed back on allow.
+    pending: Arc<Mutex<HashMap<String, Value>>>,
     child: Arc<Mutex<Child>>,
     cancelled: Arc<AtomicBool>,
     finished: Arc<AtomicBool>,
@@ -71,7 +97,7 @@ fn valid_model(model: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_' | ':' | '/'))
 }
 
-pub fn build_args(request: &ClaudeTurnRequest) -> AppResult<Vec<String>> {
+pub fn build_args(request: &TurnRequest) -> AppResult<Vec<String>> {
     let mut args: Vec<String> = [
         "-p",
         "--output-format",
@@ -93,31 +119,65 @@ pub fn build_args(request: &ClaudeTurnRequest) -> AppResult<Vec<String>> {
         .filter(|m| !m.is_empty())
     {
         if !valid_model(model) {
-            return Err(AppError::Claude(format!("Invalid model name: {model}")));
+            return Err(AppError::Ai(format!("Invalid model name: {model}")));
         }
         args.push("--model".into());
         args.push(model.into());
     }
     if let Some(id) = request.resume_session_id.as_deref().map(str::trim) {
         if !valid_session_id(id) {
-            return Err(AppError::Claude(format!("Invalid session id: {id}")));
+            return Err(AppError::Ai(format!("Invalid session id: {id}")));
         }
         args.push("--resume".into());
         args.push(id.into());
     }
+    if request.policy == AiPolicy::ReadOnly {
+        args.push("--tools".into());
+        args.push(READ_ONLY_TOOLS.into());
+        args.push("--disallowedTools".into());
+        args.push(WRITE_TOOLS.into());
+    }
+    if let Some(schema) = &request.output_schema {
+        args.push("--json-schema".into());
+        args.push(schema.to_string());
+    }
     Ok(args)
 }
 
-/// The stdin line carrying the user's message.
-pub fn user_message(prompt: &str) -> String {
-    json!({ "type": "user", "message": { "role": "user", "content": prompt } }).to_string()
+/// The stdin line carrying the user's message (a plain string, or content blocks with images).
+pub fn user_message(prompt: &str, images: &[AiImage]) -> String {
+    let content = if images.is_empty() {
+        Value::String(prompt.to_owned())
+    } else {
+        let mut blocks = vec![json!({ "type": "text", "text": prompt })];
+        blocks.extend(images.iter().map(|image| {
+            json!({
+                "type": "image",
+                "source": { "type": "base64", "media_type": image.media_type, "data": image.data_base64 },
+            })
+        }));
+        Value::Array(blocks)
+    };
+    json!({ "type": "user", "message": { "role": "user", "content": content } }).to_string()
 }
 
-/// The stdin line answering a permission request.
-pub fn control_response(request_id: &str, decision: &ClaudePermissionDecision) -> String {
+/// The stdin line answering a permission request. The CLI wants the input to run with on an
+/// allow, so the original input is echoed when the user did not change it.
+pub fn control_response(
+    request_id: &str,
+    decision: &PermissionDecision,
+    original_input: &Value,
+) -> String {
+    let response = match decision {
+        PermissionDecision::Allow { updated_input } => json!({
+            "behavior": "allow",
+            "updatedInput": updated_input.as_ref().unwrap_or(original_input),
+        }),
+        PermissionDecision::Deny { message } => json!({ "behavior": "deny", "message": message }),
+    };
     json!({
         "type": "control_response",
-        "response": { "subtype": "success", "request_id": request_id, "response": decision },
+        "response": { "subtype": "success", "request_id": request_id, "response": response },
     })
     .to_string()
 }
@@ -203,8 +263,9 @@ fn kill_tree(pid: u32) {
 pub fn start(
     exe: &Path,
     root: &Path,
-    request: &ClaudeTurnRequest,
+    request: &TurnRequest,
     id: u32,
+    guard: &ProcessGuard,
     mut sink: EventSink,
 ) -> AppResult<ClaudeTurn> {
     let args = build_args(request)?;
@@ -222,23 +283,25 @@ pub fn start(
     }
     let mut child = cmd
         .spawn()
-        .map_err(|e| AppError::Claude(format!("Cannot start the Claude CLI: {e}")))?;
+        .map_err(|e| AppError::Ai(format!("Cannot start the Claude CLI: {e}")))?;
     let pid = child.id();
+    guard.adopt(&child);
     log::info!("claude turn {id}: pid {pid}, args {args:?}");
 
     let mut stdin = child.stdin.take().expect("stdin is piped");
     let stdout = child.stdout.take().expect("stdout is piped");
     let stderr = child.stderr.take().expect("stderr is piped");
-    if let Err(e) = write_line(&mut stdin, &user_message(&request.prompt)) {
+    if let Err(e) = write_line(&mut stdin, &user_message(&request.prompt, &request.images)) {
         let _ = child.kill();
         let _ = child.wait();
-        return Err(AppError::Claude(format!("Cannot send the message: {e}")));
+        return Err(AppError::Ai(format!("Cannot send the message: {e}")));
     }
 
     let stdin = Arc::new(Mutex::new(Some(stdin)));
     let child = Arc::new(Mutex::new(child));
     let cancelled = Arc::new(AtomicBool::new(false));
     let finished = Arc::new(AtomicBool::new(false));
+    let pending: Arc<Mutex<HashMap<String, Value>>> = Arc::default();
 
     let stderr_thread = std::thread::Builder::new()
         .name(format!("igrasp-claude-{id}-stderr"))
@@ -259,6 +322,7 @@ pub fn start(
         let child = child.clone();
         let cancelled = cancelled.clone();
         let finished = finished.clone();
+        let pending = pending.clone();
         std::thread::Builder::new()
             .name(format!("igrasp-claude-{id}"))
             .spawn(move || {
@@ -276,7 +340,11 @@ pub fn start(
                         }
                     };
                     match classify(&value) {
-                        Line::Permission(request) => sink(TurnEvent::Permission(request)),
+                        Line::Permission(request) => {
+                            lock(&pending)
+                                .insert(request.request_id.clone(), request.input.clone());
+                            sink(TurnEvent::Permission(request));
+                        }
                         Line::UnknownControl {
                             request_id,
                             subtype,
@@ -299,11 +367,11 @@ pub fn start(
                 let stderr_tail = stderr_thread.join().unwrap_or_default();
                 let exit_code = lock(&child).wait().ok().and_then(|s| s.code());
                 let outcome = if cancelled.load(Ordering::SeqCst) {
-                    ClaudeTurnOutcome::Cancelled
+                    TurnOutcome::Cancelled
                 } else if got_result {
-                    ClaudeTurnOutcome::Completed
+                    TurnOutcome::Completed
                 } else {
-                    ClaudeTurnOutcome::Crashed
+                    TurnOutcome::Crashed
                 };
                 log::info!("claude turn {id}: {outcome:?}, exit code {exit_code:?}");
                 finished.store(true, Ordering::SeqCst);
@@ -317,9 +385,9 @@ pub fn start(
     }
 
     Ok(ClaudeTurn {
-        id,
         pid,
         stdin,
+        pending,
         child,
         cancelled,
         finished,
@@ -333,15 +401,18 @@ impl ClaudeTurn {
     }
 
     /// Answers a permission request.
-    pub fn respond(&self, request_id: &str, decision: &ClaudePermissionDecision) -> AppResult<()> {
+    pub fn respond(&self, request_id: &str, decision: &PermissionDecision) -> AppResult<()> {
         let mut guard = lock(&self.stdin);
         let Some(stdin) = guard.as_mut() else {
-            return Err(AppError::Claude(
+            return Err(AppError::Ai(
                 "Claude is no longer waiting for an answer.".to_owned(),
             ));
         };
-        write_line(stdin, &control_response(request_id, decision))
-            .map_err(|e| AppError::Claude(format!("Cannot answer the permission request: {e}")))
+        let original = lock(&self.pending)
+            .remove(request_id)
+            .unwrap_or(Value::Null);
+        write_line(stdin, &control_response(request_id, decision, &original))
+            .map_err(|e| AppError::Ai(format!("Cannot answer the permission request: {e}")))
     }
 
     /// Stops the turn. `TurnEvent::End` with `Cancelled` follows once the process is gone.
@@ -368,11 +439,12 @@ impl Drop for ClaudeTurn {
 mod tests {
     use super::*;
 
-    fn request(model: Option<&str>, resume: Option<&str>) -> ClaudeTurnRequest {
-        ClaudeTurnRequest {
+    fn request(model: Option<&str>, resume: Option<&str>) -> TurnRequest {
+        TurnRequest {
             prompt: "hello".into(),
             model: model.map(String::from),
             resume_session_id: resume.map(String::from),
+            ..TurnRequest::default()
         }
     }
 
@@ -446,15 +518,20 @@ mod tests {
 
     #[test]
     fn serializes_the_stdin_lines_the_cli_expects() {
-        let user: Value = serde_json::from_str(&user_message("hi there")).unwrap();
+        let user: Value = serde_json::from_str(&user_message("hi there", &[])).unwrap();
         assert_eq!(user["type"], "user");
         assert_eq!(user["message"]["role"], "user");
         assert_eq!(user["message"]["content"], "hi there");
 
-        let allow = ClaudePermissionDecision::Allow {
-            updated_input: json!({"file_path": "a.md"}),
+        let allow = PermissionDecision::Allow {
+            updated_input: None,
         };
-        let line: Value = serde_json::from_str(&control_response("req-1", &allow)).unwrap();
+        let line: Value = serde_json::from_str(&control_response(
+            "req-1",
+            &allow,
+            &json!({"file_path": "a.md"}),
+        ))
+        .unwrap();
         assert_eq!(line["type"], "control_response");
         assert_eq!(line["response"]["subtype"], "success");
         assert_eq!(line["response"]["request_id"], "req-1");
@@ -464,10 +541,11 @@ mod tests {
             "a.md"
         );
 
-        let deny = ClaudePermissionDecision::Deny {
+        let deny = PermissionDecision::Deny {
             message: "no".into(),
         };
-        let line: Value = serde_json::from_str(&control_response("req-2", &deny)).unwrap();
+        let line: Value =
+            serde_json::from_str(&control_response("req-2", &deny, &Value::Null)).unwrap();
         assert_eq!(line["response"]["response"]["behavior"], "deny");
         assert_eq!(line["response"]["response"]["message"], "no");
 
@@ -483,14 +561,12 @@ mod tests {
 
     #[test]
     fn decision_deserializes_from_the_frontend_shape() {
-        let allow: ClaudePermissionDecision =
+        let allow: PermissionDecision =
             serde_json::from_str(r#"{"behavior":"allow","updatedInput":{"a":1}}"#).unwrap();
-        assert!(matches!(allow, ClaudePermissionDecision::Allow { .. }));
-        let deny: ClaudePermissionDecision =
+        assert!(matches!(allow, PermissionDecision::Allow { .. }));
+        let deny: PermissionDecision =
             serde_json::from_str(r#"{"behavior":"deny","message":"Rejected"}"#).unwrap();
-        assert!(
-            matches!(deny, ClaudePermissionDecision::Deny { message } if message == "Rejected")
-        );
+        assert!(matches!(deny, PermissionDecision::Deny { message } if message == "Rejected"));
     }
 
     // ---- Tests against the real CLI (need an installed, logged-in `claude`; cost tokens) ----
@@ -502,17 +578,20 @@ mod tests {
 
     fn run_turn(
         root: &Path,
-        request: &ClaudeTurnRequest,
+        request: &TurnRequest,
         id: u32,
         mut on_permission: impl FnMut(&ClaudeTurn, &PermissionRequest),
-    ) -> (Vec<Value>, ClaudeTurnOutcome, Option<i32>) {
+    ) -> (Vec<Value>, TurnOutcome, Option<i32>) {
         let exe = cli::locate().expect("the claude CLI is installed");
         let (tx, rx) = mpsc::channel();
+        // The guard must outlive the process: closing its job object kills the child.
+        let guard = ProcessGuard::new();
         let turn = start(
             &exe,
             root,
             request,
             id,
+            &guard,
             Box::new(move |event| {
                 let _ = tx.send(event);
             }),
@@ -571,10 +650,11 @@ mod tests {
         let mut denied = 0;
         let (messages, outcome, exit_code) = run_turn(
             dir.path(),
-            &ClaudeTurnRequest {
+            &TurnRequest {
                 prompt: prompt.into(),
                 model: Some("haiku".into()),
                 resume_session_id: None,
+                ..TurnRequest::default()
             },
             1,
             |turn, request| {
@@ -583,7 +663,7 @@ mod tests {
                 denied += 1;
                 turn.respond(
                     &request.request_id,
-                    &ClaudePermissionDecision::Deny {
+                    &PermissionDecision::Deny {
                         message: "The user rejected this edit in IGrasp.".into(),
                     },
                 )
@@ -591,7 +671,7 @@ mod tests {
             },
         );
         assert_eq!(denied, 1, "one permission request");
-        assert_eq!(outcome, ClaudeTurnOutcome::Completed);
+        assert_eq!(outcome, TurnOutcome::Completed);
         assert_eq!(exit_code, Some(0));
         assert_eq!(std::fs::read_to_string(&notes).unwrap(), original);
         let result = messages.iter().find(|m| m["type"] == "result").unwrap();
@@ -602,25 +682,26 @@ mod tests {
         let mut allowed = 0;
         let (messages, outcome, _) = run_turn(
             dir.path(),
-            &ClaudeTurnRequest {
+            &TurnRequest {
                 prompt: "Please try the same edit again; I will accept it this time.".into(),
                 model: Some("haiku".into()),
                 resume_session_id: Some(session.clone()),
+                ..TurnRequest::default()
             },
             2,
             |turn, request| {
                 allowed += 1;
                 turn.respond(
                     &request.request_id,
-                    &ClaudePermissionDecision::Allow {
-                        updated_input: request.input.clone(),
+                    &PermissionDecision::Allow {
+                        updated_input: Some(request.input.clone()),
                     },
                 )
                 .unwrap();
             },
         );
         assert_eq!(allowed, 1);
-        assert_eq!(outcome, ClaudeTurnOutcome::Completed);
+        assert_eq!(outcome, TurnOutcome::Completed);
         assert_eq!(
             session_id(&messages),
             session,
@@ -640,17 +721,21 @@ mod tests {
         std::fs::write(dir.path().join("notes.md"), "# Notes\n\nHello world.\n").unwrap();
         let exe = cli::locate().expect("the claude CLI is installed");
         let (tx, rx) = mpsc::channel();
+        // The guard must outlive the process: closing its job object kills the child.
+        let guard = ProcessGuard::new();
         let turn = start(
             &exe,
             dir.path(),
-            &ClaudeTurnRequest {
+            &TurnRequest {
                 prompt:
                     "In notes.md, change \"Hello\" to \"Bonjour\" with the Edit tool. Just do it."
                         .into(),
                 model: Some("haiku".into()),
                 resume_session_id: None,
+                ..TurnRequest::default()
             },
             3,
+            &guard,
             Box::new(move |event| {
                 let _ = tx.send(event);
             }),
@@ -674,7 +759,7 @@ mod tests {
                 break outcome;
             }
         };
-        assert_eq!(end, ClaudeTurnOutcome::Cancelled);
+        assert_eq!(end, TurnOutcome::Cancelled);
         assert!(started.elapsed() < TURN_TIMEOUT);
         assert!(turn.is_done());
         assert!(

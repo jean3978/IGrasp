@@ -1,10 +1,10 @@
 //! Shared application state managed by Tauri.
 
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 
+use crate::ai::gateway::AiGateway;
 use crate::appdata::AppData;
-use crate::claude::turn::ClaudeTurn;
 use crate::error::{AppError, AppResult};
 use crate::graph::SharedGraph;
 use crate::index::SharedIndex;
@@ -87,9 +87,8 @@ pub struct AppState {
     pub appdata: AppData,
     pub workspace: RwLock<Option<Workspace>>,
     generation: AtomicU64,
-    /// The running Claude turn, if any (one at a time; see `commands::claude`).
-    pub claude: Mutex<Option<ClaudeTurn>>,
-    claude_turns: AtomicU32,
+    /// The only door to the AI providers (ADR 0015).
+    pub ai: AiGateway,
 }
 
 impl AppState {
@@ -98,17 +97,12 @@ impl AppState {
             appdata,
             workspace: RwLock::new(None),
             generation: AtomicU64::new(0),
-            claude: Mutex::new(None),
-            claude_turns: AtomicU32::new(0),
+            ai: AiGateway::with_default_provider(),
         }
     }
 
     pub fn next_generation(&self) -> u64 {
         self.generation.fetch_add(1, Ordering::SeqCst) + 1
-    }
-
-    pub fn next_claude_turn(&self) -> u32 {
-        self.claude_turns.fetch_add(1, Ordering::SeqCst) + 1
     }
 
     /// Runs `f` with the open workspace, or fails with `NoRootOpen`.

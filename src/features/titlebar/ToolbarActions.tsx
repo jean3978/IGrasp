@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { IconButton } from '../../components/ui/IconButton';
-import { useClaude } from '../../stores/claude';
+import { useAi } from '../../stores/ai';
 import { selectCanGoBack, selectCanGoForward, useHistory } from '../../stores/history';
 import { useSettings } from '../../stores/settings';
 import { fileName } from '../../stores/tabs';
@@ -80,7 +80,7 @@ export function ToolbarActions() {
   const rightPanelVisible = useWorkspace((s) => s.rightPanel.visible);
   const hasRoot = useWorkspace((s) => s.root !== null);
   const muted = useSettings((s) => s.settings.toastsMuted);
-  const claudeOpen = useClaude((s) => s.open);
+  const aiOpen = useAi((s) => s.open);
 
   return (
     <div className="toolbar" role="toolbar" aria-label="Window toolbar">
@@ -102,7 +102,7 @@ export function ToolbarActions() {
         </ActionButton>
       )}
       {hasRoot && (
-        <ActionButton id="claude.chat" pressed={claudeOpen}>
+        <ActionButton id="ai.chat" pressed={aiOpen}>
           <Sparkles aria-hidden />
         </ActionButton>
       )}

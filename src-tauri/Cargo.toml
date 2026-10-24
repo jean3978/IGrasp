@@ -40,5 +40,9 @@ grep-matcher = "0.1.9"
 globset = "0.4.20"
 which = "8.0.6"
 
+[target.'cfg(windows)'.dependencies]
+# Job object that kills AI subprocesses with the app (ADR 0015).
+win32job = "2.0.3"
+
 [lints.rust]
 unsafe_code = "deny"

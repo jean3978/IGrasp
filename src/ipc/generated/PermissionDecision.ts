@@ -2,13 +2,13 @@
 import type { JsonValue } from "./serde_json/JsonValue";
 
 /**
- * The UI's answer to a permission request, in the shape the CLI expects.
+ * The user's answer to a permission request.
  */
-export type ClaudePermissionDecision = { "behavior": "allow", 
+export type PermissionDecision = { "behavior": "allow", 
 /**
- * The tool input to run with (the original one, or an edited version).
+ * A modified tool input to run with instead of the proposed one.
  */
-updatedInput: JsonValue, } | { "behavior": "deny", 
+updatedInput: JsonValue | null, } | { "behavior": "deny", 
 /**
  * Shown to the model as the tool result, so it knows why.
  */

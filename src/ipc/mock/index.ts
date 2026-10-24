@@ -24,8 +24,8 @@ import { searchSymbols } from './mockSymbols';
 import { buildRegExp, filterFiles, searchContent } from './mockText';
 import { gitignorePatterns, isMarkdown, listFixtureDir, scanFixture } from './mockIndex';
 import type { MockScanOptions } from './mockIndex';
-import { DEFAULT_MOCK_CLAUDE, createMockClaude } from './mockClaude';
-import type { MockClaudeState } from './mockClaude';
+import { DEFAULT_MOCK_AI, createMockAi } from './mockAi';
+import type { MockAiState } from './mockAi';
 
 type Handler = (payload: never) => void;
 
@@ -56,8 +56,8 @@ export interface MockState {
   pickFolderResult: string | null;
   /** Files and URLs the app asked to open externally, in order. */
   opened: string[];
-  /** The fake Claude CLI: installed, logged in, speed. */
-  claude: MockClaudeState;
+  /** The mock AI provider: installed, logged in, speed, operations started. */
+  ai: MockAiState;
 }
 
 export interface MockControls {
@@ -96,7 +96,7 @@ function initialState(): MockState {
     graph: null,
     graphDelayMs: 0,
     pickFolderResult: FIXTURE_ROOT,
-    claude: { ...DEFAULT_MOCK_CLAUDE },
+    ai: { ...DEFAULT_MOCK_AI, starts: [] },
   };
 }
 
@@ -186,9 +186,9 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     });
   };
 
-  const claude = createMockClaude({
+  const ai = createMockAi({
     emit,
-    claude: () => state.claude,
+    ai: () => state.ai,
     fileContent: (relPath) => state.files.get(relPath),
     writeFiles: (files) => {
       controls.writeFiles(files);
@@ -204,7 +204,7 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       return state;
     },
     reset() {
-      claude.reset();
+      ai.reset();
       state = initialState();
     },
     writeFiles(files) {
@@ -583,10 +583,11 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       return Promise.resolve();
     },
     getAppInfo: () => Promise.resolve(appInfo),
-    claudeStatus: claude.claudeStatus,
-    claudeStartTurn: claude.claudeStartTurn,
-    claudeRespondPermission: claude.claudeRespondPermission,
-    claudeCancel: claude.claudeCancel,
+    aiStatus: ai.aiStatus,
+    aiCapabilities: ai.aiCapabilities,
+    aiStart: ai.aiStart,
+    aiRespondPermission: ai.aiRespondPermission,
+    aiCancel: ai.aiCancel,
 
     openAppDataDir: () => {
       state.opened.push(appInfo.appDataDir);

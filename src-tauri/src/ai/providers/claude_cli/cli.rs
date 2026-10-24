@@ -6,7 +6,17 @@ use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 
-use super::ClaudeStatus;
+/// What the probes found; the provider turns it into an `AiProviderStatus`.
+#[derive(Debug, Clone, Default)]
+pub struct CliStatus {
+    pub installed: bool,
+    pub path: Option<String>,
+    pub version: Option<String>,
+    pub logged_in: bool,
+    pub email: Option<String>,
+    pub subscription: Option<String>,
+    pub problem: Option<String>,
+}
 
 pub const NOT_INSTALLED: &str = "The Claude Code CLI was not found. Install it (see \
 https://claude.com/claude-code), make sure `claude` works in a terminal, then check again.";
@@ -114,17 +124,17 @@ pub fn parse_auth_status(stdout: &str) -> Option<AuthStatus> {
 }
 
 /// Checks the installation and the login. Never fails: problems are reported in the status.
-pub fn status() -> ClaudeStatus {
+pub fn status() -> CliStatus {
     let Some(path) = locate() else {
-        return ClaudeStatus {
+        return CliStatus {
             problem: Some(NOT_INSTALLED.to_owned()),
-            ..ClaudeStatus::default()
+            ..CliStatus::default()
         };
     };
-    let mut status = ClaudeStatus {
+    let mut status = CliStatus {
         installed: true,
         path: Some(path.display().to_string()),
-        ..ClaudeStatus::default()
+        ..CliStatus::default()
     };
 
     match run(&path, &["--version"], PROBE_TIMEOUT) {
@@ -205,14 +215,12 @@ mod tests {
     #[test]
     fn status_of_a_missing_cli_names_the_problem() {
         // `locate` depends on the machine; only the shape of a "not installed" status is checked.
-        let status = ClaudeStatus {
+        let status = CliStatus {
             problem: Some(NOT_INSTALLED.to_owned()),
-            ..ClaudeStatus::default()
+            ..CliStatus::default()
         };
         assert!(!status.installed);
         assert!(!status.logged_in);
-        let json = serde_json::to_value(&status).unwrap();
-        assert_eq!(json["installed"], false);
-        assert!(json["problem"].as_str().unwrap().contains("not found"));
+        assert!(status.problem.as_deref().unwrap().contains("not found"));
     }
 }

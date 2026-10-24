@@ -2,7 +2,7 @@
 
 import { backend } from '../ipc/client';
 import type { Unsubscribe } from '../ipc/types';
-import { useClaude } from './claude';
+import { useAi } from './ai';
 import { applyDiskChanges } from './diskChanges';
 import { useGraph } from './graph';
 import { useHistory } from './history';
@@ -49,14 +49,8 @@ export async function startEventBridge(): Promise<Unsubscribe> {
     backend.listen('fs://watch-status', (e) => {
       useWorkspace.getState().setWatchStatus(e.mode, e.reason);
     }),
-    backend.listen('claude://message', (e) => {
-      useClaude.getState().onMessage(e);
-    }),
-    backend.listen('claude://permission', (e) => {
-      useClaude.getState().onPermission(e);
-    }),
-    backend.listen('claude://turn-end', (e) => {
-      useClaude.getState().onTurnEnd(e);
+    backend.listen('ai://event', (e) => {
+      useAi.getState().onEvent(e);
     }),
     backend.listen('appdata://recovered', (e) => {
       useToasts
