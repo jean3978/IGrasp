@@ -36,6 +36,13 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
     ]),
   },
   {
+    title: 'Navigation',
+    rows: [
+      ...fromActions(['go.back', 'go.forward']),
+      { keys: 'Mouse back / forward', label: 'Back / forward' },
+    ],
+  },
+  {
     title: 'Tabs',
     rows: [
       ...fromActions(['tabs.close', 'tabs.next', 'tabs.previous']),

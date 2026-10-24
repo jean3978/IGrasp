@@ -19,6 +19,8 @@ export const KEYMAP: KeyBinding[] = [
   { key: 'r', ctrl: true, shift: true, action: 'view.recent' },
   { key: 'l', ctrl: true, shift: true, action: 'view.broken' },
   { key: 'f1', action: 'help.shortcuts' },
+  { key: 'arrowleft', alt: true, action: 'go.back' },
+  { key: 'arrowright', alt: true, action: 'go.forward' },
   { key: '=', ctrl: true, action: 'view.zoomIn' },
   { key: '+', ctrl: true, action: 'view.zoomIn' },
   { key: '-', ctrl: true, action: 'view.zoomOut' },

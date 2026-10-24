@@ -4,6 +4,7 @@
 import { backend } from '../../ipc/client';
 import { MAX_FONT_SIZE, MIN_FONT_SIZE } from '../../ipc/defaults';
 import type { SidebarView, Theme } from '../../ipc/types';
+import { useHistory } from '../../stores/history';
 import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
 import { useTabs } from '../../stores/tabs';
@@ -26,6 +27,8 @@ export type ActionId =
   | 'view.recent'
   | 'view.broken'
   | 'view.toggleRightPanel'
+  | 'go.back'
+  | 'go.forward'
   | 'view.showDotfiles'
   | 'view.showIgnored'
   | 'view.muteToasts'
@@ -225,6 +228,20 @@ export const actions: Record<ActionId, ActionDef> = {
     shortcut: 'Ctrl+B',
     run: () => {
       useWorkspace.getState().toggleSidebar();
+    },
+  },
+  'go.back': {
+    label: 'Back',
+    shortcut: 'Alt+Left',
+    run: () => {
+      useHistory.getState().back();
+    },
+  },
+  'go.forward': {
+    label: 'Forward',
+    shortcut: 'Alt+Right',
+    run: () => {
+      useHistory.getState().forward();
     },
   },
   'view.toggleRightPanel': {

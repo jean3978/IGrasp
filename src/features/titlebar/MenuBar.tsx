@@ -2,6 +2,7 @@ import { Menubar } from 'radix-ui';
 import { Check, ChevronRight, Circle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { selectCanGoBack, selectCanGoForward, useHistory } from '../../stores/history';
 import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
 import { useTree } from '../../stores/tree';
@@ -191,6 +192,8 @@ export function MenuBar() {
   const toastsMuted = useSettings((s) => s.settings.toastsMuted);
   const sidebarVisible = useWorkspace((s) => s.sidebar.visible);
   const rightPanelVisible = useWorkspace((s) => s.rightPanel.visible);
+  const canGoBack = useHistory(selectCanGoBack);
+  const canGoForward = useHistory(selectCanGoForward);
   const hasRoot = useWorkspace((s) => s.root !== null);
   const openRoot = useWorkspace((s) => s.openRoot);
   const showDotfiles = useTree((s) => s.showDotfiles);
@@ -258,6 +261,9 @@ export function MenuBar() {
         <Item id="edit.selectAll" />
       </Menu>
       <Menu value="view">
+        <Item id="go.back" disabled={!canGoBack} />
+        <Item id="go.forward" disabled={!canGoForward} />
+        <Menubar.Separator className="menu-separator" />
         <CheckItem id="view.toggleSidebar" checked={sidebarVisible} />
         <CheckItem id="view.toggleRightPanel" checked={rightPanelVisible} disabled={!hasRoot} />
         <Item id="view.focusExplorer" disabled={!hasRoot} />

@@ -22,6 +22,7 @@ import { TitleBar } from './features/titlebar/TitleBar';
 import { WelcomeScreen } from './features/welcome/WelcomeScreen';
 import { platform } from './lib/platform';
 import { startEventBridge } from './stores/eventBridge';
+import { startHistorySync } from './stores/history';
 import { flushSession, startSessionSync } from './stores/session';
 import { useSettings } from './stores/settings';
 import { fileName, selectActiveTab, tabLabel, useTabs } from './stores/tabs';
@@ -66,6 +67,7 @@ export function App() {
   // Save the session as it changes, and once more when the window closes.
   useEffect(() => {
     const stopSync = startSessionSync();
+    const stopHistory = startHistorySync();
     let offClose: (() => void) | undefined;
     let cancelled = false;
     void backend.window.onCloseRequested(flushSession).then((off) => {
@@ -75,6 +77,7 @@ export function App() {
     return () => {
       cancelled = true;
       stopSync();
+      stopHistory();
       offClose?.();
     };
   }, []);
