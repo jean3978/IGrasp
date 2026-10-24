@@ -7,6 +7,7 @@ import type { DirListing } from './generated/DirListing';
 import type { ErrorCode } from './generated/ErrorCode';
 import type { FileContent } from './generated/FileContent';
 import type { FileEntry } from './generated/FileEntry';
+import type { FsChangesEvent } from './generated/FsChangesEvent';
 import type { IndexErrorEvent } from './generated/IndexErrorEvent';
 import type { IndexProgressEvent } from './generated/IndexProgressEvent';
 import type { IndexReadyEvent } from './generated/IndexReadyEvent';
@@ -17,6 +18,7 @@ import type { RootInfo } from './generated/RootInfo';
 import type { Session } from './generated/Session';
 import type { Settings } from './generated/Settings';
 import type { SettingsPatch } from './generated/SettingsPatch';
+import type { WatchStatusEvent } from './generated/WatchStatusEvent';
 
 export type {
   AppInfo,
@@ -25,6 +27,7 @@ export type {
   ErrorCode,
   FileContent,
   FileEntry,
+  FsChangesEvent,
   IndexErrorEvent,
   IndexProgressEvent,
   IndexReadyEvent,
@@ -35,7 +38,10 @@ export type {
   Session,
   Settings,
   SettingsPatch,
+  WatchStatusEvent,
 };
+export type { RenamedPath } from './generated/RenamedPath';
+export type { WatchMode } from './generated/WatchMode';
 export type { Theme } from './generated/Theme';
 export type { ReadingWidth } from './generated/ReadingWidth';
 export type { WindowFrame } from './generated/WindowFrame';
@@ -58,6 +64,8 @@ export interface BackendEvents {
   'index://progress': IndexProgressEvent;
   'index://ready': IndexReadyEvent;
   'index://error': IndexErrorEvent;
+  'fs://changes': FsChangesEvent;
+  'fs://watch-status': WatchStatusEvent;
 }
 
 export type EventName = keyof BackendEvents;

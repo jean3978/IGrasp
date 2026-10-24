@@ -2,6 +2,7 @@
 
 pub mod model;
 pub mod scanner;
+pub mod watcher;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -61,7 +62,8 @@ fn emit<T: Serialize + Clone>(app: &AppHandle, event: &str, payload: T) {
     }
 }
 
-/// Scans `root` on a background thread and stores the result in `index` unless cancelled.
+/// Scans `root` on a background thread, stores the result in `index` unless cancelled, then
+/// starts watching the folder (the watcher handle goes into `watch`).
 pub fn start_scan(
     app: AppHandle,
     root: PathBuf,
@@ -69,6 +71,7 @@ pub fn start_scan(
     generation: u64,
     index: SharedIndex,
     cancel: Arc<AtomicBool>,
+    watch: watcher::SharedWatch,
 ) {
     std::thread::Builder::new()
         .name(format!("igrasp-scan-{generation}"))
@@ -105,6 +108,17 @@ pub fn start_scan(
                     );
                     *index.write().unwrap_or_else(|e| e.into_inner()) = Some(result.index);
                     emit(&app, EVENT_READY, ready);
+                    let handle = watcher::start_watcher(
+                        app.clone(),
+                        root.clone(),
+                        options.clone(),
+                        generation,
+                        index.clone(),
+                        cancel.clone(),
+                    );
+                    if !cancel.load(Ordering::SeqCst) {
+                        *watch.lock().unwrap_or_else(|e| e.into_inner()) = handle;
+                    }
                 }
                 Ok(_) => log::info!("scan {generation} cancelled"),
                 Err(_) => {

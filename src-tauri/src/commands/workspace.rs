@@ -53,6 +53,7 @@ fn spawn_scan(app: &AppHandle, ws: &Workspace) {
         ws.generation,
         ws.index.clone(),
         ws.cancel.clone(),
+        ws.watch.clone(),
     );
 }
 

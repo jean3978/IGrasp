@@ -52,14 +52,12 @@ struct DirNode {
 
 /// Differences between two versions of (part of) the index.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-#[cfg_attr(not(test), expect(dead_code, reason = "used by the watcher"))]
 pub struct Changes {
     pub added: Vec<FileEntry>,
     pub modified: Vec<FileEntry>,
     pub removed: Vec<String>,
 }
 
-#[cfg_attr(not(test), expect(dead_code, reason = "used by the watcher"))]
 impl Changes {
     pub fn is_empty(&self) -> bool {
         self.added.is_empty() && self.modified.is_empty() && self.removed.is_empty()
@@ -92,7 +90,6 @@ pub fn name_of(rel: &str) -> &str {
 }
 
 /// Whether `rel` is `dir` itself or inside it.
-#[cfg_attr(not(test), expect(dead_code, reason = "used by the watcher"))]
 pub fn is_within(rel: &str, dir: &str) -> bool {
     dir.is_empty()
         || rel == dir
@@ -151,12 +148,10 @@ impl Index {
         self.dirs.len() - 1
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "used by the watcher"))]
     pub fn file(&self, rel: &str) -> Option<&FileEntry> {
         self.files.get(rel)
     }
 
-    #[cfg_attr(not(test), expect(dead_code, reason = "used by the watcher"))]
     pub fn has_dir(&self, rel: &str) -> bool {
         self.dirs.contains_key(rel)
     }
@@ -196,7 +191,6 @@ impl Index {
     }
 
     /// Removes a file and prunes folders left without markdown. Returns true if it existed.
-    #[cfg_attr(not(test), expect(dead_code, reason = "used by the watcher"))]
     pub fn remove_file(&mut self, rel: &str) -> bool {
         if self.files.remove(rel).is_none() {
             return false;
@@ -227,7 +221,6 @@ impl Index {
     }
 
     /// Removes every file under `dir`. Returns the removed paths.
-    #[cfg_attr(not(test), expect(dead_code, reason = "used by the watcher"))]
     pub fn remove_dir(&mut self, dir: &str) -> Vec<String> {
         let mut removed: Vec<String> = self
             .files
@@ -277,7 +270,6 @@ impl Index {
     }
 
     /// Files under `dir` (all files when `dir` is empty), sorted by path.
-    #[cfg_attr(not(test), expect(dead_code, reason = "used by the watcher"))]
     pub fn files_within(&self, dir: &str) -> BTreeMap<&str, &FileEntry> {
         self.files
             .iter()
@@ -287,7 +279,6 @@ impl Index {
     }
 
     /// What changed under `dir` between `self` (old) and `new`.
-    #[cfg_attr(not(test), expect(dead_code, reason = "used by the watcher"))]
     pub fn diff_within(&self, new: &Index, dir: &str) -> Changes {
         let old_files = self.files_within(dir);
         let new_files = new.files_within(dir);

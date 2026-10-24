@@ -1,12 +1,13 @@
 //! Shared application state managed by Tauri.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 use crate::appdata::AppData;
 use crate::error::{AppError, AppResult};
 use crate::index::SharedIndex;
 use crate::index::scanner::ScanOptions;
+use crate::index::watcher::SharedWatch;
 use crate::paths::RootGuard;
 
 /// The folder currently open in the app.
@@ -17,8 +18,10 @@ pub struct Workspace {
     pub options: ScanOptions,
     /// `None` until the scan of this generation completes.
     pub index: SharedIndex,
-    /// Set to stop the running scan (and, later, the watcher).
+    /// Set to stop the running scan and make the watcher ignore further events.
     pub cancel: Arc<AtomicBool>,
+    /// The file watcher, started once the scan is ready.
+    pub watch: SharedWatch,
 }
 
 impl Workspace {
@@ -29,6 +32,7 @@ impl Workspace {
             options,
             index: Arc::new(RwLock::new(None)),
             cancel: Arc::new(AtomicBool::new(false)),
+            watch: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -37,6 +41,7 @@ impl Drop for Workspace {
     fn drop(&mut self) {
         // Closing or replacing the workspace stops its background work.
         self.cancel.store(true, Ordering::SeqCst);
+        self.watch.lock().unwrap_or_else(|e| e.into_inner()).take();
     }
 }
 

@@ -9,7 +9,7 @@ use std::time::{Duration, Instant, UNIX_EPOCH};
 use ignore::overrides::OverrideBuilder;
 use ignore::{WalkBuilder, WalkState};
 
-use super::model::{FileEntry, Index, is_markdown, name_of};
+use super::model::{FileEntry, Index, is_markdown, is_within, name_of};
 
 /// Folders that are never shown, whatever the options.
 pub const ALWAYS_SKIPPED: [&str; 2] = [".git", "node_modules"];
@@ -64,13 +64,16 @@ pub fn is_dotted(rel: &str) -> bool {
 
 /// Builds the walker used by both the full scan and the watcher's targeted re-walks.
 /// `respect_ignore = false` disables the ignore files (the "show ignored" mode).
+///
+/// With a `scope` (a root-relative path), the walk still starts at the root, so every ignore
+/// rule applies, but only descends into the ancestors of the scope and the scope itself.
 pub fn walk_builder(
     root: &Path,
-    start: &Path,
     opts: &ScanOptions,
     respect_ignore: bool,
+    scope: Option<&str>,
 ) -> WalkBuilder {
-    let mut b = WalkBuilder::new(start);
+    let mut b = WalkBuilder::new(root);
     b.hidden(!opts.show_dotfiles)
         .git_ignore(respect_ignore)
         .git_exclude(respect_ignore)
@@ -98,7 +101,16 @@ pub fn walk_builder(
         }
     }
 
-    b.filter_entry(|e| {
+    let root_buf = root.to_path_buf();
+    let scope = scope.map(str::to_owned);
+    b.filter_entry(move |e| {
+        if let Some(scope) = &scope {
+            match rel_path(&root_buf, e.path()) {
+                // Keep the scope, what is inside it, and the folders leading to it.
+                Some(rel) if is_within(&rel, scope) || is_within(scope, &rel) => {}
+                _ => return false,
+            }
+        }
         let name = e.file_name().to_string_lossy();
         if e.file_type().is_some_and(|t| t.is_dir()) {
             !ALWAYS_SKIPPED.contains(&name.as_ref())
@@ -130,18 +142,19 @@ enum Found {
     Skipped,
 }
 
-/// Walks `start` and collects markdown files and folders. Calls `progress` at most every 250 ms.
+/// Walks the root (or only `scope`, see `walk_builder`) and collects markdown files and folders.
+/// Calls `progress` at most every 250 ms.
 pub fn collect(
     root: &Path,
-    start: &Path,
     opts: &ScanOptions,
     respect_ignore: bool,
+    scope: Option<&str>,
     cancel: &AtomicBool,
     progress: &dyn Fn(ScanProgress),
 ) -> Result<CollectedEntries, Cancelled> {
     let started = Instant::now();
     let (tx, rx) = mpsc::channel::<Found>();
-    let walker = walk_builder(root, start, opts, respect_ignore).build_parallel();
+    let walker = walk_builder(root, opts, respect_ignore, scope).build_parallel();
 
     let collected = std::thread::scope(|scope| {
         scope.spawn(move || {
@@ -223,20 +236,29 @@ pub fn apply_hidden(files: &mut [FileEntry], visible_files: Option<&HashSet<Stri
     }
 }
 
-/// Scans the whole root and builds the index.
-pub fn scan(
+/// An index of the files under `scope` (the whole root when `None`), plus the folders seen and
+/// their hidden flags, so the watcher can merge a partial result into the full index.
+pub struct ScopedIndex {
+    pub index: Index,
+    /// Folders found under the scope, with their hidden flag.
+    pub dirs: Vec<(String, bool)>,
+    pub skipped: u32,
+}
+
+/// Walks the root (or one scope) and builds an index of what it finds.
+pub fn index_scope(
     root: &Path,
     opts: &ScanOptions,
+    scope: Option<&str>,
     cancel: &AtomicBool,
     progress: &dyn Fn(ScanProgress),
-) -> Result<ScanResult, Cancelled> {
-    let started = Instant::now();
-    let mut all = collect(root, root, opts, !opts.show_ignored, cancel, progress)?;
+) -> Result<ScopedIndex, Cancelled> {
+    let mut all = collect(root, opts, !opts.show_ignored, scope, cancel, progress)?;
 
     // In "show ignored" mode, a second walk that respects the ignore files tells which entries
     // are ignored, so the tree can dim them.
     let visible = if opts.show_ignored {
-        let v = collect(root, root, opts, true, cancel, &|_| {})?;
+        let v = collect(root, opts, true, scope, cancel, &|_| {})?;
         Some((
             v.files
                 .into_iter()
@@ -253,17 +275,34 @@ pub fn scan(
     for f in all.files {
         index.insert_file(f);
     }
-    for dir in &all.dirs {
-        let hidden = is_dotted(dir)
+    let mut dirs = Vec::with_capacity(all.dirs.len());
+    for dir in all.dirs {
+        let hidden = is_dotted(&dir)
             || visible
                 .as_ref()
-                .is_some_and(|(_, dirs)| !dirs.contains(dir));
-        index.set_dir_hidden(dir, hidden);
+                .is_some_and(|(_, visible_dirs)| !visible_dirs.contains(&dir));
+        index.set_dir_hidden(&dir, hidden);
+        dirs.push((dir, hidden));
     }
-
-    Ok(ScanResult {
+    Ok(ScopedIndex {
         index,
+        dirs,
         skipped: all.skipped,
+    })
+}
+
+/// Scans the whole root and builds the index.
+pub fn scan(
+    root: &Path,
+    opts: &ScanOptions,
+    cancel: &AtomicBool,
+    progress: &dyn Fn(ScanProgress),
+) -> Result<ScanResult, Cancelled> {
+    let started = Instant::now();
+    let scoped = index_scope(root, opts, None, cancel, progress)?;
+    Ok(ScanResult {
+        index: scoped.index,
+        skipped: scoped.skipped,
         elapsed: started.elapsed(),
     })
 }
@@ -401,6 +440,21 @@ mod tests {
         let r = run(&d.path().join("docs"), &ScanOptions::default());
         assert!(r.index.file("a.md").is_some());
         assert!(r.index.file("secret.md").is_none());
+    }
+
+    #[test]
+    fn scoped_walk_only_covers_its_scope_and_keeps_ignore_rules() {
+        let d = fixture();
+        let root = dunce::canonicalize(d.path()).unwrap();
+        let none = AtomicBool::new(false);
+        let opts = ScanOptions::default();
+        let s = index_scope(&root, &opts, Some("docs/guide"), &none, &|_| {}).unwrap();
+        assert_eq!(paths(&s.index), ["docs/guide/b.markdown"]);
+        // build/ is ignored by the root .gitignore, even when walked as a scope.
+        let s = index_scope(&root, &opts, Some("build"), &none, &|_| {}).unwrap();
+        assert!(paths(&s.index).is_empty());
+        let s = index_scope(&root, &opts, Some("docs/a.md"), &none, &|_| {}).unwrap();
+        assert_eq!(paths(&s.index), ["docs/a.md"]);
     }
 
     #[test]
