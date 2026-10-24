@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from './App';
+import { useTree } from './stores/tree';
 import { useWorkspace } from './stores/workspace';
 
 beforeEach(() => {
@@ -20,7 +21,14 @@ describe('App', () => {
   it('opens a folder from the welcome screen', async () => {
     render(<App />);
     await userEvent.click(screen.getByRole('button', { name: /Open Folder/ }));
-    expect(await screen.findByRole('heading', { name: 'igrasp-demo' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'igrasp-demo' }),
+    ).toBeInTheDocument();
+    // Rows are virtualized and jsdom has no layout; check the loaded listing instead.
+    await waitFor(() => {
+      expect(useTree.getState().listings['']?.files.map((f) => f.name)).toContain('README.md');
+    });
+    expect(screen.getByRole('tree', { name: 'Markdown files' })).toBeInTheDocument();
     expect(document.title).toBe('igrasp-demo — IGrasp');
   });
 });

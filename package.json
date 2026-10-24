@@ -27,6 +27,7 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run rust:fmt -- --check && npm run rust:clippy && npm run rust:test"
   },
   "dependencies": {
+    "@tanstack/react-virtual": "3.14.22",
     "@tauri-apps/api": "2.12.4",
     "@tauri-apps/plugin-dialog": "2.8.3",
     "clsx": "2.1.1",

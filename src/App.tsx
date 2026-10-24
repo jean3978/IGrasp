@@ -10,6 +10,8 @@ import { ResizeHandles } from './features/titlebar/ResizeHandles';
 import { TitleBar } from './features/titlebar/TitleBar';
 import { WelcomeScreen } from './features/welcome/WelcomeScreen';
 import { platform } from './lib/platform';
+import { ExplorerPanel } from './features/explorer/ExplorerPanel';
+import { startEventBridge } from './stores/eventBridge';
 import { useSettings } from './stores/settings';
 import { useWorkspace } from './stores/workspace';
 import './features/shell/shell.css';
@@ -21,6 +23,21 @@ export function App() {
   const nativeFrame = useSettings((s) => s.settings.windowFrame === 'native');
   const root = useWorkspace((s) => s.root);
   const [ready, setReady] = useState(false);
+  // Replaced by tabs in the next step.
+  const [selected, setSelected] = useState<string | null>(null);
+
+  useEffect(() => {
+    let off: (() => void) | undefined;
+    let cancelled = false;
+    void startEventBridge().then((unsubscribe) => {
+      if (cancelled) unsubscribe();
+      else off = unsubscribe;
+    });
+    return () => {
+      cancelled = true;
+      off?.();
+    };
+  }, []);
 
   useEffect(() => {
     load()
@@ -54,7 +71,17 @@ export function App() {
         <TitleBar title={title} />
         <div className="app-body">
           {root ? (
-            <WorkspaceLayout sidebar={null} main={<h1>{root.name}</h1>} />
+            <WorkspaceLayout
+              sidebar={
+                <ExplorerPanel
+                  activePath={selected}
+                  onOpen={(path) => {
+                    setSelected(path);
+                  }}
+                />
+              }
+              main={<h1>{selected ?? root.name}</h1>}
+            />
           ) : (
             <WelcomeScreen />
           )}
