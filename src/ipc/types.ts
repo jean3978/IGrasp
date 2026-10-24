@@ -8,6 +8,9 @@ import type { ErrorCode } from './generated/ErrorCode';
 import type { FileContent } from './generated/FileContent';
 import type { FileEntry } from './generated/FileEntry';
 import type { FsChangesEvent } from './generated/FsChangesEvent';
+import type { Backlinks } from './generated/Backlinks';
+import type { BrokenLinksReport } from './generated/BrokenLinksReport';
+import type { DocLinks } from './generated/DocLinks';
 import type { GraphChangedEvent } from './generated/GraphChangedEvent';
 import type { GraphProgressEvent } from './generated/GraphProgressEvent';
 import type { GraphReadyEvent } from './generated/GraphReadyEvent';
@@ -61,6 +64,11 @@ export type { SessionTab } from './generated/SessionTab';
 export type { SessionTabKind } from './generated/SessionTabKind';
 export type { SidebarView } from './generated/SidebarView';
 export type { LinkInfo } from './generated/LinkInfo';
+export type { DocLinks } from './generated/DocLinks';
+export type { Backlink } from './generated/Backlink';
+export type { Backlinks } from './generated/Backlinks';
+export type { BrokenDoc } from './generated/BrokenDoc';
+export type { BrokenLinksReport } from './generated/BrokenLinksReport';
 export type { LinkStatus } from './generated/LinkStatus';
 export type { LinkTarget } from './generated/LinkTarget';
 export type { RightPanelState } from './generated/RightPanelState';
@@ -146,6 +154,12 @@ export interface Backend {
 
   /** Progress of the document graph build and the number of broken links. */
   getGraphStatus(): Promise<GraphStatus>;
+  /** The links of a document with their status (empty for unparsed documents). */
+  getDocLinks(relPath: string): Promise<DocLinks>;
+  /** The documents linking to a document. */
+  getBacklinks(relPath: string): Promise<Backlinks>;
+  /** Every broken link of the folder, grouped by document. */
+  listBrokenLinks(): Promise<BrokenLinksReport>;
 
   getSettings(): Promise<Settings>;
   updateSettings(patch: SettingsPatch): Promise<Settings>;

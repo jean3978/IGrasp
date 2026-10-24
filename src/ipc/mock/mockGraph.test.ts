@@ -51,6 +51,36 @@ describe('mock graph of the fixture', () => {
   });
 });
 
+describe('mock graph queries', () => {
+  it('serves doc links, backlinks and the broken links report', async () => {
+    const b = createMockBackend();
+    await b.openRoot(FIXTURE_ROOT);
+    await vi.waitFor(async () => {
+      expect((await b.getGraphStatus()).ready).toBe(true);
+    });
+    const links = await b.getDocLinks('docs/architecture.md');
+    expect(links.links.map((l) => [l.href, l.status.kind])).toEqual([
+      ['guide/getting-started.md', 'ok'],
+      ['decisions/', 'ok'],
+      ['old-design.md', 'missingFile'],
+    ]);
+    const back = await b.getBacklinks('README.md');
+    expect(back.items).toEqual([
+      {
+        fromPath: 'docs/guide/getting-started.md',
+        line: expect.any(Number) as number,
+        text: 'features',
+        fragment: 'features',
+      },
+    ]);
+    const report = await b.listBrokenLinks();
+    expect(report.docs.map((d) => [d.relPath, d.links.length])).toEqual([
+      ['docs/architecture.md', 1],
+      ['docs/guide/getting-started.md', 2],
+    ]);
+  });
+});
+
 describe('mock graph events', () => {
   it('builds after the index and reports changes', async () => {
     const b = createMockBackend();

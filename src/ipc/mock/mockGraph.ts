@@ -2,7 +2,7 @@
 // same slugs (github-slugger) and the same link rules as `src-tauri/src/graph/`.
 
 import GithubSlugger from 'github-slugger';
-import type { LinkInfo, LinkStatus, LinkTarget } from '../types';
+import type { Backlink, BrokenDoc, LinkInfo, LinkStatus, LinkTarget } from '../types';
 
 export interface MockHeading {
   level: number;
@@ -244,6 +244,36 @@ export function buildGraph(
     });
   }
   return graph;
+}
+
+/** Who links to `rel`, sorted by source path then line (Rust `backlinks_of`). */
+export function backlinksOf(graph: Map<string, MockDoc>, rel: string): Backlink[] {
+  const items: Backlink[] = [];
+  for (const [from, doc] of [...graph].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+    if (from === rel) continue;
+    for (const link of doc.links) {
+      const t = link.target;
+      const hits =
+        (t.kind === 'document' && t.relPath === rel) || (t.kind === 'folder' && t.readme === rel);
+      if (hits) {
+        items.push({
+          fromPath: from,
+          line: link.line,
+          text: link.text,
+          fragment: t.kind === 'document' ? t.fragment : null,
+        });
+      }
+    }
+  }
+  return items;
+}
+
+/** Documents with broken links, sorted by path (Rust `broken_report`). */
+export function brokenDocs(graph: Map<string, MockDoc>): BrokenDoc[] {
+  return [...graph]
+    .map(([relPath, doc]) => ({ relPath, links: doc.links.filter((l) => isProblem(l.status)) }))
+    .filter((d) => d.links.length > 0)
+    .sort((a, b) => (a.relPath < b.relPath ? -1 : 1));
 }
 
 export const brokenCount = (graph: Map<string, MockDoc>) =>

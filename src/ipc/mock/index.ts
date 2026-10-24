@@ -18,7 +18,7 @@ import type {
 } from '../types';
 import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT, FIXTURE_SIZES, fixtureMtimes } from './fixture';
 import { checkOpenable, readText } from './mockFiles';
-import { brokenCount, buildGraph } from './mockGraph';
+import { backlinksOf, brokenCount, brokenDocs, buildGraph } from './mockGraph';
 import type { MockDoc } from './mockGraph';
 import { gitignorePatterns, isMarkdown, listFixtureDir, scanFixture } from './mockIndex';
 import type { MockScanOptions } from './mockIndex';
@@ -436,6 +436,33 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       });
     },
 
+    getDocLinks: (relPath) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      return Promise.resolve({
+        relPath,
+        graphReady: state.graph !== null,
+        links: structuredClone(state.graph?.get(relPath)?.links ?? []),
+      });
+    },
+    getBacklinks: (relPath) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      return Promise.resolve({
+        relPath,
+        graphReady: state.graph !== null,
+        items: state.graph ? backlinksOf(state.graph, relPath) : [],
+      });
+    },
+    listBrokenLinks: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const graph = state.graph;
+      return Promise.resolve({
+        generation: state.generation,
+        graphReady: graph !== null,
+        parsedDocs: graph?.size ?? 0,
+        totalDocs: state.index?.size ?? 0,
+        docs: graph ? structuredClone(brokenDocs(graph)) : [],
+      });
+    },
     getSettings: () => Promise.resolve(structuredClone(state.settings)),
     updateSettings: (patch) => {
       const next: Settings = { ...state.settings, ...patch };

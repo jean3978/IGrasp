@@ -85,6 +85,9 @@ export const tauriBackend: Backend = {
   openUrl: (url) => openUrl(url),
 
   getGraphStatus: () => invoke('get_graph_status'),
+  getDocLinks: (relPath) => invoke('get_doc_links', { relPath }),
+  getBacklinks: (relPath) => invoke('get_backlinks', { relPath }),
+  listBrokenLinks: () => invoke('list_broken_links'),
 
   getSettings: () => invoke('get_settings'),
   updateSettings: (patch) => invoke('update_settings', { patch }),

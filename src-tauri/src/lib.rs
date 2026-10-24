@@ -79,6 +79,9 @@ pub fn run() {
             commands::files::open_with_default_app,
             commands::files::reveal_in_file_manager,
             commands::graph::get_graph_status,
+            commands::graph::get_doc_links,
+            commands::graph::get_backlinks,
+            commands::graph::list_broken_links,
         ])
         .run(tauri::generate_context!())
         .expect("error while running IGrasp");

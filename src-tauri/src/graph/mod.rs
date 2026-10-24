@@ -202,8 +202,6 @@ impl TargetLookup for Lookup<'_> {
 }
 
 impl Graph {
-    // The query methods below serve the graph commands and the symbol search.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub fn doc(&self, rel: &str) -> Option<&DocMeta> {
         self.docs.get(rel)
     }
@@ -215,6 +213,19 @@ impl Graph {
     pub fn link_count(&self) -> u32 {
         let n: usize = self.docs.values().map(|d| d.links.len()).sum();
         u32::try_from(n).unwrap_or(u32::MAX)
+    }
+
+    /// Documents with at least one problem link, with those links (any order).
+    pub fn docs_with_problems(&self) -> impl Iterator<Item = (&str, Vec<LinkInfo>)> {
+        self.docs.iter().filter_map(|(rel, doc)| {
+            let bad: Vec<LinkInfo> = doc
+                .links
+                .iter()
+                .filter(|l| l.status.is_problem())
+                .cloned()
+                .collect();
+            (!bad.is_empty()).then_some((rel.as_str(), bad))
+        })
     }
 
     pub fn broken_count(&self) -> u32 {
@@ -362,7 +373,6 @@ impl Graph {
     }
 
     /// The documents linking to `rel`, with each link, sorted by path then line.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub fn backlinks(&self, rel: &str) -> Vec<(String, LinkInfo)> {
         let mut sources = BTreeSet::new();
         self.dependents(rel, false, &mut sources);
