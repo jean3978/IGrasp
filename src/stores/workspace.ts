@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { backend } from '../ipc/client';
 import type { IndexReadyEvent, RootInfo, SidebarView, WatchMode } from '../ipc/types';
+import { useAiPanel } from './aiPanel';
 import { useDocuments } from './documents';
 import { useGraph } from './graph';
 import { useRecent } from './recent';
@@ -143,6 +144,7 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
     await backend.closeRoot();
     clearPendingRestore();
     set({ root: null, index: IDLE });
+    useAiPanel.getState().restore(null);
     useTree.getState().reset(0, { showDotfiles: false, showIgnored: false });
     useTabs.getState().closeAll();
     useDocuments.getState().clear();

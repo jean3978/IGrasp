@@ -62,7 +62,6 @@ export interface PendingConfirm {
 }
 
 interface AiState {
-  open: boolean;
   status: AiProviderStatus | null;
   capabilities: AiCapabilities | null;
   checking: boolean;
@@ -86,8 +85,6 @@ interface AiState {
   /** Totals for this conversation. */
   usage: Usage;
 
-  setOpen: (open: boolean) => void;
-  toggleOpen: () => void;
   /** Checks the provider; a check younger than a minute is reused unless `force`. */
   checkStatus: (force?: boolean) => Promise<void>;
   /** Picks the model and remembers it in the settings (debounced). */
@@ -140,7 +137,6 @@ async function runStart(request: AiStartRequest): Promise<void> {
 }
 
 export const useAi = create<AiState>()((set, get) => ({
-  open: false,
   status: null,
   capabilities: null,
   checking: false,
@@ -154,13 +150,6 @@ export const useAi = create<AiState>()((set, get) => ({
   items: [],
   permissions: [],
   usage: NO_USAGE,
-
-  setOpen(open) {
-    set({ open });
-  },
-  toggleOpen() {
-    set((s) => ({ open: !s.open }));
-  },
 
   async checkStatus(force = false) {
     if (get().checking) return;

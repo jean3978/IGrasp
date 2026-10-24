@@ -12,7 +12,7 @@ import {
 import type { ReactNode } from 'react';
 import { AiMark } from '../../components/AiMark';
 import { IconButton } from '../../components/ui/IconButton';
-import { useAi } from '../../stores/ai';
+import { useAiPanel } from '../../stores/aiPanel';
 import { selectCanGoBack, selectCanGoForward, useHistory } from '../../stores/history';
 import { useSettings } from '../../stores/settings';
 import { fileName } from '../../stores/tabs';
@@ -41,6 +41,7 @@ function ActionButton({
       {...(action.shortcut ? { shortcut: action.shortcut } : {})}
       {...(pressed === undefined ? {} : { pressed })}
       disabled={disabled ?? false}
+      data-action={id}
       onClick={() => {
         runAction(id);
       }}
@@ -84,7 +85,7 @@ export function ToolbarActions() {
   const rightPanelVisible = useWorkspace((s) => s.rightPanel.visible);
   const hasRoot = useWorkspace((s) => s.root !== null);
   const muted = useSettings((s) => s.settings.toastsMuted);
-  const aiOpen = useAi((s) => s.open);
+  const aiOpen = useAiPanel((s) => s.open);
 
   return (
     <div className="toolbar" role="toolbar" aria-label="Window toolbar">

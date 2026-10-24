@@ -14,7 +14,7 @@ import { useToasts } from '../../stores/toasts';
 import { useTree } from '../../stores/tree';
 import { useUi } from '../../stores/ui';
 import { useWorkspace } from '../../stores/workspace';
-import { useAi } from '../../stores/ai';
+import { useAiPanel } from '../../stores/aiPanel';
 
 export type ActionId =
   | 'file.openFolder'
@@ -178,7 +178,7 @@ export const actions: Record<ActionId, ActionDef> = {
     aiFeature: true,
     run: () => {
       if (!useWorkspace.getState().root) return;
-      useAi.getState().toggleOpen();
+      useAiPanel.getState().toggleOpen();
     },
   },
   'help.shortcuts': {

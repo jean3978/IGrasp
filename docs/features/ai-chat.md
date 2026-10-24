@@ -15,8 +15,15 @@ provider's status.
 ## Using it
 
 - **Open**: the sparkles button in the toolbar, **View → AI Chat**, or `Ctrl+Alt+C` (a folder must
-  be open). The chat is a floating panel over the bottom-right corner; the document behind it
-  stays readable and clickable.
+  be open). The chat is a floating panel (default: bottom-right corner, 420 × 560); the document
+  behind it stays readable and clickable (`role="dialog"`, `aria-modal="false"`).
+- **Move and resize**: drag the header, or focus the title and press `Alt+arrows`; resize from
+  any edge or corner (minimum 360 × 320, at most the window), or `Alt+Shift+arrows`. The panel
+  stays inside the window when it shrinks. Its place, size and open state are saved per folder in
+  the session (app data).
+- **Escape** stops a running answer; pressed again (or with nothing running) it closes the panel
+  and the focus returns to the AI Chat button. Closing the panel never stops an answer: the status
+  bar shows it with **Stop**.
 - **Status line**: the provider's name, version and account, or what is missing (not installed,
   not logged in) with the provider's own instructions and a **Check again** button.
 - **Model**: the provider's suggested models (`sonnet`, `opus`, `haiku` for Claude) or a custom
@@ -72,7 +79,8 @@ sequenceDiagram
 | Commands `ai_status` (60 s cache, `force`), `ai_capabilities`, `ai_providers`, `ai_set_provider`, `ai_context`, `ai_estimate`, `ai_start`, `ai_respond_permission`, `ai_cancel` | `src-tauri/src/commands/ai.rs` |
 | Event reducer (events → chat items) and line diff | `src/features/ai/timeline.ts`, `diff.ts` |
 | Store (status, capabilities, items, pending permissions, operation, usage) | `src/stores/ai.ts` |
-| Floating chat panel | `src/features/ai/AiChatDialog.tsx` |
+| Floating chat panel: `AiPanel` (geometry, Escape), `StatusLine`, `Transcript`, `PermissionCard`, `Composer`, `ModelPicker` | `src/features/ai/` |
+| Panel store (open, rectangle, clamping, draft) | `src/stores/aiPanel.ts` |
 | Mock provider for the browser and the tests | `src/ipc/mock/mockAi.ts` |
 
 In the browser dev mode (`npm run dev`), the mock provider ("Mock AI") answers: mentioning a

@@ -31,6 +31,7 @@ For every folder, IGrasp remembers (in the app-data folder, `sessions.json`):
 - the expanded folders of the Explorer;
 - the sidebar visibility and width, and its view (Explorer, Search, Recent Changes, Broken Links);
 - the right panel visibility and width;
+- the AI chat panel: open or closed, position and size (0.3.0);
 - the "show dotfiles" and "show ignored files" toggles.
 
 The fields added in 0.2.0 have defaults, so sessions saved by 0.1.0 load unchanged. The

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Tooltip } from 'radix-ui';
 import { backend } from './ipc/client';
 import { AboutDialog } from './features/about/AboutDialog';
-import { AiChatDialog } from './features/ai/AiChatDialog';
+import { AiPanel } from './features/ai/AiPanel';
 import { QuickOpenDialog } from './features/quickopen/QuickOpenDialog';
 import { ExplorerPanel } from './features/explorer/ExplorerPanel';
 import { BacklinksCount, BacklinksSection } from './features/links/BacklinksSection';
@@ -169,7 +169,7 @@ export function App() {
       </div>
       <ToastHost />
       <AboutDialog />
-      <AiChatDialog />
+      <AiPanel />
       <QuickOpenDialog />
       <SplashOverlay ready={ready} />
     </Tooltip.Provider>

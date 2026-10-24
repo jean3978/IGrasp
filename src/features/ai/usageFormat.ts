@@ -38,7 +38,7 @@ export const BUCKET_LABEL: Record<AiSizeEstimate['bucket'], string> = {
 
 const plural = (n: number, word: string) => `${String(n)} ${word}${n === 1 ? '' : 's'}`;
 
-/** "Claude (sonnet) will read 3 documents (14 KB) and 1 image." */
+/** "Acme AI (sonnet) will read 3 documents (14 KB) and 1 image." */
 export function confirmSummary(input: {
   provider: string;
   model: string;

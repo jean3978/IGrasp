@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { FIXTURE_ROOT } from '../../ipc/mock/fixture';
 import { MOCK_PROVIDER_NAME } from '../../ipc/mock/mockAi';
 import { useAi } from '../../stores/ai';
+import { useAiPanel } from '../../stores/aiPanel';
 import { useSettings } from '../../stores/settings';
 import { useWorkspace } from '../../stores/workspace';
 import { MenuBar } from './MenuBar';
@@ -21,7 +22,8 @@ const flagged = (Object.keys(actions) as ActionId[]).filter(
 
 beforeEach(async () => {
   window.__igraspMock?.reset();
-  useAi.setState({ open: false, status: null, providers: null });
+  useAiPanel.setState({ open: false });
+  useAi.setState({ status: null, providers: null });
   await useSettings.getState().load();
   await useWorkspace.getState().openRoot(FIXTURE_ROOT);
 });

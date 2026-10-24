@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FIXTURE_ROOT } from '../ipc/mock/fixture';
 import { backend } from '../ipc/client';
+import { useAiPanel } from './aiPanel';
 import { useDocuments } from './documents';
 import { startEventBridge } from './eventBridge';
 import { SAVE_DEBOUNCE_MS, buildSession, flushSession, startSessionSync } from './session';
@@ -91,6 +92,26 @@ describe('session', () => {
     expect(useTree.getState().listings.docs).toBeDefined();
     expect(useWorkspace.getState().sidebar.widthPx).toBe(321);
     expect(useWorkspace.getState().sidebar.view).toBe('recent');
+  });
+
+  it('remembers the AI panel, open and placed, per folder', async () => {
+    useAiPanel.getState().setOpen(true);
+    useAiPanel.getState().setRect({ x: 30, y: 40, width: 500, height: 400 });
+    expect(buildSession().aiPanel).toEqual({
+      open: true,
+      rect: { x: 30, y: 40, width: 500, height: 400 },
+    });
+    await useWorkspace.getState().closeRoot();
+    expect(useAiPanel.getState()).toMatchObject({ open: false, rect: null });
+
+    await useWorkspace.getState().openRoot(FIXTURE_ROOT);
+    await flush();
+    expect(useAiPanel.getState()).toMatchObject({
+      open: true,
+      rect: { x: 30, y: 40, width: 500, height: 400 },
+    });
+    useAiPanel.getState().restore(null);
+    await flushSession();
   });
 
   it('does not write while switching folders', async () => {

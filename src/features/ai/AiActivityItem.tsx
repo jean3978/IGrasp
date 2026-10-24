@@ -3,15 +3,16 @@
 
 import { LoaderCircle } from 'lucide-react';
 import { selectBusy, selectProviderName, useAi } from '../../stores/ai';
+import { useAiPanel } from '../../stores/aiPanel';
 import { CancelButton } from './CancelButton';
 import './ai.css';
 
 export function AiActivityItem() {
-  const open = useAi((s) => s.open);
+  const open = useAiPanel((s) => s.open);
   const busy = useAi(selectBusy);
   const providerName = useAi(selectProviderName);
   const waiting = useAi((s) => s.permissions.length);
-  const setOpen = useAi((s) => s.setOpen);
+  const setOpen = useAiPanel((s) => s.setOpen);
   const cancel = useAi((s) => s.cancel);
   const confirming = useAi((s) => s.pendingConfirm !== null);
   if (open || (!busy && !confirming)) return null;

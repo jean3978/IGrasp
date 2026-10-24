@@ -12,6 +12,7 @@ import { DEFAULT_SETTINGS } from '../../ipc/defaults';
 import { FIXTURE_ROOT } from '../../ipc/mock/fixture';
 import type { Conversation, SidebarView } from '../../ipc/types';
 import { MODEL_SAVE_DELAY_MS, useAi } from '../../stores/ai';
+import { useAiPanel } from '../../stores/aiPanel';
 import { startEventBridge } from '../../stores/eventBridge';
 import { useGraph } from '../../stores/graph';
 import { useOutline } from '../../stores/outline';
@@ -30,8 +31,8 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
 beforeEach(async () => {
   window.__igraspMock?.reset();
   useTabs.setState({ tabs: [], activeId: null });
+  useAiPanel.setState({ open: false, rect: null, draft: '' });
   useAi.setState({
-    open: false,
     status: null,
     capabilities: null,
     providers: null,
@@ -65,7 +66,7 @@ describe('no token without a user action', () => {
     const views: SidebarView[] = ['explorer', 'search', 'recent', 'broken'];
     for (const view of views) useWorkspace.getState().setSidebarView(view);
     useWorkspace.getState().setRightPanelVisible(true);
-    useAi.getState().setOpen(true);
+    useAiPanel.getState().setOpen(true);
     await useAi.getState().checkStatus();
 
     // Documents, searches and quick open.
@@ -101,7 +102,7 @@ describe('no token without a user action', () => {
       runAction(id);
       await settle();
     }
-    expect(useAi.getState().open).toBeDefined();
+    expect(useAiPanel.getState().open).toBeDefined();
 
     // Every tab kind: document, code, settings, shortcuts.
     useTabs.getState().openDocument('README.md');
@@ -120,7 +121,7 @@ describe('no token without a user action', () => {
 
     // The AI chat opens and checks the provider, which is free.
     runAction('ai.chat');
-    useAi.setState({ open: true });
+    useAiPanel.setState({ open: true });
     await screen.findAllByRole('dialog');
     await useAi.getState().checkStatus(true);
     await settle();

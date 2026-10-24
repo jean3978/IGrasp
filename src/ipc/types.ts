@@ -84,6 +84,8 @@ export type { PermissionRule } from './generated/PermissionRule';
 export type { ConfirmFrom } from './generated/ConfirmFrom';
 export type { SessionTab } from './generated/SessionTab';
 export type { SessionTabKind } from './generated/SessionTabKind';
+export type { AiPanelState } from './generated/AiPanelState';
+export type { PanelRect } from './generated/PanelRect';
 export type { SidebarView } from './generated/SidebarView';
 export type { LinkInfo } from './generated/LinkInfo';
 export type { SymbolHit } from './generated/SymbolHit';

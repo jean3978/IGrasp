@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Tooltip } from 'radix-ui';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -16,13 +16,20 @@ import {
 import { useAi } from '../../stores/ai';
 import { startEventBridge } from '../../stores/eventBridge';
 import { useWorkspace } from '../../stores/workspace';
-import { AiChatDialog } from './AiChatDialog';
+import {
+  PANEL_DEFAULT_WIDTH,
+  PANEL_KEY_STEP,
+  PANEL_MIN_HEIGHT,
+  PANEL_MIN_WIDTH,
+  selectPanelRect,
+  useAiPanel,
+} from '../../stores/aiPanel';
+import { AiPanel } from './AiPanel';
 
 let stop: () => void = () => undefined;
 
 function resetStore() {
   useAi.setState({
-    open: true,
     status: null,
     capabilities: null,
     checking: false,
@@ -43,6 +50,8 @@ beforeEach(async () => {
   resetStore();
   stop = await startEventBridge();
   await useWorkspace.getState().openRoot(FIXTURE_ROOT);
+  // Opening a folder restores its panel (closed for the fixture): open it for the tests.
+  useAiPanel.setState({ open: true, rect: null, draft: '' });
 });
 
 afterEach(async () => {
@@ -54,17 +63,17 @@ afterEach(async () => {
 const composer = () => screen.getByLabelText('Message');
 const statusLine = new RegExp(`${MOCK_PROVIDER_NAME} ${MOCK_PROVIDER_VERSION}`);
 
-const renderDialog = () =>
+const renderPanel = () =>
   render(
     <Tooltip.Provider>
-      <AiChatDialog />
+      <AiPanel />
     </Tooltip.Provider>,
   );
 
-describe('AiChatDialog', () => {
+describe('AiPanel', () => {
   it('shows the provider status, uses its name and streams a plain answer', async () => {
     const user = userEvent.setup();
-    renderDialog();
+    renderPanel();
     expect(await screen.findByText(statusLine)).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: MOCK_PROVIDER_NAME })).toBeInTheDocument();
     // The model list comes from the provider's capabilities.
@@ -85,7 +94,7 @@ describe('AiChatDialog', () => {
 
   it('shows a proposed markdown edit as a diff and applies it when accepted', async () => {
     const user = userEvent.setup();
-    renderDialog();
+    renderPanel();
     await screen.findByText(statusLine);
 
     await user.type(composer(), 'Please edit README.md{Enter}');
@@ -105,7 +114,7 @@ describe('AiChatDialog', () => {
   it('leaves the file alone when the edit is rejected', async () => {
     const user = userEvent.setup();
     const before = window.__igraspMock?.state.files.get('README.md');
-    renderDialog();
+    renderPanel();
     await screen.findByText(statusLine);
 
     await user.type(composer(), 'Please edit README.md{Enter}');
@@ -118,7 +127,7 @@ describe('AiChatDialog', () => {
 
   it('asks before running a command, naming the provider', async () => {
     const user = userEvent.setup();
-    renderDialog();
+    renderPanel();
     await screen.findByText(statusLine);
 
     await user.type(composer(), 'Run a command to list recent commits{Enter}');
@@ -131,7 +140,7 @@ describe('AiChatDialog', () => {
   it('runs a command the settings allow without asking, and says so', async () => {
     const user = userEvent.setup();
     if (window.__igraspMock) window.__igraspMock.state.settings.ai.permissions.commands = 'allow';
-    renderDialog();
+    renderPanel();
     await screen.findByText(statusLine);
 
     await user.type(composer(), 'Run a command to list recent commits{Enter}');
@@ -143,7 +152,7 @@ describe('AiChatDialog', () => {
   it('stops a running operation', async () => {
     const user = userEvent.setup();
     if (window.__igraspMock) window.__igraspMock.state.ai.stepMs = 500;
-    renderDialog();
+    renderPanel();
     await screen.findByText(statusLine);
 
     await user.type(composer(), 'Tell me a long story{Enter}');
@@ -156,7 +165,7 @@ describe('AiChatDialog', () => {
   it('explains a logged-out provider with its own help, and checks again', async () => {
     const user = userEvent.setup();
     if (window.__igraspMock) window.__igraspMock.state.ai.loggedIn = false;
-    renderDialog();
+    renderPanel();
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(MOCK_NOT_LOGGED_IN);
     expect(alert).toHaveTextContent(MOCK_NOT_LOGGED_IN_HELP);
@@ -170,14 +179,14 @@ describe('AiChatDialog', () => {
 
   it('explains a missing provider', async () => {
     if (window.__igraspMock) window.__igraspMock.state.ai.installed = false;
-    renderDialog();
+    renderPanel();
     expect(await screen.findByRole('alert')).toHaveTextContent(MOCK_NOT_INSTALLED);
     expect(composer()).toBeDisabled();
   });
 
   it('shows an error the provider reports after starting', async () => {
     const user = userEvent.setup();
-    renderDialog();
+    renderPanel();
     await screen.findByText(statusLine);
     // Logged out between the status check and the message (like an expired token).
     if (window.__igraspMock) window.__igraspMock.state.ai.loggedIn = false;
@@ -190,7 +199,7 @@ describe('AiChatDialog', () => {
 
   it('starts a new conversation', async () => {
     const user = userEvent.setup();
-    renderDialog();
+    renderPanel();
     await screen.findByText(statusLine);
     await user.type(composer(), 'Hi{Enter}');
     await screen.findByText(/This is the mock AI/);
@@ -198,5 +207,90 @@ describe('AiChatDialog', () => {
     expect(screen.queryByText(/This is the mock AI/)).not.toBeInTheDocument();
     expect(useAi.getState().resumeId).toBeNull();
     expect(screen.getByText(/session new/)).toBeInTheDocument();
+  });
+});
+
+describe('the floating panel', () => {
+  const panel = () => screen.getByRole('dialog', { name: MOCK_PROVIDER_NAME });
+
+  it('is not modal and sits in the default corner', async () => {
+    renderPanel();
+    await screen.findByText(statusLine);
+    expect(panel()).toHaveAttribute('aria-modal', 'false');
+    const rect = selectPanelRect(useAiPanel.getState());
+    expect(panel().style.left).toBe(`${String(rect.x)}px`);
+    expect(panel().style.width).toBe(`${String(PANEL_DEFAULT_WIDTH)}px`);
+  });
+
+  it('moves by dragging its header, kept inside the window', async () => {
+    renderPanel();
+    await screen.findByText(statusLine);
+    const start = selectPanelRect(useAiPanel.getState());
+    const header = screen.getByRole('heading', { name: MOCK_PROVIDER_NAME });
+    fireEvent.pointerDown(header, { button: 0, clientX: 500, clientY: 500, pointerId: 1 });
+    fireEvent.pointerMove(header, { clientX: 450, clientY: 420, pointerId: 1 });
+    fireEvent.pointerUp(header, { pointerId: 1 });
+    expect(useAiPanel.getState().rect).toMatchObject({ x: start.x - 50, y: start.y - 80 });
+    expect(panel().style.top).toBe(`${String(start.y - 80)}px`);
+
+    // Far beyond the top-left corner: stops at the window's edge.
+    fireEvent.pointerDown(header, { button: 0, clientX: 500, clientY: 500, pointerId: 2 });
+    fireEvent.pointerMove(header, { clientX: -5000, clientY: -5000, pointerId: 2 });
+    fireEvent.pointerUp(header, { pointerId: 2 });
+    expect(useAiPanel.getState().rect).toMatchObject({ x: 0, y: 0 });
+  });
+
+  it('resizes from a corner, never below the minimum size', async () => {
+    renderPanel();
+    await screen.findByText(statusLine);
+    const corner = document.querySelector('.ai-resize-nw');
+    if (!corner) throw new Error('no handle');
+    fireEvent.pointerDown(corner, { button: 0, clientX: 100, clientY: 100, pointerId: 1 });
+    fireEvent.pointerMove(corner, { clientX: 2000, clientY: 2000, pointerId: 1 });
+    fireEvent.pointerUp(corner, { pointerId: 1 });
+    expect(useAiPanel.getState().rect).toMatchObject({
+      width: PANEL_MIN_WIDTH,
+      height: PANEL_MIN_HEIGHT,
+    });
+  });
+
+  it('moves with Alt+arrows from its header without going back in the history', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByText(statusLine);
+    const start = selectPanelRect(useAiPanel.getState());
+    screen.getByRole('heading', { name: MOCK_PROVIDER_NAME }).focus();
+    await user.keyboard('{Alt>}{ArrowLeft}{ArrowUp}{/Alt}');
+    expect(useAiPanel.getState().rect).toMatchObject({
+      x: start.x - PANEL_KEY_STEP,
+      y: start.y - PANEL_KEY_STEP,
+    });
+    await user.keyboard('{Alt>}{Shift>}{ArrowRight}{/Shift}{/Alt}');
+    expect(useAiPanel.getState().rect?.width).toBe(start.width + PANEL_KEY_STEP);
+  });
+
+  it('stops a running answer on Escape, closes on the next, and gives the focus back', async () => {
+    const user = userEvent.setup();
+    if (window.__igraspMock) window.__igraspMock.state.ai.stepMs = 500;
+    render(
+      <Tooltip.Provider>
+        <button type="button" data-action="ai.chat">
+          AI Chat
+        </button>
+        <AiPanel />
+      </Tooltip.Provider>,
+    );
+    await screen.findByText(statusLine);
+    await user.type(composer(), 'Tell me a long story{Enter}');
+    await screen.findByRole('button', { name: 'Stop' });
+    await user.keyboard('{Escape}');
+    expect(await screen.findByText('Stopped.')).toBeInTheDocument();
+    expect(useAiPanel.getState().open).toBe(true);
+
+    composer().focus();
+    await user.keyboard('{Escape}');
+    expect(useAiPanel.getState().open).toBe(false);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('button', { name: 'AI Chat' })).toHaveFocus();
   });
 });

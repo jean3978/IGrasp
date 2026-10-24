@@ -17,7 +17,9 @@ IGrasp can be used entirely from the keyboard. Press **F1** for the full list of
 | `Ctrl+Shift+R` | Recent Changes view |
 | `Ctrl+Shift+L` | Broken Links view |
 | `Ctrl+Shift+O` | Focus the outline (opens the right panel) |
-| `Ctrl+Alt+C` | AI chat (proof of concept) |
+| `Ctrl+Alt+C` | Show or hide the AI chat panel |
+| `Alt+arrows` / `Alt+Shift+arrows` | Move / resize the AI chat panel (its title focused) |
+| `Escape` (AI chat panel) | Stop the running answer; pressed again, close the panel |
 | `Ctrl+T` | Search everything: files and headings |
 | `Alt+←` / `Alt+→`, mouse back / forward | Back / forward through the documents read |
 | `F4` / `Shift+F4` | Next / previous search result |

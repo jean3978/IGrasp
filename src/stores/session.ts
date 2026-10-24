@@ -1,10 +1,11 @@
 // Per-folder session: open tabs (with scroll positions), the active tab, expanded folders,
-// sidebar layout and the Explorer toggles. Saved in app data (debounced), restored when the
-// folder is opened again.
+// sidebar layout, the Explorer toggles and the AI chat panel (open, position and size). Saved
+// in app data (debounced), restored when the folder is opened again.
 
 import { backend } from '../ipc/client';
 import type { Session } from '../ipc/types';
 import { dirname } from '../lib/paths';
+import { useAiPanel } from './aiPanel';
 import { isFileTab, newTabId, useTabs } from './tabs';
 import type { Tab } from './tabs';
 import { useTree } from './tree';
@@ -20,6 +21,7 @@ export function buildSession(): Session {
   const { tabs, activeId } = useTabs.getState();
   const tree = useTree.getState();
   const { sidebar, rightPanel } = useWorkspace.getState();
+  const panel = useAiPanel.getState();
   const files = tabs.filter((t) => isFileTab(t) && t.relPath !== null);
   return {
     version: 1,
@@ -34,6 +36,7 @@ export function buildSession(): Session {
     sidebar: { visible: sidebar.visible, widthPx: sidebar.widthPx },
     sidebarView: sidebar.view,
     rightPanel: { visible: rightPanel.visible, widthPx: rightPanel.widthPx },
+    aiPanel: { open: panel.open, rect: panel.rect },
     showDotfiles: tree.showDotfiles,
     showIgnored: tree.showIgnored,
     savedAtMs: Date.now(),
@@ -63,12 +66,16 @@ function scheduleSave() {
 
 /** Applies the layout part of a session before the workspace is shown. */
 export function applySessionLayout(session: Session | null): void {
-  if (!session) return;
+  if (!session) {
+    useAiPanel.getState().restore(null);
+    return;
+  }
   useWorkspace.getState().setSidebarVisible(session.sidebar.visible);
   useWorkspace.getState().setSidebarWidth(session.sidebar.widthPx);
   useWorkspace.setState((s) => ({ sidebar: { ...s.sidebar, view: session.sidebarView } }));
   useWorkspace.getState().setRightPanelVisible(session.rightPanel.visible);
   useWorkspace.getState().setRightPanelWidth(session.rightPanel.widthPx);
+  useAiPanel.getState().restore(session.aiPanel);
 }
 
 async function existingFiles(paths: string[]): Promise<Set<string>> {
@@ -164,6 +171,9 @@ export function startSessionSync(): () => void {
     }),
     useWorkspace.subscribe((s, prev) => {
       if (s.sidebar !== prev.sidebar || s.rightPanel !== prev.rightPanel) scheduleSave();
+    }),
+    useAiPanel.subscribe((s, prev) => {
+      if (s.open !== prev.open || s.rect !== prev.rect) scheduleSave();
     }),
   ];
   return () => {

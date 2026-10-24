@@ -50,6 +50,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   newest first, trimmed to `settings.ai.historyLimit` conversations and 400 items each, and
   recovered like the other app-data files when corrupt. Commands `list_conversations`,
   `get_conversation`, `save_conversation`, `delete_conversation`, `forget_conversations`.
+- **Floating AI chat panel**: the chat is a movable, resizable panel over the window (drag its
+  header or press Alt+arrows on its title; resize from any edge or corner, or Alt+Shift+arrows),
+  kept inside the window, and remembered per folder with its open state in the session.
+  `Escape` stops a running answer, then closes the panel; the focus returns to the AI Chat
+  button.
 
 ### Changed
 

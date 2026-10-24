@@ -14,7 +14,8 @@ import { useSettings } from '../../stores/settings';
 import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
 import { AiActivityItem } from './AiActivityItem';
-import { AiChatDialog } from './AiChatDialog';
+import { useAiPanel } from '../../stores/aiPanel';
+import { AiPanel } from './AiPanel';
 import { ConfirmCard } from './ConfirmCard';
 import { UsageLine } from './UsageLine';
 import { confirmSummary, usageText } from './usageFormat';
@@ -30,8 +31,8 @@ const starts = () => mock().state.ai.starts;
 beforeEach(async () => {
   mock().reset();
   mock().state.ai.stepMs = 1;
+  useAiPanel.setState({ open: false, rect: null, draft: '' });
   useAi.setState({
-    open: false,
     status: null,
     capabilities: null,
     checking: false,
@@ -113,11 +114,11 @@ describe('the confirmation gate in send', () => {
 
 describe('the confirmation card in the chat', () => {
   it('starts on Start, cancels on Cancel and on Escape', async () => {
-    useAi.setState({ open: true });
+    useAiPanel.setState({ open: true });
     useTabs.getState().openCode('logs/huge.log');
     render(
       <Tooltip.Provider>
-        <AiChatDialog />
+        <AiPanel />
       </Tooltip.Provider>,
     );
     const box = await screen.findByRole('textbox', { name: 'Message' });
@@ -149,7 +150,7 @@ describe('the confirmation card in the chat', () => {
       <Tooltip.Provider>
         <ConfirmCard
           title="Quiz"
-          provider="Claude"
+          provider="Acme AI"
           model="sonnet"
           documents={[{ path: 'a.md', bytes: 2048 }]}
           images={1}
@@ -166,7 +167,7 @@ describe('the confirmation card in the chat', () => {
       </Tooltip.Provider>,
     );
     expect(
-      screen.getByText('Claude (sonnet) will read 1 document (2.0 KB) and 1 image.'),
+      screen.getByText('Acme AI (sonnet) will read 1 document (2.0 KB) and 1 image.'),
     ).toBeInTheDocument();
     expect(screen.getByText('Medium')).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
@@ -198,19 +199,19 @@ describe('the running indicator', () => {
     render(<AiActivityItem />);
     expect(screen.queryByText(/is working/)).toBeNull();
     mock().state.ai.stepMs = 40;
-    useAi.setState({ open: true });
+    useAiPanel.setState({ open: true });
     await useAi.getState().send('a slow answer');
     expect(screen.queryByText(/is working/)).toBeNull();
 
     act(() => {
-      useAi.getState().setOpen(false);
+      useAiPanel.getState().setOpen(false);
     });
     expect(await screen.findByText(`${MOCK_PROVIDER_NAME} is working…`)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /is working/ }));
-    expect(useAi.getState().open).toBe(true);
+    expect(useAiPanel.getState().open).toBe(true);
     act(() => {
-      useAi.getState().setOpen(false);
+      useAiPanel.getState().setOpen(false);
     });
 
     await userEvent.click(await screen.findByRole('button', { name: 'Stop' }));
