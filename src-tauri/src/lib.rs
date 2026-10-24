@@ -3,8 +3,6 @@
 mod appdata;
 mod commands;
 mod error;
-// Wired into the workspace once the graph builder lands; until then only its tests use it.
-#[cfg_attr(not(test), allow(dead_code))]
 mod graph;
 mod index;
 mod paths;
@@ -80,6 +78,7 @@ pub fn run() {
             commands::files::read_text_file,
             commands::files::open_with_default_app,
             commands::files::reveal_in_file_manager,
+            commands::graph::get_graph_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running IGrasp");

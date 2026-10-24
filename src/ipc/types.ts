@@ -8,6 +8,10 @@ import type { ErrorCode } from './generated/ErrorCode';
 import type { FileContent } from './generated/FileContent';
 import type { FileEntry } from './generated/FileEntry';
 import type { FsChangesEvent } from './generated/FsChangesEvent';
+import type { GraphChangedEvent } from './generated/GraphChangedEvent';
+import type { GraphProgressEvent } from './generated/GraphProgressEvent';
+import type { GraphReadyEvent } from './generated/GraphReadyEvent';
+import type { GraphStatus } from './generated/GraphStatus';
 import type { IndexErrorEvent } from './generated/IndexErrorEvent';
 import type { IndexProgressEvent } from './generated/IndexProgressEvent';
 import type { IndexReadyEvent } from './generated/IndexReadyEvent';
@@ -30,6 +34,10 @@ export type {
   FileContent,
   FileEntry,
   FsChangesEvent,
+  GraphChangedEvent,
+  GraphProgressEvent,
+  GraphReadyEvent,
+  GraphStatus,
   IndexErrorEvent,
   IndexProgressEvent,
   IndexReadyEvent,
@@ -52,6 +60,9 @@ export type { WindowFrame } from './generated/WindowFrame';
 export type { SessionTab } from './generated/SessionTab';
 export type { SessionTabKind } from './generated/SessionTabKind';
 export type { SidebarView } from './generated/SidebarView';
+export type { LinkInfo } from './generated/LinkInfo';
+export type { LinkStatus } from './generated/LinkStatus';
+export type { LinkTarget } from './generated/LinkTarget';
 export type { RightPanelState } from './generated/RightPanelState';
 
 /** Error raised by any backend call. */
@@ -73,6 +84,9 @@ export interface BackendEvents {
   'index://error': IndexErrorEvent;
   'fs://changes': FsChangesEvent;
   'fs://watch-status': WatchStatusEvent;
+  'graph://progress': GraphProgressEvent;
+  'graph://ready': GraphReadyEvent;
+  'graph://changed': GraphChangedEvent;
 }
 
 export type EventName = keyof BackendEvents;
@@ -129,6 +143,9 @@ export interface Backend {
   openExternal(relPath: string): Promise<void>;
   /** Opens an http(s) or mailto URL in the system browser or mail client. */
   openUrl(url: string): Promise<void>;
+
+  /** Progress of the document graph build and the number of broken links. */
+  getGraphStatus(): Promise<GraphStatus>;
 
   getSettings(): Promise<Settings>;
   updateSettings(patch: SettingsPatch): Promise<Settings>;

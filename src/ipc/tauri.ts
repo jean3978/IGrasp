@@ -84,6 +84,8 @@ export const tauriBackend: Backend = {
   openExternal: (relPath) => invoke('open_external', { relPath }),
   openUrl: (url) => openUrl(url),
 
+  getGraphStatus: () => invoke('get_graph_status'),
+
   getSettings: () => invoke('get_settings'),
   updateSettings: (patch) => invoke('update_settings', { patch }),
   getRecentFolders: () => invoke('get_recent_folders'),

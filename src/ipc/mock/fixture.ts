@@ -53,6 +53,9 @@ flowchart LR
 ## Components
 
 The backend owns the file system; the frontend renders.
+
+Start with [getting started](guide/getting-started.md), browse the [decisions](decisions/), or read
+the [old design](old-design.md).
 `;
 
 const GETTING_STARTED = `---
@@ -71,6 +74,9 @@ Run \`npm install\`.
 
 > [!WARNING]
 > Remote images must use https.
+
+Back to the [features](../../README.md#features). See also the [deep dive](advanced/deep-dive.markdown#internals)
+and the [Architecture](../Architecture.md).
 `;
 
 const MAIN_TS = `// Entry point of the demo app.
@@ -119,7 +125,8 @@ export const FIXTURE_FILES: Record<string, string> = {
   'docs/guide/advanced/deep-dive.markdown': '# Deep dive\n\nThe `.markdown` extension works too.\n',
   'docs/images/diagram.svg':
     '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40"><rect width="120" height="40" fill="#6d4de0"/></svg>',
-  'notes/TODO.MD': '# TODO\n\nUpper-case extensions count as markdown.\n',
+  'notes/TODO.MD':
+    '# TODO\n\nUpper-case extensions count as markdown.\n\n- Revisit the [CLI decision](../docs/decisions/0001-use-git-cli.md).\n',
   '.github/CONTRIBUTING.md': '# Contributing\n\nA dotfolder, hidden unless dotfiles are shown.\n',
   'build/output.md': '# Build output\n\nIgnored by .gitignore.\n',
   'node_modules/some-pkg/README.md': '# some-pkg\n\nAlways skipped.\n',

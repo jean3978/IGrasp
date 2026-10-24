@@ -46,15 +46,7 @@ fn folder_name(guard: &RootGuard) -> String {
 }
 
 fn spawn_scan(app: &AppHandle, ws: &Workspace) {
-    start_scan(
-        app.clone(),
-        ws.guard.root().to_path_buf(),
-        ws.options.clone(),
-        ws.generation,
-        ws.index.clone(),
-        ws.cancel.clone(),
-        ws.watch.clone(),
-    );
+    start_scan(app.clone(), ws.scan_context());
 }
 
 #[tauri::command]
