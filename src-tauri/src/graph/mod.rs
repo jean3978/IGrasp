@@ -9,7 +9,7 @@ pub mod parse;
 pub mod slug;
 
 use std::cell::RefCell;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock, mpsc};
@@ -142,6 +142,14 @@ fn target_keys(from_doc: &str, link: &LinkInfo) -> Vec<String> {
     }
     keys.dedup();
     keys
+}
+
+/// The folder of a README: links to that folder resolve to it, so they must be re-checked when
+/// it appears or vanishes.
+fn readme_folder(rel: &str) -> Option<&str> {
+    let (dir, name) = rel.rsplit_once('/').unwrap_or(("", rel));
+    (name.eq_ignore_ascii_case("readme.md") || name.eq_ignore_ascii_case("readme.markdown"))
+        .then_some(dir)
 }
 
 /// The folder as the link resolver sees it: the index, the parsed documents and the disk.
@@ -362,18 +370,21 @@ impl Graph {
         }
     }
 
-    /// Documents with a link that depends on `rel` (or, with `prefix`, on anything inside it).
-    fn dependents(&self, rel: &str, prefix: bool, out: &mut BTreeSet<String>) {
-        let key = lower(rel);
-        if let Some(set) = self.by_target.get(&key) {
+    /// Documents with a link that depends on `rel`.
+    fn dependents(&self, rel: &str, out: &mut BTreeSet<String>) {
+        if let Some(set) = self.by_target.get(&lower(rel)) {
             out.extend(set.iter().cloned());
         }
-        if prefix {
-            let start = format!("{key}/");
-            for (k, set) in &self.by_target {
-                if k.starts_with(&start) {
-                    out.extend(set.iter().cloned());
-                }
+    }
+
+    /// Documents with a link that depends on any of `paths` or on anything inside them, in one
+    /// pass over the target map (instead of one pass per path).
+    fn dependents_within(&self, paths: &[String], out: &mut BTreeSet<String>) {
+        let keys: HashSet<String> = paths.iter().map(|p| lower(p)).collect();
+        for (k, set) in &self.by_target {
+            let inside = || k.match_indices('/').any(|(i, _)| keys.contains(&k[..i]));
+            if keys.contains(k) || inside() {
+                out.extend(set.iter().cloned());
             }
         }
     }
@@ -381,7 +392,7 @@ impl Graph {
     /// The documents linking to `rel`, with each link, sorted by path then line.
     pub fn backlinks(&self, rel: &str) -> Vec<(String, LinkInfo)> {
         let mut sources = BTreeSet::new();
-        self.dependents(rel, false, &mut sources);
+        self.dependents(rel, &mut sources);
         let mut out = Vec::new();
         for source in sources {
             if source == rel {
@@ -549,7 +560,10 @@ pub fn apply(
     let mut affected = BTreeSet::new();
     let mut everything = raw_paths.len() > MAX_TARGETED_PATHS;
     for rel in &changes.removed {
-        g.dependents(rel, false, &mut affected);
+        g.dependents(rel, &mut affected);
+        if let Some(dir) = readme_folder(rel) {
+            g.dependents(dir, &mut affected);
+        }
         g.remove(rel);
     }
     for (rel, doc) in parsed {
@@ -557,13 +571,14 @@ pub fn apply(
             Some((doc, _)) => g.insert(&rel, doc),
             None => g.remove(&rel),
         }
-        g.dependents(&rel, false, &mut affected);
+        g.dependents(&rel, &mut affected);
+        if let Some(dir) = readme_folder(&rel) {
+            g.dependents(dir, &mut affected);
+        }
         affected.insert(rel);
     }
     if !everything {
-        for raw in raw_paths {
-            g.dependents(raw, true, &mut affected);
-        }
+        g.dependents_within(raw_paths, &mut affected);
     }
     if changes.removed.len() + changes.added.len() > MAX_TARGETED_PATHS {
         everything = true;
@@ -813,6 +828,31 @@ mod tests {
         fs::remove_dir_all(f.guard.root().join("src")).unwrap();
         sync(&f, &["src"]).unwrap();
         assert_eq!(status(&f, "a.md", "src/lib.rs"), LinkStatus::MissingFile);
+    }
+
+    #[test]
+    fn a_readme_added_or_removed_updates_links_to_its_folder() {
+        let f = fixture(&[("a.md", "[docs](docs/)\n"), ("docs/other.md", "# O\n")]);
+        let readme = |f: &Fixture| {
+            let g = f.graph.read().unwrap();
+            match &g.doc("a.md").unwrap().links[0].target {
+                LinkTarget::Folder { readme, .. } => readme.clone(),
+                other => panic!("not a folder link: {other:?}"),
+            }
+        };
+        assert_eq!(readme(&f), None);
+        write(f.guard.root(), "docs/README.md", "# Docs\n");
+        let (docs, _, _) = sync(&f, &["docs/README.md"]).unwrap();
+        assert!(docs.contains(&"a.md".to_owned()));
+        assert_eq!(readme(&f).as_deref(), Some("docs/README.md"));
+        assert_eq!(
+            f.graph.read().unwrap().backlinks("docs/README.md")[0].0,
+            "a.md"
+        );
+
+        fs::remove_file(f.guard.root().join("docs/README.md")).unwrap();
+        sync(&f, &["docs/README.md"]).unwrap();
+        assert_eq!(readme(&f), None);
     }
 
     #[test]

@@ -113,7 +113,7 @@ pub fn start_scan(app: AppHandle, ctx: ScanContext) {
                     emit(&app, EVENT_READY, ready);
                     let handle = watcher::start_watcher(
                         app.clone(),
-                        root.clone(),
+                        guard.clone(),
                         options.clone(),
                         generation,
                         index.clone(),

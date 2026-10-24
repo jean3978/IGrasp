@@ -287,6 +287,8 @@ pub fn to_event(generation: u64, mut changes: Changes, plan: &Plan) -> Option<Fs
 struct WatchContext {
     app: AppHandle,
     root: PathBuf,
+    /// The workspace's guard, reused for every batch (building one canonicalizes the root).
+    guard: RootGuard,
     options: ScanOptions,
     generation: u64,
     index: SharedIndex,
@@ -338,8 +340,7 @@ impl WatchContext {
             .iter()
             .flat_map(|(_, paths)| paths.iter().flatten().cloned())
             .collect();
-        if let Ok(root) = RootGuard::new(&self.root)
-            && let Some(change) = graph::apply(&self.graph, &self.index, &root, &for_graph, &raw)
+        if let Some(change) = graph::apply(&self.graph, &self.index, &self.guard, &for_graph, &raw)
             && !self.cancel.load(Ordering::SeqCst)
         {
             graph::emit_changed(&self.app, self.generation, change);
@@ -365,20 +366,22 @@ fn emit_status(app: &AppHandle, mode: WatchMode, reason: Option<String>) {
     }
 }
 
-/// Starts watching `root` recursively. Falls back to polling every 2 s when the native watcher
-/// cannot be used (for example when the Linux inotify watch limit is reached).
+/// Starts watching the guarded root recursively. Falls back to polling every 2 s when the native
+/// watcher cannot be used (for example when the Linux inotify watch limit is reached).
 pub fn start_watcher(
     app: AppHandle,
-    root: PathBuf,
+    guard: RootGuard,
     options: ScanOptions,
     generation: u64,
     index: SharedIndex,
     cancel: Arc<AtomicBool>,
     graph: SharedGraph,
 ) -> Option<WatchHandle> {
+    let root = guard.root().to_path_buf();
     let ctx = Arc::new(WatchContext {
         app: app.clone(),
         root: root.clone(),
+        guard,
         options,
         generation,
         index,
