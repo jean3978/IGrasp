@@ -10,10 +10,23 @@ const ICONS: Record<AlertType, typeof Info> = {
   caution: OctagonAlert,
 };
 
-export function Alert({ type, children }: { type: AlertType; children: ReactNode }) {
+export function Alert({
+  type,
+  line,
+  children,
+}: {
+  type: AlertType;
+  /** Source line the block starts on (`data-line`, for scroll-to-line and region capture). */
+  line?: number;
+  children: ReactNode;
+}) {
   const Icon = ICONS[type];
   return (
-    <div className={`markdown-alert markdown-alert-${type}`} role="note">
+    <div
+      className={`markdown-alert markdown-alert-${type}`}
+      role="note"
+      {...(line === undefined ? {} : { 'data-line': line })}
+    >
       <Icon className="markdown-alert-icon" aria-hidden />
       <div className="markdown-alert-body">{children}</div>
     </div>

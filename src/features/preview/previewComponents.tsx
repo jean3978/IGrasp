@@ -14,7 +14,14 @@ const isAlertType = (v: unknown): v is AlertType => ALERT_TYPES.includes(v as Al
 
 function Div(props: ComponentProps<'div'> & { 'data-alert'?: string }) {
   const { 'data-alert': type, children, ...rest } = props;
-  if (isAlertType(type)) return <Alert type={type}>{children}</Alert>;
+  if (isAlertType(type)) {
+    const line = (rest as { 'data-line'?: number })['data-line'];
+    return (
+      <Alert type={type} {...(line === undefined ? {} : { line })}>
+        {children}
+      </Alert>
+    );
+  }
   return <div {...rest}>{children}</div>;
 }
 
