@@ -91,6 +91,8 @@ pub fn run() {
             commands::search::cancel_search,
             commands::ai::ai_status,
             commands::ai::ai_capabilities,
+            commands::ai::ai_context,
+            commands::ai::ai_estimate,
             commands::ai::ai_start,
             commands::ai::ai_respond_permission,
             commands::ai::ai_cancel,

@@ -10,7 +10,8 @@ use std::path::Path;
 
 use crate::ai::process::ProcessGuard;
 use crate::ai::types::{
-    AiCapabilities, AiEvent, AiModel, AiOutcome, AiProviderStatus, AiRequest, PermissionDecision,
+    AiCapabilities, AiContextRole, AiEvent, AiModel, AiOutcome, AiProviderStatus, AiRequest,
+    PermissionDecision,
 };
 use crate::ai::{AiOperation, AiProvider, EventSink};
 use crate::error::{AppError, AppResult};
@@ -37,22 +38,83 @@ impl Default for ClaudeCliProvider {
     }
 }
 
-/// The prompt the CLI receives: the user's text, plus the files it should read first.
+/// A fence longer than any run of backticks in `text`, so the text cannot close it.
+fn fence_for(text: &str) -> String {
+    let longest = text.split(|c| c != '`').map(str::len).max().unwrap_or(0);
+    "`".repeat((longest + 1).max(3))
+}
+
+fn fenced(path: &str, text: &str) -> String {
+    let fence = fence_for(text);
+    let lang = if path.to_lowercase().ends_with(".md") {
+        "markdown"
+    } else {
+        ""
+    };
+    let body = text.strip_suffix('\n').unwrap_or(text);
+    format!("{fence}{lang}\n{body}\n{fence}")
+}
+
+fn role_label(role: AiContextRole) -> &'static str {
+    match role {
+        AiContextRole::InstructionFile => "instruction file",
+        AiContextRole::CurrentFile => "the file the user is reading",
+        AiContextRole::Capture => "the captured document",
+    }
+}
+
+/// The prompt the CLI receives: the context documents inlined (instruction files first, then
+/// the current file), the ones too large to inline listed as paths to read, the captured region
+/// with its line range, then the user's message.
 fn prompt_with_context(request: &AiRequest) -> String {
-    if request.context_files.is_empty() {
+    if request.context.is_empty() && request.capture.is_none() {
         return request.prompt.clone();
     }
-    let files = request
-        .context_files
-        .iter()
-        .map(|f| format!("- {f}"))
-        .collect::<Vec<_>>()
-        .join("\n");
-    format!(
-        "{}\n\n(Context: read these files of the project first, they are what the user is \
-         looking at:\n{files})",
-        request.prompt
-    )
+    let mut parts = Vec::new();
+    let (inlined, listed): (Vec<_>, Vec<_>) =
+        request.context.iter().partition(|d| d.content.is_some());
+    if !inlined.is_empty() {
+        parts.push(
+            "The user is reading this project in IGrasp. These files are part of the context, \
+             general rules first:"
+                .to_owned(),
+        );
+        for doc in inlined {
+            parts.push(format!(
+                "{} ({}):\n{}",
+                doc.path,
+                role_label(doc.role),
+                fenced(&doc.path, doc.content.as_deref().unwrap_or_default())
+            ));
+        }
+    }
+    if !listed.is_empty() {
+        let lines = listed
+            .iter()
+            .map(|d| format!("- {} ({}, {} bytes)", d.path, role_label(d.role), d.bytes))
+            .collect::<Vec<_>>()
+            .join("\n");
+        parts.push(format!(
+            "These files are also part of the context but too large to include; read them if \
+             you need them:\n{lines}"
+        ));
+    }
+    if let Some(capture) = &request.capture {
+        let image = if request.images.is_empty() {
+            ""
+        } else {
+            "; the image shows how it is rendered"
+        };
+        parts.push(format!(
+            "The user selected this region of `{}` (lines {}–{}){image}:\n{}",
+            capture.source_path,
+            capture.first_line,
+            capture.last_line,
+            fenced(&capture.source_path, &capture.text)
+        ));
+    }
+    parts.push(format!("The user's message:\n\n{}", request.prompt));
+    parts.join("\n\n")
 }
 
 impl AiProvider for ClaudeCliProvider {
@@ -188,22 +250,80 @@ impl AiOperation for ClaudeTurn {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ai::types::{AiCapture, AiContextDocument, AiImage};
+
+    fn doc(path: &str, role: AiContextRole, content: Option<&str>) -> AiContextDocument {
+        AiContextDocument {
+            path: path.into(),
+            role,
+            content: content.map(String::from),
+            bytes: content.map_or(500_000, |c| c.len() as u64),
+            truncated: content.is_none(),
+        }
+    }
 
     #[test]
-    fn context_files_are_listed_after_the_prompt() {
+    fn context_documents_are_inlined_before_the_message() {
         let plain = AiRequest {
             prompt: "hi".into(),
             ..AiRequest::default()
         };
         assert_eq!(prompt_with_context(&plain), "hi");
+
         let with = AiRequest {
             prompt: "Explain this".into(),
-            context_files: vec!["docs/a.md".into(), "CLAUDE.md".into()],
+            context: vec![
+                doc(
+                    "CLAUDE.md",
+                    AiContextRole::InstructionFile,
+                    Some("# Rules\n"),
+                ),
+                doc("docs/huge.md", AiContextRole::CurrentFile, None),
+                doc(
+                    "docs/a.md",
+                    AiContextRole::CurrentFile,
+                    Some("Code:\n```sh\nls\n```\n"),
+                ),
+            ],
             ..AiRequest::default()
         };
         let prompt = prompt_with_context(&with);
-        assert!(prompt.starts_with("Explain this\n\n(Context:"));
-        assert!(prompt.contains("- docs/a.md\n- CLAUDE.md"));
+        let rules = prompt.find("CLAUDE.md (instruction file):\n```markdown\n# Rules\n```");
+        let current = prompt.find("docs/a.md (the file the user is reading):\n````markdown\n");
+        let listed = prompt.find("- docs/huge.md (the file the user is reading, 500000 bytes)");
+        let message = prompt.find("The user's message:\n\nExplain this");
+        assert!(
+            rules.is_some() && current.is_some() && listed.is_some(),
+            "{prompt}"
+        );
+        assert!(rules < current && current < listed && listed < message);
+        assert!(prompt.ends_with("Explain this"));
+    }
+
+    #[test]
+    fn a_capture_is_inlined_with_its_line_range() {
+        let request = AiRequest {
+            prompt: "About this region:".into(),
+            capture: Some(AiCapture {
+                source_path: "docs/a.md".into(),
+                first_line: 40,
+                last_line: 58,
+                text: "| a | b |\n".into(),
+            }),
+            images: vec![AiImage {
+                media_type: "image/png".into(),
+                data_base64: "AAAA".into(),
+            }],
+            ..AiRequest::default()
+        };
+        let prompt = prompt_with_context(&request);
+        assert!(prompt.starts_with(
+            "The user selected this region of `docs/a.md` (lines 40–58); the image shows how \
+             it is rendered:\n```markdown\n| a | b |\n```"
+        ));
+        assert!(prompt.ends_with("The user's message:\n\nAbout this region:"));
+        assert_eq!(fence_for("````"), "`````");
+        assert_eq!(fence_for("none"), "```");
     }
 
     #[test]

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createMockBackend } from '.';
-import type { AiEvent, AiRequest, PermissionDecision } from '../types';
+import type { AiEvent, AiStartRequest, PermissionDecision } from '../types';
 import { FIXTURE_ROOT } from './fixture';
 import {
   DENIED_BY_SETTINGS,
@@ -29,7 +29,7 @@ async function backend(): Promise<Mock> {
 /** Runs one operation to its end, answering its permission request with `answer`. */
 async function run(
   b: Mock,
-  request: Partial<AiRequest> & { prompt: string },
+  request: Partial<AiStartRequest> & { prompt: string },
   answer: (p: PermissionEvent) => PermissionDecision = () => ({
     behavior: 'allow',
     updatedEdit: null,
@@ -48,7 +48,7 @@ async function run(
     if (event.type === 'done') resolve();
   });
   operationId = await b.aiStart('chatMessage', {
-    contextFiles: [],
+    contextPaths: [],
     images: [],
     policy: 'interactive',
     ...request,
@@ -246,5 +246,69 @@ describe('mock AI scripts', () => {
     const events = await run(b, { prompt: 'slow please' });
     expect(events.filter((e) => e.type === 'textDelta')).toHaveLength(10);
     expect(Date.now() - started).toBeGreaterThanOrEqual(1900);
+  });
+});
+
+describe('mock AI context and estimate', () => {
+  it('lists the instruction files down to the current file, then reads them on start', async () => {
+    const b = await backend();
+    b.controls.writeFiles({ 'AGENTS.md': '# Rules\n', 'docs/AGENTS.md': '# Docs rules\n' });
+    const current = 'docs/guide/getting-started.md';
+    const docs = await b.aiContext(current);
+    expect(docs.map((d) => [d.path, d.role])).toEqual([
+      ['AGENTS.md', 'instructionFile'],
+      ['docs/AGENTS.md', 'instructionFile'],
+      [current, 'currentFile'],
+    ]);
+    expect(docs.every((d) => d.content === null && !d.truncated)).toBe(true);
+    expect(await b.aiContext(null)).toHaveLength(1);
+
+    // The user removed docs/AGENTS.md from this message.
+    const paths = ['AGENTS.md', current];
+    await run(b, { prompt: 'hello', contextPaths: paths });
+    const last = b.controls.state.ai.lastRequest;
+    expect(last?.prompt).toBe('hello');
+    expect(last?.context.map((d) => d.path)).toEqual(paths);
+    expect(last?.context[0]?.content).toBe('# Rules\n');
+    expect(last?.context[1]?.content).toMatch(/^---\ntitle: Getting started/);
+
+    const estimate = await b.aiEstimate({ promptBytes: 5, contextPaths: paths, images: 1 });
+    expect(estimate).toMatchObject({ documents: 2, images: 1, bucket: 'small' });
+    expect(estimate.bytes).toBe(5 + (docs[0]?.bytes ?? 0) + (docs[2]?.bytes ?? 0));
+  });
+
+  it('lists a file too large to inline by path, and refuses malformed paths', async () => {
+    const b = await backend();
+    const [huge] = await b.aiContext('logs/huge.log');
+    expect(huge).toMatchObject({ path: 'logs/huge.log', truncated: true, content: null });
+    const estimate = await b.aiEstimate({
+      promptBytes: 0,
+      contextPaths: ['logs/huge.log'],
+      images: 0,
+    });
+    expect(estimate.bucket).toBe('large');
+    await expect(b.aiContext('../x.md')).rejects.toMatchObject({ code: 'InvalidPath' });
+    await expect(
+      b.aiStart('chatMessage', {
+        prompt: 'x',
+        contextPaths: ['/etc/passwd'],
+        images: [],
+        policy: 'interactive',
+      }),
+    ).rejects.toMatchObject({ code: 'InvalidPath' });
+    expect(b.controls.state.ai.starts).toEqual([]);
+  });
+
+  it('records the capture and the images the provider received', async () => {
+    const b = await backend();
+    const capture = { sourcePath: 'README.md', firstLine: 3, lastLine: 3, text: 'Welcome' };
+    const events = await run(b, {
+      prompt: 'image of this',
+      capture,
+      images: [{ mediaType: 'image/png', dataBase64: 'AAAAAA==' }],
+    });
+    expect(b.controls.state.ai.lastRequest?.capture).toEqual(capture);
+    expect(b.controls.state.ai.lastRequest?.images).toHaveLength(1);
+    expect(lastText(events)).toBe('I see 1 attached image (4 bytes).');
   });
 });

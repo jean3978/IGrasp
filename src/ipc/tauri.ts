@@ -104,6 +104,8 @@ export const tauriBackend: Backend = {
 
   aiStatus: () => invoke('ai_status'),
   aiCapabilities: () => invoke('ai_capabilities'),
+  aiContext: (currentPath) => invoke('ai_context', { currentPath }),
+  aiEstimate: (input) => invoke('ai_estimate', { input }),
   aiStart: (action, request) => invoke('ai_start', { action, request }),
   aiRespondPermission: (operationId, requestId, decision) =>
     invoke('ai_respond_permission', { operationId, requestId, decision }),

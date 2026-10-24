@@ -46,6 +46,22 @@ const WRITE_TOOLS: &str = "Bash,PowerShell,Edit,Write,MultiEdit,NotebookEdit,Web
 /// Lines of stderr kept to explain a crash.
 const STDERR_TAIL_LINES: usize = 40;
 
+/// Largest message written to the CLI's stdin. Captured images are downscaled by the
+/// frontend to fit well under it; anything larger is refused before spawning a process.
+pub const MAX_MESSAGE_BYTES: usize = 4 * 1024 * 1024;
+
+fn check_message_size(message: &str) -> AppResult<()> {
+    if message.len() > MAX_MESSAGE_BYTES {
+        return Err(AppError::Ai(format!(
+            "The message is too large to send ({:.1} MB, at most {} MB). Remove an attachment \
+             or a large document from the context.",
+            message.len() as f64 / 1_048_576.0,
+            MAX_MESSAGE_BYTES / 1_048_576
+        )));
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct PermissionRequest {
     pub request_id: String,
@@ -283,6 +299,8 @@ pub fn start(
     mut sink: EventSink,
 ) -> AppResult<ClaudeTurn> {
     let args = build_args(request)?;
+    let message = user_message(&request.prompt, &request.images);
+    check_message_size(&message)?;
     let mut cmd = cli::command(exe);
     cmd.args(&args)
         .current_dir(root)
@@ -305,7 +323,7 @@ pub fn start(
     let mut stdin = child.stdin.take().expect("stdin is piped");
     let stdout = child.stdout.take().expect("stdout is piped");
     let stderr = child.stderr.take().expect("stderr is piped");
-    if let Err(e) = write_line(&mut stdin, &user_message(&request.prompt, &request.images)) {
+    if let Err(e) = write_line(&mut stdin, &message) {
         let _ = child.kill();
         let _ = child.wait();
         return Err(AppError::Ai(format!("Cannot send the message: {e}")));
@@ -499,6 +517,13 @@ mod tests {
             args.windows(2)
                 .any(|w| w == ["--resume", "3c2e6d49-bc84-4a2c-a93e-67d7cd8d7828"])
         );
+    }
+
+    #[test]
+    fn refuses_a_message_over_the_stdin_cap() {
+        assert!(check_message_size(&"x".repeat(MAX_MESSAGE_BYTES)).is_ok());
+        let err = check_message_size(&"x".repeat(MAX_MESSAGE_BYTES + 1)).unwrap_err();
+        assert!(err.to_string().contains("too large"));
     }
 
     #[test]

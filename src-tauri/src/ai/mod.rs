@@ -5,6 +5,8 @@
 //! provider-neutral [`types::AiEvent`] stream. The provider modules are private to this module,
 //! so no other code can spawn a CLI or call an API.
 
+pub mod context;
+pub mod estimate;
 pub mod gateway;
 pub mod policy;
 mod process;

@@ -144,7 +144,7 @@ export const useAi = create<AiState>()((set, get) => ({
     try {
       const operationId = await backend.aiStart('chatMessage', {
         prompt,
-        contextFiles: [],
+        contextPaths: [],
         images: [],
         policy: 'interactive',
         ...(model ? { model } : {}),

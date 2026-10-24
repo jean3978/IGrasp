@@ -35,6 +35,10 @@ import type { AiCapabilities } from './generated/AiCapabilities';
 import type { AiEventEnvelope } from './generated/AiEventEnvelope';
 import type { AiProviderStatus } from './generated/AiProviderStatus';
 import type { AiRequest } from './generated/AiRequest';
+import type { AiContextDocument } from './generated/AiContextDocument';
+import type { AiEstimateInput } from './generated/AiEstimateInput';
+import type { AiSizeEstimate } from './generated/AiSizeEstimate';
+import type { AiStartRequest } from './generated/AiStartRequest';
 import type { AiUserAction } from './generated/AiUserAction';
 import type { PermissionDecision } from './generated/PermissionDecision';
 
@@ -101,13 +105,20 @@ export type { AiModel } from './generated/AiModel';
 export type { AiOutcome } from './generated/AiOutcome';
 export type { AiPermissionKind } from './generated/AiPermissionKind';
 export type { AiPolicy } from './generated/AiPolicy';
+export type { AiCapture } from './generated/AiCapture';
+export type { AiContextRole } from './generated/AiContextRole';
+export type { AiSizeBucket } from './generated/AiSizeBucket';
 export type { EditHunk } from './generated/EditHunk';
 export type { ProposedEdit } from './generated/ProposedEdit';
 export type {
   AiCapabilities,
   AiEventEnvelope,
   AiProviderStatus,
+  AiContextDocument,
+  AiEstimateInput,
   AiRequest,
+  AiSizeEstimate,
+  AiStartRequest,
   AiUserAction,
   PermissionDecision,
 };
@@ -232,10 +243,19 @@ export interface Backend {
   aiStatus(): Promise<AiProviderStatus>;
   aiCapabilities(): Promise<AiCapabilities>;
   /**
-   * Starts an AI operation in the open folder on behalf of a user action; resolves to its id.
-   * Its events arrive as `ai://event`, ending with `done`.
+   * What the next message would carry for the active file (`null`: none): the provider's
+   * instruction files from the root down, then the current file. Paths, roles and sizes only;
+   * the contents are read by the backend when the message is sent. Spends no tokens.
    */
-  aiStart(action: AiUserAction, request: AiRequest): Promise<number>;
+  aiContext(currentPath: string | null): Promise<AiContextDocument[]>;
+  /** The approximate size of a message, from file metadata. Spends no tokens. */
+  aiEstimate(input: AiEstimateInput): Promise<AiSizeEstimate>;
+  /**
+   * Starts an AI operation in the open folder on behalf of a user action; resolves to its id.
+   * The backend reads the context documents from `request.contextPaths`. Its events arrive as
+   * `ai://event`, ending with `done`.
+   */
+  aiStart(action: AiUserAction, request: AiStartRequest): Promise<number>;
   /** Answers a `permissionRequest` event of the running operation. */
   aiRespondPermission(
     operationId: number,

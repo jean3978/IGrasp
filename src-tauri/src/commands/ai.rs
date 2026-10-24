@@ -3,8 +3,11 @@
 
 use tauri::{AppHandle, Emitter, Manager, State};
 
+use crate::ai::context::{self, Caps};
+use crate::ai::estimate::estimate;
 use crate::ai::types::{
-    AiCapabilities, AiEventEnvelope, AiProviderStatus, AiRequest, AiUserAction, PermissionDecision,
+    AiCapabilities, AiContextDocument, AiEstimateInput, AiEventEnvelope, AiProviderStatus,
+    AiSizeEstimate, AiStartRequest, AiUserAction, PermissionDecision,
 };
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
@@ -25,16 +28,56 @@ pub fn ai_capabilities(state: State<'_, AppState>) -> AiCapabilities {
     state.ai.capabilities()
 }
 
+/// What the next message would carry for `current_path` (the active document or code file):
+/// the provider's instruction files from the root down, then the current file. Paths, roles and
+/// sizes only; the contents are read when the message is sent. Never calls the provider.
+#[tauri::command]
+pub fn ai_context(
+    state: State<'_, AppState>,
+    current_path: Option<String>,
+) -> AppResult<Vec<AiContextDocument>> {
+    let names = state.ai.capabilities().context_file_names;
+    state.with_workspace(|ws| {
+        context::collect(&ws.guard, current_path.as_deref(), &names, Caps::default())
+    })
+}
+
+/// The approximate size of a message, from file metadata (nothing is read).
+#[tauri::command]
+pub fn ai_estimate(
+    state: State<'_, AppState>,
+    input: AiEstimateInput,
+) -> AppResult<AiSizeEstimate> {
+    let names = state.ai.capabilities().context_file_names;
+    let documents = state.with_workspace(|ws| {
+        context::documents(
+            &ws.guard,
+            &input.context_paths,
+            &names,
+            Caps::default(),
+            false,
+        )
+    })?;
+    Ok(estimate(input.prompt_bytes, &documents, input.images))
+}
+
 /// Starts an operation in the open folder for `action` and returns its id. Its events arrive
-/// as `ai://event`, ending with `done`.
+/// as `ai://event`, ending with `done`. The context documents are read here, through the root
+/// guard, from the paths the frontend kept.
 #[tauri::command]
 pub fn ai_start(
     app: AppHandle,
     state: State<'_, AppState>,
     action: AiUserAction,
-    request: AiRequest,
+    request: AiStartRequest,
 ) -> AppResult<u32> {
-    let root = state.with_workspace(|ws| Ok(ws.guard.root().to_path_buf()))?;
+    let names = state.ai.capabilities().context_file_names;
+    let (root, request) = state.with_workspace(|ws| {
+        Ok((
+            ws.guard.root().to_path_buf(),
+            context::request_from(&ws.guard, &names, request)?,
+        ))
+    })?;
     // The permission settings of this moment: a later change never alters this operation.
     let permissions = state.appdata.settings()?.ai.permissions;
     state.ai.start(

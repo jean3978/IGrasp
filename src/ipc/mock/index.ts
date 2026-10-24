@@ -197,6 +197,11 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     emit,
     ai: () => state.ai,
     settings: () => state.settings,
+    hasRoot: () => state.root !== null,
+    file: (relPath) => {
+      const found = fakeFile(relPath);
+      return found && { content: found.content, size: found.size };
+    },
     fileContent: (relPath) => state.files.get(relPath),
     writeFiles: (files) => {
       controls.writeFiles(files);
@@ -600,6 +605,8 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     getAppInfo: () => Promise.resolve(appInfo),
     aiStatus: ai.aiStatus,
     aiCapabilities: ai.aiCapabilities,
+    aiContext: ai.aiContext,
+    aiEstimate: ai.aiEstimate,
     aiStart: ai.aiStart,
     aiRespondPermission: ai.aiRespondPermission,
     aiCancel: ai.aiCancel,

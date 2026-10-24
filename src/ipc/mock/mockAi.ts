@@ -15,6 +15,8 @@
 // - anything else: a streamed text answer.
 
 import { BackendError } from '../types';
+import { collectContext, contextDocuments, estimateSize, requestFrom } from './mockContext';
+import type { FileLookup } from './mockContext';
 import type {
   AiCapabilities,
   AiEvent,
@@ -24,7 +26,11 @@ import type {
   AiPermissionSettings,
   AiPolicy,
   AiProviderStatus,
+  AiContextDocument,
+  AiEstimateInput,
   AiRequest,
+  AiSizeEstimate,
+  AiStartRequest,
   AiUserAction,
   BackendEvents,
   EditHunk,
@@ -42,6 +48,8 @@ export interface MockAiState {
   stepMs: number;
   /** Operations started so far, with the user action that started each. */
   starts: AiUserAction[];
+  /** The request the provider received last (context with contents, capture, images). */
+  lastRequest: AiRequest | null;
 }
 
 export const DEFAULT_MOCK_AI: MockAiState = {
@@ -49,9 +57,12 @@ export const DEFAULT_MOCK_AI: MockAiState = {
   loggedIn: true,
   stepMs: 30,
   starts: [],
+  lastRequest: null,
 };
 
 export const MOCK_PROVIDER_ID = 'mock';
+/** The instruction files the mock provider declares. */
+export const MOCK_CONTEXT_FILE_NAMES = ['AGENTS.md'];
 export const MOCK_PROVIDER_NAME = 'Mock AI';
 export const MOCK_PROVIDER_VERSION = '1.0-mock';
 export const MOCK_NOT_INSTALLED = 'The Mock AI command was not found.';
@@ -84,6 +95,9 @@ interface Deps {
   emit: Emit;
   ai: () => MockAiState;
   settings: () => Settings;
+  hasRoot: () => boolean;
+  /** A file of the fake disk with its size. */
+  file: FileLookup;
   fileContent: (relPath: string) => string | undefined;
   writeFiles: (files: Record<string, string>) => void;
 }
@@ -238,7 +252,7 @@ function acceptedHunks(proposed: ProposedEdit, decision: PermissionDecision): Ed
   return proposed.hunks.filter((p) => !left.includes(p));
 }
 
-export function createMockAi({ emit, ai, settings, fileContent, writeFiles }: Deps) {
+export function createMockAi({ emit, ai, settings, hasRoot, file, fileContent, writeFiles }: Deps) {
   let nextId = 0;
   let sessions = 0;
   let counter = 0;
@@ -585,16 +599,30 @@ export function createMockAi({ emit, ai, settings, fileContent, writeFiles }: De
           { id: 'mock-fast', label: 'Mock Fast (default)' },
           { id: 'mock-smart', label: 'Mock Smart' },
         ],
-        contextFileNames: ['AGENTS.md'],
+        contextFileNames: MOCK_CONTEXT_FILE_NAMES,
       }),
-    aiStart: (action: AiUserAction, request: AiRequest): Promise<number> => {
-      if (!ai().installed) return Promise.reject(new BackendError('Ai', MOCK_NOT_INSTALLED));
+    // Async so the errors thrown by the helpers become rejections.
+    // eslint-disable-next-line @typescript-eslint/require-await
+    aiContext: async (currentPath: string | null): Promise<AiContextDocument[]> => {
+      if (!hasRoot()) throw new BackendError('NoRootOpen', 'No folder is open.');
+      return collectContext(file, currentPath, MOCK_CONTEXT_FILE_NAMES);
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    aiEstimate: async (input: AiEstimateInput): Promise<AiSizeEstimate> => {
+      if (!hasRoot()) throw new BackendError('NoRootOpen', 'No folder is open.');
+      const docs = contextDocuments(file, input.contextPaths, MOCK_CONTEXT_FILE_NAMES, false);
+      return estimateSize(input.promptBytes, docs, input.images);
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    aiStart: async (action: AiUserAction, start: AiStartRequest): Promise<number> => {
+      if (!hasRoot()) throw new BackendError('NoRootOpen', 'No folder is open.');
+      const request = requestFrom(file, MOCK_CONTEXT_FILE_NAMES, start);
+      if (!ai().installed) throw new BackendError('Ai', MOCK_NOT_INSTALLED);
       if (running) {
-        return Promise.reject(
-          new BackendError('Ai', 'An AI operation is still running; stop it first.'),
-        );
+        throw new BackendError('Ai', 'An AI operation is still running; stop it first.');
       }
       ai().starts.push(action);
+      ai().lastRequest = structuredClone(request);
       let resumeId = request.resumeId;
       if (resumeId === undefined) {
         resumeId = `00000000-0000-4000-8000-${String(++sessions).padStart(12, '0')}`;
@@ -609,7 +637,7 @@ export function createMockAi({ emit, ai, settings, fileContent, writeFiles }: De
       );
       running = op;
       op.start(script(request));
-      return Promise.resolve(op.id);
+      return op.id;
     },
     aiRespondPermission: (
       operationId: number,

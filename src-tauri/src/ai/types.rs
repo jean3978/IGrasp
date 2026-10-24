@@ -92,9 +92,54 @@ pub struct AiImage {
     pub data_base64: String,
 }
 
-/// One bounded operation started by a user action.
-#[derive(Debug, Clone, Default, Deserialize, Serialize, TS)]
-#[serde(rename_all = "camelCase", default)]
+/// Why a document is part of the context.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum AiContextRole {
+    /// The document or code file the user is looking at.
+    CurrentFile,
+    /// An instruction file the provider declares (e.g. `AGENTS.md`), from the root down to the
+    /// current file's folder.
+    InstructionFile,
+    /// The source of a region the user captured.
+    Capture,
+}
+
+/// A document the user is looking at, sent with a message. The frontend only ever receives it
+/// without `content` (paths, roles and sizes to show); the backend reads the content when the
+/// message is sent.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AiContextDocument {
+    /// Root-relative with `/`.
+    pub path: String,
+    pub role: AiContextRole,
+    /// The text, when it was read and is small enough to inline.
+    pub content: Option<String>,
+    pub bytes: u64,
+    /// Too large to inline: the provider asks the model to read the path itself.
+    pub truncated: bool,
+}
+
+/// A region of a document the user selected on screen (region capture).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AiCapture {
+    /// Root-relative path of the captured document.
+    pub source_path: String,
+    /// 1-based, inclusive source lines of the selected blocks.
+    pub first_line: u32,
+    pub last_line: u32,
+    /// The markdown (or code) source of those lines.
+    pub text: String,
+}
+
+/// One bounded operation started by a user action, as the provider receives it.
+#[derive(Debug, Clone, Default, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
 #[ts(export, optional_fields)]
 pub struct AiRequest {
     pub prompt: String,
@@ -102,12 +147,64 @@ pub struct AiRequest {
     pub model: Option<String>,
     /// Continues the conversation that announced this id in `AiEvent::Session`.
     pub resume_id: Option<String>,
-    /// Root-relative files the AI should read for context (e.g. the open document).
-    pub context_files: Vec<String>,
+    /// What the user is looking at: instruction files from the root down, then the current
+    /// file, with their contents when small enough (`ai::context`).
+    pub context: Vec<AiContextDocument>,
+    pub capture: Option<AiCapture>,
     pub images: Vec<AiImage>,
     pub policy: AiPolicy,
     /// JSON schema the final answer must follow, when the provider supports it.
     pub output_schema: Option<serde_json::Value>,
+}
+
+/// What the frontend sends to start an operation: the context as paths (the ones still listed
+/// for this message); the backend reads them through the root guard.
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export, optional_fields)]
+pub struct AiStartRequest {
+    pub prompt: String,
+    pub model: Option<String>,
+    pub resume_id: Option<String>,
+    /// Root-relative paths from `ai_context`, in its order.
+    pub context_paths: Vec<String>,
+    pub capture: Option<AiCapture>,
+    pub images: Vec<AiImage>,
+    pub policy: AiPolicy,
+    pub output_schema: Option<serde_json::Value>,
+}
+
+/// The size class of an operation, for the confirmation card.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum AiSizeBucket {
+    Small,
+    Medium,
+    Large,
+}
+
+/// An approximate size of what an operation sends (`ai::estimate`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AiSizeEstimate {
+    pub bytes: u64,
+    pub approx_tokens: u64,
+    pub bucket: AiSizeBucket,
+    pub documents: u32,
+    pub images: u32,
+}
+
+/// What `ai_estimate` measures: metadata only, nothing is read.
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct AiEstimateInput {
+    /// UTF-8 bytes of the prompt (and of the capture text, if any).
+    pub prompt_bytes: u64,
+    pub context_paths: Vec<String>,
+    pub images: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TS)]

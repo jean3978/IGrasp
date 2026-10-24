@@ -65,10 +65,11 @@ sequenceDiagram
 | `AiProvider` / `AiOperation` traits | `src-tauri/src/ai/mod.rs` |
 | Gateway: user action required, one operation at a time, cancel on close | `src-tauri/src/ai/gateway.rs` |
 | Permission policy: each request's kind (markdown edit, file edit, command, web, other) → Ask / Allow / Deny from `settings.ai.permissions` (snapshot at start); read-only operations refuse every prompt; automatic answers emit `permissionDecided` | `src-tauri/src/ai/policy.rs`, `gateway.rs` |
+| Context of a message: instruction files from the root down, then the current file, read through the root guard (32 KB / 96 KB caps); size estimate (bytes / 4, 1 500 tokens per image, small < 20k ≤ medium < 80k ≤ large) | `src-tauri/src/ai/context.rs`, `estimate.rs` |
 | Child processes die with the app (job object on Windows) | `src-tauri/src/ai/process.rs` |
 | Claude provider: CLI discovery and probes, one process per operation, wire-format mapping | `src-tauri/src/ai/providers/claude_cli/{cli,turn,protocol}.rs` |
 | Rust mock provider (gateway tests) | `src-tauri/src/ai/providers/mock.rs` |
-| Commands `ai_status`, `ai_capabilities`, `ai_start`, `ai_respond_permission`, `ai_cancel` | `src-tauri/src/commands/ai.rs` |
+| Commands `ai_status`, `ai_capabilities`, `ai_context`, `ai_estimate`, `ai_start`, `ai_respond_permission`, `ai_cancel` | `src-tauri/src/commands/ai.rs` |
 | Event reducer (events → chat items) and line diff | `src/features/ai/timeline.ts`, `diff.ts` |
 | Store (status, capabilities, items, pending permissions, operation, usage) | `src/stores/ai.ts` |
 | Floating chat panel | `src/features/ai/AiChatDialog.tsx` |

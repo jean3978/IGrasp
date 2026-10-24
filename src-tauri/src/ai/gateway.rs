@@ -5,6 +5,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
+use super::estimate::estimate;
 use super::policy::{
     AiPermissionSettings, DENIED_BY_SETTINGS, DENIED_READ_ONLY, PermissionRule,
     REASON_ALLOWED_BY_SETTINGS, REASON_DENIED_BY_SETTINGS, REASON_READ_ONLY, decide,
@@ -136,12 +137,21 @@ impl AiGateway {
         }
         let id = self.next_id.fetch_add(1, Ordering::SeqCst) + 1;
         let policy = request.policy;
+        let size = estimate(
+            request.prompt.len() as u64,
+            &request.context,
+            u32::try_from(request.images.len()).unwrap_or(u32::MAX),
+        );
         log::info!(
             "ai operation {id}: {action:?} with {} ({}, model {:?}, policy {policy:?}, \
-             permissions {permissions:?})",
+             permissions {permissions:?}, {} documents, {} images, ~{} tokens, {:?})",
             self.provider.display_name(),
             self.provider.id(),
             request.model,
+            size.documents,
+            size.images,
+            size.approx_tokens,
+            size.bucket,
         );
         let running = self.running.clone();
         let operation = self.provider.start(

@@ -28,6 +28,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   settings say Allow or Deny, refuses every write of a read-only operation, and the chat shows
   each automatic decision ("Allowed by your settings: Bash …"). The CLI runs with
   `--permission-mode default` so its own default mode never bypasses the app's policy.
+- **AI context and size estimate**: `ai_context` lists what a message carries (the provider's
+  instruction files from the root down to the current file's folder, then the current file,
+  with sizes); `ai_start` takes the paths the user kept and reads them in Rust through the root
+  guard, inlining up to 32 KB per instruction file and 96 KB for the current file (larger files
+  are listed for the model to read). `ai_estimate` sizes a message from metadata (small /
+  medium / large). A region capture (source lines and text) can travel with a message.
 
 ### Changed
 
