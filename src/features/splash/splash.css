@@ -1,0 +1,97 @@
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-editor);
+  transition: opacity 300ms ease;
+}
+
+.splash[data-leaving] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Vector logo: sharp at any size and scale factor. */
+.splash-logo {
+  width: 160px;
+  height: 160px;
+}
+
+.splash-name {
+  color: var(--fg-strong);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  animation: splash-fade-in 400ms ease-out 650ms forwards;
+}
+
+.splash .logo-badge {
+  transform-origin: 256px 256px;
+  animation: splash-badge 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.splash .logo-page {
+  transform-origin: 256px 256px;
+  opacity: 0;
+  animation: splash-page 500ms ease-out 150ms forwards;
+}
+
+/* The grip draws itself around the page: the hand closing on the documentation. */
+.splash .logo-grip {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: splash-draw 700ms cubic-bezier(0.65, 0, 0.35, 1) 300ms forwards;
+}
+
+.splash[data-reduced] .logo-badge,
+.splash[data-reduced] .logo-page,
+.splash[data-reduced] .logo-grip,
+.splash[data-reduced] .splash-name {
+  animation: none;
+  opacity: 1;
+  stroke-dashoffset: 0;
+}
+
+@keyframes splash-badge {
+  0% {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.015);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes splash-page {
+  from {
+    transform: translateY(10px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes splash-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes splash-fade-in {
+  to {
+    opacity: 1;
+  }
+}

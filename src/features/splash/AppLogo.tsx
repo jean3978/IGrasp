@@ -21,11 +21,12 @@ export function AppLogo({ variant = 'color', className, title }: AppLogoProps) {
       <svg viewBox="0 0 512 512" className={className} {...a11y}>
         <path d={LOGO_PATHS.page} fill="currentColor" />
         <path
-          d={`${LOGO_PATHS.grip}${LOGO_PATHS.thumb}`}
+          d={LOGO_PATHS.grip}
           fill="none"
           stroke="currentColor"
           strokeWidth="44"
           strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </svg>
     );
@@ -59,7 +60,7 @@ export function AppLogo({ variant = 'color', className, title }: AppLogoProps) {
       </g>
       <path
         className="logo-grip"
-        d={`${LOGO_PATHS.grip}${LOGO_PATHS.thumb}`}
+        d={LOGO_PATHS.grip}
         pathLength={1}
         fill="none"
         stroke="#f5b83d"

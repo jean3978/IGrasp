@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>IGrasp</title>
+  <path d="M192 128H312L352 168V368Q352 384 336 384H192Q176 384 176 368V144Q176 128 192 128Z" fill="currentColor"/>
+  <path d="M365 126A170 170 0 1 0 426 256H322" fill="none" stroke="currentColor" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

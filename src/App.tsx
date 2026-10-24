@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Tooltip } from 'radix-ui';
+import { backend } from './ipc/client';
 import { StatusBar } from './features/shell/StatusBar';
 import { WorkspaceLayout } from './features/shell/WorkspaceLayout';
 import { useAppearance } from './features/shell/useAppearance';
+import { SplashOverlay } from './features/splash/SplashOverlay';
 import { ResizeHandles } from './features/titlebar/ResizeHandles';
 import { TitleBar } from './features/titlebar/TitleBar';
 import { platform } from './lib/platform';
@@ -13,12 +15,28 @@ export function App() {
   useAppearance();
   const load = useSettings((s) => s.load);
   const nativeFrame = useSettings((s) => s.settings.windowFrame === 'native');
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    load().catch((err: unknown) => {
-      console.error('Cannot load settings', err);
-    });
+    load()
+      .catch((err: unknown) => {
+        console.error('Cannot load settings', err);
+      })
+      .finally(() => {
+        setReady(true);
+      });
   }, [load]);
+
+  // The window starts hidden; show it once the theme is applied so it never flashes white.
+  useEffect(() => {
+    if (!ready) return;
+    const frame = requestAnimationFrame(() => {
+      void backend.window.show();
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [ready]);
 
   return (
     <Tooltip.Provider delayDuration={600}>
@@ -33,6 +51,7 @@ export function App() {
         <StatusBar />
         {platform === 'linux' && !nativeFrame && <ResizeHandles />}
       </div>
+      <SplashOverlay ready={ready} />
     </Tooltip.Provider>
   );
 }

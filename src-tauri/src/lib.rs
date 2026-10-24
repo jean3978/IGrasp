@@ -30,6 +30,19 @@ pub fn run() {
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             app.manage(AppState::new(AppData::new(dir)));
+
+            // The window starts hidden and the frontend shows it once the theme is applied.
+            // If the frontend fails to start, show it anyway so the app is never invisible.
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(3));
+                if let Some(window) = handle.get_webview_window("main")
+                    && !window.is_visible().unwrap_or(true)
+                {
+                    log::warn!("frontend did not show the window; showing it");
+                    let _ = window.show();
+                }
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
