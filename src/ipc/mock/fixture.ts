@@ -71,6 +71,26 @@ Run \`npm install\`.
 > Remote images must use https.
 `;
 
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
+
+/** How long ago each fixture file was "modified", so Recent changes has something to show. */
+const AGES: Record<string, number> = {
+  'README.md': 2 * HOUR,
+  'CHANGELOG.md': DAY + 3 * HOUR,
+  'docs/architecture.md': 3 * DAY,
+  'docs/decisions/0001-use-git-cli.md': 12 * DAY,
+  'docs/guide/getting-started.md': 25 * MINUTE,
+  'docs/guide/advanced/deep-dive.markdown': 40 * DAY,
+  'notes/TODO.MD': 5 * DAY,
+};
+
+/** Modification times of the fixture files relative to `now` (others default to 0). */
+export function fixtureMtimes(now: number): Map<string, number> {
+  return new Map(Object.entries(AGES).map(([rel, age]) => [rel, now - age]));
+}
+
 export const FIXTURE_FILES: Record<string, string> = {
   'README.md': README,
   'CHANGELOG.md': '# Changelog\n\n## [Unreleased]\n\n- Everything.\n',

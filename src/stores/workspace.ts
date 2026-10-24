@@ -3,6 +3,7 @@ import { backend } from '../ipc/client';
 import type { IndexReadyEvent, RootInfo, SidebarView, WatchMode } from '../ipc/types';
 import { useDocuments } from './documents';
 import { useRecent } from './recent';
+import { useRecentFiles } from './recentFiles';
 import {
   applySessionLayout,
   clearPendingRestore,
@@ -112,6 +113,7 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
       suspendSaving();
       useTree.setState({ expanded: new Set(), focused: null });
       useTabs.getState().closeAll();
+      useRecentFiles.getState().reset();
       useDocuments.getState().clear();
       applySessionLayout(session);
       setPendingRestore(root.generation, session);
@@ -142,6 +144,7 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
     useTabs.getState().closeAll();
     useDocuments.getState().clear();
     resetToasts();
+    useRecentFiles.getState().reset();
     void useRecent.getState().refresh();
   },
 

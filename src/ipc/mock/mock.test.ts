@@ -46,8 +46,9 @@ describe('mock backend', () => {
     expect(first.total).toBe(7);
     const rest = await b.listRecentFiles(2, 100);
     expect(rest.files).toHaveLength(5);
-    // Untouched files share a time and are ordered by path.
-    expect(rest.files[0]?.relPath).toBe('CHANGELOG.md');
+    expect(rest.files[0]?.relPath).toBe('docs/guide/getting-started.md');
+    const times = rest.files.map((f) => f.modifiedMs);
+    expect([...times].sort((x, y) => y - x)).toEqual(times);
   });
 
   it('normalizes settings like the Rust backend', async () => {

@@ -4,6 +4,7 @@ import { backend } from '../ipc/client';
 import type { Unsubscribe } from '../ipc/types';
 import { applyDiskChanges } from './diskChanges';
 import { useHistory } from './history';
+import { useRecentFiles } from './recentFiles';
 import { useToasts } from './toasts';
 import { useTree } from './tree';
 import { useWorkspace } from './workspace';
@@ -24,6 +25,7 @@ export async function startEventBridge(): Promise<Unsubscribe> {
       if (e.generation !== useTree.getState().generation) return;
       applyDiskChanges(e);
       useHistory.getState().applyChanges(e);
+      useRecentFiles.getState().onChanges(e);
       useWorkspace.getState().adjustFileCount(e.added.length - e.removed.length);
       useToasts.getState().ingestChanges(e);
     }),

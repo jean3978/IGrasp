@@ -126,3 +126,145 @@
 .view-list:focus-visible {
   outline: none;
 }
+
+/* Rows of the virtualized lists (VirtualRows). */
+.list-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+  padding: 0 8px 0 12px;
+  border: var(--border-width) solid transparent;
+  color: var(--fg);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.list-row:hover {
+  background: var(--bg-hover);
+}
+
+.list-row-active {
+  background: var(--bg-selection);
+  color: var(--fg-strong);
+}
+
+.view-list:focus-visible .list-row-focused {
+  border-color: var(--focus);
+}
+
+.view-list:focus .list-row-focused {
+  background: var(--bg-selection-focus);
+}
+
+.list-row svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.list-icon {
+  color: var(--info);
+}
+
+.list-label {
+  overflow: hidden;
+  flex: none;
+  max-width: 70%;
+  text-overflow: ellipsis;
+}
+
+.list-dim {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+  text-overflow: ellipsis;
+}
+
+.list-meta {
+  flex: none;
+  margin-left: auto;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.list-count {
+  flex: none;
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--bg-active);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.list-group-header {
+  color: var(--fg-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: default;
+}
+
+.list-group-header:hover {
+  background: none;
+}
+
+.list-row-action {
+  display: none;
+  flex: none;
+  padding: 1px;
+  border: none;
+  border-radius: var(--radius-s);
+  background: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+
+.list-row:hover .list-row-action,
+.list-row-focused .list-row-action {
+  display: inline-flex;
+}
+
+.list-row-action:hover {
+  background: var(--bg-active);
+  color: var(--fg-strong);
+}
+
+.change-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--info);
+}
+
+.list-row-changed .list-label {
+  font-weight: 600;
+}
+
+.view-footer {
+  flex: none;
+  padding: 4px 12px 8px;
+}
+
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-size: var(--font-size-small);
+  cursor: pointer;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}

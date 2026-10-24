@@ -16,7 +16,7 @@ import type {
   Session,
   Settings,
 } from '../types';
-import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT } from './fixture';
+import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT, fixtureMtimes } from './fixture';
 import { gitignorePatterns, isMarkdown, listFixtureDir, scanFixture } from './mockIndex';
 import type { MockScanOptions } from './mockIndex';
 
@@ -71,7 +71,7 @@ function initialState(): MockState {
     sessions: new Map(),
     folders: new Set([FIXTURE_ROOT]),
     files: new Map(Object.entries(FIXTURE_FILES)),
-    mtimes: new Map(),
+    mtimes: fixtureMtimes(Date.now()),
     opened: [],
     root: null,
     generation: 0,
@@ -128,7 +128,9 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     });
   };
 
-  let clock = 1;
+  // Strictly increasing, so two writes in the same millisecond still count as a change.
+  let clock = 0;
+  const tick = () => (clock = Math.max(clock + 1, Date.now()));
   const controls: MockControls = {
     emit,
     get state() {
@@ -140,7 +142,7 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     writeFiles(files) {
       for (const [rel, content] of Object.entries(files)) {
         state.files.set(rel, content);
-        state.mtimes.set(rel, (clock += 1));
+        state.mtimes.set(rel, tick());
       }
       diskChanged();
     },
