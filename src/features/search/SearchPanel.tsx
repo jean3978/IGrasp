@@ -11,7 +11,7 @@ import {
   WholeWord,
   X,
 } from 'lucide-react';
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { IconButton } from '../../components/ui/IconButton';
 import { VirtualRows } from '../../components/VirtualRows';
@@ -108,6 +108,9 @@ export function SearchPanel() {
   const matchCount = s.results.reduce((n, f) => n + f.matches.length, 0);
   const summary = statusText(s.status, s.results.length, matchCount, s.truncated);
   const selectedKey = s.selected ? `m:${s.selected.path}:${String(s.selected.index)}` : null;
+  // The row the user moved to, until F4 or a click selects another match.
+  const [manual, setManual] = useState<{ key: string | null; at: string | null } | null>(null);
+  const focusedKey = manual && manual.at === selectedKey ? manual.key : selectedKey;
   const allCollapsed = s.results.length > 0 && s.results.every((f) => s.collapsed.has(f.relPath));
 
   const toggle = (option: 'matchCase' | 'wholeWord' | 'regex') => {
@@ -291,10 +294,9 @@ export function SearchPanel() {
         label="Search results"
         role="tree"
         className="search-results"
-        focusedKey={selectedKey}
+        focusedKey={focusedKey}
         onFocusedKeyChange={(key) => {
-          const row = rows.find((r) => rowKey(r) === key);
-          if (row?.kind === 'match') s.select({ path: row.file.relPath, index: row.index });
+          setManual({ key, at: selectedKey });
         }}
         rowClass={(row) =>
           row.kind === 'match' && rowKey(row) === selectedKey ? 'list-row-active' : undefined
