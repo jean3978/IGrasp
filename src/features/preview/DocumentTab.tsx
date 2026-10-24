@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { useDocuments } from '../../stores/documents';
+import { useGraph } from '../../stores/graph';
 import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
 import { MarkdownPreview } from './MarkdownPreview';
@@ -62,6 +63,11 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
   useEffect(() => {
     void useDocuments.getState().load(relPath);
   }, [relPath]);
+
+  // Link statuses for the flags; the graph store refreshes them on graph://changed.
+  useEffect(() => {
+    void useGraph.getState().refreshDoc(relPath);
+  }, [relPath, doc?.revision]);
 
   // A heading or line to reveal (link with #fragment, search result, quick open, broken link):
   // wait for the asynchronous render, then scroll and flash. It wins over the saved position.

@@ -99,6 +99,23 @@
   text-decoration: underline;
 }
 
+/* Links whose file or heading does not exist (document graph), and case mismatches. */
+.markdown-body a[data-status='broken'],
+.markdown-body a[data-status='warning'] {
+  text-decoration: underline wavy var(--link-broken);
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+.markdown-body a[data-status='warning'] {
+  text-decoration-color: var(--link-warning);
+}
+
+.markdown-body a[data-link='unsupported'] {
+  cursor: default;
+}
+
 .markdown-body :is(ul, ol) {
   padding-left: 2em;
 }

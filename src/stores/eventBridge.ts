@@ -3,6 +3,7 @@
 import { backend } from '../ipc/client';
 import type { Unsubscribe } from '../ipc/types';
 import { applyDiskChanges } from './diskChanges';
+import { useGraph } from './graph';
 import { useHistory } from './history';
 import { useRecentFiles } from './recentFiles';
 import { useToasts } from './toasts';
@@ -28,6 +29,15 @@ export async function startEventBridge(): Promise<Unsubscribe> {
       useRecentFiles.getState().onChanges(e);
       useWorkspace.getState().adjustFileCount(e.added.length - e.removed.length);
       useToasts.getState().ingestChanges(e);
+    }),
+    backend.listen('graph://progress', (e) => {
+      useGraph.getState().onProgress(e.generation, e.parsedDocs, e.totalDocs);
+    }),
+    backend.listen('graph://ready', (e) => {
+      useGraph.getState().onReady(e);
+    }),
+    backend.listen('graph://changed', (e) => {
+      useGraph.getState().onChanged(e);
     }),
     backend.listen('fs://watch-status', (e) => {
       useWorkspace.getState().setWatchStatus(e.mode, e.reason);

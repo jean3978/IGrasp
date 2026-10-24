@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { backend } from '../ipc/client';
 import type { IndexReadyEvent, RootInfo, SidebarView, WatchMode } from '../ipc/types';
 import { useDocuments } from './documents';
+import { useGraph } from './graph';
 import { useRecent } from './recent';
 import { useRecentFiles } from './recentFiles';
 import {
@@ -145,11 +146,13 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
     useDocuments.getState().clear();
     resetToasts();
     useRecentFiles.getState().reset();
+    useGraph.getState().reset();
     void useRecent.getState().refresh();
   },
 
   beginScan(generation) {
     set({ index: { ...IDLE, state: 'scanning', generation } });
+    useGraph.getState().reset();
     const early = get().lastReady;
     if (early?.generation === generation) get().setIndexReady(early);
   },

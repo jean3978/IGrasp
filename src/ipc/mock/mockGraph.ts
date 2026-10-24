@@ -2,6 +2,7 @@
 // same slugs (github-slugger) and the same link rules as `src-tauri/src/graph/`.
 
 import GithubSlugger from 'github-slugger';
+import { classifyHref } from '../../lib/linkTargets';
 import type { Backlink, BrokenDoc, LinkInfo, LinkStatus, LinkTarget } from '../types';
 
 export interface MockHeading {
@@ -92,42 +93,9 @@ export function parseMarkdown(text: string): {
   return { headings, anchors, links };
 }
 
-function decode(text: string): string {
-  try {
-    return decodeURIComponent(text);
-  } catch {
-    return text;
-  }
-}
-
 const parentOf = (rel: string) => (rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/')) : '');
 
-/** `[target, path]` of a link without looking at the folder (Rust `links::classify`). */
-export function classify(fromDoc: string, rawHref: string): LinkTarget {
-  const href = rawHref.trim();
-  if (href === '' || href === '#') return { kind: 'unsupported' };
-  if (href.startsWith('#')) return { kind: 'anchor', fragment: decode(href.slice(1)) };
-  if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('//')) {
-    return /^(https?|mailto):/i.test(href)
-      ? { kind: 'external', url: href }
-      : { kind: 'unsupported' };
-  }
-  const hash = href.indexOf('#');
-  const rest = hash < 0 ? href : href.slice(0, hash);
-  const fragment = hash < 0 || hash === href.length - 1 ? null : decode(href.slice(hash + 1));
-  const path = rest.split('?')[0] ?? '';
-  if (path === '') return fragment ? { kind: 'anchor', fragment } : { kind: 'unsupported' };
-  const decoded = decode(path).replace(/\\/g, '/');
-  const parts = decoded.startsWith('/') ? [] : parentOf(fromDoc).split('/').filter(Boolean);
-  for (const segment of decoded.split('/')) {
-    if (segment === '' || segment === '.') continue;
-    if (segment === '..') {
-      if (parts.length === 0) return { kind: 'outside' };
-      parts.pop();
-    } else parts.push(segment);
-  }
-  return { kind: 'file', relPath: parts.join('/'), fragment };
-}
+export const classify = classifyHref;
 
 export interface GraphLookup {
   /** Indexed markdown files. */

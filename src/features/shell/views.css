@@ -268,3 +268,9 @@
 .link-button:hover {
   text-decoration: underline;
 }
+
+.statusbar-link {
+  overflow: hidden;
+  max-width: 60vw;
+  text-overflow: ellipsis;
+}

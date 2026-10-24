@@ -1,47 +1,27 @@
 import type { ComponentProps, MouseEvent } from 'react';
-import { backend } from '../../../ipc/client';
-import { classifyLink, openDocumentLink, scrollToAnchor } from '../links';
+import { useGraph } from '../../../stores/graph';
+import { useUi } from '../../../stores/ui';
+import { followLink, hoverText, linkProblem, resolveLink, statusFlag } from '../links';
 import { usePreview } from '../previewContext';
-import { parseLineFragment } from '../../code/codeLines';
-import { useTabs } from '../../../stores/tabs';
 
 /**
- * Every link click is handled here, so the webview itself never navigates: anchors scroll the
- * preview, web links open in the system browser, links to markdown files open in a tab.
+ * Every link click is handled here, so the webview itself never navigates. The link's status
+ * comes from the document graph through the store (not the rendered tree), so a status change
+ * re-renders only the links, never the markdown pipeline.
  */
 export function PreviewLink({ href, children, title, ...rest }: ComponentProps<'a'>) {
   const ctx = usePreview();
-  const target = classifyLink(ctx.relPath, href);
+  const info = useGraph((s) =>
+    href === undefined ? undefined : s.linksByDoc[ctx.relPath]?.[href],
+  );
+  const resolved = resolveLink(ctx.relPath, href, info);
+  const problem = linkProblem(resolved);
   const hint =
-    target.kind === 'unsupported' ? 'Opening this kind of link is not available yet' : title;
+    problem ?? (resolved.target.kind === 'unsupported' ? 'This kind of link is not opened' : title);
 
   const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    switch (target.kind) {
-      case 'anchor':
-        scrollToAnchor(ctx, target.id);
-        break;
-      case 'external':
-        backend.openUrl(target.url).catch((err: unknown) => {
-          console.error('Cannot open the link', err);
-        });
-        break;
-      case 'document':
-        void openDocumentLink(target.relPath).then((opened) => {
-          if (!opened) console.warn(`Linked file not found: ${target.relPath}`);
-        });
-        break;
-      case 'code': {
-        const range = parseLineFragment(target.fragment);
-        useTabs.getState().openCode(target.relPath, {
-          pin: e.ctrlKey || e.metaKey,
-          ...(range ? { scroll: { line: range.start, endLine: range.end } } : {}),
-        });
-        break;
-      }
-      case 'unsupported':
-        break;
-    }
+    followLink(ctx, resolved, { pin: e.ctrlKey || e.metaKey });
   };
 
   return (
@@ -49,11 +29,19 @@ export function PreviewLink({ href, children, title, ...rest }: ComponentProps<'
       {...rest}
       href={href}
       title={hint}
-      data-link={target.kind}
+      data-link={resolved.target.kind}
+      data-status={statusFlag(resolved.status)}
       onClick={onClick}
       onAuxClick={(e) => {
-        // A middle click would otherwise try to open a new webview window.
+        // A middle click would otherwise try to open a new webview window: open pinned instead.
         e.preventDefault();
+        if (e.button === 1) followLink(ctx, resolved, { pin: true });
+      }}
+      onMouseEnter={() => {
+        useUi.getState().setHoveredLink(hoverText(ctx.relPath, href, resolved));
+      }}
+      onMouseLeave={() => {
+        useUi.getState().setHoveredLink(null);
       }}
     >
       {children}

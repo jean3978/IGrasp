@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useDocuments } from './documents';
+import { useGraph } from './graph';
 import { useTextFiles } from './textFiles';
 
 export type TabKind = 'document' | 'code' | 'settings' | 'shortcuts';
@@ -81,6 +82,7 @@ const pathsOf = (tabs: Tab[], kind: FileTabKind) =>
 function evictUnused(tabs: Tab[]) {
   useDocuments.getState().retain(pathsOf(tabs, 'document'));
   useTextFiles.getState().retain(pathsOf(tabs, 'code'));
+  useGraph.getState().retainDocs(pathsOf(tabs, 'document'));
 }
 
 function loadContent(kind: FileTabKind, relPath: string) {
