@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { AiMark } from '../../components/AiMark';
 import { IconButton } from '../../components/ui/IconButton';
 import { useAi } from '../../stores/ai';
 import { selectCanGoBack, selectCanGoForward, useHistory } from '../../stores/history';
@@ -45,6 +46,9 @@ function ActionButton({
       }}
     >
       {children}
+      {(action.usesAi || action.aiFeature) && (
+        <AiMark variant={action.usesAi ? 'uses' : 'feature'} />
+      )}
     </IconButton>
   );
 }

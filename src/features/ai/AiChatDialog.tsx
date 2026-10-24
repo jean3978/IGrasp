@@ -3,6 +3,7 @@ import { Check, Plus, RefreshCw, Send, Sparkles, Square, X } from 'lucide-react'
 import { Dialog } from 'radix-ui';
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
+import { AiMark } from '../../components/AiMark';
 import { Button } from '../../components/ui/Button';
 import { IconButton } from '../../components/ui/IconButton';
 import type { ProposedEdit } from '../../ipc/types';
@@ -302,6 +303,7 @@ function Composer() {
           disabled={!canSend}
         >
           <Send aria-hidden />
+          <AiMark />
         </IconButton>
       )}
     </form>

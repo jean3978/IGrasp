@@ -71,6 +71,10 @@ interface ActionDef {
   label: string;
   /** Display form of the keyboard shortcut. */
   shortcut?: string;
+  /** The action can start an AI operation (spends tokens): its controls show the AI marker. */
+  usesAi?: boolean;
+  /** The action opens the AI feature without spending anything: its controls show the marker. */
+  aiFeature?: boolean;
   run(): void | Promise<void>;
 }
 
@@ -171,6 +175,7 @@ export const actions: Record<ActionId, ActionDef> = {
   'ai.chat': {
     label: 'AI Chat',
     shortcut: 'Ctrl+Alt+C',
+    aiFeature: true,
     run: () => {
       if (!useWorkspace.getState().root) return;
       useAi.getState().toggleOpen();

@@ -2,6 +2,7 @@ import { Menubar } from 'radix-ui';
 import { Check, ChevronRight, Circle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { AiMark } from '../../components/AiMark';
 import { selectCanGoBack, selectCanGoForward, useHistory } from '../../stores/history';
 import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
@@ -21,6 +22,9 @@ function Item({ id, disabled }: { id: ActionId; disabled?: boolean }) {
       }}
     >
       <span className="menu-item-label">{action.label}</span>
+      {(action.usesAi || action.aiFeature) && (
+        <AiMark variant={action.usesAi ? 'uses' : 'feature'} />
+      )}
       {action.shortcut && <span className="menu-shortcut">{action.shortcut}</span>}
     </Menubar.Item>
   );
