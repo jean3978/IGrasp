@@ -4,7 +4,7 @@ import type { WatchMode } from "./WatchMode";
 /**
  * Payload of `fs://watch-status`.
  */
-export type WatchStatusEvent = { mode: WatchMode,
+export type WatchStatusEvent = { mode: WatchMode, 
 /**
  * Why the native watcher could not be used, if it could not.
  */

@@ -5,11 +5,11 @@ import type { RenamedPath } from "./RenamedPath";
 /**
  * Payload of `fs://changes`: what changed in the markdown tree during one debounce window.
  */
-export type FsChangesEvent = { generation: number, added: Array<FileEntry>, modified: Array<FileEntry>, removed: Array<string>,
+export type FsChangesEvent = { generation: number, added: Array<FileEntry>, modified: Array<FileEntry>, removed: Array<string>, 
 /**
  * Files that moved; they are also listed in `removed` (old path) and `added` (new path).
  */
-renamed: Array<RenamedPath>,
+renamed: Array<RenamedPath>, 
 /**
  * Folders whose listing may have changed (parents and ancestors of added/removed files).
  */
