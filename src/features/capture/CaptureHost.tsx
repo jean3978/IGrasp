@@ -2,7 +2,7 @@
 // - the region overlay: drag a rectangle; the text of the blocks it covers is attached;
 // - the text mode: highlight text like in an editor; releasing the mouse attaches it.
 // In the Academy, the selection is on a step card: the step is attached (with the text pointed
-// at), so the question about it can be saved on the step afterwards.
+// at), so the question about it can be saved on the step afterwards (`stepCapture.ts`).
 // Either way the chat opens next to the selection with a pre-filled draft, and the selection
 // stays highlighted while the chat is open. Nothing is sent: the user presses Send (or a quick
 // action).
@@ -11,9 +11,6 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { AiCapture } from '../../ipc/types';
 import { useAiPanel } from '../../stores/aiPanel';
-import type { StepAttachment } from '../../stores/aiPanel';
-import { useTutorialPlayer } from '../../stores/tutorialPlayer';
-import { stepTitle } from '../../lib/tutorial';
 import { useCapture } from '../../stores/capture';
 import type { ContentRect, SelectionHighlight } from '../../stores/capture';
 import { useDocuments } from '../../stores/documents';
@@ -22,6 +19,8 @@ import { useTextFiles } from '../../stores/textFiles';
 import { useWorkspace } from '../../stores/workspace';
 import { CaptureOverlay } from './CaptureOverlay';
 import {
+  DRAFT_PREFIX,
+  TEXT_DRAFT_PREFIX,
   boundingRect,
   captureCodeRegion,
   captureMarkdownRegion,
@@ -33,10 +32,9 @@ import {
   toContentRect,
 } from './capture';
 import type { CaptureRect } from './capture';
+import { academyTarget, attachStep, focusInput, textInRect } from './stepCapture';
+import type { StepTarget } from './stepCapture';
 import './capture.css';
-
-export const DRAFT_PREFIX = 'About this region:';
-export const TEXT_DRAFT_PREFIX = 'About this selection:';
 
 interface FileTarget {
   tabId: string;
@@ -45,25 +43,13 @@ interface FileTarget {
   path: string;
 }
 
-/** The Academy showing a step: its scroll container. */
-interface StepTarget {
-  tabId: string;
-  container: HTMLElement;
-  kind: 'academy';
-}
-
 type Target = FileTarget | StepTarget;
 
 /** The scroll container (and source) of the active tab: a document, a code file, a step. */
 function activeTarget(): Target | null {
   const tab = selectActiveTab(useTabs.getState());
   if (!tab) return null;
-  if (tab.kind === 'academy') {
-    const container = document.querySelector<HTMLElement>('.tab-content .academy-tab');
-    return container && useTutorialPlayer.getState().chapter !== null
-      ? { tabId: tab.id, container, kind: 'academy' }
-      : null;
-  }
+  if (tab.kind === 'academy') return academyTarget();
   if (tab.relPath === null) return null;
   const selector =
     tab.kind === 'document'
@@ -76,84 +62,6 @@ function activeTarget(): Target | null {
   return container && (tab.kind === 'document' || tab.kind === 'code')
     ? { tabId: tab.id, container, kind: tab.kind, path: tab.relPath }
     : null;
-}
-
-/** The step a card shows (`data-chapter` and `data-step` on `article.academy-step`). */
-function stepOf(card: Element): StepAttachment | null {
-  const { reference, tutorial } = useTutorialPlayer.getState();
-  const chapter = Number(card.getAttribute('data-chapter'));
-  const step = Number(card.getAttribute('data-step'));
-  const s = tutorial?.chapters[chapter]?.steps[step];
-  if (!reference || !s) return null;
-  return {
-    tutorial: reference,
-    chapter,
-    step,
-    label: `Chapter ${String(chapter + 1)}, step ${String(step + 1)}: ${stepTitle(s)}`,
-    quote: null,
-    kind: 'text',
-  };
-}
-
-/** The text of `card` inside `rect` (client coordinates), in reading order. */
-function textInRect(card: Element, rect: CaptureRect): string {
-  const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
-  const parts: string[] = [];
-  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-    const text = (n.textContent ?? '').trim();
-    if (text === '') continue;
-    const range = document.createRange();
-    range.selectNodeContents(n);
-    const hit = Array.from(range.getClientRects()).some(
-      (b) =>
-        b.width > 0 &&
-        rect.x < b.right &&
-        rect.x + rect.width > b.left &&
-        rect.y < b.bottom &&
-        rect.y + rect.height > b.top,
-    );
-    if (hit) parts.push(text);
-  }
-  return parts.join(' ').replace(/\s+/g, ' ').trim();
-}
-
-/** Attaches a step of a tutorial to the chat (what the user pointed at) and opens the chat. */
-function attachStep(
-  target: StepTarget,
-  card: Element,
-  kind: StepAttachment['kind'],
-  quote: string,
-  anchor: CaptureRect,
-  paint: readonly CaptureRect[],
-  region: CaptureRect | null,
-): boolean {
-  const step = stepOf(card);
-  if (!step) return false;
-  const toContent = (r: CaptureRect): ContentRect => toContentRect(target.container, r);
-  useCapture.getState().setHighlight({
-    tabId: target.tabId,
-    kind,
-    capture: null,
-    rects: paint.map(toContent),
-    region: region ? toContent(region) : null,
-  });
-  const panel = useAiPanel.getState();
-  panel.setAttachment({ step: { ...step, kind, quote: quote === '' ? null : quote } });
-  const prefixes = [DRAFT_PREFIX, TEXT_DRAFT_PREFIX];
-  if (panel.draft.trim() === '' || prefixes.includes(panel.draft.trim())) panel.setDraft('');
-  panel.openNear(anchor);
-  focusInput();
-  return true;
-}
-
-function focusInput() {
-  requestAnimationFrame(() => {
-    const input = document.querySelector<HTMLTextAreaElement>('.ai-panel .ai-input');
-    if (input && !input.disabled) {
-      input.focus();
-      input.setSelectionRange(input.value.length, input.value.length);
-    }
-  });
 }
 
 function sourceOf(target: FileTarget): string | undefined {

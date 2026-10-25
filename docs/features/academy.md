@@ -146,16 +146,24 @@ A tutorial is private (in the app's data) until you share it
 
 ### Asking about a step
 
-Every step card ends with **Ask about this step** and the questions readers saved on it.
+Every step card ends with the questions readers saved on it and a "Something unclear in this
+step?" box that says how to ask.
 
-- **Ask**: highlight text of the step with the text tool (**Ctrl+Alt+S**, or the button), or frame
-  part of it with the region tool (**Ctrl+Alt+R**). The chat opens next to it, about that step
-  ("Step · Chapter 2, step 3: …"); write the question and press Send. That Send is the only thing
-  that spends tokens. The backend adds the step as the reader sees it, what was pointed at, and
-  the files the step cites to the message.
-- **Save to this step**: once answered, the step's line in the chat offers to keep the question
-  and the answer on the step. A private tutorial keeps it at once; for a shared tutorial the
-  write confirmation lists the chapter file that changes, and nothing is written before it.
+- **Ask**: **Ask about this step** opens the chat about the whole step. **Highlight words to ask**
+  (the text tool, **Ctrl+Alt+S**) says on the card to select the words, and the chat opens on
+  release; the region tool (**Ctrl+Alt+R**) frames part of the step. The chat opens about that
+  step ("Step · Chapter 2, step 3: …"); write the question and press Send. That Send is the only
+  thing that spends tokens. The backend adds the step as the reader sees it, what was pointed at,
+  and the files the step cites to the message.
+- **The chat about a step** wears the Academy's owl colours, with Hoot perched on the panel and a
+  question mark ("About a step"), as long as the conversation is about one.
+- **Save for other readers?**: under the answer, the chat asks whether to keep the question and
+  the answer on the step, recalling that the reader's name is not shown. **No thanks** keeps
+  nothing (**Save it after all** reconsiders). A private tutorial keeps it at once; for a shared
+  tutorial the write confirmation lists the chapter file that changes, and nothing is written
+  before it.
+- **Code tours** remember their stop while the tutorial is open: **Open in the code viewer**, then
+  back to the Academy, finds the same stop.
 - **Anonymous**: a saved question holds the step, the text pointed at, the question and the
   answer; no name, no date. Shared, it sits at the end of the chapter's file under "Questions
   from readers" (`igrasp-question` blocks), so teammates see it on the same card, and GitHub

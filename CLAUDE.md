@@ -73,7 +73,8 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   `features/ai` is the chat, the AI tools toolbar over the view, the quick actions and the
   inline review; `features/diff` the rendered block diff (two markdown strings in, reused by
   later phases); `features/capture` the text and region selections (source lines, narrowing to
-  the highlighted text, highlight). Selections go to the AI as text, never as images.
+  the highlighted text, highlight; `stepCapture.ts` a step card of the Academy, pointed at or
+  asked about as a whole). Selections go to the AI as text, never as images.
   `features/quiz` is the Quiz tab (the new-quiz wizard `QuizWizard.tsx` with `SubjectPicker.tsx`
   and `quizRoles.ts`, engine, cards, `LookUpDialog.tsx`, results, `quizMarkdown.ts`,
   `quizFile.ts`, `effects/`), `features/hoot` the owl (`?hoot=1` shows its states and moments),

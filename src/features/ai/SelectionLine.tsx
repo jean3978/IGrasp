@@ -2,7 +2,7 @@
 // Start of the text…". It shows the attached selection, or the one already sent while it is
 // still highlighted. ✕ drops it (and its highlight).
 
-import { SquareDashedMousePointer, TextCursor, X } from 'lucide-react';
+import { MessageCircleQuestion, SquareDashedMousePointer, TextCursor, X } from 'lucide-react';
 import type { AiCapture } from '../../ipc/types';
 import { useAiPanel } from '../../stores/aiPanel';
 import { useCapture } from '../../stores/capture';
@@ -25,8 +25,10 @@ export function SelectionLine() {
       <div className="ai-selection-line" role="group" aria-label={`About ${step.label}`}>
         {step.kind === 'text' ? (
           <TextCursor aria-hidden />
-        ) : (
+        ) : step.kind === 'region' ? (
           <SquareDashedMousePointer aria-hidden />
+        ) : (
+          <MessageCircleQuestion aria-hidden />
         )}
         <span className="ai-selection-kind">Step</span>
         <span className="ai-selection-dot" aria-hidden>

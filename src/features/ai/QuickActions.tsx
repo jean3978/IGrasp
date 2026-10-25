@@ -6,7 +6,7 @@ import { useAiPanel } from '../../stores/aiPanel';
 import { selectProviderName, selectUsable, useAiProvider } from '../../stores/aiProvider';
 import { selectBusy, useAiConversation } from '../../stores/aiConversation';
 import { useWorkspace } from '../../stores/workspace';
-import { DRAFT_PREFIX, TEXT_DRAFT_PREFIX } from '../capture/CaptureHost';
+import { DRAFT_PREFIX, TEXT_DRAFT_PREFIX } from '../capture/capture';
 import { QUICK_ACTIONS } from './quickActionPrompts';
 import { useSelectionCapture } from './selectionText';
 

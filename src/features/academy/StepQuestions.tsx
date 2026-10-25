@@ -1,11 +1,14 @@
 // The questions readers saved on a step, under its card: what they pointed at, their question
-// and the answer, without any name. A reader asks one by highlighting text of the step (or
-// framing part of it) and writing in the chat; the chat's "Save to this step" keeps it here.
+// and the answer, without any name. Below them, the way to ask one, said in words: the chat
+// opens about the whole step, or about the words the reader highlights on it (the text mode,
+// with a hint while it is on). Once answered, the chat offers to keep it here.
 
-import { MessageCircleQuestion, TextCursor, Trash2 } from 'lucide-react';
+import { Highlighter, MessageCircleQuestion, Trash2 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import type { StepQuestion, TutorialRef } from '../../ipc/types';
+import { useCapture } from '../../stores/capture';
 import { useStepQuestions } from '../../stores/stepQuestions';
+import { askAboutStep } from '../capture/stepCapture';
 import { runAction } from '../titlebar/menuActions';
 import { StepMarkdown } from './steps/common';
 
@@ -61,17 +64,53 @@ export function StepQuestions({
           </ul>
         </details>
       )}
-      <p className="academy-questions-ask">
-        <Button
-          variant="ghost"
-          onClick={() => {
-            runAction('ai.selectText');
-          }}
-          title="Highlight text of this step, then write your question in the chat (Ctrl+Alt+S; Ctrl+Alt+R frames a region)"
-        >
-          <TextCursor aria-hidden /> Ask about this step
-        </Button>
-      </p>
+      <AskAboutStep />
     </section>
+  );
+}
+
+function AskAboutStep() {
+  const highlighting = useCapture((s) => s.textMode);
+  const hintId = 'academy-ask-help';
+  return (
+    <div className="academy-ask" data-highlighting={highlighting ? 'true' : undefined}>
+      <MessageCircleQuestion aria-hidden className="academy-ask-icon" />
+      <div className="academy-ask-body">
+        <p className="academy-ask-title">Something unclear in this step?</p>
+        <p id={hintId} className="academy-ask-help">
+          Ask the AI in the chat: about the whole step, or highlight the words that puzzle you
+          first. Nothing is sent until you press Send.
+        </p>
+        <div className="academy-ask-actions">
+          <Button
+            variant="secondary"
+            aria-describedby={hintId}
+            onClick={(e) => {
+              const card = e.currentTarget.closest('article.academy-step');
+              if (card) askAboutStep(card, e.currentTarget);
+            }}
+          >
+            <MessageCircleQuestion aria-hidden /> Ask about this step
+          </Button>
+          <Button
+            variant="ghost"
+            aria-pressed={highlighting}
+            title="Ctrl+Alt+S (Ctrl+Alt+R frames a region instead)"
+            onClick={() => {
+              runAction('ai.selectText');
+            }}
+          >
+            <Highlighter aria-hidden />{' '}
+            {highlighting ? 'Stop highlighting' : 'Highlight words to ask'}
+          </Button>
+        </div>
+        {highlighting && (
+          <p className="academy-ask-hint" role="status">
+            Now select the words you are asking about with the mouse: the chat opens when you
+            release it. Escape stops.
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

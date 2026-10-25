@@ -127,6 +127,8 @@ export interface AiConversationState {
   items: ChatItem[];
   /** A question about a step was saved on it (its item says so). */
   markStepSaved: (itemId: string) => void;
+  /** The user declined (or, with false, reconsidered) keeping a question on its step. */
+  setStepDeclined: (itemId: string, declined: boolean) => void;
   /** What continues the conversation with the provider. */
   resumeId: string | null;
   /** The model the provider reported running this conversation with; empty until known. */
@@ -478,6 +480,11 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
         items: st.items.map((i) =>
           i.id === itemId && i.kind === 'step' ? { ...i, saved: true } : i,
         ),
+      }));
+    },
+    setStepDeclined(itemId, declined) {
+      set((st) => ({
+        items: st.items.map((i) => (i.id === itemId && i.kind === 'step' ? { ...i, declined } : i)),
       }));
     },
     history: null,

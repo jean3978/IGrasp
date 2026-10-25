@@ -9,14 +9,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Ask about a step of a tutorial: highlight its text or frame part of it with the AI tools, ask
-  in the chat (the step and its cited files go with the message), then **Save to this step**.
-  Saved questions show on the step card and travel with a shared tutorial, anonymously (no name,
-  no date), at the end of the chapter's file; a shared tutorial changes only after the write
+- Ask about a step of a tutorial: **Ask about this step** (the whole step), or highlight its text
+  or frame part of it with the AI tools, and ask in the chat (the step and its cited files go
+  with the message). The card says how; the chat about a step wears the Academy's look, with
+  Hoot perched on it holding a question mark. Under the answer, the chat asks whether to save the
+  question and the answer for other readers, recalling that the name is not shown. Saved
+  questions show on the step card and travel with a shared tutorial, anonymously (no name, no
+  date), at the end of the chapter's file; a shared tutorial changes only after the write
   confirmation.
 
 ### Fixed
 
+- A code tour went back to its first stop after **Open in the code viewer** and a return to the
+  Academy; it keeps its stop while the tutorial is open.
 - The app went blank at the end of every chapter of a tutorial written by the AI: the backend
   left out the recap's empty list of sources, which the reader expects. It is always sent now
   (tutorials saved before are fixed when read).

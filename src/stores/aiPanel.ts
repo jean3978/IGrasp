@@ -142,7 +142,10 @@ export function rectNear(
   return defaultRect(viewport);
 }
 
-/** A step of a tutorial in the Academy the next message is about (highlighted or framed). */
+/**
+ * A step of a tutorial in the Academy the next message is about: highlighted, framed, or the
+ * whole step ("Ask about this step").
+ */
 export interface StepAttachment {
   tutorial: TutorialRef;
   /** Chapter and step indices. */
@@ -152,7 +155,7 @@ export interface StepAttachment {
   label: string;
   /** The text the user highlighted, or the text of the framed part; null when none. */
   quote: string | null;
-  kind: 'text' | 'region';
+  kind: 'text' | 'region' | 'whole';
 }
 
 /**

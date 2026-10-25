@@ -15,7 +15,8 @@ import { useWorkspace } from '../../stores/workspace';
 import { CAPTURE_SOURCE as SOURCE, box, drag, mountDocument } from '../../test/captureDom';
 import { resetAiStores } from '../../test/resetAi';
 import { runAction } from '../titlebar/menuActions';
-import { CaptureHost, TEXT_DRAFT_PREFIX } from './CaptureHost';
+import { CaptureHost } from './CaptureHost';
+import { TEXT_DRAFT_PREFIX } from './capture';
 
 function mountCode() {
   const panel = document.createElement('div');

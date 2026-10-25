@@ -820,6 +820,55 @@
   margin: 0 0 4px;
 }
 
-.academy-questions-ask {
-  margin: 4px 0 0;
+/* How to ask about the step, said in words. */
+.academy-ask {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: var(--border-width) dashed var(--hoot-bubble-border);
+  border-radius: 10px;
+  background: var(--hoot-bubble);
+}
+
+.academy-ask[data-highlighting='true'] {
+  border-style: solid;
+  border-color: var(--ai-accent);
+}
+
+.academy-ask-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  color: var(--ai-accent);
+}
+
+.academy-ask-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.academy-ask-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.academy-ask-help {
+  margin: 2px 0 8px;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.academy-ask-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.academy-ask-hint {
+  margin: 8px 0 0;
+  color: var(--ai-accent);
+  font-size: var(--font-size-small);
+  font-weight: 600;
 }

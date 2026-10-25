@@ -126,9 +126,12 @@ describe('a question about a step', () => {
     expect(request?.prompt.endsWith('Their question: Why is it built there?')).toBe(true);
     expect(request?.context.some((d) => d.path === 'src/main.ts')).toBe(true);
 
-    const item = screen.getByRole('group', { name: /^About Chapter 1, step 1:/ });
-    await userEvent.click(within(item).getByRole('button', { name: /Save to this step/ }));
-    expect(await within(item).findByRole('status')).toHaveTextContent('Saved on the step');
+    expect(screen.getByRole('group', { name: /^About Chapter 1, step 1:/ })).toBeInTheDocument();
+    // Under the answer: the offer to keep it for other readers, saying the name is not shown.
+    const offer = screen.getByRole('group', { name: 'Save for other readers?' });
+    expect(offer).toHaveTextContent('Your name will not be shown');
+    await userEvent.click(within(offer).getByRole('button', { name: /Save for other readers/ }));
+    expect(await screen.findByText(/Saved on the step, without your name/)).toBeInTheDocument();
     const after = await backend.getTutorial(ref);
     expect(after.chapters[0]?.questions).toEqual([
       expect.objectContaining({ step: 0, quote, question: 'Why is it built there?' }),
@@ -158,8 +161,9 @@ describe('a question about a step', () => {
       expect(useAiPanel.getState().attachment?.step).toBeDefined();
     });
     await ask('What calls this?');
-    const item = screen.getByRole('group', { name: /^About Chapter 1, step 1:/ });
-    await userEvent.click(within(item).getByRole('button', { name: /Save to this step/ }));
+    const offer = screen.getByRole('group', { name: 'Save for other readers?' });
+    expect(offer).toHaveTextContent('Readers of this shared tutorial will find them');
+    await userEvent.click(within(offer).getByRole('button', { name: /Save for other readers/ }));
     const dialog = await screen.findByRole('dialog', { name: 'Update the shared tutorial' });
     const chapterFile = `${FIXTURE_SHARED_TUTORIAL.folder}/01-the-entry-point-main-in-src-main-ts.md`;
     expect(mock().state.files.get(chapterFile)).not.toContain('What calls this?');
@@ -170,5 +174,34 @@ describe('a question about a step', () => {
     const text = mock().state.files.get(chapterFile) ?? '';
     expect(text).toContain('question: What calls this?');
     expect(text).not.toMatch(/Demo Reader|asked by|author/i);
+  });
+
+  it('asks about the whole step from its button, and No thanks keeps nothing', async () => {
+    const t = structuredClone(FIXTURE_SHARED_TUTORIAL.tutorial);
+    t.id = '';
+    for (const c of t.chapters) c.questions = [];
+    const ref = { type: 'private', id: (await backend.saveTutorial(t)).tutorial.id } as const;
+    const card = await onFirstStep(ref);
+    // Said in words: what the button does, and the highlighting way.
+    expect(card).toHaveTextContent('Something unclear in this step?');
+    await userEvent.click(within(card).getByRole('button', { name: /Highlight words to ask/ }));
+    expect(within(card).getByRole('status')).toHaveTextContent('select the words');
+    await userEvent.click(within(card).getByRole('button', { name: /^Ask about this step/ }));
+    expect(useAiPanel.getState().attachment?.step).toMatchObject({
+      chapter: 0,
+      step: 0,
+      quote: null,
+      kind: 'whole',
+    });
+    expect(within(card).queryByRole('status')).toBeNull();
+    expect(mock().state.ai.starts).toEqual([]);
+
+    await ask('What is this step for?');
+    expect(mock().state.ai.starts).toEqual(['chatMessage']);
+    const offer = screen.getByRole('group', { name: 'Save for other readers?' });
+    await userEvent.click(within(offer).getByRole('button', { name: 'No thanks' }));
+    expect(screen.queryByRole('group', { name: 'Save for other readers?' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Save it after all' })).toBeInTheDocument();
+    expect((await backend.getTutorial(ref)).chapters[0]?.questions).toEqual([]);
   });
 });

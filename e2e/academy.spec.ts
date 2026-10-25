@@ -172,10 +172,11 @@ test('a question about a framed part of a step, saved on the step', async ({ pag
   await expect(chat.getByRole('group', { name: /^About Chapter 1, step 1:/ })).toBeVisible();
   const starts = await academyMock(page, (m) => m.state.ai.starts.length);
   await ask(page, 'Why does main() call greet()?');
-  await expect(chat.getByRole('button', { name: /Save to this step/ })).toBeVisible();
+  const offer = chat.getByRole('group', { name: 'Save for other readers?' });
+  await expect(offer).toContainText('Your name will not be shown');
   expect(await academyMock(page, (m) => m.state.ai.starts.length)).toBe(starts + 1);
-  await chat.getByRole('button', { name: /Save to this step/ }).click();
-  await expect(chat.getByText('Saved on the step')).toBeVisible();
+  await offer.getByRole('button', { name: /Save for other readers/ }).click();
+  await expect(chat.getByText(/Saved on the step/)).toBeVisible();
   await expect(card.getByRole('region', { name: 'Questions from readers' })).toContainText(
     'Why does main() call greet()?',
   );

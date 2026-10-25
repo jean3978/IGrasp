@@ -6,6 +6,10 @@
 
 import { splitLines } from '../code/codeLines';
 
+/** The draft a region and a text selection pre-fill (cleared when nothing was added). */
+export const DRAFT_PREFIX = 'About this region:';
+export const TEXT_DRAFT_PREFIX = 'About this selection:';
+
 /** A rectangle in client (viewport) coordinates. */
 export interface CaptureRect {
   x: number;

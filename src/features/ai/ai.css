@@ -1179,21 +1179,161 @@
   color: var(--fg-muted);
 }
 
-/* A message about a step of a tutorial, and its Save button. */
+/* A message about a step of a tutorial, and the offer to keep it on the step. */
 .ai-step-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin: 0;
   font-weight: 600;
+}
+
+.ai-step-label svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
 }
 
 .ai-step-saved {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin: 4px 0 0;
+  margin: 0 0 0 32px;
   color: var(--fg-muted);
+  font-size: var(--font-size-small);
 }
 
 .ai-step-saved svg {
   width: 14px;
   height: 14px;
+}
+
+.ai-step-prompt {
+  display: flex;
+  gap: 10px;
+  margin-left: 32px;
+  padding: 10px 12px;
+  border: var(--border-width) dashed var(--hoot-bubble-border);
+  border-radius: 12px;
+  background: var(--hoot-bubble);
+}
+
+.ai-step-prompt-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--ai-accent);
+}
+
+.ai-step-prompt-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.ai-step-prompt-help {
+  margin: 2px 0 8px;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.ai-step-prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* The chat about a step: the Academy's owl colours, and Hoot perched on the panel with a
+   question mark (above its top edge when there is room, else inside the header). */
+.ai-panel[data-mode='step'] {
+  border-color: var(--hoot-bubble-border);
+}
+
+.ai-panel[data-mode='step'] .ai-header {
+  position: relative;
+  border-bottom-color: var(--hoot-bubble-border);
+  background: linear-gradient(180deg, var(--hoot-bubble), var(--ai-surface));
+}
+
+.ai-panel[data-perch='inside'] .ai-header {
+  min-height: 84px;
+}
+
+.ai-step-hoot {
+  flex: none;
+  width: 56px;
+  height: 30px;
+}
+
+.ai-step-hoot .hoot {
+  position: absolute;
+  left: 12px;
+  pointer-events: none;
+}
+
+/* The branch (the bottom of the picture) on the panel's top edge. */
+.ai-panel[data-perch='above'] .ai-step-hoot .hoot {
+  bottom: calc(100% - 3px);
+}
+
+.ai-panel[data-perch='inside'] .ai-step-hoot .hoot {
+  top: 10px;
+}
+
+/* The question mark in a small speech bubble by Hoot's head. */
+.ai-step-hoot-mark {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: var(--border-width) solid var(--hoot-bubble-border);
+  border-radius: 12px 12px 12px 3px;
+  background: var(--hoot-bubble);
+  color: var(--ai-accent);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ai-panel[data-perch='above'] .ai-step-hoot-mark {
+  bottom: calc(100% + 40px);
+  left: 66px;
+}
+
+.ai-panel[data-perch='inside'] .ai-step-hoot-mark {
+  top: 6px;
+  left: 64px;
+}
+
+.ai-panel[data-mode='step'] .ai-step-hoot-mark {
+  animation: ai-step-mark 2.4s ease-in-out infinite;
+}
+
+@keyframes ai-step-mark {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-8deg);
+  }
+
+  50% {
+    transform: translateY(-3px) rotate(8deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-panel[data-mode='step'] .ai-step-hoot-mark {
+    animation: none;
+  }
+}
+
+.ai-step-eyebrow {
+  margin: 0;
+  color: var(--ai-accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }

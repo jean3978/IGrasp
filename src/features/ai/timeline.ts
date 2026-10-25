@@ -59,6 +59,8 @@ export type ChatItem =
       question: string;
       /** Saved on the step (or its write offered, for a shared tutorial). */
       saved: boolean;
+      /** The user answered "No thanks" to keeping it for other readers. */
+      declined: boolean;
     }
   | {
       /** What the provider reported for an operation, shown under its answer. */
@@ -116,7 +118,7 @@ export function stepItem(s: {
   quote: string | null;
   question: string;
 }): ChatItem {
-  return { kind: 'step', id: nextId('step'), ...s, saved: false };
+  return { kind: 'step', id: nextId('step'), ...s, saved: false, declined: false };
 }
 
 /** The answer to the message a step item belongs to: the answers after it, until the next one. */
@@ -376,6 +378,7 @@ function fromStored(v: JsonRecord): ChatItem | null {
             quote: str(v.quote) ? v.quote : null,
             question: v.question,
             saved: v.saved === true,
+            declined: v.declined === true,
           }
         : null;
     case 'usage':

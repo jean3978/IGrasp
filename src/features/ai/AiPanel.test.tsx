@@ -404,6 +404,31 @@ describe('permission prompts and conversation rules', () => {
 });
 
 describe('the chat feel', () => {
+  it('wears the Academy look, with Hoot, while it is about a step', async () => {
+    renderPanel();
+    const panel = await screen.findByRole('dialog');
+    expect(panel).not.toHaveAttribute('data-mode');
+    act(() => {
+      useAiPanel.getState().setAttachment({
+        step: {
+          tutorial: { type: 'private', id: 't1' },
+          chapter: 0,
+          step: 1,
+          label: 'Chapter 1, step 2: The watcher',
+          quote: null,
+          kind: 'whole',
+        },
+      });
+    });
+    expect(panel).toHaveAttribute('data-mode', 'step');
+    expect(within(panel).getByText('About a step')).toBeInTheDocument();
+    expect(panel.querySelector('.ai-step-hoot .hoot')).not.toBeNull();
+    act(() => {
+      useAiPanel.getState().setAttachment(null);
+    });
+    expect(panel).not.toHaveAttribute('data-mode');
+  });
+
   it('shows a typing indicator, then the answer in one piece', async () => {
     if (window.__igraspMock) window.__igraspMock.state.ai.stepMs = 40;
     const user = userEvent.setup();
