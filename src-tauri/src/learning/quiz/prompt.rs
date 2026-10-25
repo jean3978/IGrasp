@@ -166,7 +166,7 @@ fn exclusions_block(exclude: &[QuizExclusion]) -> Option<String> {
 
 /// How to write choices that do not give the answer away (players learn the tells fast: the
 /// longest, most detailed or most careful choice, or the one that echoes the question).
-const CHOICES_BLOCK: &str = "Choices that do not give the answer away: write every wrong choice with the same care as the right one, about the same length, detail, tone and grammar, so that only knowing this project tells them apart. Make them tempting: a real name of this project used in the wrong place, a reasonable design reason that is not this project's, what a similar project would do, a common misreading of this code. Never make the right choice the longest, the most precise or the most qualified (\"because\", \"so that\", \"only when\" only in the right one), never echo the question's words only in the right one, and never write a wrong choice that is absurd, a joke or off topic. The app shuffles the choices, so their order does not matter. For true/false, make about half of the statements false, each false one a plausible near-truth about this project.";
+const CHOICES_BLOCK: &str = "Choices that do not give the answer away: write every wrong choice with the same care as the right one, about the same length, detail, tone and grammar, so that only knowing this project tells them apart. Make them tempting: a real name of this project used in the wrong place, a reasonable design reason that is not this project's, what a similar project would do, a common misreading of this code. Never make the right choice the longest, the most precise or the most qualified (\"because\", \"so that\", \"only when\" only in the right one), never echo the question's words only in the right one, and never write a wrong choice that is absurd, a joke or off topic. The app shuffles the choices, so their order does not matter: never refer to a choice by its position or a letter (\"the first one\", \"option B\") in the question, the hint or the explanation; name what it says instead. For true/false, make about half of the statements false, each false one a plausible near-truth about this project.";
 
 /// The prompt of a generation (the first attempt).
 pub fn generation_prompt(input: &PromptInput<'_>) -> String {
@@ -264,6 +264,7 @@ pub fn continuation_prompt(input: &PromptInput<'_>) -> String {
     lines.push(style_block(input.scope).to_owned());
     lines.extend(fit_block(input.role, input.category));
     lines.extend(exclusions_block(input.exclude));
+    lines.push(CHOICES_BLOCK.to_owned());
     lines.push("Do not repeat any question of this conversation. The grounding rules, the self-check, Hoot's voice and the schema are the same as before: every question cites lines you actually read in this project. Number the questions q1, q2, … Answer with JSON only.".to_owned());
     lines.join("\n")
 }
@@ -476,6 +477,34 @@ mod tests {
         assert!(check.contains("the code of demo in src/save, src/main.ts"));
         assert!(check.contains("Question style: a code check"));
         assert!(!check.contains("test understanding, not memory"));
+    }
+
+    /// The first prompt and every later round ask for choices that do not give the answer away,
+    /// never named by their position (the app shuffles them).
+    #[test]
+    fn every_round_asks_for_choices_alike_and_never_by_position() {
+        let p = profile();
+        let s = subject();
+        let input = PromptInput {
+            profile: &p,
+            subject: Some(&s),
+            custom_subject: None,
+            category: None,
+            role: None,
+            count: 5,
+            plan: [1, 2, 1, 1, 0],
+            scope: &SourceScope::WholeProject,
+            round: None,
+            exclude: &[],
+            domain_gap: None,
+            corpus_map: "",
+            anchor_files: "",
+            agent_files: "",
+        };
+        for text in [generation_prompt(&input), continuation_prompt(&input)] {
+            assert!(text.contains("Never make the right choice the longest"));
+            assert!(text.contains("never refer to a choice by its position"));
+        }
     }
 
     #[test]

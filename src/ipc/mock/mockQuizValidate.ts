@@ -556,8 +556,13 @@ function checkChoices(q: RawQuestion): Verdict<null> {
     return reject('answerRange', `its answer index ${String(q.answer)} is not one of its choices`);
   }
   if (q.kind === 'multipleChoice') {
-    // Characters as Rust counts them (`chars().count()`): a surrogate pair is one.
-    const len = (c: string) => c.trim().replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '_').length;
+    // Characters as Rust counts them: `str::trim` strips Unicode White_Space (not JS `trim`'s
+    // set, which adds U+FEFF and leaves U+0085), and `chars().count()` counts a surrogate pair
+    // as one.
+    const len = (c: string) =>
+      c
+        .replace(/^\p{White_Space}+|\p{White_Space}+$/gu, '')
+        .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '_').length;
     const right = len(q.choices[q.answer] ?? '');
     const longestWrong = Math.max(0, ...q.choices.filter((_, i) => i !== q.answer).map(len));
     if (giveawayLength(right, longestWrong)) {
