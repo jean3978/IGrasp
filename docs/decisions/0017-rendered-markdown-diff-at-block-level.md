@@ -24,7 +24,10 @@ Block level, in the shared module `src/features/diff/`:
 
 - `blocks.ts` splits a document into top-level mdast blocks (same parser options as the
   pipeline) with their source lines and offsets. Front matter and reference definitions are
-  blocks of their own.
+  blocks of their own. The new version reuses the old version's blocks away from its changed
+  lines (`splitBlocksFrom`): each changed region is parsed from the last unchanged block before
+  it to the first one after it, and the whole text is parsed when those two do not come back
+  identical (an opened code fence, a setext underline, an unclosed front matter fence).
 - `blockDiff.ts` runs `diffArrays` (package `diff`) on the blocks' whitespace-normalized text. A
   run of removed and added blocks between two common blocks is one **change group** (`added`,
   `removed` or `changed`).
