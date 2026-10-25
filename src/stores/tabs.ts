@@ -4,7 +4,7 @@ import { useGraph } from './graph';
 import { useOutline } from './outline';
 import { useTextFiles } from './textFiles';
 
-export type TabKind = 'document' | 'code' | 'settings' | 'shortcuts' | 'quiz';
+export type TabKind = 'document' | 'code' | 'settings' | 'shortcuts' | 'quiz' | 'academy';
 export type FileTabKind = 'document' | 'code';
 export type SpecialTabKind = Exclude<TabKind, FileTabKind>;
 
@@ -73,6 +73,7 @@ const SPECIAL_IDS: Record<SpecialTabKind, string> = {
   settings: 'tab-settings',
   shortcuts: 'tab-shortcuts',
   quiz: 'tab-quiz',
+  academy: 'tab-academy',
 };
 
 export const isFileTab = (tab: Tab): boolean => tab.kind === 'document' || tab.kind === 'code';
@@ -266,6 +267,7 @@ export function tabLabel(tab: Tab, tabs: Tab[]): { title: string; description: s
   if (tab.kind === 'settings') return { title: 'Settings', description: null };
   if (tab.kind === 'shortcuts') return { title: 'Keyboard Shortcuts', description: null };
   if (tab.kind === 'quiz') return { title: 'Quiz', description: null };
+  if (tab.kind === 'academy') return { title: 'Academy', description: null };
   const path = tab.relPath ?? '';
   const title = fileName(path);
   const clash = tabs.some(

@@ -20,6 +20,7 @@ import { useGraph } from '../../stores/graph';
 import { useOutline } from '../../stores/outline';
 import { useProjectProfile } from '../../stores/projectProfile';
 import { useQuiz } from '../../stores/quiz';
+import { useAcademy } from '../../stores/academy';
 import { useUi } from '../../stores/ui';
 import { useQuickOpen } from '../../stores/quickOpen';
 import { useSearch } from '../../stores/search';
@@ -387,6 +388,82 @@ describe('no token without a user action', () => {
     await vi.waitFor(() => {
       expect(quiz().screen).toBe('question');
     });
+    expect(starts()).toHaveLength(3);
+  });
+
+  it('starts a tutorial operation only from its confirmation card, never from browsing or reading', async () => {
+    render(createElement(App));
+    await useWorkspace.getState().openRoot(FIXTURE_ROOT);
+    await vi.waitFor(() => {
+      expect(useGraph.getState().status.ready).toBe(true);
+    });
+    const mock = window.__igraspMock;
+    if (!mock) throw new Error('no mock');
+    mock.state.ai.stepMs = 1;
+    // Opening the Academy (menu, shortcut target, toolbar) lists the cards and the library.
+    runAction('learn.academy');
+    await vi.waitFor(() => {
+      expect(document.querySelector('.academy-home')).not.toBeNull();
+      expect(useAcademy.getState().subjects?.cards.length).toBeGreaterThan(0);
+    });
+    const academy = () => useAcademy.getState();
+    const card = academy().subjects?.cards.find((c) => c.id === 'family:big-picture');
+    if (!card) throw new Error('no card');
+    academy().chooseCard(card);
+    academy().setSetup({ length: 'quick', domainGap: 'command-line interfaces' });
+    await academy().prepareOutline();
+    expect(academy().screen).toBe('confirm');
+    academy().cancelConfirm();
+    await academy().prepareSuggest();
+    academy().cancelConfirm();
+    academy().backHome();
+    await settle();
+    expect(starts()).toEqual([]);
+
+    // The outline: one start, on the card's Start.
+    academy().chooseCard(card);
+    await academy().prepareOutline();
+    await academy().confirmStart();
+    await vi.waitFor(() => {
+      expect(academy().screen).toBe('outline');
+    });
+    expect(starts()).toEqual(['tutorialGeneration']);
+    // Editing the outline, going home and back: none.
+    const planned = academy().tutorial;
+    if (!planned) throw new Error('no outline');
+    await academy().editOutline([...planned.chapters].reverse());
+    academy().backHome();
+    await academy().reviewOutline(planned.id);
+    await academy().prepareChapters([0, 1]);
+    academy().cancelConfirm();
+    await settle();
+    expect(starts()).toEqual(['tutorialGeneration']);
+
+    // Writing two chapters is one operation.
+    await academy().prepareChapters([0, 1]);
+    await academy().confirmStart();
+    await vi.waitFor(() => {
+      expect(academy().screen).toBe('tutorial');
+      expect(academy().operationId).toBeNull();
+    });
+    expect(starts()).toEqual(['tutorialGeneration', 'tutorialGeneration']);
+    const saved = await backend.getTutorial({ type: 'private', id: planned.id });
+    expect(saved.chapters.filter((c) => c.steps.length > 0)).toHaveLength(2);
+    // Reading it, the library, deleting: none.
+    academy().backHome();
+    academy().openTutorial({ type: 'private', id: planned.id });
+    await academy().refreshLibrary();
+    await settle();
+    expect(starts()).toHaveLength(2);
+    // Suggest more subjects: one, on its card.
+    await academy().prepareSuggest();
+    await academy().confirmStart();
+    await vi.waitFor(() => {
+      expect(academy().subjects?.cards.some((c) => c.kind === 'suggested')).toBe(true);
+    });
+    expect(starts()).toEqual(['tutorialGeneration', 'tutorialGeneration', 'subjectSuggestion']);
+    await academy().deleteTutorial(planned.id);
+    await settle();
     expect(starts()).toHaveLength(3);
   });
 });

@@ -1,6 +1,6 @@
 import { clsx } from 'clsx';
 import { ContextMenu } from 'radix-ui';
-import { FileCode, FileText, Keyboard, Settings, X } from 'lucide-react';
+import { FileCode, FileText, Keyboard, Settings, X, GraduationCap } from 'lucide-react';
 import { useRef } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useTabs, tabLabel } from '../../stores/tabs';
@@ -25,6 +25,7 @@ function TabIcon({ tab }: { tab: Tab }) {
   if (tab.kind === 'settings') return <Settings aria-hidden />;
   if (tab.kind === 'shortcuts') return <Keyboard aria-hidden />;
   if (tab.kind === 'quiz') return <HootIcon />;
+  if (tab.kind === 'academy') return <GraduationCap aria-hidden />;
   if (tab.kind === 'code') return <FileCode aria-hidden />;
   return <FileText aria-hidden />;
 }

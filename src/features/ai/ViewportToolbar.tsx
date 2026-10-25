@@ -1,9 +1,9 @@
 // The AI tools over the view (top-right corner of every tab, and of the empty area): open the
-// chat, the quiz, the text mode (highlight text, release, and the chat opens next to it) and the region
+// chat, the Academy, the quiz, the text mode (highlight text, release, and the chat opens next to it) and the region
 // tool (drag a rectangle), the last two in markdown and code tabs. None of them spends tokens;
 // Send does.
 
-import { Sparkles, SquareDashedMousePointer, TextCursor } from 'lucide-react';
+import { GraduationCap, Sparkles, SquareDashedMousePointer, TextCursor } from 'lucide-react';
 import { useAiPanel } from '../../stores/aiPanel';
 import { useCanCapture, useCapture } from '../../stores/capture';
 import { useTabs } from '../../stores/tabs';
@@ -19,11 +19,15 @@ export function ViewportToolbar() {
   const regionMode = useCapture((s) => s.active);
   const canCapture = useCanCapture();
   const quizOpen = useTabs((s) => s.activeId === 'tab-quiz');
+  const academyOpen = useTabs((s) => s.activeId === 'tab-academy');
   if (!hasRoot) return null;
   return (
     <div className="viewport-toolbar" role="toolbar" aria-label="AI tools">
       <ActionButton id="ai.chat" pressed={chatOpen} className="viewport-tool">
         <Sparkles aria-hidden />
+      </ActionButton>
+      <ActionButton id="learn.academy" pressed={academyOpen} className="viewport-tool">
+        <GraduationCap aria-hidden />
       </ActionButton>
       <ActionButton id="learn.quiz" pressed={quizOpen} className="viewport-tool">
         <HootIcon />

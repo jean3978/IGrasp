@@ -310,6 +310,7 @@ export function MenuBar() {
         <Item id="view.zoomReset" />
       </Menu>
       <Menu value="learn">
+        <Item id="learn.academy" disabled={!hasRoot} />
         <Item id="learn.quiz" disabled={!hasRoot} />
         <Item id="learn.openQuizFile" disabled={!hasRoot} />
         <Item id="learn.profile" disabled={!hasRoot} />

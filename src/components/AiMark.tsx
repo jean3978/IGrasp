@@ -6,9 +6,9 @@ import './aiMark.css';
 
 /**
  * `uses`: the control spends tokens. `feature`: it opens the AI chat, which is free. `quiz`: it
- * opens the quiz, which is free (its Start spends).
+ * opens the quiz, which is free (its Start spends). `academy`: the same for the Academy.
  */
-export type AiMarkVariant = 'uses' | 'feature' | 'quiz';
+export type AiMarkVariant = 'uses' | 'feature' | 'quiz' | 'academy';
 
 /**
  * The small sparkle that tells the user a control belongs to the AI feature. The provider's
@@ -27,11 +27,13 @@ export function AiMark({ variant = 'uses' }: { variant?: AiMarkVariant }) {
   const tooltip =
     variant === 'quiz'
       ? `Opening the quiz is free; generating one uses ${name ?? 'AI'}`
-      : variant === 'feature'
-        ? `Opening the chat is free; sending a message uses ${name ?? 'AI'}`
-        : name
-          ? `Uses AI (${name})`
-          : 'Uses AI';
+      : variant === 'academy'
+        ? `Opening the Academy is free; writing a tutorial uses ${name ?? 'AI'}`
+        : variant === 'feature'
+          ? `Opening the chat is free; sending a message uses ${name ?? 'AI'}`
+          : name
+            ? `Uses AI (${name})`
+            : 'Uses AI';
   return (
     <span
       className="ai-mark"
