@@ -113,6 +113,11 @@
 .mermaid-viewer-fullscreen {
   display: flex;
   flex: 1;
+  /* A flex item defaults to its content's size: without this, a wide diagram stretches the
+     viewer past the window and pushes the toolbar (and its exit button) off screen. */
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   margin: 0;
   box-shadow: var(--shadow-dialog);
 }
