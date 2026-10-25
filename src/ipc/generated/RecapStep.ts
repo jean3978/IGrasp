@@ -6,4 +6,8 @@ export type RecapStep = {
 /**
  * Three key takeaways.
  */
-takeaways: Array<string>, sources: Array<Citation>, selfCheck?: SelfCheck, };
+takeaways: Array<string>, 
+/**
+ * Always serialized (the TypeScript type requires it), even empty; missing reads as empty.
+ */
+sources: Array<Citation>, selfCheck?: SelfCheck, };

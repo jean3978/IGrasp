@@ -19,10 +19,6 @@ fn is_none<T>(o: &Option<T>) -> bool {
     o.is_none()
 }
 
-fn is_empty<T>(v: &[T]) -> bool {
-    v.is_empty()
-}
-
 /// A project source a step points at: a text file with the lines that hold the fact, or a
 /// binary asset by name (never alone).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -265,7 +261,8 @@ pub struct TryItStep {
 pub struct RecapStep {
     /// Three key takeaways.
     pub takeaways: Vec<String>,
-    #[serde(default, skip_serializing_if = "is_empty")]
+    /// Always serialized (the TypeScript type requires it), even empty; missing reads as empty.
+    #[serde(default)]
     pub sources: Vec<Citation>,
     #[serde(default, skip_serializing_if = "is_none")]
     pub self_check: Option<SelfCheck>,
@@ -778,6 +775,23 @@ pub fn chapter_schema() -> Value {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    #[test]
+    fn a_recap_without_sources_still_sends_its_empty_list() {
+        // The frontend iterates every step's `sources`: a missing list crashed the reader on the
+        // last step of every chapter.
+        let recap = Step::Recap(RecapStep {
+            takeaways: vec!["a".into(), "b".into(), "c".into()],
+            sources: Vec::new(),
+            self_check: None,
+        });
+        let json = serde_json::to_value(&recap).unwrap();
+        assert_eq!(json["sources"], serde_json::json!([]));
+        // Tutorials saved before keep reading.
+        let old: Step =
+            serde_json::from_str(r#"{"type":"recap","takeaways":["a","b","c"]}"#).unwrap();
+        assert_eq!(old, recap);
+    }
+
     use std::collections::BTreeSet;
 
     use super::*;

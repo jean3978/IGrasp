@@ -7,6 +7,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- The app went blank at the end of every chapter of a tutorial written by the AI: the backend
+  left out the recap's empty list of sources, which the reader expects. It is always sent now
+  (tutorials saved before are fixed when read).
+- A render error now stays inside its tab, with the message and "Try again", instead of
+  blanking the whole window.
+
 ## [0.5.0] - 2026-10-25
 
 Phase 5 — Hoot's Academy: tutorials about the open project, written by the AI from the project's
