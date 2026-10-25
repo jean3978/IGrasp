@@ -14,6 +14,11 @@ import { useToasts } from './toasts';
 import { useTree } from './tree';
 import { useWorkspace } from './workspace';
 
+/** Once the Academy was opened, its library follows the folder (a shared tutorial pulled in). */
+function refreshAcademyLibrary() {
+  if (useAcademy.getState().subjects !== null) void useAcademy.getState().refreshLibrary();
+}
+
 export async function startEventBridge(): Promise<Unsubscribe> {
   const offs = await Promise.all([
     backend.listen('index://progress', (e) => {
@@ -42,10 +47,12 @@ export async function startEventBridge(): Promise<Unsubscribe> {
     backend.listen('graph://ready', (e) => {
       useGraph.getState().onReady(e);
       void useQuiz.getState().refreshQuizFiles();
+      refreshAcademyLibrary();
     }),
     backend.listen('graph://changed', (e) => {
       useGraph.getState().onChanged(e);
       void useQuiz.getState().refreshQuizFiles();
+      refreshAcademyLibrary();
     }),
     backend.listen('search://results', (e) => {
       useSearch.getState().onResults(e);
