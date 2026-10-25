@@ -34,7 +34,14 @@ import type { WatchStatusEvent } from './generated/WatchStatusEvent';
 import type { AiCapabilities } from './generated/AiCapabilities';
 import type { AiEventEnvelope } from './generated/AiEventEnvelope';
 import type { AiProviderStatus } from './generated/AiProviderStatus';
+import type { AiProviderInfo } from './generated/AiProviderInfo';
+import type { Conversation } from './generated/Conversation';
+import type { ConversationSummary } from './generated/ConversationSummary';
 import type { AiRequest } from './generated/AiRequest';
+import type { AiContextDocument } from './generated/AiContextDocument';
+import type { AiEstimateInput } from './generated/AiEstimateInput';
+import type { AiSizeEstimate } from './generated/AiSizeEstimate';
+import type { AiStartRequest } from './generated/AiStartRequest';
 import type { AiUserAction } from './generated/AiUserAction';
 import type { PermissionDecision } from './generated/PermissionDecision';
 
@@ -69,8 +76,16 @@ export type { WatchMode } from './generated/WatchMode';
 export type { Theme } from './generated/Theme';
 export type { ReadingWidth } from './generated/ReadingWidth';
 export type { WindowFrame } from './generated/WindowFrame';
+export type { AiSettings } from './generated/AiSettings';
+export type { AiSettingsPatch } from './generated/AiSettingsPatch';
+export type { AiPermissionSettings } from './generated/AiPermissionSettings';
+export type { AiPermissionSettingsPatch } from './generated/AiPermissionSettingsPatch';
+export type { PermissionRule } from './generated/PermissionRule';
+export type { ConfirmFrom } from './generated/ConfirmFrom';
 export type { SessionTab } from './generated/SessionTab';
 export type { SessionTabKind } from './generated/SessionTabKind';
+export type { AiPanelState } from './generated/AiPanelState';
+export type { PanelRect } from './generated/PanelRect';
 export type { SidebarView } from './generated/SidebarView';
 export type { LinkInfo } from './generated/LinkInfo';
 export type { SymbolHit } from './generated/SymbolHit';
@@ -93,15 +108,27 @@ export type { AiEvent } from './generated/AiEvent';
 export type { AiImage } from './generated/AiImage';
 export type { AiModel } from './generated/AiModel';
 export type { AiOutcome } from './generated/AiOutcome';
+export type { AiPermissionKind } from './generated/AiPermissionKind';
 export type { AiPolicy } from './generated/AiPolicy';
+export type { AiCapture } from './generated/AiCapture';
+export type { AiContextRole } from './generated/AiContextRole';
+export type { AiSizeBucket } from './generated/AiSizeBucket';
 export type { EditHunk } from './generated/EditHunk';
 export type { ProposedEdit } from './generated/ProposedEdit';
+export type { ConversationUsage } from './generated/ConversationUsage';
 export type {
   AiCapabilities,
   AiEventEnvelope,
+  AiProviderInfo,
   AiProviderStatus,
+  AiContextDocument,
+  AiEstimateInput,
   AiRequest,
+  AiSizeEstimate,
+  AiStartRequest,
   AiUserAction,
+  Conversation,
+  ConversationSummary,
   PermissionDecision,
 };
 
@@ -221,14 +248,30 @@ export interface Backend {
   /** Opens the app-data folder in the system file manager. */
   openAppDataDir(): Promise<void>;
 
-  /** Whether the AI provider is installed and signed in (runs its probes; spends no tokens). */
-  aiStatus(): Promise<AiProviderStatus>;
+  /**
+   * Whether the AI provider is installed and signed in (runs its probes; spends no tokens). A
+   * check younger than a minute is reused unless `force` ("Check again").
+   */
+  aiStatus(force?: boolean): Promise<AiProviderStatus>;
   aiCapabilities(): Promise<AiCapabilities>;
+  /** The providers the "AI provider" setting offers (no probe, no token). */
+  aiProviders(): Promise<AiProviderInfo[]>;
+  /** Switches the AI provider; refused while an operation runs. Resolves to the new settings. */
+  aiSetProvider(id: string): Promise<Settings>;
+  /**
+   * What the next message would carry for the active file (`null`: none): the provider's
+   * instruction files from the root down, then the current file. Paths, roles and sizes only;
+   * the contents are read by the backend when the message is sent. Spends no tokens.
+   */
+  aiContext(currentPath: string | null): Promise<AiContextDocument[]>;
+  /** The approximate size of a message, from file metadata. Spends no tokens. */
+  aiEstimate(input: AiEstimateInput): Promise<AiSizeEstimate>;
   /**
    * Starts an AI operation in the open folder on behalf of a user action; resolves to its id.
-   * Its events arrive as `ai://event`, ending with `done`.
+   * The backend reads the context documents from `request.contextPaths`. Its events arrive as
+   * `ai://event`, ending with `done`.
    */
-  aiStart(action: AiUserAction, request: AiRequest): Promise<number>;
+  aiStart(action: AiUserAction, request: AiStartRequest): Promise<number>;
   /** Answers a `permissionRequest` event of the running operation. */
   aiRespondPermission(
     operationId: number,
@@ -237,6 +280,15 @@ export interface Backend {
   ): Promise<void>;
   /** Stops the running operation (idempotent); a `done` event follows. */
   aiCancel(operationId: number): Promise<void>;
+
+  /** The AI conversations of the open folder, newest first (app data only). */
+  listConversations(): Promise<ConversationSummary[]>;
+  getConversation(id: string): Promise<Conversation>;
+  /** Adds or replaces a conversation of the open folder; trimmed to `settings.ai.historyLimit`. */
+  saveConversation(conversation: Conversation): Promise<void>;
+  deleteConversation(id: string): Promise<void>;
+  /** Deletes every conversation of the open folder. */
+  forgetConversations(): Promise<void>;
 
   listen<E extends EventName>(
     event: E,

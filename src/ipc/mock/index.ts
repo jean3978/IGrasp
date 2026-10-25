@@ -1,7 +1,14 @@
 // In-memory backend used in a plain browser (`npm run dev`), in unit tests and in the Playwright
 // end-to-end tests. Tests drive it through `window.__igraspMock`.
 
-import { DEFAULT_SETTINGS, MAX_FONT_SIZE, MIN_FONT_SIZE } from '../defaults';
+import {
+  DEFAULT_SETTINGS,
+  MAX_FONT_SIZE,
+  MAX_HISTORY_LIMIT,
+  MIN_FONT_SIZE,
+  MIN_HISTORY_LIMIT,
+  applySettingsPatch,
+} from '../defaults';
 import { BackendError } from '../types';
 import type {
   AppInfo,
@@ -24,7 +31,7 @@ import { searchSymbols } from './mockSymbols';
 import { buildRegExp, filterFiles, searchContent } from './mockText';
 import { gitignorePatterns, isMarkdown, listFixtureDir, scanFixture } from './mockIndex';
 import type { MockScanOptions } from './mockIndex';
-import { DEFAULT_MOCK_AI, createMockAi } from './mockAi';
+import { DEFAULT_MOCK_AI, MOCK_PROVIDER_ID, createMockAi } from './mockAi';
 import type { MockAiState } from './mockAi';
 
 type Handler = (payload: never) => void;
@@ -81,7 +88,11 @@ declare global {
 
 function initialState(): MockState {
   return {
-    settings: structuredClone(DEFAULT_SETTINGS),
+    // The mock is the only provider of the mock backend, like Claude in the real app.
+    settings: {
+      ...structuredClone(DEFAULT_SETTINGS),
+      ai: { ...structuredClone(DEFAULT_SETTINGS.ai), provider: MOCK_PROVIDER_ID },
+    },
     recent: [],
     sessions: new Map(),
     folders: new Set([FIXTURE_ROOT]),
@@ -96,7 +107,7 @@ function initialState(): MockState {
     graph: null,
     graphDelayMs: 0,
     pickFolderResult: FIXTURE_ROOT,
-    ai: { ...DEFAULT_MOCK_AI, starts: [] },
+    ai: { ...DEFAULT_MOCK_AI, starts: [], conversations: new Map() },
   };
 }
 
@@ -189,6 +200,12 @@ export function createMockBackend(): Backend & { controls: MockControls } {
   const ai = createMockAi({
     emit,
     ai: () => state.ai,
+    settings: () => state.settings,
+    rootPath: () => state.root?.path ?? null,
+    file: (relPath) => {
+      const found = fakeFile(relPath);
+      return found && { content: found.content, size: found.size };
+    },
     fileContent: (relPath) => state.files.get(relPath),
     writeFiles: (files) => {
       controls.writeFiles(files);
@@ -559,11 +576,18 @@ export function createMockBackend(): Backend & { controls: MockControls } {
 
     getSettings: () => Promise.resolve(structuredClone(state.settings)),
     updateSettings: (patch) => {
-      const next: Settings = { ...state.settings, ...patch };
+      const next: Settings = applySettingsPatch(state.settings, patch);
       next.fontSize = Math.min(MAX_FONT_SIZE, Math.max(MIN_FONT_SIZE, next.fontSize));
       next.ignorePatterns = next.ignorePatterns
         .map((p) => p.trim())
         .filter((p) => p !== '' && !p.startsWith('#'));
+      // Like `Settings::normalize` in Rust.
+      next.ai.model = next.ai.model.trim();
+      if (!/^[A-Za-z0-9.:/_][A-Za-z0-9.:/_-]*$/.test(next.ai.model)) next.ai.model = '';
+      next.ai.historyLimit = Math.min(
+        MAX_HISTORY_LIMIT,
+        Math.max(MIN_HISTORY_LIMIT, next.ai.historyLimit),
+      );
       state.settings = next;
       return Promise.resolve(structuredClone(next));
     },
@@ -585,9 +609,18 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     getAppInfo: () => Promise.resolve(appInfo),
     aiStatus: ai.aiStatus,
     aiCapabilities: ai.aiCapabilities,
+    aiProviders: ai.aiProviders,
+    aiSetProvider: ai.aiSetProvider,
+    aiContext: ai.aiContext,
+    aiEstimate: ai.aiEstimate,
     aiStart: ai.aiStart,
     aiRespondPermission: ai.aiRespondPermission,
     aiCancel: ai.aiCancel,
+    listConversations: ai.listConversations,
+    getConversation: ai.getConversation,
+    saveConversation: ai.saveConversation,
+    deleteConversation: ai.deleteConversation,
+    forgetConversations: ai.forgetConversations,
 
     openAppDataDir: () => {
       state.opened.push(appInfo.appDataDir);

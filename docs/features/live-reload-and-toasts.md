@@ -15,7 +15,10 @@ needs a manual refresh.
      folder stays hidden;
    - `.git`, `node_modules` and non-markdown files are skipped early.
 3. One `fs://changes` event per batch tells the frontend what was added, modified, removed and
-   renamed, and which folder listings changed.
+   renamed, and which folder listings changed. A file removed and created again in the same
+   batch is reported as **modified**: it was replaced in place, the way editors and the AI CLI
+   save (a temporary file renamed over the original, which Windows reports as a removal and a
+   creation).
 4. The same batch updates the document graph: changed documents are parsed again and the links
    pointing at any reported path (source files and folders included) are checked again. One
    `graph://changed` event lists the documents whose links changed and the new broken count, so

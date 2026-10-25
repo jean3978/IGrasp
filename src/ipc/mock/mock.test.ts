@@ -11,6 +11,7 @@ const session: Session = {
   sidebar: { visible: true, widthPx: 260 },
   sidebarView: 'explorer',
   rightPanel: { visible: false, widthPx: 260 },
+  aiPanel: { open: false, rect: null },
   showDotfiles: false,
   showIgnored: false,
   savedAtMs: 0,
@@ -43,9 +44,9 @@ describe('mock backend', () => {
     b.controls.writeFiles({ 'docs/architecture.md': '# Architecture\n' });
     const first = await b.listRecentFiles(0, 2);
     expect(first.files.map((f) => f.relPath)).toEqual(['docs/architecture.md', 'notes/TODO.MD']);
-    expect(first.total).toBe(7);
+    expect(first.total).toBe(9);
     const rest = await b.listRecentFiles(2, 100);
-    expect(rest.files).toHaveLength(5);
+    expect(rest.files).toHaveLength(7);
     expect(rest.files[0]?.relPath).toBe('docs/guide/getting-started.md');
     const times = rest.files.map((f) => f.modifiedMs);
     expect([...times].sort((x, y) => y - x)).toEqual(times);

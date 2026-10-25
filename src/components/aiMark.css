@@ -1,0 +1,43 @@
+.ai-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.ai-mark svg,
+.icon-button .ai-mark svg,
+.button .ai-mark svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* On an icon button the mark is a badge in the corner. */
+.icon-button {
+  position: relative;
+}
+
+.icon-button > .ai-mark {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--bg-overlay);
+  color: var(--accent);
+  opacity: 1;
+}
+
+.icon-button > .ai-mark svg {
+  width: 8px;
+  height: 8px;
+}
+
+.menu-item > .ai-mark {
+  margin-left: -8px;
+}

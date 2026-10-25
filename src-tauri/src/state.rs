@@ -93,11 +93,14 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(appdata: AppData) -> Self {
+        // The provider named in the settings (a broken settings file was reset to defaults and
+        // is reported when the frontend first reads the settings).
+        let settings = appdata.settings().unwrap_or_default();
         Self {
+            ai: AiGateway::from_settings(&settings),
             appdata,
             workspace: RwLock::new(None),
             generation: AtomicU64::new(0),
-            ai: AiGateway::with_default_provider(),
         }
     }
 

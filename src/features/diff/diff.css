@@ -1,0 +1,128 @@
+/* Rendered markdown diff. Colours come from the --diff-* tokens of each theme. */
+
+.rendered-diff .diff-group {
+  position: relative;
+  margin: 8px 0;
+  border-radius: 4px;
+}
+
+.rendered-diff .diff-group:focus-visible {
+  outline: var(--focus-width, 2px) solid var(--focus);
+  outline-offset: 2px;
+}
+
+.rendered-diff .diff-part {
+  position: relative;
+  padding: 2px 12px 2px 14px;
+  border-left: 4px solid transparent;
+}
+
+.rendered-diff .diff-part > :first-child:not(.diff-sr),
+.rendered-diff .diff-part > .diff-sr + * {
+  margin-top: 4px;
+}
+
+.rendered-diff .diff-part > :last-child {
+  margin-bottom: 4px;
+}
+
+.rendered-diff .diff-part--removed {
+  background: var(--diff-removed-bg);
+  border-left-color: var(--diff-removed-fg);
+}
+
+.rendered-diff .diff-part--added {
+  background: var(--diff-added-bg);
+  border-left-color: var(--diff-added-fg);
+}
+
+/* The content stays readable: no strikethrough, the bar and the background carry the meaning. */
+.rendered-diff .diff-source {
+  white-space: pre-wrap;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.9em;
+}
+
+/* Decided changes: the version that was not kept loses its tint and its bar turns dashed. No
+   opacity, which would take its text under 4.5:1. */
+.rendered-diff .diff-group--accepted .diff-part--removed,
+.rendered-diff .diff-group--rejected .diff-part--added {
+  background: transparent;
+  border-left-style: dashed;
+  color: var(--fg-muted);
+}
+
+/* Position of the controls a caller renders: a row of its own above the group, so they never
+   cover its text, kept in view (sticky) while a tall group scrolls by. */
+.rendered-diff .diff-toolbar {
+  position: sticky;
+  top: 4px;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  padding-right: 6px;
+  pointer-events: none;
+}
+
+.rendered-diff .diff-toolbar > * {
+  pointer-events: auto;
+  height: max-content;
+}
+
+.diff-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.diff-notice {
+  padding: 12px 16px;
+  color: var(--fg-muted);
+}
+
+.rendered-diff .diff-group--flash {
+  animation: diff-flash 900ms ease-out;
+}
+
+@keyframes diff-flash {
+  from {
+    box-shadow: 0 0 0 3px var(--flash-bg);
+    background: var(--flash-bg);
+  }
+  to {
+    box-shadow: 0 0 0 3px transparent;
+    background: transparent;
+  }
+}
+
+/* Colour is not the only cue in high contrast: removed is dashed, added is solid. */
+[data-theme='high-contrast'] .rendered-diff .diff-part {
+  border: 2px solid var(--diff-added-fg);
+  border-left-width: 6px;
+}
+
+[data-theme='high-contrast'] .rendered-diff .diff-part--removed {
+  border-style: dashed;
+  border-color: var(--diff-removed-fg);
+  border-left-width: 6px;
+  border-left-style: double;
+}
+
+[data-theme='high-contrast'] .rendered-diff .diff-part--added {
+  border-style: solid;
+  border-left-style: solid;
+}
+
+[data-theme='high-contrast'] .rendered-diff .diff-group--accepted .diff-part--removed,
+[data-theme='high-contrast'] .rendered-diff .diff-group--rejected .diff-part--added {
+  border-style: dotted;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rendered-diff .diff-group--flash {
+    animation: none;
+  }
+}

@@ -4,6 +4,7 @@
 //! A file that cannot be parsed is moved aside as `<name>.corrupt-<timestamp>.json` and defaults
 //! are used, so a broken file never prevents the app from starting.
 
+pub mod conversations;
 pub mod recent;
 pub mod session;
 pub mod settings;

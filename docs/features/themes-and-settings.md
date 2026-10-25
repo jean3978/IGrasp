@@ -18,6 +18,19 @@ Every color comes from semantic CSS variables (`src/styles/tokens.css`,
 CSS variables, so switching themes never re-renders documents; Mermaid diagrams are re-rendered
 once with the matching diagram theme.
 
+The AI review adds four tokens, `--diff-added-bg`, `--diff-added-fg`, `--diff-removed-bg` and
+`--diff-removed-fg`, defined in each theme (Light removed background `#fff0ef`) and used by the rendered diff of a proposed edit and by
+the line-diff cards. Colour is not the only cue: in High Contrast, removed blocks get a dashed
+border and added blocks a solid one, and the flash after a decision is off under
+`prefers-reduced-motion`.
+
+The AI chat has its own tokens in each theme (`--ai-accent`, `--ai-accent-soft`, `--ai-surface`,
+`--ai-surface-raised`, `--ai-border`, `--ai-bubble-*`, `--ai-send-*`, `--ai-bloom`,
+`--ai-bloom-far`, `--ai-highlight-*`, `--ai-selection-*`): a warm orange accent and warm
+surfaces so the chat stands apart from the app, a bloom of layered shadows behind the panel, and
+the colour of a selection highlighted for the chat. High Contrast keeps black surfaces, orange
+outlines, no bloom and no tinted highlight (an underline and a dashed outline instead).
+
 ## Settings
 
 Open with File › Settings or `Ctrl+,`. Changes apply instantly and are saved in the app-data
@@ -32,6 +45,13 @@ folder (`settings.json`), never in the opened folder.
 | Notifications | Mute notifications | Hides change toasts; files still reload. |
 | Files | Extra ignore patterns | gitignore-style patterns hidden from the Explorer in every mode. Applied with the Apply button (the folder is re-indexed). |
 | | Show dotfiles / ignored files by default | Initial toggles for folders opened for the first time. |
+| AI | Status | The provider's version and account, or what is missing, with Check again (the check is cached for 60 s). |
+| | AI provider | One entry for now (disabled). |
+| | Default model | The model new conversations start with (the chat's picker changes it too). |
+| | Permissions | Ask / Allow / Deny per category: markdown edits, other file edits, commands, web access, anything else; a warning next to a risky Allow; Reset to defaults. |
+| | Confirm before sending | From medium, from large (default) or never: the confirmation card with the size estimate. |
+| | Conversations kept per folder | 25, 100 (default) or 500. |
+| | Forget this folder's conversations | Deletes the chat history kept for the open folder (app data); asks first. |
 | Data | App data folder | Shows the folder and opens it in the file manager. |
 | | Reset settings | Restores every default. |
 

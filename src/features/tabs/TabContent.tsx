@@ -1,4 +1,5 @@
 import { selectActiveTab, useTabs } from '../../stores/tabs';
+import { ViewportToolbar } from '../ai/ViewportToolbar';
 import { CodeTab } from '../code/CodeTab';
 import { DocumentTab } from '../preview/DocumentTab';
 import { SettingsTab } from '../settings/SettingsTab';
@@ -9,7 +10,16 @@ import { panelDomId, tabDomId } from './tabIds';
 export function TabContent() {
   const tab = useTabs(selectActiveTab);
 
-  if (!tab) return <EmptyState />;
+  // The AI tools are over every view of an open folder, so the chat always has its button (the
+  // selection tools are disabled where there is nothing to select).
+  if (!tab) {
+    return (
+      <div className="tab-content">
+        <EmptyState />
+        <ViewportToolbar />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -26,6 +36,7 @@ export function TabContent() {
       )}
       {tab.kind === 'settings' && <SettingsTab />}
       {tab.kind === 'shortcuts' && <ShortcutsReferenceTab />}
+      <ViewportToolbar />
     </div>
   );
 }

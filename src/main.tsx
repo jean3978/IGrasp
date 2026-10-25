@@ -9,9 +9,25 @@ import './styles/base.css';
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Missing #root element');
+const root = createRoot(container);
 
-createRoot(container).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+// Browser dev mode only: `/?diff=<fixture>&theme=<theme>` shows a rendered diff for a visual check.
+const params = new URLSearchParams(window.location.search);
+const diffFixture = import.meta.env.DEV ? params.get('diff') : null;
+
+if (diffFixture) {
+  document.documentElement.dataset['theme'] = params.get('theme') ?? 'light';
+  void import('./features/diff/DiffPlayground').then(({ DiffPlayground }) => {
+    root.render(
+      <StrictMode>
+        <DiffPlayground name={diffFixture} />
+      </StrictMode>,
+    );
+  });
+} else {
+  root.render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+}

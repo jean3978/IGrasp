@@ -28,7 +28,7 @@ const WIRE_FORMAT = [
 /** Files that must not even name a provider: UI labels come from the provider's status. */
 const PROVIDER_NEUTRAL_FILES = [
   '/src/features/ai/',
-  '/src/stores/ai.ts',
+  '/src/stores/ai',
   '/src/ipc/types.ts',
   '/src/ipc/tauri.ts',
   '/src/ipc/mock/mockAi.ts',
@@ -38,7 +38,7 @@ const PROVIDER_NEUTRAL_FILES = [
 describe('provider neutrality of the frontend', () => {
   it('reads the sources', () => {
     expect(Object.keys(SOURCES).length).toBeGreaterThan(50);
-    expect(SOURCES['/src/stores/ai.ts']).toContain('useAi');
+    expect(SOURCES['/src/stores/aiConversation.ts']).toContain('useAiConversation');
   });
 
   it('contains no provider wire format anywhere', () => {

@@ -3,6 +3,7 @@ coverage
 node_modules
 src-tauri/target
 src-tauri/gen
+.claude
 src/ipc/generated
 playwright-report
 test-results

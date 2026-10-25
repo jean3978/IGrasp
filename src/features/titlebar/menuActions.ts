@@ -14,7 +14,9 @@ import { useToasts } from '../../stores/toasts';
 import { useTree } from '../../stores/tree';
 import { useUi } from '../../stores/ui';
 import { useWorkspace } from '../../stores/workspace';
-import { useAi } from '../../stores/ai';
+import { useAiConversation } from '../../stores/aiConversation';
+import { useAiPanel } from '../../stores/aiPanel';
+import { canCapture, useCapture } from '../../stores/capture';
 
 export type ActionId =
   | 'file.openFolder'
@@ -41,6 +43,12 @@ export type ActionId =
   | 'view.muteToasts'
   | 'help.shortcuts'
   | 'ai.chat'
+  | 'ai.capture'
+  | 'ai.selectText'
+  | 'ai.newConversation'
+  | 'ai.history'
+  | 'ai.acceptAllChanges'
+  | 'ai.rejectAllChanges'
   | 'help.about'
   | 'view.zoomIn'
   | 'view.zoomOut'
@@ -71,6 +79,10 @@ interface ActionDef {
   label: string;
   /** Display form of the keyboard shortcut. */
   shortcut?: string;
+  /** The action can start an AI operation (spends tokens): its controls show the AI marker. */
+  usesAi?: boolean;
+  /** The action opens the AI feature without spending anything: its controls show the marker. */
+  aiFeature?: boolean;
   run(): void | Promise<void>;
 }
 
@@ -91,6 +103,13 @@ function showView(view: SidebarView, focusSelector: string) {
       el ?? document.querySelector<HTMLElement>('#sidebar-view [tabindex], #sidebar-view button')
     )?.focus();
   });
+}
+
+/** The active tab shows the markdown edit under review. */
+function reviewShown(): boolean {
+  const review = useAiConversation.getState().pendingReview;
+  const tab = useTabs.getState().tabs.find((t) => t.id === useTabs.getState().activeId);
+  return review?.status === 'ready' && tab?.kind === 'document' && tab.relPath === review.path;
 }
 
 /** The preview of the active tab, if any. */
@@ -171,9 +190,64 @@ export const actions: Record<ActionId, ActionDef> = {
   'ai.chat': {
     label: 'AI Chat',
     shortcut: 'Ctrl+Alt+C',
+    aiFeature: true,
     run: () => {
       if (!useWorkspace.getState().root) return;
-      useAi.getState().toggleOpen();
+      useAiPanel.getState().toggleOpen();
+    },
+  },
+  'ai.capture': {
+    label: 'Ask About a Region',
+    shortcut: 'Ctrl+Alt+R',
+    usesAi: true,
+    run: () => {
+      // Only draws the selection and attaches it; the message is sent by the user.
+      if (!canCapture()) return;
+      useCapture.getState().start();
+    },
+  },
+  'ai.selectText': {
+    label: 'Ask About Selected Text',
+    shortcut: 'Ctrl+Alt+S',
+    usesAi: true,
+    run: () => {
+      // A mode: releasing the mouse over highlighted text attaches it; nothing is sent.
+      const capture = useCapture.getState();
+      if (capture.textMode) capture.setTextMode(false);
+      else if (canCapture()) capture.setTextMode(true);
+    },
+  },
+  'ai.newConversation': {
+    label: 'New AI Conversation',
+    shortcut: 'Ctrl+Alt+N',
+    run: () => {
+      // Saves the current one in the history; starts nothing.
+      if (!useWorkspace.getState().root || !useAiPanel.getState().open) return;
+      useAiConversation.getState().newConversation();
+      useAiPanel.getState().setHistoryOpen(false);
+    },
+  },
+  'ai.history': {
+    label: 'AI Conversation History',
+    shortcut: 'Ctrl+Alt+H',
+    run: () => {
+      if (!useWorkspace.getState().root || !useAiPanel.getState().open) return;
+      useAiPanel.getState().toggleHistory();
+    },
+  },
+  // Review mode: answering a permission spends nothing (the operation is already running).
+  'ai.acceptAllChanges': {
+    label: 'Accept All Proposed Changes',
+    shortcut: 'Alt+Shift+A',
+    run: () => {
+      if (reviewShown()) return useAiConversation.getState().acceptAllChanges();
+    },
+  },
+  'ai.rejectAllChanges': {
+    label: 'Reject All Proposed Changes',
+    shortcut: 'Alt+Shift+R',
+    run: () => {
+      if (reviewShown()) return useAiConversation.getState().rejectAllChanges();
     },
   },
   'help.shortcuts': {

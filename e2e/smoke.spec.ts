@@ -16,6 +16,7 @@ test('lists only markdown files and hides folders without markdown', async ({ pa
   await expect(tree.getByRole('treeitem')).toHaveText([
     'docs',
     'notes',
+    'AGENTS.md',
     'CHANGELOG.md',
     'README.md',
   ]);

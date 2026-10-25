@@ -67,6 +67,26 @@ impl Default for RightPanelState {
     }
 }
 
+/// Position and size of the floating AI chat panel, in CSS pixels of the window.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct PanelRect {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
+/// The AI chat panel of a folder: shown or not, and where (`None`: the default corner).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct AiPanelState {
+    pub open: bool,
+    pub rect: Option<PanelRect>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -83,6 +103,9 @@ pub struct Session {
     /// Added in 0.2.0; older sessions load with the panel hidden.
     #[serde(default)]
     pub right_panel: RightPanelState,
+    /// Added in 0.3.0; older sessions load with the panel closed, in its default place.
+    #[serde(default)]
+    pub ai_panel: AiPanelState,
     pub show_dotfiles: bool,
     pub show_ignored: bool,
     pub saved_at_ms: i64,
@@ -146,6 +169,15 @@ pub fn sample_session() -> Session {
         },
         sidebar_view: SidebarView::Search,
         right_panel: RightPanelState::default(),
+        ai_panel: AiPanelState {
+            open: true,
+            rect: Some(PanelRect {
+                x: 40.0,
+                y: 60.0,
+                width: 420.0,
+                height: 560.0,
+            }),
+        },
         show_dotfiles: false,
         show_ignored: false,
         saved_at_ms: 0,
@@ -163,6 +195,7 @@ mod tests {
         let s = f.get("/root").unwrap();
         assert_eq!(s.saved_at_ms, 42);
         assert_eq!(s.tabs[0].rel_path, "README.md");
+        assert_eq!(s.ai_panel.rect.as_ref().map(|r| r.width), Some(420.0));
         assert!(f.get("/other").is_none());
     }
 
@@ -174,6 +207,7 @@ mod tests {
         let s: Session = serde_json::from_str(json).unwrap();
         assert_eq!(s.sidebar_view, SidebarView::Explorer);
         assert!(!s.right_panel.visible);
+        assert_eq!(s.ai_panel, AiPanelState::default());
         assert_eq!(s.tabs[0].kind, SessionTabKind::Document);
         assert_eq!(s.tabs.len(), 1);
     }

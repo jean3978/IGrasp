@@ -56,8 +56,9 @@
   border-color: var(--danger);
 }
 
+/* Above every floating layer (the AI chat is 4400, the about dialog 4500), below the splash. */
 .tooltip {
-  z-index: 1000;
+  z-index: 4800;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -77,7 +78,7 @@
 
 /* Menus: shared by the menu bar, dropdowns and context menus. */
 .menu {
-  z-index: 900;
+  z-index: 4700;
   min-width: 220px;
   padding: 4px;
   border: var(--border-width) solid var(--border-strong);

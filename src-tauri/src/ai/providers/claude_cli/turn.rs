@@ -14,9 +14,9 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
 
-use super::cli;
+use super::{cli, protocol};
 use crate::ai::process::ProcessGuard;
-use crate::ai::types::{AiImage, AiPolicy, PermissionDecision};
+use crate::ai::types::{AiImage, AiPolicy, PermissionDecision, REJECTED_BY_USER};
 use crate::error::{AppError, AppResult};
 
 /// What one turn needs from the neutral request.
@@ -46,6 +46,22 @@ const WRITE_TOOLS: &str = "Bash,PowerShell,Edit,Write,MultiEdit,NotebookEdit,Web
 /// Lines of stderr kept to explain a crash.
 const STDERR_TAIL_LINES: usize = 40;
 
+/// Largest message written to the CLI's stdin. Captured images are downscaled by the
+/// frontend to fit well under it; anything larger is refused before spawning a process.
+pub const MAX_MESSAGE_BYTES: usize = 4 * 1024 * 1024;
+
+fn check_message_size(message: &str) -> AppResult<()> {
+    if message.len() > MAX_MESSAGE_BYTES {
+        return Err(AppError::Ai(format!(
+            "The message is too large to send ({:.1} MB, at most {} MB). Remove an attachment \
+             or a large document from the context.",
+            message.len() as f64 / 1_048_576.0,
+            MAX_MESSAGE_BYTES / 1_048_576
+        )));
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct PermissionRequest {
     pub request_id: String,
@@ -72,8 +88,8 @@ pub type EventSink = Box<dyn FnMut(TurnEvent) + Send + 'static>;
 pub struct ClaudeTurn {
     pid: u32,
     stdin: Arc<Mutex<Option<ChildStdin>>>,
-    /// Inputs of the permission requests not answered yet, echoed back on allow.
-    pending: Arc<Mutex<HashMap<String, Value>>>,
+    /// Tool and input of the permission requests not answered yet, echoed back on allow.
+    pending: Arc<Mutex<HashMap<String, (String, Value)>>>,
     child: Arc<Mutex<Child>>,
     cancelled: Arc<AtomicBool>,
     finished: Arc<AtomicBool>,
@@ -108,6 +124,10 @@ pub fn build_args(request: &TurnRequest) -> AppResult<Vec<String>> {
         "--include-partial-messages",
         "--permission-prompt-tool",
         "stdio",
+        // Explicit, so a default mode in the user's CLI settings (e.g. acceptEdits) never
+        // bypasses the app's permission policy.
+        "--permission-mode",
+        "default",
     ]
     .into_iter()
     .map(String::from)
@@ -116,7 +136,8 @@ pub fn build_args(request: &TurnRequest) -> AppResult<Vec<String>> {
         .model
         .as_deref()
         .map(str::trim)
-        .filter(|m| !m.is_empty())
+        // `default` is the CLI's own choice: it needs no flag.
+        .filter(|m| !m.is_empty() && *m != "default")
     {
         if !valid_model(model) {
             return Err(AppError::Ai(format!("Invalid model name: {model}")));
@@ -162,18 +183,28 @@ pub fn user_message(prompt: &str, images: &[AiImage]) -> String {
 }
 
 /// The stdin line answering a permission request. The CLI wants the input to run with on an
-/// allow, so the original input is echoed when the user did not change it.
+/// allow: the original input is echoed when the user accepted the call as proposed, and a
+/// partial acceptance (`updated_edit`) is mapped back to the tool's own input. An edit that
+/// cannot be expressed for the tool (no hunk left) is a rejection.
 pub fn control_response(
     request_id: &str,
     decision: &PermissionDecision,
+    tool: &str,
     original_input: &Value,
 ) -> String {
+    let deny = |message: &str| json!({ "behavior": "deny", "message": message });
     let response = match decision {
-        PermissionDecision::Allow { updated_input } => json!({
+        PermissionDecision::Allow { updated_edit: None } => json!({
             "behavior": "allow",
-            "updatedInput": updated_input.as_ref().unwrap_or(original_input),
+            "updatedInput": original_input,
         }),
-        PermissionDecision::Deny { message } => json!({ "behavior": "deny", "message": message }),
+        PermissionDecision::Allow {
+            updated_edit: Some(edit),
+        } => match protocol::tool_input_for(tool, original_input, edit) {
+            Some(input) => json!({ "behavior": "allow", "updatedInput": input }),
+            None => deny(REJECTED_BY_USER),
+        },
+        PermissionDecision::Deny { message } => deny(message),
     };
     json!({
         "type": "control_response",
@@ -269,6 +300,8 @@ pub fn start(
     mut sink: EventSink,
 ) -> AppResult<ClaudeTurn> {
     let args = build_args(request)?;
+    let message = user_message(&request.prompt, &request.images);
+    check_message_size(&message)?;
     let mut cmd = cli::command(exe);
     cmd.args(&args)
         .current_dir(root)
@@ -291,7 +324,7 @@ pub fn start(
     let mut stdin = child.stdin.take().expect("stdin is piped");
     let stdout = child.stdout.take().expect("stdout is piped");
     let stderr = child.stderr.take().expect("stderr is piped");
-    if let Err(e) = write_line(&mut stdin, &user_message(&request.prompt, &request.images)) {
+    if let Err(e) = write_line(&mut stdin, &message) {
         let _ = child.kill();
         let _ = child.wait();
         return Err(AppError::Ai(format!("Cannot send the message: {e}")));
@@ -301,7 +334,7 @@ pub fn start(
     let child = Arc::new(Mutex::new(child));
     let cancelled = Arc::new(AtomicBool::new(false));
     let finished = Arc::new(AtomicBool::new(false));
-    let pending: Arc<Mutex<HashMap<String, Value>>> = Arc::default();
+    let pending: Arc<Mutex<HashMap<String, (String, Value)>>> = Arc::default();
 
     let stderr_thread = std::thread::Builder::new()
         .name(format!("igrasp-claude-{id}-stderr"))
@@ -341,8 +374,10 @@ pub fn start(
                     };
                     match classify(&value) {
                         Line::Permission(request) => {
-                            lock(&pending)
-                                .insert(request.request_id.clone(), request.input.clone());
+                            lock(&pending).insert(
+                                request.request_id.clone(),
+                                (request.tool_name.clone(), request.input.clone()),
+                            );
                             sink(TurnEvent::Permission(request));
                         }
                         Line::UnknownControl {
@@ -408,11 +443,12 @@ impl ClaudeTurn {
                 "Claude is no longer waiting for an answer.".to_owned(),
             ));
         };
-        let original = lock(&self.pending)
-            .remove(request_id)
-            .unwrap_or(Value::Null);
-        write_line(stdin, &control_response(request_id, decision, &original))
-            .map_err(|e| AppError::Ai(format!("Cannot answer the permission request: {e}")))
+        let (tool, original) = lock(&self.pending).remove(request_id).unwrap_or_default();
+        write_line(
+            stdin,
+            &control_response(request_id, decision, &tool, &original),
+        )
+        .map_err(|e| AppError::Ai(format!("Cannot answer the permission request: {e}")))
     }
 
     /// Stops the turn. `TurnEvent::End` with `Cancelled` follows once the process is gone.
@@ -438,6 +474,7 @@ impl Drop for ClaudeTurn {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ai::types::{EditHunk, ProposedEdit};
 
     fn request(model: Option<&str>, resume: Option<&str>) -> TurnRequest {
         TurnRequest {
@@ -464,6 +501,10 @@ mod tests {
             args.windows(2)
                 .any(|w| w == ["--permission-prompt-tool", "stdio"])
         );
+        assert!(
+            args.windows(2)
+                .any(|w| w == ["--permission-mode", "default"])
+        );
         assert!(!args.contains(&"--model".to_string()));
         assert!(!args.contains(&"--resume".to_string()));
 
@@ -477,6 +518,13 @@ mod tests {
             args.windows(2)
                 .any(|w| w == ["--resume", "3c2e6d49-bc84-4a2c-a93e-67d7cd8d7828"])
         );
+    }
+
+    #[test]
+    fn refuses_a_message_over_the_stdin_cap() {
+        assert!(check_message_size(&"x".repeat(MAX_MESSAGE_BYTES)).is_ok());
+        let err = check_message_size(&"x".repeat(MAX_MESSAGE_BYTES + 1)).unwrap_err();
+        assert!(err.to_string().contains("too large"));
     }
 
     #[test]
@@ -523,12 +571,11 @@ mod tests {
         assert_eq!(user["message"]["role"], "user");
         assert_eq!(user["message"]["content"], "hi there");
 
-        let allow = PermissionDecision::Allow {
-            updated_input: None,
-        };
+        let allow = PermissionDecision::Allow { updated_edit: None };
         let line: Value = serde_json::from_str(&control_response(
             "req-1",
             &allow,
+            "Edit",
             &json!({"file_path": "a.md"}),
         ))
         .unwrap();
@@ -545,9 +592,48 @@ mod tests {
             message: "no".into(),
         };
         let line: Value =
-            serde_json::from_str(&control_response("req-2", &deny, &Value::Null)).unwrap();
+            serde_json::from_str(&control_response("req-2", &deny, "Bash", &Value::Null)).unwrap();
         assert_eq!(line["response"]["response"]["behavior"], "deny");
         assert_eq!(line["response"]["response"]["message"], "no");
+
+        // A partial acceptance runs the tool on the accepted hunks only.
+        let original = json!({"file_path": "a.md", "edits": [
+            {"old_string": "1", "new_string": "2"},
+            {"old_string": "3", "new_string": "4"},
+        ]});
+        let partial = |hunks: Vec<EditHunk>| PermissionDecision::Allow {
+            updated_edit: Some(ProposedEdit {
+                path: "a.md".into(),
+                is_markdown: true,
+                whole_file: false,
+                hunks,
+            }),
+        };
+        let line: Value = serde_json::from_str(&control_response(
+            "req-4",
+            &partial(vec![EditHunk {
+                old_text: "3".into(),
+                new_text: "4".into(),
+            }]),
+            "MultiEdit",
+            &original,
+        ))
+        .unwrap();
+        assert_eq!(line["response"]["response"]["behavior"], "allow");
+        assert_eq!(
+            line["response"]["response"]["updatedInput"]["edits"],
+            json!([{"old_string": "3", "new_string": "4"}])
+        );
+        // No hunk left: refused with the standard message.
+        let line: Value = serde_json::from_str(&control_response(
+            "req-5",
+            &partial(vec![]),
+            "MultiEdit",
+            &original,
+        ))
+        .unwrap();
+        assert_eq!(line["response"]["response"]["behavior"], "deny");
+        assert_eq!(line["response"]["response"]["message"], REJECTED_BY_USER);
 
         let error: Value = serde_json::from_str(&control_error("req-3", "hook_callback")).unwrap();
         assert_eq!(error["response"]["subtype"], "error");
@@ -562,8 +648,15 @@ mod tests {
     #[test]
     fn decision_deserializes_from_the_frontend_shape() {
         let allow: PermissionDecision =
-            serde_json::from_str(r#"{"behavior":"allow","updatedInput":{"a":1}}"#).unwrap();
-        assert!(matches!(allow, PermissionDecision::Allow { .. }));
+            serde_json::from_str(r#"{"behavior":"allow","updatedEdit":null}"#).unwrap();
+        assert_eq!(allow, PermissionDecision::Allow { updated_edit: None });
+        let allow: PermissionDecision = serde_json::from_str(
+            r#"{"behavior":"allow","updatedEdit":{"path":"a.md","isMarkdown":true,"wholeFile":false,"hunks":[{"oldText":"a","newText":"b"}]}}"#,
+        )
+        .unwrap();
+        assert!(
+            matches!(allow, PermissionDecision::Allow { updated_edit: Some(e) } if e.hunks.len() == 1)
+        );
         let deny: PermissionDecision =
             serde_json::from_str(r#"{"behavior":"deny","message":"Rejected"}"#).unwrap();
         assert!(matches!(deny, PermissionDecision::Deny { message } if message == "Rejected"));
@@ -693,9 +786,7 @@ mod tests {
                 allowed += 1;
                 turn.respond(
                     &request.request_id,
-                    &PermissionDecision::Allow {
-                        updated_input: Some(request.input.clone()),
-                    },
+                    &PermissionDecision::Allow { updated_edit: None },
                 )
                 .unwrap();
             },
@@ -712,6 +803,153 @@ mod tests {
             std::fs::read_to_string(&notes).unwrap(),
             "# Notes\n\nHello IGrasp.\n"
         );
+    }
+
+    fn edit_of(hunks: Vec<EditHunk>, whole_file: bool) -> PermissionDecision {
+        PermissionDecision::Allow {
+            updated_edit: Some(ProposedEdit {
+                path: "notes.md".into(),
+                is_markdown: true,
+                whole_file,
+                hunks,
+            }),
+        }
+    }
+
+    /// A two-place change accepted in part: the file on disk holds the accepted change only.
+    /// Prints the tool the CLI used, the evidence recorded in ADR 0019.
+    #[test]
+    #[ignore = "spawns the real claude CLI (needs a login, costs tokens)"]
+    fn partial_accept_writes_only_the_accepted_hunk() {
+        let dir = tempfile::tempdir().unwrap();
+        let notes = dir.path().join("notes.md");
+        let original = "# Notes\n\nAlpha line.\n\nMiddle text that stays.\n\nOmega line.\n";
+        std::fs::write(&notes, original).unwrap();
+        let prompt = "In notes.md make exactly two changes: replace \"Alpha line.\" with \
+                      \"Alpha changed.\" and replace \"Omega line.\" with \"Omega changed.\". \
+                      Make both changes in one tool call (MultiEdit if you have it), otherwise \
+                      one Edit call per change. Do not explain, and do not retry a refused change.";
+        let mut tools = Vec::new();
+        let (_, outcome, _) = run_turn(
+            dir.path(),
+            &TurnRequest {
+                prompt: prompt.into(),
+                model: Some("haiku".into()),
+                ..TurnRequest::default()
+            },
+            4,
+            |turn, request| {
+                let tool = request.tool_name.as_str();
+                tools.push(tool.to_owned());
+                let proposed = protocol::proposed_edit(tool, &request.input, dir.path());
+                let decision = match (tool, proposed) {
+                    ("MultiEdit", Some(edit)) => {
+                        assert_eq!(edit.hunks.len(), 2, "two hunks: {:?}", request.input);
+                        let alpha = edit
+                            .hunks
+                            .into_iter()
+                            .filter(|h| h.old_text.contains("Alpha"))
+                            .collect();
+                        edit_of(alpha, false)
+                    }
+                    ("Edit", Some(edit)) if edit.hunks[0].old_text.contains("Omega") => {
+                        PermissionDecision::Deny {
+                            message: REJECTED_BY_USER.into(),
+                        }
+                    }
+                    ("Edit", Some(edit)) => {
+                        assert!(
+                            !edit.hunks[0].old_text.contains("Omega"),
+                            "one Edit spans both places: {:?}",
+                            request.input
+                        );
+                        // A single Edit accepted as proposed is the same input; a different
+                        // new text shows whether the CLI runs `updatedInput` or the original.
+                        edit_of(
+                            vec![EditHunk {
+                                old_text: edit.hunks[0].old_text.clone(),
+                                new_text: edit.hunks[0].new_text.replace("changed", "accepted"),
+                            }],
+                            false,
+                        )
+                    }
+                    ("Write", Some(_)) => edit_of(
+                        vec![EditHunk {
+                            old_text: String::new(),
+                            new_text: original.replace("Alpha line.", "Alpha accepted."),
+                        }],
+                        true,
+                    ),
+                    _ => PermissionDecision::Deny {
+                        message: REJECTED_BY_USER.into(),
+                    },
+                };
+                turn.respond(&request.request_id, &decision).unwrap();
+            },
+        );
+        let on_disk = std::fs::read_to_string(&notes).unwrap();
+        eprintln!(
+            "partial accept: CLI {:?}, tools {tools:?}, file now {on_disk:?}",
+            cli::status().version
+        );
+        assert_eq!(outcome, TurnOutcome::Completed);
+        assert!(!tools.is_empty(), "the CLI asked for a permission");
+        assert!(
+            on_disk.contains("Omega line."),
+            "the rejected hunk is not applied"
+        );
+        assert!(!on_disk.contains("Omega changed."));
+        assert!(
+            on_disk.contains("Alpha changed.") || on_disk.contains("Alpha accepted."),
+            "the accepted hunk is applied"
+        );
+        if tools.iter().any(|t| t != "MultiEdit") {
+            assert!(
+                on_disk.contains("Alpha accepted."),
+                "updatedInput is honoured"
+            );
+        }
+    }
+
+    /// A `Write` accepted in part runs with the content the review composed.
+    #[test]
+    #[ignore = "spawns the real claude CLI (needs a login, costs tokens)"]
+    fn write_runs_with_the_composed_content() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("summary.md");
+        let mut tools = Vec::new();
+        let (_, outcome, _) = run_turn(
+            dir.path(),
+            &TurnRequest {
+                prompt: "Create summary.md with the Write tool, containing exactly the line \
+                         \"draft\". Do not explain, and do not retry if it is refused."
+                    .into(),
+                model: Some("haiku".into()),
+                ..TurnRequest::default()
+            },
+            5,
+            |turn, request| {
+                tools.push(request.tool_name.clone());
+                let decision = if request.tool_name == "Write" {
+                    edit_of(
+                        vec![EditHunk {
+                            old_text: String::new(),
+                            new_text: "composed\n".into(),
+                        }],
+                        true,
+                    )
+                } else {
+                    PermissionDecision::Deny {
+                        message: REJECTED_BY_USER.into(),
+                    }
+                };
+                turn.respond(&request.request_id, &decision).unwrap();
+            },
+        );
+        eprintln!("write: tools {tools:?}");
+        assert_eq!(outcome, TurnOutcome::Completed);
+        assert_eq!(tools, ["Write"]);
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "composed\n");
     }
 
     #[test]

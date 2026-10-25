@@ -35,6 +35,23 @@ describe('settings store', () => {
     expect((await backend.getSettings()).theme).toBe('dark');
   });
 
+  it('patches the AI settings field by field, like Rust', async () => {
+    await useSettings.getState().update({ ai: { permissions: { commands: 'allow' } } });
+    await useSettings.getState().update({ ai: { model: ' mock-smart ', historyLimit: 1 } });
+    const { ai } = useSettings.getState().settings;
+    expect(ai.model).toBe('mock-smart');
+    expect(ai.historyLimit).toBe(10);
+    expect(ai.permissions).toEqual({
+      markdownEdits: 'ask',
+      fileEdits: 'ask',
+      commands: 'allow',
+      web: 'ask',
+      other: 'ask',
+    });
+    expect(ai.confirmFrom).toBe('large');
+    expect((await backend.getSettings()).ai).toEqual(ai);
+  });
+
   it('rolls back when persisting fails', async () => {
     vi.spyOn(backend, 'updateSettings').mockRejectedValueOnce(new BackendError('AppData', 'disk'));
     await expect(useSettings.getState().update({ theme: 'dark' })).rejects.toThrow('disk');

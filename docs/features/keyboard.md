@@ -17,7 +17,14 @@ IGrasp can be used entirely from the keyboard. Press **F1** for the full list of
 | `Ctrl+Shift+R` | Recent Changes view |
 | `Ctrl+Shift+L` | Broken Links view |
 | `Ctrl+Shift+O` | Focus the outline (opens the right panel) |
-| `Ctrl+Alt+C` | AI chat (proof of concept) |
+| `Ctrl+Alt+C` | Show or hide the AI chat panel |
+| `Ctrl+Alt+S` | Ask about selected text: turn the text mode on or off (highlight text, release the mouse, and the chat opens next to it) |
+| `Ctrl+Alt+R` | Ask about a region: select a rectangle of the tab (markdown or code) and attach its text to the chat |
+| `Ctrl+Alt+N` / `Ctrl+Alt+H` | New AI conversation / show or hide the history (chat panel open) |
+| `Alt+arrows` / `Alt+Shift+arrows` | Move / resize the AI chat panel (its title focused) |
+| `Enter` / `Shift+Enter` (message box) | Send / new line |
+| `Escape` (AI chat panel) | Stop the running answer; pressed again, close the panel |
+| `Alt+Shift+A` / `Alt+Shift+R` | Accept all / Reject all proposed changes (while an AI edit is shown in review mode) |
 | `Ctrl+T` | Search everything: files and headings |
 | `Alt+←` / `Alt+→`, mouse back / forward | Back / forward through the documents read |
 | `F4` / `Shift+F4` | Next / previous search result |
@@ -37,6 +44,8 @@ In a view or dialog:
 | Search view | `Alt+C` match case, `Alt+W` whole word, `Alt+R` regex; Enter searches now; ↑ / ↓ recall searches; Esc clears; Delete dismisses a result |
 | Ctrl+T dialog | ↑ / ↓, PageUp / PageDown; Enter opens, `Ctrl+Enter` keeps the tab open, `Alt+Enter` opens and keeps searching |
 | Code viewer | `Ctrl+G` go to line |
+| Review mode (an AI edit in the preview) | `Tab` moves between the changes and their buttons; `A` / `R` on a focused change accepts / rejects it |
+| Region selection | Arrows move a 200 × 120 rectangle from the centre, `Shift+arrows` resize it, `Enter` captures, `Esc` cancels (a mouse drag works too) |
 | Links, results, backlinks | `Ctrl+click`, middle click, double click or `Ctrl+Enter` open in a kept tab |
 
 While typing in a text box, plain keys are never taken by shortcuts (F-keys and Ctrl/Alt
@@ -48,9 +57,10 @@ Reserved for upcoming features (not bound yet, so they never need to be re-learn
 ## Moving around
 
 - **Tab order** follows the screen: "Skip to document" link, menu bar, title-bar toolbar,
-  window controls, activity bar, the active sidebar view (its header actions, its boxes, then
-  its tree or list), sidebar resizer (arrow keys resize it), tabs, the document, the right
-  panel resizer and the right panel (Outline, then Backlinks), then the status bar items.
+  the AI chat panel when open, window controls, activity bar, the active sidebar view (its header actions, its boxes, then
+  its tree or list), sidebar resizer (arrow keys resize it), tabs, the document, the AI tools
+  over it (AI Chat, Ask About Selected Text, Ask About a Region), the right panel resizer and the
+  right panel (Outline, then Backlinks), then the status bar items.
 - **Activity bar**: one tab stop; ↑ / ↓ move between views, Enter or Space opens one.
 - **Explorer**: the tree follows the WAI-ARIA tree pattern (arrows, Home/End, Enter, Space, `*`,
   type-ahead). See [file-tree.md](file-tree.md).
@@ -63,6 +73,18 @@ Reserved for upcoming features (not bound yet, so they never need to be re-learn
 - **Document**: the preview is focusable, so PageUp / PageDown / arrows scroll it. Code blocks are
   focusable to scroll them horizontally. Mermaid diagrams have their own keys (`+`, `-`, `F`, `0`,
   Enter).
+- **AI chat panel**: a floating dialog (`aria-modal="false"`), movable and resizable from the
+  keyboard (above); the focus returns to the AI Chat button when it closes. AI events are announced
+  through one polite live region (streamed text is not read as it arrives). When a card is
+  answered the focus goes to the message box.
+- **Review mode**: each change is a focusable group labelled "Change 2 of 3: replaced paragraph"
+  with Accept, Reject and Undo buttons, and a polite live region announces each decision. "Review in preview" and the status bar
+  item focus the first undecided change; once the review is answered the focus goes to the
+  document.
+- **Region selection**: operable without a mouse (above), with its instruction as the overlay's
+  accessible name
+  and the selection size announced while it is resized; cancelling returns the focus where it
+  was.
 - **Menus and dialogs** (radix-ui) trap focus, close with Esc and return focus where it was.
 
 ## Accessibility checklist

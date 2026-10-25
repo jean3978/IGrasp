@@ -28,17 +28,28 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 
 - `src-tauri/src/`: `commands/` (IPC commands), `index/` (model, scanner, watcher), `graph/`
   (document graph: parser, slugger, link resolution, build and incremental updates), `search/`
-  (Ctrl+T symbols, full-text search, globs), `appdata/` (settings, recents, sessions as JSON),
+  (Ctrl+T symbols, full-text search, globs), `appdata/` (settings, recents, sessions and
+  `conversations.rs`, the AI history per folder, as JSON),
   `ai/` (AI providers behind one trait and the gateway that requires a user action per
-  operation; `providers/claude_cli/` spawns the `claude` CLI), `paths.rs` (root guard), `state.rs`, `error.rs`, `perf.rs` (ignored performance
-  tests).
+  operation; `policy.rs` permission kind → Ask / Allow / Deny, `context.rs` instruction files and
+  current file read through the root guard, `estimate.rs` size classes, `no_start.rs` the test
+  that only `ai_start` starts an operation; `providers/claude_cli/` spawns the `claude` CLI,
+  `providers/mock.rs` is the Rust test provider), `paths.rs` (root guard), `state.rs`,
+  `error.rs`, `perf.rs` (ignored performance tests).
 - `src/ipc/`: `types.ts` (the `Backend` interface), `tauri.ts` (the only module that calls
   `invoke`/`listen` or imports `@tauri-apps/*`), `mock/` (in-memory backend + fixture project),
   `generated/` (ts-rs output: never edit by hand).
 - `src/stores/`: zustand stores; `eventBridge.ts` routes backend events to them; `session.ts`
-  saves and restores per-folder state.
+  saves and restores per-folder state. The AI is three stores: `aiProvider.ts` (status,
+  capabilities, model), `aiConversation.ts` (items, operation, permissions, history) and
+  `aiPanel.ts` (floating panel, draft, context bar, attachment, placement next to a
+  selection); `capture.ts` holds the region overlay, the text mode and the selection highlight.
 - `src/features/<area>/`: UI by feature, with its CSS next to it. Sidebar views and right-panel
   sections build on `src/components/VirtualRows.tsx` (virtualized rows, keyboard focus).
+  `features/ai` is the chat, the AI tools toolbar over the view, the quick actions and the
+  inline review; `features/diff` the rendered block diff (two markdown strings in, reused by
+  later phases); `features/capture` the text and region selections (source lines, narrowing to
+  the highlighted text, highlight). Selections go to the AI as text, never as images.
 - `src/features/titlebar/menuActions.ts`: every user action. Menus, toolbar buttons and
   shortcuts (`features/shortcuts/keymap.ts`) dispatch through it.
 - `e2e/`: Playwright smoke tests. `scripts/`: the large-project generator. `docs/`:
@@ -69,7 +80,8 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   without an `eslint-disable-next-line` comment explaining why.
 - Store actions are function-typed properties (not methods), and IPC calls live in stores, not
   components.
-- Colors only through the CSS tokens in `src/styles`; check all three themes.
+- Colors only through the CSS tokens in `src/styles`; check all three themes. The AI chat and
+  its tools use the `--ai-*` tokens (the provider's warm accent), the rest of the app its own.
 - Rust edition 2024, `unsafe_code` denied, clippy clean with `-D warnings`, errors through
   `AppError`.
 - Untrusted markdown: anything new in the preview must keep sanitization before trusted
@@ -87,7 +99,16 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 - AI (from Phase 3): no token without a user action. Every AI call goes through the
   single backend gateway, triggered by an explicit IPC request from a user action; never from
   watchers, timers, startup or event handlers. Features use the provider-neutral `AiProvider`
-  layer only, never the `claude` CLI directly; Claude is the only provider for now.
+  layer only, never the `claude` CLI directly; Claude is the only provider for now. No
+  provider name or wire-format token in `features/ai`, the AI stores, `ipc` or the mock
+  (`neutrality.test.ts` scans them): labels come from the provider status.
+- The frontend never builds a provider's tool input. Accepting part of an edit sends the neutral
+  `Allow { updatedEdit }` (accepted hunks, or the composed content of a whole-file write); the
+  provider maps it (`protocol::tool_input_for`). Permission kinds are classified by the provider
+  and decided by `ai/policy.rs` from `settings.ai.permissions`.
+- The mock AI provider (`src/ipc/mock/mockAi.ts`) must behave like the Rust one: same events,
+  same policy. Its instruction-file name is `AGENTS.md` (the fixture has one at the root and in
+  `docs/`), so the context bar can be tested without a provider name.
 - Quiz and tutorials (ADR 0016) are grounded in the whole project: every item cites project
   files, nothing generic, written for developers.
 - Keep docs current: `docs/architecture.md`, the `docs/features/` page of the area you touch, an

@@ -2,7 +2,7 @@
 
 import { backend } from '../ipc/client';
 import type { Unsubscribe } from '../ipc/types';
-import { useAi } from './ai';
+import { useAiConversation } from './aiConversation';
 import { applyDiskChanges } from './diskChanges';
 import { useGraph } from './graph';
 import { useHistory } from './history';
@@ -50,7 +50,7 @@ export async function startEventBridge(): Promise<Unsubscribe> {
       useWorkspace.getState().setWatchStatus(e.mode, e.reason);
     }),
     backend.listen('ai://event', (e) => {
-      useAi.getState().onEvent(e);
+      useAiConversation.getState().onEvent(e);
     }),
     backend.listen('appdata://recovered', (e) => {
       useToasts

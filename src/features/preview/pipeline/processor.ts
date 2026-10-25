@@ -21,7 +21,7 @@ import { ID_PREFIX } from './ids';
 import { rehypeMarkInsecureMedia } from './insecureMedia';
 import { renderMath } from './math';
 import { markMermaidBlocks } from './mermaid';
-import { rehypeSourceLines } from './lines';
+import { rehypeQuoteLines, rehypeSourceLines } from './lines';
 import type { FrontMatter } from './frontmatter';
 import { sanitizeSchema } from './sanitize';
 
@@ -44,6 +44,7 @@ const transformer = unified()
   // Ids are left unprefixed here; the sanitizer adds ID_PREFIX once.
   .use(remarkRehype, { allowDangerousHtml: true, footnoteLabel: 'Footnotes', clobberPrefix: '' })
   .use(rehypeRaw)
+  .use(rehypeQuoteLines)
   .use(rehypeGithubAlerts, alertOptions)
   .use(rehypeMarkInsecureMedia)
   .use(rehypeSourceLines)

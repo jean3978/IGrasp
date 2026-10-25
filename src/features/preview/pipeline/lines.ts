@@ -13,6 +13,8 @@ const BLOCKS = new Set([
   'h4',
   'h5',
   'h6',
+  'ul',
+  'ol',
   'li',
   'pre',
   'blockquote',
@@ -26,11 +28,40 @@ const BLOCKS = new Set([
   'video',
 ]);
 
+/** Start lines of the blockquotes, in document order, before alerts replace some of them. */
+const quoteLines = new WeakMap<Root, number[]>();
+
+/**
+ * Runs before the GitHub alerts plugin, which rebuilds an alert without source positions: the
+ * lines recorded here give the alert its `data-line` (the rendered diff cuts blocks on it).
+ */
+export function rehypeQuoteLines() {
+  return (tree: Root) => {
+    const lines: number[] = [];
+    visit(tree, 'element', (node) => {
+      if (node.tagName === 'blockquote') lines.push(node.position?.start.line ?? NaN);
+    });
+    quoteLines.set(tree, lines);
+  };
+}
+
 export function rehypeSourceLines() {
   return (tree: Root) => {
+    const quotes = quoteLines.get(tree) ?? [];
+    let quote = 0;
     visit(tree, 'element', (node) => {
-      const line = node.position?.start.line;
-      if (line !== undefined && BLOCKS.has(node.tagName)) node.properties.dataLine = line;
+      if (!BLOCKS.has(node.tagName)) return;
+      let line = node.position?.start.line;
+      // An alert replaced its blockquote, in the same place in document order.
+      const isQuote = node.tagName === 'blockquote' || node.properties['dataAlert'] !== undefined;
+      if (isQuote) {
+        const recorded = quotes[quote];
+        if (line === undefined && recorded !== undefined && !Number.isNaN(recorded)) {
+          line = recorded;
+        }
+        quote += 1;
+      }
+      if (line !== undefined) node.properties.dataLine = line;
     });
   };
 }

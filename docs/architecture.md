@@ -50,9 +50,9 @@ flowchart LR
 | `index/watcher.rs` | Debounced `notify` events → classification → targeted re-walk → `fs://changes`; then the same batch (with the raw event paths) goes to the graph; poll fallback. |
 | `graph/` | The document graph ([ADR 0009](decisions/0009-document-graph-in-rust.md)): `parse.rs` (pulldown-cmark → headings, anchors, links with lines), `slug.rs` (github-slugger port), `links.rs` (target and status of a link), `mod.rs` (graph with a reverse target map, parallel build, incremental `apply`, events). |
 | `search/` | `symbols.rs` (Ctrl+T, nucleo-matcher, cached candidates), `text.rs` (Ctrl+Shift+F, grep crates, streamed batches), `globs.rs` (VS Code-style include/exclude), `SearchRegistry` (one running search, cancellation). |
-| `commands/` | `workspace.rs` (open/close/rescan/list, recent files), `files.rs` (read markdown and text files, open media externally, open with the default app, reveal in the file manager), `graph.rs` (link status, backlinks, broken links, status), `search.rs` (symbols, text, cancel), `appdata.rs` (settings, recents, sessions, app info), `ai.rs` (provider status and capabilities, start an operation for a user action, answer a permission, cancel). |
-| `appdata/` | Versioned JSON files in the OS app-data folder, written atomically, recovered when corrupt. |
-| `ai/` | AI providers behind one trait ([ADR 0015](decisions/0015-ai-provider-abstraction-and-gateway.md)): `types.rs` (neutral request, events, capabilities, status), `gateway.rs` (the only door: a user action per operation, one at a time, cancelled when the folder, window or app closes), `process.rs` (children die with the app), `providers/claude_cli/` ([ADR 0014](decisions/0014-claude-cli-integration.md): `cli.rs` probes, `turn.rs` one process per operation, `protocol.rs` wire format → events), `providers/mock.rs` (tests). |
+| `commands/` | `workspace.rs` (open/close/rescan/list, recent files), `files.rs` (read markdown and text files, open media externally, open with the default app, reveal in the file manager), `graph.rs` (link status, backlinks, broken links, status), `search.rs` (symbols, text, cancel), `appdata.rs` (settings, recents, sessions, app info), `ai.rs` (provider status, capabilities and choice, context and size estimate, start an operation for a user action, answer a permission, cancel, conversations per folder). |
+| `appdata/` | Versioned JSON files in the OS app-data folder, written atomically, recovered when corrupt; `settings.rs` (including `ai`), `session.rs` (including the AI panel), `conversations.rs` keeps the AI conversations per folder (the app's own readable copy, trimmed). |
+| `ai/` | AI providers behind one trait ([ADR 0015](decisions/0015-ai-provider-abstraction-and-gateway.md)): `types.rs` (neutral request, events, capabilities, status), `gateway.rs` (the only door: provider chosen in the settings, a user action per operation, one at a time, the permission policy, cancelled when the folder, window or app closes), `policy.rs` (permission kind → Ask / Allow / Deny from `settings.ai.permissions`; a read-only operation denies everything), `context.rs` (the provider's instruction files from the root down and the current file, read through the root guard with caps of 32 KB / 96 KB), `estimate.rs` (size from metadata: small / medium / large), `process.rs` (children die with the app), `no_start.rs` (tests: nothing but `ai_start` can start an operation), `providers/claude_cli/` ([ADR 0014](decisions/0014-claude-cli-integration.md): `cli.rs` probes, `turn.rs` one process per operation, `protocol.rs` wire format → events, permission kinds and the neutral edit → tool input), `providers/mock.rs` (scripted provider, tests only). The provider is built from a small registry (`build_provider` in `mod.rs`) by `settings.ai.provider`; the policy is [ADR 0019](decisions/0019-permission-policy-history-and-floating-chat.md). |
 | `error.rs` | `AppError`, serialized as `{ code, message }`. |
 
 The frontend never reads files directly: there is no fs plugin and no shell plugin
@@ -69,7 +69,8 @@ The frontend never reads files directly: there is no fs plugin and no shell plug
 | `get_graph_status`, `get_doc_links`, `get_backlinks`, `list_broken_links` | Graph progress and broken count, a document's links with status, documents linking to one, every broken link. |
 | `search_symbols` | Ctrl+T hits (files and headings) for a query, with a request id. |
 | `search_text`, `cancel_search` | Starts a full-text search (returns its id) / stops it. |
-| `ai_status`, `ai_capabilities`, `ai_start`, `ai_respond_permission`, `ai_cancel` | Provider installed and logged in / what it supports / starts an operation for a user action in the open folder (returns its id) / answers a permission request / stops the operation. |
+| `ai_status`, `ai_capabilities`, `ai_providers`, `ai_set_provider`, `ai_context`, `ai_estimate`, `ai_start`, `ai_respond_permission`, `ai_cancel` | Provider installed and logged in (cached 60 s; the Claude provider also lists the CLI's models, once per CLI version and account, through its `initialize` control request: no message, no token) / what it supports, with exactly those models / the providers / switch provider / what a message carries / its size / starts an operation for a user action in the open folder (returns its id) / answers a permission request / stops the operation. |
+| `list_conversations`, `get_conversation`, `save_conversation`, `delete_conversation`, `forget_conversations` | The AI conversations of the open folder (app data only). |
 | `get_settings`, `update_settings`, `get_recent_folders`, …, `get_session`, `save_session` | App data. |
 
 | Event | When |
@@ -78,7 +79,7 @@ The frontend never reads files directly: there is no fs plugin and no shell plug
 | `fs://changes`, `fs://watch-status` | A batch of changes on disk; how the folder is watched. |
 | `graph://progress`, `graph://ready`, `graph://changed` | Graph build (≤ 4/s), done, and documents whose links changed with the broken count. |
 | `search://results` | A batch of full-text results (`done` on the last one). |
-| `ai://event` | One provider-neutral event of an operation (`session`, `textDelta`, `text`, `toolUse`, `toolResult`, `permissionRequest`, `usage`, `error`, `done`). |
+| `ai://event` | One provider-neutral event of an operation (`session`, `textDelta`, `text`, `toolUse`, `toolResult`, `permissionRequest`, `permissionDecided` for an answer given by the settings, `usage`, `error`, `done`). |
 | `appdata://recovered` | A corrupt app-data file was reset. |
 
 ## Frontend (`src`)
@@ -86,8 +87,8 @@ The frontend never reads files directly: there is no fs plugin and no shell plug
 | Folder | Role |
 |---|---|
 | `ipc/` | The `Backend` interface, its Tauri implementation (the only code calling `invoke`/`listen`) and the in-memory mock used in the browser and in tests. `generated/` holds the TypeScript types exported from Rust by ts-rs. |
-| `stores/` | zustand stores: `workspace` (layout: sidebar view, right panel), `tree`, `tabs` (document and code tabs, pending scroll targets), `documents`, `textFiles`, `history`, `recentFiles`, `graph`, `outline`, `quickOpen`, `search`, `settings`, `toasts`, `recent`, `ui`, `ai` (provider status and capabilities, conversation, pending permissions, usage); `session.ts` (save/restore), `diskChanges.ts`, `eventBridge.ts` (backend events → stores). |
-| `features/` | UI by feature: `titlebar` (menu bar, toolbar, window controls, `menuActions.ts`), `shell` (layout, activity bar, sidebar host, status bar), `explorer`, `search`, `recent`, `links` (broken links, backlinks), `outline`, `rightpanel`, `quickopen`, `code` (code viewer), `tabs`, `preview` (markdown pipeline, link resolver, reveal helpers), `mermaid`, `toasts`, `settings`, `shortcuts`, `welcome`, `splash`, `about`, `ai` (chat panel, event reducer, line diff). |
+| `stores/` | zustand stores: `workspace` (layout: sidebar view, right panel), `tree`, `tabs` (document and code tabs, pending scroll targets), `documents`, `textFiles`, `history`, `recentFiles`, `graph`, `outline`, `quickOpen`, `search`, `settings`, `toasts`, `recent`, `ui`, `capture` (the region overlay, the text mode and the selection highlight), and three for the AI: `aiProvider` (status, capabilities, model), `aiConversation` (items, operation, permissions, usage, history), `aiPanel` (the floating panel, draft, context, attachment); `session.ts` (save/restore), `diskChanges.ts`, `eventBridge.ts` (backend events → stores). |
+| `features/` | UI by feature: `titlebar` (menu bar, toolbar, window controls, `menuActions.ts`), `shell` (layout, activity bar, sidebar host, status bar), `explorer`, `search`, `recent`, `links` (broken links, backlinks), `outline`, `rightpanel`, `quickopen`, `code` (code viewer), `tabs`, `preview` (markdown pipeline, link resolver, reveal helpers, `keepScroll` for asynchronous renders), `mermaid`, `toasts`, `settings`, `shortcuts`, `welcome`, `splash`, `about`, `ai` (chat panel, selection line, quick actions, context bar, history, permission and edit cards, inline review, event reducer, line diff, the AI tools toolbar over the document), `diff` (the rendered block diff shared by AI review and, later, tutorials and Git), `capture` (region overlay, text mode, source-line mapping, selection highlight). |
 | `components/` | Shared UI: buttons and `VirtualRows` (the virtualized, keyboard-navigable list behind every new view). |
 | `styles/` | Design tokens and the three themes. |
 | `lib/` | Pure helpers (paths, link classification, platform). |
@@ -158,6 +159,12 @@ sequenceDiagram
   B->>UI: refresh link flags of open docs, backlinks, Broken Links view
 ```
 
+A file removed and created again in one batch is reported as **modified**: it was replaced in
+place (a temporary file renamed over it, as editors and the AI CLI save), so an open tab reloads
+instead of showing "deleted". A markdown file renamed over another stays a rename. While a new
+version renders, the previous render stays on screen, so a reload never blanks the document or
+loses its scroll position.
+
 ### The document graph
 
 ```mermaid
@@ -198,11 +205,86 @@ sequenceDiagram
   D->>D: scroll to the block of the line, flash it, CSS highlight of "agent"
 ```
 
+### Sending a message
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant UI as Chat panel + stores
+  participant C as Rust commands
+  participant G as AI gateway
+  participant P as Provider (claude_cli)
+  User->>UI: Send (Enter)
+  UI->>C: ai_estimate(paths, capture) (metadata only)
+  C-->>UI: size class
+  opt size reaches settings.ai.confirmFrom
+    UI->>User: confirmation card
+    User->>UI: Start
+  end
+  UI->>C: ai_start(action = chatMessage, prompt, model, resumeId, contextPaths, capture)
+  C->>C: read the listed files through the root guard (32 KB / 96 KB)
+  C->>G: start(action, request)
+  G->>P: start(request, root)
+  P-->>G: events (session, textDelta, toolUse, …)
+  G-->>UI: ai://event
+  P-->>G: permissionRequest (kind, proposedEdit)
+  G->>G: policy.decide(kind, settings)
+  alt Ask
+    G-->>UI: permissionRequest
+    UI->>User: card, or review mode in the preview
+    User->>UI: Accept (all or some hunks)
+    UI->>C: ai_respond_permission(allow, updatedEdit)
+    C->>G: respond
+    G->>P: respond, mapped to the tool input
+  else Allow or Deny by the settings
+    G-->>UI: permissionDecided (reason)
+  end
+  P-->>G: usage, done(Completed)
+  G-->>UI: ai://event
+  UI->>C: save_conversation (app data)
+```
+
+Nothing before `ai_start` reaches a provider; opening the panel, the context bar and the estimate
+only read metadata. The provider writes an accepted edit; the watcher then reloads the file. The
+chat shows an answer in one piece when it is complete (rendered with the preview's sanitized
+pipeline, in its own render cache); streamed text is shown only while a card waits on the user.
+
+### Asking about a selection
+
+The **AI tools** toolbar over the view (`features/ai/ViewportToolbar.tsx`) starts the text mode
+or the region overlay; both only attach a selection, never call a provider
+([ADR 0020](decisions/0020-viewport-ai-tools-and-text-selections.md)).
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant H as CaptureHost (features/capture)
+  participant P as Panel store (aiPanel)
+  participant Ch as Chat panel
+  User->>H: highlight text and release (text mode), or drag a region
+  H->>H: blocks under the selection (data-line, code rows) → source lines
+  H->>H: highlighted text: narrowed to the lines that hold it (narrowToSelection)
+  H->>P: attachment AiCapture { sourcePath, lines, text, selection? }
+  H->>H: highlight painted in the scroll container (content coordinates)
+  H->>P: openNear(selection box) → rectNear
+  P-->>Ch: open beside the selection, draft pre-filled
+  User->>Ch: Send, or a quick action (Rewrite, Shorten…)
+  Ch->>Ch: ai_start(…, capture) as in "Sending a message"
+```
+
+The region's or selection's text goes as text (no screenshot); the provider quotes the
+highlighted text exactly and gives its source lines as context.
+
 ## State on disk
 
 All state lives in the OS app-data folder (`%APPDATA%\io.github.jean3978.igrasp` on Windows,
 `~/.local/share/io.github.jean3978.igrasp` on Linux), never in the opened folder:
-`settings.json`, `recent-folders.json`, `sessions.json`, and `logs/` (in the OS log folder).
+`settings.json` (appearance, notifications, ignore patterns and the `ai` section: provider, model,
+permission rules, confirmation threshold, history limit), `recent-folders.json`, `sessions.json`
+(per folder: tabs, layout and the AI panel's open state and rectangle), `conversations/`
+(`index.json` maps each folder to a `c0001.json` of its AI conversations: transcript items,
+resume id, model, usage), and `logs/` (in the OS log folder). The AI never writes anything of its
+own in the opened folder; only the provider, on an edit the user accepted.
 
 ## Decisions
 

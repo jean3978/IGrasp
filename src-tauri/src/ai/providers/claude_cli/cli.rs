@@ -123,6 +123,95 @@ pub fn parse_auth_status(stdout: &str) -> Option<AuthStatus> {
     serde_json::from_str(&stdout[start..]).ok()
 }
 
+/// One model the CLI offers, as its `initialize` answer lists it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CliModel {
+    /// What `--model` accepts (`default`, `opus`, a full id).
+    pub id: String,
+    pub label: String,
+    pub description: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WireModel {
+    value: String,
+    display_name: Option<String>,
+    description: Option<String>,
+}
+
+/// The models of a `control_response` line answering `initialize` (`None` for any other line).
+pub fn parse_models(line: &str) -> Option<Vec<CliModel>> {
+    let message: serde_json::Value = serde_json::from_str(line).ok()?;
+    if message["type"] != "control_response" || message["response"]["subtype"] != "success" {
+        return None;
+    }
+    let models = message["response"]["response"].get("models")?.clone();
+    let models: Vec<WireModel> = serde_json::from_value(models).ok()?;
+    Some(
+        models
+            .into_iter()
+            .filter(|m| !m.value.trim().is_empty())
+            .map(|m| CliModel {
+                label: m
+                    .display_name
+                    .filter(|l| !l.trim().is_empty())
+                    .unwrap_or_else(|| m.value.clone()),
+                id: m.value,
+                description: m.description.filter(|d| !d.trim().is_empty()),
+            })
+            .collect(),
+    )
+}
+
+/// The models this CLI offers to this account: starts it in stream-json mode, sends the
+/// `initialize` control request and reads the answer. No message is sent, so no token is spent.
+/// It runs in the temporary folder, never in the opened folder.
+pub fn models(path: &Path) -> Result<Vec<CliModel>, String> {
+    use std::io::{BufRead, BufReader, Write};
+
+    let mut child = command(path)
+        .args([
+            "-p",
+            "--input-format",
+            "stream-json",
+            "--output-format",
+            "stream-json",
+            "--verbose",
+        ])
+        .current_dir(std::env::temp_dir())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("Cannot run {}: {e}", path.display()))?;
+    let request = r#"{"type":"control_request","request_id":"igrasp-models","request":{"subtype":"initialize"}}"#;
+    let mut stdin = child.stdin.take().ok_or("no stdin")?;
+    let stdout = child.stdout.take().ok_or("no stdout")?;
+    let written = writeln!(stdin, "{request}").and_then(|()| stdin.flush());
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+            if let Some(models) = parse_models(&line) {
+                let _ = tx.send(models);
+                return;
+            }
+        }
+    });
+    let answer = match written {
+        Ok(()) => rx
+            .recv_timeout(PROBE_TIMEOUT)
+            .map_err(|_| "The Claude CLI did not list its models in time.".to_owned()),
+        Err(e) => Err(format!("Cannot ask the Claude CLI for its models: {e}")),
+    };
+    // Its stdin stays open until here: the CLI would otherwise end before answering.
+    drop(stdin);
+    let _ = child.kill();
+    let _ = child.wait();
+    answer
+}
+
 /// Checks the installation and the login. Never fails: problems are reported in the status.
 pub fn status() -> CliStatus {
     let Some(path) = locate() else {
@@ -185,6 +274,32 @@ pub fn status() -> CliStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_the_models_of_the_initialize_answer() {
+        let line = r#"{"type":"control_response","response":{"subtype":"success","request_id":"igrasp-models","response":{"commands":[],"models":[{"value":"default","resolvedModel":"claude-sonnet-5-5","displayName":"Default (recommended)","description":"Sonnet 5.5 · Efficient for routine tasks"},{"value":"opus","displayName":"Opus 5.5","description":"For complex work"},{"value":"claude-opus-4-8"},{"value":" "}]}}}"#;
+        let models = parse_models(line).unwrap();
+        assert_eq!(models.len(), 3);
+        assert_eq!(
+            models[0],
+            CliModel {
+                id: "default".into(),
+                label: "Default (recommended)".into(),
+                description: Some("Sonnet 5.5 · Efficient for routine tasks".into()),
+            }
+        );
+        assert_eq!(models[2].label, "claude-opus-4-8");
+        assert_eq!(models[2].description, None);
+
+        assert!(parse_models(r#"{"type":"system","subtype":"init"}"#).is_none());
+        assert!(
+            parse_models(
+                r#"{"type":"control_response","response":{"subtype":"error","error":"x"}}"#
+            )
+            .is_none()
+        );
+        assert!(parse_models("not json").is_none());
+    }
 
     #[test]
     fn parses_the_version_line() {

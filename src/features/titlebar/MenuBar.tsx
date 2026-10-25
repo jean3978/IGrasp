@@ -2,6 +2,8 @@ import { Menubar } from 'radix-ui';
 import { Check, ChevronRight, Circle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { AiMark } from '../../components/AiMark';
+import { useCanCapture, useCapture } from '../../stores/capture';
 import { selectCanGoBack, selectCanGoForward, useHistory } from '../../stores/history';
 import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
@@ -21,6 +23,9 @@ function Item({ id, disabled }: { id: ActionId; disabled?: boolean }) {
       }}
     >
       <span className="menu-item-label">{action.label}</span>
+      {(action.usesAi || action.aiFeature) && (
+        <AiMark variant={action.usesAi ? 'uses' : 'feature'} />
+      )}
       {action.shortcut && <span className="menu-shortcut">{action.shortcut}</span>}
     </Menubar.Item>
   );
@@ -195,6 +200,8 @@ export function MenuBar() {
   const canGoBack = useHistory(selectCanGoBack);
   const canGoForward = useHistory(selectCanGoForward);
   const hasRoot = useWorkspace((s) => s.root !== null);
+  const canCapture = useCanCapture();
+  const textMode = useCapture((s) => s.textMode);
   const openRoot = useWorkspace((s) => s.openRoot);
   const showDotfiles = useTree((s) => s.showDotfiles);
   const showIgnored = useTree((s) => s.showIgnored);
@@ -270,6 +277,8 @@ export function MenuBar() {
         <CheckItem id="view.toggleRightPanel" checked={rightPanelVisible} disabled={!hasRoot} />
         <Item id="view.focusOutline" disabled={!hasRoot} />
         <Item id="ai.chat" disabled={!hasRoot} />
+        <CheckItem id="ai.selectText" checked={textMode} disabled={!canCapture && !textMode} />
+        <Item id="ai.capture" disabled={!canCapture} />
         <Item id="view.focusExplorer" disabled={!hasRoot} />
         <Item id="view.search" disabled={!hasRoot} />
         <Item id="view.recent" disabled={!hasRoot} />

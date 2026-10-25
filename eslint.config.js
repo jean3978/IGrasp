@@ -13,6 +13,7 @@ export default tseslint.config(
       'coverage',
       'node_modules',
       'src-tauri',
+      '.claude',
       'src/ipc/generated',
       'playwright-report',
       'test-results',

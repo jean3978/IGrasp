@@ -74,6 +74,31 @@ describe('disk changes', () => {
     expect(useDocuments.getState().byPath['CHANGELOG.md']?.content).toBe('# Back');
   });
 
+  it('reloads a file removed and added in the same batch, never flags it deleted', async () => {
+    // A file saved through a temporary file renamed over it (an accepted AI edit).
+    useTabs.getState().openDocument('README.md', { pin: true });
+    await flush();
+    mock().state.files.set('README.md', '# Edited by the AI');
+    const entry = {
+      name: 'README.md',
+      relPath: 'README.md',
+      size: 18,
+      modifiedMs: Date.now(),
+      hidden: false,
+    };
+    mock().emit('fs://changes', {
+      generation: useTree.getState().generation,
+      added: [entry],
+      modified: [],
+      removed: ['README.md'],
+      renamed: [],
+      dirsChanged: [''],
+    });
+    await flush();
+    expect(useTabs.getState().tabs[0]?.deleted).toBe(false);
+    expect(useDocuments.getState().byPath['README.md']?.content).toBe('# Edited by the AI');
+  });
+
   it('carries a tab over a rename', async () => {
     useTabs.getState().openDocument('README.md', { pin: true });
     await flush();

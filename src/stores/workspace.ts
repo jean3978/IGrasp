@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { backend } from '../ipc/client';
 import type { IndexReadyEvent, RootInfo, SidebarView, WatchMode } from '../ipc/types';
+import { useAiConversation } from './aiConversation';
+import { useAiPanel } from './aiPanel';
 import { useDocuments } from './documents';
 import { useGraph } from './graph';
 import { useRecent } from './recent';
@@ -110,6 +112,8 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
     try {
       // Keep the folder being left exactly as it was.
       await flushSession();
+      // The conversation shown belongs to the folder being left: saved there, then cleared.
+      await useAiConversation.getState().leaveFolder();
       const root = await backend.openRoot(path);
       const session = await backend.getSession(root.path).catch(() => null);
       suspendSaving();
@@ -140,9 +144,11 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
   async closeRoot() {
     if (!get().root) return;
     await flushSession();
+    await useAiConversation.getState().leaveFolder();
     await backend.closeRoot();
     clearPendingRestore();
     set({ root: null, index: IDLE });
+    useAiPanel.getState().restore(null);
     useTree.getState().reset(0, { showDotfiles: false, showIgnored: false });
     useTabs.getState().closeAll();
     useDocuments.getState().clear();

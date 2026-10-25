@@ -33,6 +33,19 @@ pub struct AiModel {
     /// What the provider accepts, e.g. an alias or a full model id.
     pub id: String,
     pub label: String,
+    /// One line the provider gives about it (shown as a tooltip), if any.
+    pub description: Option<String>,
+    /// This model accepts images.
+    pub image_input: bool,
+}
+
+/// A provider the "AI provider" setting can choose (no probe, no token).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AiProviderInfo {
+    pub id: String,
+    pub display_name: String,
 }
 
 /// What a provider supports; the UI adapts to these instead of checking provider names.
@@ -92,9 +105,59 @@ pub struct AiImage {
     pub data_base64: String,
 }
 
-/// One bounded operation started by a user action.
-#[derive(Debug, Clone, Default, Deserialize, Serialize, TS)]
-#[serde(rename_all = "camelCase", default)]
+/// Why a document is part of the context.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum AiContextRole {
+    /// The document or code file the user is looking at.
+    CurrentFile,
+    /// An instruction file the provider declares (e.g. `AGENTS.md`), from the root down to the
+    /// current file's folder.
+    InstructionFile,
+    /// The source of a region the user captured.
+    Capture,
+}
+
+/// A document the user is looking at, sent with a message. The frontend only ever receives it
+/// without `content` (paths, roles and sizes to show); the backend reads the content when the
+/// message is sent.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AiContextDocument {
+    /// Root-relative with `/`.
+    pub path: String,
+    pub role: AiContextRole,
+    /// The text, when it was read and is small enough to inline.
+    pub content: Option<String>,
+    pub bytes: u64,
+    /// Too large to inline: the provider asks the model to read the path itself.
+    pub truncated: bool,
+}
+
+/// A part of a document the user selected on screen: highlighted text, or a region dragged over
+/// the view.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AiCapture {
+    /// Root-relative path of the captured document.
+    pub source_path: String,
+    /// 1-based, inclusive source lines of the selected blocks.
+    pub first_line: u32,
+    pub last_line: u32,
+    /// The markdown (or code) source of those lines.
+    pub text: String,
+    /// The text exactly as the user highlighted it in the rendered view; a region has none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub selection: Option<String>,
+}
+
+/// One bounded operation started by a user action, as the provider receives it.
+#[derive(Debug, Clone, Default, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
 #[ts(export, optional_fields)]
 pub struct AiRequest {
     pub prompt: String,
@@ -102,15 +165,67 @@ pub struct AiRequest {
     pub model: Option<String>,
     /// Continues the conversation that announced this id in `AiEvent::Session`.
     pub resume_id: Option<String>,
-    /// Root-relative files the AI should read for context (e.g. the open document).
-    pub context_files: Vec<String>,
+    /// What the user is looking at: instruction files from the root down, then the current
+    /// file, with their contents when small enough (`ai::context`).
+    pub context: Vec<AiContextDocument>,
+    pub capture: Option<AiCapture>,
     pub images: Vec<AiImage>,
     pub policy: AiPolicy,
     /// JSON schema the final answer must follow, when the provider supports it.
     pub output_schema: Option<serde_json::Value>,
 }
 
+/// What the frontend sends to start an operation: the context as paths (the ones still listed
+/// for this message); the backend reads them through the root guard.
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export, optional_fields)]
+pub struct AiStartRequest {
+    pub prompt: String,
+    pub model: Option<String>,
+    pub resume_id: Option<String>,
+    /// Root-relative paths from `ai_context`, in its order.
+    pub context_paths: Vec<String>,
+    pub capture: Option<AiCapture>,
+    pub images: Vec<AiImage>,
+    pub policy: AiPolicy,
+    pub output_schema: Option<serde_json::Value>,
+}
+
+/// The size class of an operation, for the confirmation card.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum AiSizeBucket {
+    Small,
+    Medium,
+    Large,
+}
+
+/// An approximate size of what an operation sends (`ai::estimate`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AiSizeEstimate {
+    pub bytes: u64,
+    pub approx_tokens: u64,
+    pub bucket: AiSizeBucket,
+    pub documents: u32,
+    pub images: u32,
+}
+
+/// What `ai_estimate` measures: metadata only, nothing is read.
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct AiEstimateInput {
+    /// UTF-8 bytes of the prompt (and of the capture text, if any).
+    pub prompt_bytes: u64,
+    pub context_paths: Vec<String>,
+    pub images: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct EditHunk {
@@ -120,8 +235,9 @@ pub struct EditHunk {
 }
 
 /// A change to a file the AI asks permission for, extracted from its tool call so the UI can
-/// show a diff without knowing the tool.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+/// show a diff without knowing the tool. Also the shape of a partial acceptance
+/// (`PermissionDecision::Allow { updated_edit }`).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct ProposedEdit {
@@ -131,6 +247,24 @@ pub struct ProposedEdit {
     /// The file is created or fully rewritten (`hunks` holds the whole new content).
     pub whole_file: bool,
     pub hunks: Vec<EditHunk>,
+}
+
+/// What a permission request would let the AI do. The policy and the UI key on this, never on
+/// a tool name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum AiPermissionKind {
+    /// Edit or create a markdown file inside the folder (reviewed as a diff).
+    MarkdownEdit,
+    /// Edit or create any other file inside the folder.
+    FileEdit,
+    /// Run a command or a script.
+    Command,
+    /// Fetch a URL or search the web.
+    Web,
+    /// Read outside the folder, or anything the provider cannot classify.
+    Other,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
@@ -173,9 +307,23 @@ pub enum AiEvent {
     PermissionRequest {
         request_id: String,
         tool: String,
+        /// What the tool would do; the policy and the UI key on this.
+        kind: AiPermissionKind,
         description: Option<String>,
         input: serde_json::Value,
         proposed_edit: Option<ProposedEdit>,
+    },
+    /// A permission request answered without asking (by the settings or the read-only policy):
+    /// the transcript shows every automatic decision.
+    #[serde(rename_all = "camelCase")]
+    PermissionDecided {
+        tool: String,
+        kind: AiPermissionKind,
+        /// The request's description (the file, the command), when it had one.
+        description: Option<String>,
+        allowed: bool,
+        /// Why, in a few words, e.g. `allowed by your settings`.
+        reason: String,
     },
     #[serde(rename_all = "camelCase")]
     Usage {
@@ -203,6 +351,9 @@ pub struct AiEventEnvelope {
     pub event: AiEvent,
 }
 
+/// What the model is told when the user rejects a tool call.
+pub const REJECTED_BY_USER: &str = "The user rejected this in IGrasp.";
+
 /// The user's answer to a permission request.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, TS)]
 #[serde(tag = "behavior", rename_all = "camelCase")]
@@ -210,8 +361,11 @@ pub struct AiEventEnvelope {
 pub enum PermissionDecision {
     #[serde(rename_all = "camelCase")]
     Allow {
-        /// A modified tool input to run with instead of the proposed one.
-        updated_input: Option<serde_json::Value>,
+        /// Run the tool on these hunks only: a subset of the proposed edit, or the whole-file
+        /// content composed by the user. The provider maps it back to its own tool input; the
+        /// frontend never builds a tool input. Absent: run the tool as proposed.
+        #[serde(default)]
+        updated_edit: Option<ProposedEdit>,
     },
     #[serde(rename_all = "camelCase")]
     Deny {

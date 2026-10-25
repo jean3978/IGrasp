@@ -5,7 +5,7 @@ use std::path::Path;
 
 use serde_json::Value;
 
-use crate::ai::types::{AiEvent, EditHunk, ProposedEdit};
+use crate::ai::types::{AiEvent, AiPermissionKind, EditHunk, ProposedEdit};
 
 fn str_of<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value.get(key).and_then(Value::as_str)
@@ -52,27 +52,112 @@ fn result_text(content: Option<&Value>) -> String {
     }
 }
 
-/// `path` relative to `root` with `/` separators when it is inside it, else as given.
-pub fn display_path(path: &str, root: &Path) -> String {
+/// `path` relative to `root` with `/` separators when it is inside it (no `..` segment), else
+/// `None`. A relative path is taken as relative to the root, where the CLI runs.
+fn relative_inside(path: &str, root: &Path) -> Option<String> {
     let norm = |s: &str| s.replace('\\', "/").trim_end_matches('/').to_owned();
     let file = norm(path);
     let base = norm(&root.to_string_lossy());
-    let inside = if cfg!(windows) {
-        file.to_lowercase()
-            .starts_with(&format!("{}/", base.to_lowercase()))
+    let absolute = file.starts_with('/') || file.as_bytes().get(1) == Some(&b':');
+    let rel = if !absolute {
+        file
     } else {
-        file.starts_with(&format!("{base}/"))
-    };
-    if !base.is_empty() && inside {
+        let inside = if cfg!(windows) {
+            file.to_lowercase()
+                .starts_with(&format!("{}/", base.to_lowercase()))
+        } else {
+            file.starts_with(&format!("{base}/"))
+        };
+        if base.is_empty() || !inside {
+            return None;
+        }
         file[base.len() + 1..].to_owned()
-    } else {
-        path.to_owned()
-    }
+    };
+    let rel = rel.trim_start_matches("./").to_owned();
+    let clean = !rel.is_empty()
+        && rel
+            .split('/')
+            .all(|s| !s.is_empty() && s != "." && s != "..");
+    clean.then_some(rel)
+}
+
+/// `path` relative to `root` with `/` separators when it is inside it, else as given.
+pub fn display_path(path: &str, root: &Path) -> String {
+    relative_inside(path, root).unwrap_or_else(|| path.to_owned())
 }
 
 fn is_markdown(path: &str) -> bool {
     let lower = path.to_lowercase();
     lower.ends_with(".md") || lower.ends_with(".markdown")
+}
+
+/// The file a file tool works on.
+fn tool_file(input: &Value) -> Option<&str> {
+    str_of(input, "file_path").or_else(|| str_of(input, "notebook_path"))
+}
+
+/// What a tool call would do, for the app's permission policy.
+pub fn permission_kind(tool: &str, input: &Value, root: &Path) -> AiPermissionKind {
+    match tool {
+        "Edit" | "MultiEdit" | "Write" | "NotebookEdit" => {
+            match tool_file(input).and_then(|f| relative_inside(f, root)) {
+                Some(rel) if is_markdown(&rel) => AiPermissionKind::MarkdownEdit,
+                Some(_) => AiPermissionKind::FileEdit,
+                // An edit outside the folder is never reviewed as an ordinary edit.
+                None => AiPermissionKind::Other,
+            }
+        }
+        "Bash" | "PowerShell" | "Task" | "KillShell" => AiPermissionKind::Command,
+        "WebFetch" | "WebSearch" => AiPermissionKind::Web,
+        _ => AiPermissionKind::Other,
+    }
+}
+
+/// The tool input that runs `edit` (a subset of the proposed hunks, or a composed whole file)
+/// instead of the original call: `Edit` takes its single hunk, `MultiEdit` keeps the accepted
+/// entries of its `edits` in their order, `Write` gets the composed content. `None` when the
+/// edit cannot be expressed for this tool (no hunk, unknown tool): the caller denies instead.
+pub fn tool_input_for(tool: &str, original: &Value, edit: &ProposedEdit) -> Option<Value> {
+    let mut input = original.clone();
+    let object = input.as_object_mut()?;
+    match tool {
+        "Edit" => {
+            let [hunk] = edit.hunks.as_slice() else {
+                return None;
+            };
+            object.insert("old_string".into(), Value::String(hunk.old_text.clone()));
+            object.insert("new_string".into(), Value::String(hunk.new_text.clone()));
+        }
+        "MultiEdit" => {
+            let edits = object.get("edits").and_then(Value::as_array)?;
+            let mut wanted: Vec<&EditHunk> = edit.hunks.iter().collect();
+            let kept: Vec<Value> = edits
+                .iter()
+                .filter(|e| {
+                    let old = str_of(e, "old_string").unwrap_or_default();
+                    let new = str_of(e, "new_string").unwrap_or_default();
+                    let at = wanted
+                        .iter()
+                        .position(|h| h.old_text == old && h.new_text == new);
+                    at.map(|i| wanted.remove(i)).is_some()
+                })
+                .cloned()
+                .collect();
+            if kept.is_empty() || !wanted.is_empty() {
+                // Hunks that are not among the proposed edits are refused, never invented.
+                return None;
+            }
+            object.insert("edits".into(), Value::Array(kept));
+        }
+        "Write" => {
+            let [hunk] = edit.hunks.as_slice() else {
+                return None;
+            };
+            object.insert("content".into(), Value::String(hunk.new_text.clone()));
+        }
+        _ => return None,
+    }
+    Some(input)
 }
 
 /// The file change an `Edit`, `MultiEdit` or `Write` call proposes, if it is one.
@@ -336,6 +421,124 @@ mod tests {
         assert_eq!(
             summarize_tool("WebSearch", &json!({"query": "x"})),
             "WebSearch"
+        );
+    }
+
+    fn proj() -> (&'static Path, &'static str) {
+        if cfg!(windows) {
+            (Path::new("C:\\proj"), "C:\\proj\\")
+        } else {
+            (Path::new("/proj"), "/proj/")
+        }
+    }
+
+    #[test]
+    fn classifies_permission_kinds() {
+        use AiPermissionKind::*;
+        let (root, prefix) = proj();
+        let file = |rel: &str| json!({ "file_path": format!("{prefix}{rel}") });
+        let table = [
+            ("Edit", file("docs/a.md"), MarkdownEdit),
+            ("MultiEdit", file("README.MARKDOWN"), MarkdownEdit),
+            ("Write", file("notes/new.md"), MarkdownEdit),
+            ("Write", json!({ "file_path": "docs/rel.md" }), MarkdownEdit),
+            ("Edit", file("src/main.ts"), FileEdit),
+            (
+                "NotebookEdit",
+                json!({ "notebook_path": format!("{prefix}n.ipynb") }),
+                FileEdit,
+            ),
+            ("Edit", json!({ "file_path": "/elsewhere/a.md" }), Other),
+            ("Edit", file("../outside.md"), Other),
+            ("Edit", json!({}), Other),
+            ("Bash", json!({ "command": "npm test" }), Command),
+            ("PowerShell", json!({ "command": "ls" }), Command),
+            ("Task", json!({}), Command),
+            ("KillShell", json!({}), Command),
+            ("WebFetch", json!({ "url": "https://x" }), Web),
+            ("WebSearch", json!({ "query": "x" }), Web),
+            ("Read", file("a.md"), Other),
+            ("mcp__server__tool", json!({}), Other),
+        ];
+        for (tool, input, kind) in table {
+            assert_eq!(permission_kind(tool, &input, root), kind, "{tool} {input}");
+        }
+    }
+
+    fn hunk(old: &str, new: &str) -> EditHunk {
+        EditHunk {
+            old_text: old.into(),
+            new_text: new.into(),
+        }
+    }
+
+    fn edit(whole_file: bool, hunks: Vec<EditHunk>) -> ProposedEdit {
+        ProposedEdit {
+            path: "a.md".into(),
+            is_markdown: true,
+            whole_file,
+            hunks,
+        }
+    }
+
+    #[test]
+    fn maps_an_accepted_edit_back_to_the_tool_input() {
+        let original = json!({ "file_path": "/p/a.md", "old_string": "a", "new_string": "b", "replace_all": false });
+        let input = tool_input_for("Edit", &original, &edit(false, vec![hunk("a", "c")])).unwrap();
+        assert_eq!(
+            input,
+            json!({ "file_path": "/p/a.md", "old_string": "a", "new_string": "c", "replace_all": false })
+        );
+        assert!(tool_input_for("Edit", &original, &edit(false, vec![])).is_none());
+
+        let multi = json!({ "file_path": "/p/a.md", "edits": [
+            { "old_string": "1", "new_string": "2" },
+            { "old_string": "3", "new_string": "4", "replace_all": true },
+            { "old_string": "5", "new_string": "6" },
+        ]});
+        // The accepted hunks, in any order, keep the original order and their other fields.
+        let input = tool_input_for(
+            "MultiEdit",
+            &multi,
+            &edit(false, vec![hunk("5", "6"), hunk("3", "4")]),
+        )
+        .unwrap();
+        assert_eq!(
+            input["edits"],
+            json!([
+                { "old_string": "3", "new_string": "4", "replace_all": true },
+                { "old_string": "5", "new_string": "6" },
+            ])
+        );
+        assert_eq!(input["file_path"], "/p/a.md");
+        assert!(tool_input_for("MultiEdit", &multi, &edit(false, vec![])).is_none());
+        // A hunk that was never proposed is refused.
+        assert!(tool_input_for("MultiEdit", &multi, &edit(false, vec![hunk("x", "y")])).is_none());
+
+        let write = json!({ "file_path": "/p/a.md", "content": "old whole" });
+        let input =
+            tool_input_for("Write", &write, &edit(true, vec![hunk("", "composed")])).unwrap();
+        assert_eq!(
+            input,
+            json!({ "file_path": "/p/a.md", "content": "composed" })
+        );
+        assert!(tool_input_for("Write", &write, &edit(true, vec![])).is_none());
+        // An Edit has a single hunk to accept; two cannot be expressed.
+        assert!(
+            tool_input_for(
+                "Edit",
+                &original,
+                &edit(false, vec![hunk("a", "b"), hunk("c", "d")])
+            )
+            .is_none()
+        );
+        assert!(
+            tool_input_for(
+                "Bash",
+                &json!({ "command": "ls" }),
+                &edit(false, vec![hunk("a", "b")])
+            )
+            .is_none()
         );
     }
 }

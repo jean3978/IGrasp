@@ -68,6 +68,30 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
     ],
   },
   {
+    title: 'AI chat',
+    rows: [
+      ...fromActions([
+        'ai.chat',
+        'ai.selectText',
+        'ai.capture',
+        'ai.newConversation',
+        'ai.history',
+      ]),
+      { keys: 'Enter / Shift+Enter', label: 'Send / new line (message box)' },
+      { keys: 'Esc', label: 'Stop the running answer; pressed again, close the chat' },
+      { keys: 'Alt+arrows', label: 'Move the chat panel (its title focused)' },
+      { keys: 'Alt+Shift+arrows', label: 'Resize the chat panel (its title focused)' },
+    ],
+  },
+  {
+    title: 'Edit review (a proposed edit shown in the preview)',
+    rows: [
+      ...fromActions(['ai.acceptAllChanges', 'ai.rejectAllChanges']),
+      { keys: 'A / R', label: 'Accept / reject the focused change' },
+      { keys: 'Tab', label: 'Next change or button' },
+    ],
+  },
+  {
     title: 'Mermaid diagrams (diagram focused)',
     rows: [
       { keys: '+ / -', label: 'Zoom in / out' },

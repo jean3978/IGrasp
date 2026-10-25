@@ -16,7 +16,8 @@ No Confluence, no editor plugin, no note-taking vault — just the project's own
 |---|---|
 | ![A Mermaid diagram in the light theme](docs/screenshots/mermaid-light.png) | ![A grouped notification after an agent changed 15 files](docs/screenshots/live-changes-light.png) |
 | ![Search in files with highlighted matches, the outline and backlinks, in the dark theme](docs/screenshots/search-dark.png) | ![Search everything (Ctrl+T) over file names and headings](docs/screenshots/quick-open-light.png) |
-| ![The Broken links view next to a document with flagged links](docs/screenshots/broken-links-light.png) | |
+| ![The Broken links view next to a document with flagged links](docs/screenshots/broken-links-light.png) | ![The AI chat opened next to highlighted text, with the selection line, an answer and the quick actions](docs/screenshots/ai-chat-light.png) |
+| ![An AI edit reviewed in the rendered document, with Accept and Reject per change](docs/screenshots/ai-review-light.png) | ![A region dragged over a table: it stays highlighted and the chat opens beside it](docs/screenshots/ai-capture-dark.png) |
 
 ## Features
 
@@ -42,14 +43,31 @@ No Confluence, no editor plugin, no note-taking vault — just the project's own
 - **Know where you are.** An outline that follows your scroll, back and forward (`Alt+←` /
   `Alt+→`) through what you read, and a **Recent changes** view that marks what an agent just
   touched.
+- **AI chat.** A floating panel (`Ctrl+Alt+C`) that talks to Claude through your own Claude Code
+  CLI in the open folder: chat-style answers, a **context bar** that shows which instruction files
+  (`CLAUDE.md`) and which document go with your message, a model picker listing the models your
+  CLI offers, usage per answer, and
+  a confirmation before a large message.
+- **Review an edit where you read it.** When the AI proposes a change to a markdown file, the
+  document opens in **review mode**: removed and added blocks in the rendered text, **Accept**
+  or **Reject** each change, and only what you accepted is written.
+- **Ask about a selection.** The AI tools over the document: highlight text with the cursor tool
+  (`Ctrl+Alt+S`) or drag a region (`Ctrl+Alt+R`), and the chat opens next to it with its source
+  lines, the selection stays highlighted, and quick actions (Rewrite, Shorten, Expand, Fix
+  grammar, Make a table, Make a diagram, Explain) work on it.
+- **Permissions you control.** Ask, Allow or Deny per kind of action (markdown edits, other file
+  edits, commands, web, anything else); every automatic answer is shown in the conversation.
+- **History.** Conversations are kept per folder (in the app's data folder, never in your
+  project) and can be reopened and continued, or forgotten.
 - **Themes.** Light, Dark, High Contrast and Follow System.
-- **Safe by design.** IGrasp never writes inside the folder you open. HTML in markdown is
-  sanitized, links never navigate the app or launch programs, and the app reads only the folder
-  you chose.
+- **Safe by design.** IGrasp never writes inside the folder you open on its own (an edit you
+  accept is written by the AI provider). HTML in markdown is sanitized, links never navigate the
+  app or launch programs, and the app reads only the folder you chose. AI features only ever
+  spend tokens when you ask for it.
 
-Coming next: Claude integration, a quiz and generated tutorials about your project (its code,
-not only its docs), editing, and a beginner-friendly git view with "what changed since I last
-looked". AI features only ever spend tokens when you click for it. See the [roadmap](#roadmap).
+Coming next: a quiz and generated tutorials about your project (its code, not only its docs),
+editing, and a beginner-friendly git view with "what changed since I last looked". See the
+[roadmap](#roadmap).
 
 ## Download and installation
 
@@ -70,11 +88,12 @@ it.
   Windows 10).
 - **Linux**: WebKitGTK 4.1, version **2.44 or newer** (Ubuntu 22.04 and later with updates,
   Debian 12, Fedora 39+). Mermaid diagrams need it.
-- **AI features** (from phase 3) will use your installed
-  [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code); it is not bundled. Claude is
-  the only supported provider for now; the AI layer is provider-neutral so others can be added
-  later. IGrasp never spends tokens in the background: only when you click a control marked as
-  using AI.
+- **AI features** use your installed
+  [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) and your own login; it is not
+  bundled and IGrasp stores no API key. Claude is the only supported provider for now; the AI
+  layer is provider-neutral so others can be added later. IGrasp never spends tokens in the
+  background: only when you click a control marked as using AI. The Claude integration is
+  verified on Windows; the Linux run is still pending.
 
 ### Video on Linux
 
@@ -131,6 +150,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the details, and
 | `Ctrl+B` / `Ctrl+Alt+B` | Show or hide the sidebar / the right panel (outline, backlinks) |
 | `Ctrl+Shift+E` / `R` / `L` | Explorer / Recent changes / Broken links |
 | `Ctrl+Shift+O` | Focus the outline |
+| `Ctrl+Alt+C` | Show or hide the AI chat |
+| `Ctrl+Alt+S` | Ask about selected text (text mode) |
+| `Ctrl+Alt+R` | Ask about a region |
+| `Ctrl+Alt+N` / `Ctrl+Alt+H` | New AI conversation / history |
+| `Alt+Shift+A` / `Alt+Shift+R` | Accept all / reject all changes of an AI edit under review |
 | `Ctrl+W` | Close the tab |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab |
 | `Alt+1` … `Alt+9` | Go to a tab |
@@ -154,8 +178,11 @@ type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
 - [x] **Phase 2 — Navigation** (0.2.0): search everything (Ctrl+T), search in files
       (Ctrl+Shift+F), recent changes, back/forward history, outline, internal links, code viewer,
       broken links, backlinks.
-- [ ] **Phase 3 — Claude**: a provider-neutral AI layer (Claude first) that spends tokens only on
-      a user action, chat through the Claude CLI, inline diff review, region capture.
+- [x] **Phase 3 — Claude** (0.3.0): a provider-neutral AI layer (Claude first) that spends tokens
+      only on a user action, chat through the Claude CLI with context, the CLI's own models,
+      permissions and per-folder history, inline diff review, and AI tools over the document:
+      highlight text or drag a region, the chat opens beside it, with quick actions (Rewrite,
+      Shorten, Expand, Fix grammar, Make a table, Make a diagram, Explain).
 - [ ] **Phase 4 — Quiz**: a fun quiz about the project with Hoot the owl, grounded in the whole
       project (code, config, docs), for developers new to it.
 - [ ] **Phase 5 — Tutorials**: Hoot's Academy, interactive tutorials generated about the project

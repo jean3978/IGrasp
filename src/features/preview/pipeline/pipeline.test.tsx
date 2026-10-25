@@ -2,6 +2,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import gfm from '../../../test/fixtures/markdown/gfm.md?raw';
 import unsafe from '../../../test/fixtures/markdown/unsafe.md?raw';
+import { captureMarkdownRegion } from '../../capture/capture';
 import { MarkdownPreview } from '../MarkdownPreview';
 import { renderMarkdown } from './processor';
 
@@ -45,6 +46,46 @@ describe('markdown pipeline', () => {
     ]);
     expect(alerts[0]?.querySelector('.markdown-alert-title')?.textContent).toBe('Warning');
     expect(alerts[0]?.textContent).toContain('Careful.');
+  });
+
+  it('keeps the source line of alert blocks, so a region capture maps to them', async () => {
+    const source =
+      'Intro.\n\n> [!NOTE]\n> First\n> second.\n\nMiddle.\n\n> quote\n\n> [!TIP]\n> Nice.\n';
+    const { container } = await show(source);
+    const marked = [...container.querySelectorAll<HTMLElement>('[data-line]')].map((el) => [
+      el.tagName,
+      el.dataset['line'],
+    ]);
+    expect(marked).toEqual([
+      ['P', '1'],
+      ['DIV', '3'],
+      ['P', '7'],
+      ['BLOCKQUOTE', '9'],
+      ['P', '9'],
+      ['DIV', '11'],
+    ]);
+    const boxes: Record<string, [number, number]> = { '1': [0, 20], '3': [30, 60], '7': [100, 20] };
+    const blocks = [...container.querySelectorAll<HTMLElement>('[data-line]')];
+    for (const el of blocks) {
+      const [top, height] = boxes[el.dataset['line'] ?? ''] ?? [140, 20];
+      el.getBoundingClientRect = () =>
+        ({ top, bottom: top + height, left: 0, right: 400, width: 400, height }) as DOMRect;
+    }
+    // The paragraph above the alert no longer swallows the alert's lines.
+    expect(
+      captureMarkdownRegion(container, { x: 0, y: 2, width: 100, height: 10 }, source),
+    ).toMatchObject({
+      firstLine: 1,
+      lastLine: 1,
+    });
+    // The alert alone gets its own lines.
+    expect(
+      captureMarkdownRegion(container, { x: 0, y: 40, width: 100, height: 10 }, source),
+    ).toMatchObject({
+      firstLine: 3,
+      lastLine: 5,
+      text: '> [!NOTE]\n> First\n> second.',
+    });
   });
 
   it('extracts YAML front matter into a card', async () => {

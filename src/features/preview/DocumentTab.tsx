@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useAiConversation } from '../../stores/aiConversation';
+import type { PendingReview } from '../../stores/aiConversation';
 import { useDocuments } from '../../stores/documents';
+import type { Review } from '../diff/changes';
+import { InlineEditReview } from '../ai/InlineEditReview';
 import { useGraph } from '../../stores/graph';
 import { useOutline } from '../../stores/outline';
 import { buildOutline } from '../outline/outline';
@@ -7,8 +11,11 @@ import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
 import { MarkdownPreview } from './MarkdownPreview';
 import { MAX_RENDERED_CHARS, useMarkdown } from './useMarkdown';
+import { keepScrollTop } from './keepScroll';
 import { clearMatchHighlight, revealPending } from './reveal';
 import './document.css';
+
+type ReviewShown = PendingReview & { review: Review };
 
 interface DocumentTabProps {
   tabId: string;
@@ -64,6 +71,13 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const restored = useRef(false);
   const getScrollContainer = useCallback(() => scrollRef.current, []);
+  const review = useAiConversation((s): ReviewShown | null =>
+    s.pendingReview?.path === relPath &&
+    s.pendingReview.status === 'ready' &&
+    s.pendingReview.review
+      ? (s.pendingReview as ReviewShown)
+      : null,
+  );
 
   // Restored tabs are loaded lazily, when they are first shown.
   useEffect(() => {
@@ -110,6 +124,20 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
     };
   }, []);
 
+  // Leaving review mode (Accept all, Apply, Reject all) swaps the review for the preview in the
+  // same scroll container; the preview renders asynchronously, so the container is briefly
+  // short and the browser drops the position to the top. Keep the reader where they were.
+  const lastTop = useRef(0);
+  const inReview = review !== null;
+  const wasInReview = useRef(inReview);
+  useLayoutEffect(() => {
+    const was = wasInReview.current;
+    wasInReview.current = inReview;
+    const el = scrollRef.current;
+    if (!el || inReview || !was) return;
+    return keepScrollTop(el, lastTop.current);
+  }, [inReview]);
+
   // Restore the tab's scroll position once its content has been laid out.
   useLayoutEffect(() => {
     const el = scrollRef.current;
@@ -121,17 +149,9 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
       return;
     }
     // The preview renders asynchronously: retry until the content is tall enough (max ~1 s).
-    let frames = 0;
-    const apply = () => {
-      el.scrollTop = tab.scrollTop;
-      frames += 1;
-      if (Math.abs(el.scrollTop - tab.scrollTop) > 1 && frames < 60) {
-        requestAnimationFrame(apply);
-      } else {
-        restored.current = true;
-      }
-    };
-    apply();
+    return keepScrollTop(el, tab.scrollTop, () => {
+      restored.current = true;
+    });
   }, [doc?.status, tabId]);
 
   return (
@@ -141,11 +161,42 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
       tabIndex={0}
       aria-label={relPath}
       onScroll={(e) => {
-        if (restored.current) {
+        lastTop.current = e.currentTarget.scrollTop;
+        if (restored.current && !review) {
           useTabs.getState().setScroll(tabId, Math.round(e.currentTarget.scrollTop));
         }
       }}
     >
+      {review ? (
+        // Review mode: the proposed edit replaces the preview until it is answered (a new file
+        // has no content on disk yet).
+        <InlineEditReview pending={review} getScrollContainer={getScrollContainer} />
+      ) : (
+        <DocumentBody
+          tabId={tabId}
+          relPath={relPath}
+          deleted={deleted}
+          getScrollContainer={getScrollContainer}
+        />
+      )}
+    </div>
+  );
+}
+
+function DocumentBody({
+  tabId,
+  relPath,
+  deleted,
+  getScrollContainer,
+}: {
+  tabId: string;
+  relPath: string;
+  deleted: boolean;
+  getScrollContainer: () => HTMLElement | null;
+}) {
+  const doc = useDocuments((s) => s.byPath[relPath]);
+  return (
+    <>
       {deleted && (
         <div className="deleted-banner" role="status">
           <span>This file was deleted on disk. The last version is still shown.</span>
@@ -175,6 +226,6 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
             getScrollContainer={getScrollContainer}
           />
         ))}
-    </div>
+    </>
   );
 }

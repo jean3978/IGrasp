@@ -1,104 +1,17 @@
-import { Switch, ToggleGroup } from 'radix-ui';
 import { useEffect, useId, useState } from 'react';
-import type { ReactNode } from 'react';
 import { Button } from '../../components/ui/Button';
 import { backend } from '../../ipc/client';
 import { DEFAULT_SETTINGS, MAX_FONT_SIZE, MIN_FONT_SIZE } from '../../ipc/defaults';
-import type { AppInfo, ReadingWidth, SettingsPatch, Theme, WindowFrame } from '../../ipc/types';
+import type { AppInfo, ReadingWidth, Theme, WindowFrame } from '../../ipc/types';
 import { useSettings } from '../../stores/settings';
 import { useToasts } from '../../stores/toasts';
 import { useTree } from '../../stores/tree';
 import { useWorkspace } from '../../stores/workspace';
 import { THEME_OPTIONS } from '../titlebar/menuActions';
+import { AiSettingsSection } from './AiSettingsSection';
+import { Field, Segmented, Toggle } from './fields';
+import { save } from './saveSetting';
 import './settings.css';
-
-function save(patch: SettingsPatch) {
-  useSettings
-    .getState()
-    .update(patch)
-    .catch((err: unknown) => {
-      useToasts
-        .getState()
-        .notify(
-          'error',
-          `Cannot save the setting: ${err instanceof Error ? err.message : String(err)}`,
-        );
-    });
-}
-
-function Field({
-  label,
-  description,
-  children,
-  htmlFor,
-}: {
-  label: string;
-  description?: string;
-  children: ReactNode;
-  htmlFor?: string;
-}) {
-  const descId = useId();
-  return (
-    <div className="settings-field">
-      <div className="settings-label">
-        {htmlFor ? <label htmlFor={htmlFor}>{label}</label> : <span>{label}</span>}
-        {description && (
-          <p id={descId} className="settings-description">
-            {description}
-          </p>
-        )}
-      </div>
-      <div className="settings-control">{children}</div>
-    </div>
-  );
-}
-
-function Segmented<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: T;
-  options: { value: T; label: string }[];
-  onChange: (v: T) => void;
-}) {
-  return (
-    <ToggleGroup.Root
-      type="single"
-      className="segmented"
-      aria-label={label}
-      value={value}
-      onValueChange={(v) => {
-        const option = options.find((o) => o.value === v);
-        if (option) onChange(option.value);
-      }}
-    >
-      {options.map((o) => (
-        <ToggleGroup.Item key={o.value} value={o.value} className="segmented-item">
-          {o.label}
-        </ToggleGroup.Item>
-      ))}
-    </ToggleGroup.Root>
-  );
-}
-
-function Toggle({
-  id,
-  checked,
-  onChange,
-}: {
-  id: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <Switch.Root id={id} className="switch" checked={checked} onCheckedChange={onChange}>
-      <Switch.Thumb className="switch-thumb" />
-    </Switch.Root>
-  );
-}
 
 const READING_WIDTHS: { value: ReadingWidth; label: string }[] = [
   { value: 'narrow', label: 'Narrow' },
@@ -284,6 +197,8 @@ export function SettingsTab() {
             />
           </Field>
         </section>
+
+        <AiSettingsSection />
 
         <section aria-labelledby="settings-data">
           <h2 id="settings-data">Data</h2>

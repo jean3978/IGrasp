@@ -135,6 +135,52 @@ test('outline and backlinks in the right panel, restored with the session', asyn
   await expect(page.getByRole('tree', { name: 'Outline' })).toBeVisible();
 });
 
+test('the sidebar and the right panel follow a whole drag of their sash, and keep it', async ({
+  page,
+}) => {
+  await openReadme(page);
+  await page.keyboard.press('Control+Alt+B');
+  await expect(page.getByRole('tree', { name: 'Outline' })).toBeVisible();
+  const panelWidth = (selector: string) =>
+    page.locator(selector).evaluate((el) => el.getBoundingClientRect().width);
+  const sidebar = '[data-panel][id="sidebar"]';
+  const right = '[data-panel][id="right"]';
+
+  for (const [name, selector, dx] of [
+    ['Resize the sidebar', sidebar, 80],
+    ['Resize the right panel', right, -60],
+  ] as const) {
+    const sash = page.getByRole('separator', { name });
+    const box = await sash.boundingBox();
+    if (!box) throw new Error(`no sash: ${name}`);
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    const before = await panelWidth(selector);
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    // In steps, like a real drag: the panel follows every step, not only the first.
+    for (let i = 1; i <= 8; i++) await page.mouse.move(x + (dx * i) / 8, y);
+    await page.mouse.up();
+    expect(Math.abs((await panelWidth(selector)) - before - Math.abs(dx))).toBeLessThanOrEqual(2);
+  }
+
+  // A smaller window, then the same again: the panels come back to the widths the user chose.
+  const kept = [await panelWidth(sidebar), await panelWidth(right)];
+  await page.setViewportSize({ width: 900, height: 700 });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect.poll(() => panelWidth(sidebar)).toBeCloseTo(kept[0] ?? 0, 0);
+  await expect.poll(() => panelWidth(right)).toBeCloseTo(kept[1] ?? 0, 0);
+
+  // Close and reopen the folder: both widths come back from the session.
+  await page.waitForTimeout(900);
+  await page.getByRole('menuitem', { name: 'File' }).click();
+  await page.getByRole('menuitem', { name: 'Close Folder' }).click();
+  await page.getByRole('button', { name: /Open Folder…/ }).click();
+  await expect(page.getByRole('tree', { name: 'Outline' })).toBeVisible();
+  await expect.poll(() => panelWidth(sidebar)).toBeCloseTo(kept[0] ?? 0, 0);
+  await expect.poll(() => panelWidth(right)).toBeCloseTo(kept[1] ?? 0, 0);
+});
+
 test('keyboard only: activity bar and search panel', async ({ page }) => {
   await openReadme(page);
   await page.getByRole('tab', { name: 'Explorer' }).focus();

@@ -4,4 +4,12 @@ export type AiModel = {
 /**
  * What the provider accepts, e.g. an alias or a full model id.
  */
-id: string, label: string, };
+id: string, label: string, 
+/**
+ * One line the provider gives about it (shown as a tooltip), if any.
+ */
+description: string | null, 
+/**
+ * This model accepts images.
+ */
+imageInput: boolean, };
