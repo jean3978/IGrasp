@@ -4,4 +4,4 @@ import type { Chapter } from "./Chapter";
 /**
  * The accepted answer of a chapter generation.
  */
-export type ChapterResult = { chapter: Chapter, docsNote?: string, rejectedCount: number, };
+export type ChapterResult = { chapter: Chapter, docsNote: string | null, rejectedCount: number, };

@@ -49,6 +49,7 @@ import { fixtureTutorialSubjects } from './mockFamilies';
 import {
   addSuggested,
   emptyTutorials,
+  recordUsage,
   normalizedProgress,
   prepared,
   privateSummaries,
@@ -279,6 +280,12 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         (state.root && state.learning.get(state.root.path)) ?? EMPTY_CORRECTIONS,
       ),
     subjects: () => fixtureSubjects(state.files),
+    tutorial: (id) => tutorialsOf().stored.get(id)?.tutorial,
+    tutorialCards: () => fixtureTutorialSubjects(state.files, tutorialsOf().suggested).cards,
+    tutorialUsage: () => tutorialsOf().usage,
+    recordUsage: (usage) => {
+      recordUsage(tutorialsOf(), usage);
+    },
   });
 
   // Strictly increasing, so two writes in the same millisecond still count as a change.

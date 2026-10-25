@@ -363,7 +363,11 @@ function stem(path: string): string {
   return i > 0 ? name.slice(0, i) : name;
 }
 
-function namesTheProject(text: string, cited: Set<string>, ctx: QuizValidationContext): boolean {
+export function namesTheProject(
+  text: string,
+  cited: Set<string>,
+  ctx: Pick<QuizValidationContext, 'corpus' | 'projectName' | 'modules'>,
+): boolean {
   const lower = text.toLowerCase();
   const textWords = words(text);
   const allWords = new Set(

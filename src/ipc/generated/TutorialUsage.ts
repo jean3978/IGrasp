@@ -7,6 +7,10 @@ import type { Length } from "./Length";
  */
 export type TutorialUsage = { 
 /**
- * `outline`, `chapter`, `review` or `suggest`.
+ * `outline`, `chapters`, `review` or `suggest`.
  */
-kind: string, length: Length, model: string, inputTokens: number, outputTokens: number, costUsd: number | null, atMs: number, };
+kind: string, length: Length, model: string, inputTokens: number, outputTokens: number, costUsd: number | null, 
+/**
+ * Provider calls of the operation (the chapters of a staged run).
+ */
+calls: number, atMs: number, };

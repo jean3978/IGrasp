@@ -322,8 +322,6 @@ pub enum RunPlan {
     /// One validated run.
     Validated(Box<dyn OutputValidator>),
     /// A staged run: one validated run per stage.
-    // Until the tutorial chapters build one (the next steps of Phase 5).
-    #[allow(dead_code)]
     Staged(Box<dyn StageBuilder>),
 }
 

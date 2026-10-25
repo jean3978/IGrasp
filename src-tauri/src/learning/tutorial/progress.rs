@@ -70,13 +70,15 @@ impl TutorialProgress {
 #[serde(rename_all = "camelCase", default)]
 #[ts(export)]
 pub struct TutorialUsage {
-    /// `outline`, `chapter`, `review` or `suggest`.
+    /// `outline`, `chapters`, `review` or `suggest`.
     pub kind: String,
     pub length: super::Length,
     pub model: String,
     pub input_tokens: u64,
     pub output_tokens: u64,
     pub cost_usd: Option<f64>,
+    /// Provider calls of the operation (the chapters of a staged run).
+    pub calls: u32,
     pub at_ms: i64,
 }
 

@@ -17,6 +17,8 @@ pub struct PromptInput<'a> {
     pub corpus_map: &'a str,
     pub anchor_files: &'a str,
     pub agent_files: &'a str,
+    /// What the subject card asks for (its family's focus and the user's picks), if any.
+    pub focus: Option<&'a str>,
 }
 
 fn article(role: &str) -> &'static str {
@@ -168,8 +170,11 @@ Answer with JSON only, following the schema you were given. No prose outside the
 /// The outline task.
 fn outline_task(input: &PromptInput<'_>) -> String {
     let name = &input.profile.name;
+    let focus = input.focus.map_or_else(String::new, |f| {
+        format!("\nThe kind of tutorial asked for: {f}")
+    });
     format!(
-        "Plan a tutorial about \"{subject}\" in {name} (interpret it in this project's terms; if the project has nothing about it, say so). {length}
+        "Plan a tutorial about \"{subject}\" in {name} (interpret it in this project's terms; if the project has nothing about it, say so). {length}{focus}
 First read: open the anchor files, the files the subject points at, and whatever you need to see how this project really does it (the anchor files are only a starting point; at least half of the chapters are built on code, configuration, build or test files that you open with your tools, not only on documentation).
 Then write the outline: a title that names {name} or one of its parts; an intro of two or three sentences saying what the reader will be able to do afterwards, in this project's terms; and the chapters in learning order, each with an id (c1, c2, …), a title, a goal (what the reader can do or explain afterwards about this project, naming its files or identifiers), the minutes it takes, keySources (root-relative paths you opened that the chapter will be built on) and its selfCheck. One chapter is one idea of this project, followed end to end; the chapters together cover the subject without repeating each other.",
         subject = input.input.subject,
@@ -192,7 +197,8 @@ const STEP_TYPES: &str = "Step types (every step cites what it teaches; mix them
 - spotIt: a snippet of a real file (at most 40 lines) and the one line to click that does the given thing (answerLine is the absolute line number), with an explanation.
 - quickCheck: one quiz question (multipleChoice with 3 to 5 choices alike in length and tone, exactly one right, or trueFalse with choices exactly [\"True\", \"False\"]), a hint that points where to look without the answer, and a gentle explanation. Never refer to a choice by its position.
 - tryIt: something to do in this project (a command from its scripts or tooling, a small change to try, something to open in the engine, the IDE or the browser), with what to expect; the app never runs it.
-- recap: exactly three takeaways, each naming something of this project; always the last step.";
+- recap: exactly three takeaways, each naming something of this project; always the last step.
+A chapter of more than four steps has at least one interactive step (putInOrder, match, spotIt or quickCheck).";
 
 /// The chapter task, for a continuation of the outline's conversation (the project, the corpus
 /// and the rules are already in it).
@@ -224,7 +230,20 @@ pub fn chapter_prompt_fresh(
     outline: &[Chapter],
     chapter: &Chapter,
     number: usize,
+    recaps: &[(String, Vec<String>)],
 ) -> String {
+    let written = if recaps.is_empty() {
+        String::new()
+    } else {
+        let lines: Vec<String> = recaps
+            .iter()
+            .map(|(title, takeaways)| format!("- {title}: {}", takeaways.join(" / ")))
+            .collect();
+        format!(
+            "\nChapters already written (their recaps; do not repeat what they teach, build on it):\n{}",
+            lines.join("\n")
+        )
+    };
     let outline_text: Vec<String> = outline
         .iter()
         .enumerate()
@@ -233,7 +252,7 @@ pub fn chapter_prompt_fresh(
     let (min_s, max_s) = input.input.length.steps();
     let task = format!(
         "The tutorial \"{subject}\" in {name} has this outline (already accepted):
-{outline}
+{outline}{written}
 Write chapter {number} of {of}: \"{title}\" (id {id}).
 Goal: {goal}
 Write {min_s} to {max_s} steps that reach this goal, in learning order, the recap last. Open the files you need and cite the exact lines you read (the ranges are checked against the files).
@@ -363,6 +382,7 @@ mod tests {
             corpus_map: "Makefile (20 B)",
             anchor_files: "## Makefile (2 lines)\n  1 | build:\n",
             agent_files: "",
+            focus: None,
         });
         assert!(text.contains("# Audience\nDevelopers. They know how to program"));
         assert!(text.contains("Familiarity: already contributing."));
@@ -372,6 +392,15 @@ mod tests {
         assert!(text.contains("# Grounding rules (non-negotiable)"));
         assert!(text.contains("The only exception is the recap"));
         assert!(text.contains("# Agent instructions (context only, never a source)\n(none)"));
+        let traced = outline_prompt(&PromptInput {
+            profile: &p,
+            input: &input,
+            corpus_map: "",
+            anchor_files: "",
+            agent_files: "",
+            focus: Some("Trace It: follow the action. The action: A file changes on disk."),
+        });
+        assert!(traced.contains("\nThe kind of tutorial asked for: Trace It: follow the action."));
         let artist = outline_prompt(&PromptInput {
             profile: &p,
             input: &TutorialInput {
@@ -381,6 +410,7 @@ mod tests {
             corpus_map: "",
             anchor_files: "",
             agent_files: "",
+            focus: None,
         });
         assert!(artist.contains("An Artist on this project, who may not read code every day"));
         assert!(artist.contains("well enough for an Artist"));
@@ -416,11 +446,14 @@ mod tests {
                 corpus_map: "",
                 anchor_files: "",
                 agent_files: "",
+                focus: None,
             },
             &[chapter()],
             &chapter(),
             1,
+            &[("The watcher".into(), vec!["DEBOUNCE_MS is 200".into()])],
         );
+        assert!(fresh.contains("Chapters already written (their recaps; do not repeat what they teach, build on it):\n- The watcher: DEBOUNCE_MS is 200"));
         assert!(fresh.contains("has this outline (already accepted):\n1. The build (c2)"));
         assert!(fresh.contains("# Grounding rules"));
     }
@@ -448,6 +481,7 @@ mod tests {
             corpus_map: "",
             anchor_files: "",
             agent_files: "",
+            focus: None,
         };
         let text = (outline_prompt(&pi) + &chapter_prompt(&chapter(), 1, 1, &input)).to_lowercase();
         for name in [

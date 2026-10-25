@@ -18,15 +18,16 @@ use super::prompt::{
     PromptInput, chapter_prompt, chapter_prompt_fresh, chapter_repair_prompt, outline_prompt,
     outline_repair_prompt,
 };
-use super::schema::{Chapter, chapter_schema, outline_schema};
+use super::schema::{Chapter, MAX_CHAPTERS, Step, Tutorial, chapter_schema, outline_schema};
 use super::validate::{
     Context, ValidatedChapter, ValidatedOutline, enough, validate_chapter, validate_outline,
 };
-use crate::ai::run::{MAX_RETRIES, OutputValidator, Verdict};
+use crate::ai::run::{MAX_RETRIES, MAX_STAGES, OutputValidator, StageBuilder, Verdict};
 use crate::ai::types::{AiPolicy, AiRequest};
 use crate::error::{AppError, AppResult};
 use crate::learning::corpus::{Corpus, Inlined, SourceScope, read_text};
 use crate::learning::subjects::custom_anchors;
+use crate::learning::tutorial::families::TutorialSubject;
 use crate::profile::ProjectProfile;
 use crate::profile::walk::Walk;
 
@@ -41,7 +42,7 @@ pub struct Composed<V> {
 /// The accepted answer of an outline generation (the `structuredOutput` of the operation).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, optional_fields)]
+#[ts(export)]
 pub struct OutlineResult {
     pub title: String,
     pub intro: String,
@@ -56,7 +57,7 @@ pub struct OutlineResult {
 /// The accepted answer of a chapter generation.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
-#[ts(export, optional_fields)]
+#[ts(export)]
 pub struct ChapterResult {
     pub chapter: Chapter,
     pub docs_note: Option<String>,
@@ -122,15 +123,28 @@ fn anchors(profile: &ProjectProfile, corpus: &Corpus, subject: &str) -> Vec<Stri
     out
 }
 
+#[allow(clippy::type_complexity)] // What both requests are made of.
 fn shared(
     root: &Path,
     profile: &ProjectProfile,
     walk: &Walk,
     agent_names: &[String],
     input: TutorialInput,
+    first: &[String],
 ) -> (Shared, String, String, Vec<Inlined>, String, Vec<Inlined>) {
     let corpus = Corpus::build(root, walk, &SourceScope::WholeProject, agent_names);
-    let anchors = anchors(profile, &corpus, &input.subject);
+    // The card's (or the chapter's) own files first, then the subject's.
+    let mut anchors: Vec<String> = first
+        .iter()
+        .filter(|a| corpus.files.get(*a).is_some_and(|f| !f.binary))
+        .cloned()
+        .collect();
+    for a in self::anchors(profile, &corpus, &input.subject) {
+        if !anchors.contains(&a) {
+            anchors.push(a);
+        }
+    }
+    anchors.truncate(8);
     let (anchor_text, inlined) = corpus.anchors_text(root, &anchors);
     let (agent_text, agent_inlined) = corpus.agent_text(root);
     let map = corpus.map();
@@ -146,18 +160,44 @@ fn shared(
     (s, map, anchor_text, inlined, agent_text, agent_inlined)
 }
 
-/// Composes the outline request of `input` in the folder of `root`.
+/// What a subject card asks of the outline: its family's focus and the user's picks.
+pub fn card_focus(card: &TutorialSubject, picks: &[String]) -> String {
+    let mut focus = card.focus.trim().to_owned();
+    if let Some(gap) = &card.domain {
+        focus.push_str(&format!(" (the domain this card teaches: {gap})"));
+    }
+    if !picks.is_empty() {
+        focus.push_str(&format!(" The reader picked: {}.", picks.join("; ")));
+    }
+    focus
+}
+
+/// Composes the outline request of `input` in the folder of `root`. `card` is the subject
+/// card it came from (its anchors are inlined first and its family's focus is asked for).
+#[allow(clippy::too_many_arguments)] // What an outline request is made of.
 pub fn compose_outline(
     root: &Path,
     profile: &ProjectProfile,
     walk: &Walk,
     agent_names: &[String],
     input: TutorialInput,
+    card: Option<&TutorialSubject>,
     model: Option<String>,
 ) -> AppResult<Composed<OutlineValidator>> {
     let input = input.normalized();
+    let mut first: Vec<String> = Vec::new();
+    if let Some(c) = card {
+        // The anchors of the picks the user chose, then the card's.
+        for p in &c.picks {
+            if input.picks.contains(&p.title) {
+                first.extend(p.anchors.iter().cloned());
+            }
+        }
+        first.extend(c.anchors.iter().cloned());
+    }
+    let focus = card.map(|c| card_focus(c, &input.picks));
     let (s, map, anchor_text, mut inlined, agent_text, agent_inlined) =
-        shared(root, profile, walk, agent_names, input.clone());
+        shared(root, profile, walk, agent_names, input.clone(), &first);
     if s.corpus.files.values().all(|f| f.binary) {
         return Err(AppError::Ai(
             "This folder holds no text files a tutorial could be built on.".to_owned(),
@@ -169,6 +209,7 @@ pub fn compose_outline(
         corpus_map: &map,
         anchor_files: &anchor_text,
         agent_files: &agent_text,
+        focus: focus.as_deref(),
     });
     inlined.extend(agent_inlined);
     Ok(Composed {
@@ -192,7 +233,8 @@ pub fn compose_outline(
 }
 
 /// Composes the request of chapter `index` of `chapters` (the accepted outline): a continuation
-/// of the outline's conversation when `resume_id` is given, else a fresh prompt.
+/// of the outline's conversation when `resume_id` is given, else a fresh prompt with the recaps
+/// of the chapters already written (`recaps`: title and takeaways), so it does not repeat them.
 #[allow(clippy::too_many_arguments)] // What a chapter request is made of.
 pub fn compose_chapter(
     root: &Path,
@@ -202,6 +244,7 @@ pub fn compose_chapter(
     input: TutorialInput,
     chapters: &[Chapter],
     index: usize,
+    recaps: &[(String, Vec<String>)],
     model: Option<String>,
     resume_id: Option<String>,
 ) -> AppResult<Composed<ChapterValidator>> {
@@ -210,7 +253,7 @@ pub fn compose_chapter(
         .get(index)
         .ok_or_else(|| AppError::Ai(format!("The outline has no chapter {}.", index + 1)))?;
     let (s, map, anchor_text, mut inlined, agent_text, agent_inlined) =
-        shared(root, profile, walk, agent_names, input.clone());
+        shared(root, profile, walk, agent_names, input.clone(), &[]);
     let prompt = if resume_id.is_some() {
         inlined.clear();
         chapter_prompt(chapter, index + 1, chapters.len(), &input)
@@ -223,10 +266,12 @@ pub fn compose_chapter(
                 corpus_map: &map,
                 anchor_files: &anchor_text,
                 agent_files: &agent_text,
+                focus: None,
             },
             chapters,
             chapter,
             index + 1,
+            recaps,
         )
     };
     Ok(Composed {
@@ -477,6 +522,160 @@ impl OutputValidator for ChapterValidator {
     }
 }
 
+// ---------------------------------------------------------------------------------------------
+// The chapters of a tutorial as a staged run (ADR 0026): one validated run per chapter the user
+// ticked, each a fresh prompt with the accepted outline and the recaps of the chapters written so
+// far (in the tutorial or accepted earlier in the same run).
+
+/// What a tutorial was asked with (its chapters are written with the same options).
+pub fn input_of(t: &Tutorial) -> TutorialInput {
+    TutorialInput {
+        subject: t.subject.clone(),
+        subject_id: None,
+        picks: Vec::new(),
+        familiarity: t.familiarity,
+        domain_gap: t.domain_gap.clone(),
+        length: t.length,
+        role: t.role.clone(),
+    }
+}
+
+/// The title and takeaways of a written chapter.
+fn recap_of(c: &Chapter) -> Option<(String, Vec<String>)> {
+    c.steps.iter().rev().find_map(|s| match s {
+        Step::Recap(r) => Some((c.title.clone(), r.takeaways.clone())),
+        _ => None,
+    })
+}
+
+/// Builds the stages of a "write chapters" operation.
+pub struct ChapterStages {
+    root: PathBuf,
+    profile: ProjectProfile,
+    walk: Arc<Walk>,
+    agent_names: Vec<String>,
+    input: TutorialInput,
+    /// The outline (the chapters already written included).
+    chapters: Vec<Chapter>,
+    /// The chapters to write, in this order (indices in `chapters`).
+    indices: Vec<usize>,
+    model: Option<String>,
+}
+
+impl ChapterStages {
+    /// The stages writing `indices` of `tutorial`. `goal` adds a chapter for a missing topic
+    /// (its index is then the outline's length). Refuses an index outside the outline, a repeat,
+    /// and more stages than a run may have.
+    #[allow(clippy::too_many_arguments)] // What a staged run is made of.
+    pub fn new(
+        root: &Path,
+        profile: ProjectProfile,
+        walk: Arc<Walk>,
+        agent_names: &[String],
+        tutorial: &Tutorial,
+        indices: &[u32],
+        goal: Option<String>,
+        model: Option<String>,
+    ) -> AppResult<Self> {
+        let mut chapters = tutorial.chapters.clone();
+        let indices: Vec<usize> = match goal.map(|g| g.trim().to_owned()).filter(|g| !g.is_empty())
+        {
+            Some(goal) => {
+                if chapters.len() >= MAX_CHAPTERS {
+                    return Err(AppError::Ai(format!(
+                        "A tutorial has at most {MAX_CHAPTERS} chapters."
+                    )));
+                }
+                let n = chapters.len() + 1;
+                chapters.push(Chapter {
+                    id: format!("c{n}"),
+                    title: goal.chars().take(80).collect(),
+                    goal: goal.chars().take(300).collect(),
+                    minutes: tutorial.length.minutes() / 3,
+                    hoot_intro: None,
+                    steps: Vec::new(),
+                });
+                vec![n - 1]
+            }
+            None => indices.iter().map(|i| *i as usize).collect(),
+        };
+        let mut seen = std::collections::BTreeSet::new();
+        if indices.is_empty()
+            || indices.len() > MAX_STAGES as usize
+            || indices
+                .iter()
+                .any(|i| *i >= chapters.len() || !seen.insert(*i))
+        {
+            return Err(AppError::Ai(format!(
+                "Choose between 1 and {MAX_STAGES} chapters of the outline to write."
+            )));
+        }
+        Ok(Self {
+            root: root.to_path_buf(),
+            profile,
+            walk,
+            agent_names: agent_names.to_vec(),
+            input: input_of(tutorial),
+            chapters,
+            indices,
+            model,
+        })
+    }
+
+    /// The composed request of the first stage (for the estimate).
+    pub fn first(&self) -> AppResult<Composed<ChapterValidator>> {
+        self.compose(0, &[])
+    }
+
+    fn compose(&self, stage: usize, accepted: &[Value]) -> AppResult<Composed<ChapterValidator>> {
+        let index = self.indices[stage];
+        let mut recaps: Vec<(String, Vec<String>)> = self
+            .chapters
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| *i != index)
+            .filter_map(|(_, c)| recap_of(c))
+            .collect();
+        for v in accepted {
+            if let Ok(r) = serde_json::from_value::<ChapterResult>(v.clone())
+                && let Some(recap) = recap_of(&r.chapter)
+                && !recaps.iter().any(|(t, _)| *t == recap.0)
+            {
+                recaps.push(recap);
+            }
+        }
+        compose_chapter(
+            &self.root,
+            &self.profile,
+            &self.walk,
+            &self.agent_names,
+            self.input.clone(),
+            &self.chapters,
+            index,
+            &recaps,
+            self.model.clone(),
+            None,
+        )
+    }
+}
+
+impl StageBuilder for ChapterStages {
+    fn stages(&self) -> u32 {
+        u32::try_from(self.indices.len()).unwrap_or(u32::MAX)
+    }
+
+    fn next(
+        &mut self,
+        n: u32,
+        accepted: &[Value],
+    ) -> AppResult<(AiRequest, Box<dyn OutputValidator>, String)> {
+        let stage = (n as usize).saturating_sub(1);
+        let composed = self.compose(stage, accepted)?;
+        let label = self.chapters[self.indices[stage]].title.clone();
+        Ok((composed.request, Box::new(composed.validator), label))
+    }
+}
+
 /// Now as RFC 3339 in UTC (no time crate in the app).
 pub fn rfc3339_now() -> String {
     let secs = std::time::SystemTime::now()
@@ -555,6 +754,7 @@ mod tests {
             &walk,
             &agent,
             input(),
+            None,
             Some("m".into()),
         )
         .unwrap();
@@ -588,7 +788,8 @@ mod tests {
         let dir = project();
         let (profile, walk) = build(dir.path(), &[], &AtomicBool::new(false));
         let agent = vec!["CLAUDE.md".to_owned()];
-        let mut c = compose_outline(dir.path(), &profile, &walk, &agent, input(), None).unwrap();
+        let mut c =
+            compose_outline(dir.path(), &profile, &walk, &agent, input(), None, None).unwrap();
         // One chapter on an agent file: retry with the reason; quick needs 2 chapters.
         let v = c.validator.check(
             1,
@@ -627,7 +828,8 @@ mod tests {
             other => panic!("{other:?}"),
         }
         // Two good chapters: accepted, with positional ids.
-        let mut c = compose_outline(dir.path(), &profile, &walk, &agent, input(), None).unwrap();
+        let mut c =
+            compose_outline(dir.path(), &profile, &walk, &agent, input(), None, None).unwrap();
         match c.validator.check(
             1,
             &outline_json(json!([
@@ -645,7 +847,8 @@ mod tests {
             other => panic!("{other:?}"),
         }
         // Nothing verified: a failure that says why.
-        let mut c = compose_outline(dir.path(), &profile, &walk, &agent, input(), None).unwrap();
+        let mut c =
+            compose_outline(dir.path(), &profile, &walk, &agent, input(), None, None).unwrap();
         assert!(matches!(
             c.validator.check(1, &Value::Null),
             Verdict::Retry { .. }
@@ -673,6 +876,7 @@ mod tests {
             input(),
             &chapters,
             0,
+            &[],
             None,
             Some("s-1".into()),
         )
@@ -694,6 +898,7 @@ mod tests {
             input(),
             &chapters,
             0,
+            &[],
             None,
             None,
         )
@@ -714,6 +919,7 @@ mod tests {
                 input(),
                 &chapters,
                 3,
+                &[],
                 None,
                 None
             )
@@ -730,6 +936,7 @@ mod tests {
             input(),
             &chapters,
             0,
+            &[],
             None,
             None,
         )
@@ -754,6 +961,7 @@ mod tests {
             input(),
             &chapters,
             0,
+            &[],
             None,
             None,
         )
@@ -784,6 +992,7 @@ mod tests {
             input(),
             &chapters,
             0,
+            &[],
             None,
             None,
         )
@@ -1035,6 +1244,7 @@ mod poc {
             &walk,
             &names,
             input.clone(),
+            None,
             Some(model.clone()),
         )
         .unwrap();
@@ -1078,6 +1288,7 @@ mod poc {
                 input.clone(),
                 &o.chapters,
                 chapter_index - 1,
+                &[],
                 Some(model.clone()),
                 if fresh { None } else { resume.clone() },
             )

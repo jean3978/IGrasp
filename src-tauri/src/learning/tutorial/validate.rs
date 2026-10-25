@@ -51,6 +51,8 @@ pub enum Rejection {
     Duplicate,
     /// The chapter has no recap.
     Recap,
+    /// A chapter of more than four steps without an interactive one.
+    Interactive,
 }
 
 impl Rejection {
@@ -75,6 +77,7 @@ impl Rejection {
             Self::Mermaid => "mermaid",
             Self::Duplicate => "duplicate",
             Self::Recap => "recap",
+            Self::Interactive => "interactive",
         }
     }
 
@@ -99,6 +102,7 @@ impl Rejection {
             Self::Mermaid => "had an unusable diagram",
             Self::Duplicate => "was a repeat",
             Self::Recap => "lacked a recap",
+            Self::Interactive => "had no interactive step",
         }
     }
 }
@@ -701,12 +705,192 @@ pub fn validate_chapter(output: &Value, ctx: &mut Context<'_>) -> Result<Validat
             "the chapter has no recap step (exactly three takeaways, last)".to_owned(),
         )),
     }
+    // A soft rule: a long chapter keeps the reader doing something.
+    let interactive = v.accepted.iter().any(|s| {
+        matches!(
+            s,
+            Step::PutInOrder(_) | Step::Match(_) | Step::SpotIt(_) | Step::QuickCheck(_)
+        )
+    });
+    if v.accepted.len() > 4 && !interactive {
+        v.rejected.push((
+            "interactive".to_owned(),
+            Rejection::Interactive,
+            "the chapter has more than four steps and none is interactive: replace one explain card with a putInOrder, match, spotIt or quickCheck step".to_owned(),
+        ));
+    }
     Ok(v)
 }
 
 /// Verified steps that are enough to keep a chapter when the retries are exhausted.
 pub fn enough(length: Length) -> usize {
     length.steps().0.div_ceil(2)
+}
+
+/// The shared fixtures of `src/test/fixtures/tutorial/cases/` (on the quiz's fixture corpus):
+/// the mock's validator (`mockTutorialValidate.ts`) must agree on every one.
+#[cfg(test)]
+mod shared_fixtures {
+    use std::collections::BTreeMap;
+    use std::path::Path;
+    use std::sync::Arc;
+
+    use serde::Deserialize;
+
+    use super::*;
+    use crate::learning::corpus::{CorpusFile, SourceScope};
+
+    #[derive(Deserialize)]
+    struct FixtureFile {
+        path: String,
+        content: Option<String>,
+        lines: Option<usize>,
+        #[serde(default)]
+        binary: bool,
+        #[serde(default)]
+        agent: bool,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct FixtureCorpus {
+        name: String,
+        modules: Vec<String>,
+        agent_names: Vec<String>,
+        files: Vec<FixtureFile>,
+    }
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Expected {
+        #[serde(default)]
+        shape_error: bool,
+        #[serde(default)]
+        accepted: Vec<String>,
+        #[serde(default)]
+        rejected: BTreeMap<String, String>,
+        minutes: Option<Vec<u32>>,
+    }
+
+    #[derive(Deserialize)]
+    struct Case {
+        description: String,
+        kind: String,
+        length: Length,
+        output: Value,
+        expected: Expected,
+    }
+
+    fn fixtures() -> std::path::PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/test/fixtures")
+    }
+
+    #[test]
+    fn the_shared_fixtures() {
+        let corpus_fixture: FixtureCorpus = serde_json::from_str(
+            &std::fs::read_to_string(fixtures().join("quiz/corpus.json")).unwrap(),
+        )
+        .unwrap();
+        let entries = corpus_fixture
+            .files
+            .iter()
+            .filter(|f| !crate::learning::agent_files::is_secret(&f.path))
+            .map(|f| {
+                let l = f.path.to_lowercase();
+                (
+                    CorpusFile {
+                        path: f.path.clone(),
+                        size: 100,
+                        binary: f.binary,
+                        large: false,
+                        language: None,
+                        markdown: l.ends_with(".md") || l.ends_with(".markdown"),
+                    },
+                    f.agent,
+                )
+            })
+            .collect();
+        let corpus = Corpus::from_entries(entries, &SourceScope::WholeProject);
+        let contents: BTreeMap<String, Arc<Vec<String>>> = corpus_fixture
+            .files
+            .iter()
+            .filter(|f| !f.binary)
+            .map(|f| {
+                let lines = match (&f.content, f.lines) {
+                    (Some(c), _) => c.lines().map(str::to_owned).collect(),
+                    (None, Some(n)) => (1..=n).map(|i| format!("filler {i}")).collect(),
+                    (None, None) => Vec::new(),
+                };
+                (f.path.clone(), Arc::new(lines))
+            })
+            .collect();
+        let mut cases = 0;
+        for entry in std::fs::read_dir(fixtures().join("tutorial/cases")).unwrap() {
+            let path = entry.unwrap().path();
+            let case: Case = serde_json::from_str(&std::fs::read_to_string(&path).unwrap())
+                .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+            let name = format!(
+                "{} ({})",
+                path.file_name().unwrap().to_string_lossy(),
+                case.description
+            );
+            let input = TutorialInput {
+                length: case.length,
+                ..TutorialInput::default()
+            };
+            let mut read = |p: &str| contents.get(p).cloned();
+            let mut ctx = Context {
+                corpus: &corpus,
+                agent_names: &corpus_fixture.agent_names,
+                read: &mut read,
+                project_name: &corpus_fixture.name,
+                modules: &corpus_fixture.modules,
+                input: &input,
+            };
+            let label = |id: &str| id.split(" (").next().unwrap_or(id).to_owned();
+            let result = if case.kind == "outline" {
+                validate_outline(&case.output, &mut ctx).map(|v| {
+                    if let Some(m) = &case.expected.minutes {
+                        let got: Vec<u32> = v.accepted.iter().map(|c| c.minutes).collect();
+                        assert_eq!(&got, m, "{name}: minutes");
+                    }
+                    (
+                        v.accepted
+                            .iter()
+                            .map(|c| c.title.clone())
+                            .collect::<Vec<_>>(),
+                        v.rejected
+                            .iter()
+                            .map(|(id, r, _)| (label(id), r.code().to_owned()))
+                            .collect::<BTreeMap<_, _>>(),
+                    )
+                })
+            } else {
+                validate_chapter(&case.output, &mut ctx).map(|v| {
+                    (
+                        v.accepted
+                            .iter()
+                            .map(|s| s.type_name().to_owned())
+                            .collect::<Vec<_>>(),
+                        v.rejected
+                            .iter()
+                            .map(|(id, r, _)| (label(id), r.code().to_owned()))
+                            .collect::<BTreeMap<_, _>>(),
+                    )
+                })
+            };
+            match result {
+                Err(e) => assert!(case.expected.shape_error, "{name}: shape error {e}"),
+                Ok((accepted, rejected)) => {
+                    assert!(!case.expected.shape_error, "{name}: expected a shape error");
+                    assert_eq!(accepted, case.expected.accepted, "{name}: accepted");
+                    assert_eq!(rejected, case.expected.rejected, "{name}: rejected");
+                }
+            }
+            cases += 1;
+        }
+        assert!(cases >= 4, "the cases were found");
+    }
 }
 
 #[cfg(test)]

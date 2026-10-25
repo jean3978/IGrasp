@@ -9,9 +9,11 @@
 #![allow(dead_code)]
 
 pub mod compose;
+pub mod cost;
 pub mod families;
 pub mod freshness;
 pub mod markdown;
+pub mod operation;
 pub mod progress;
 pub mod prompt;
 pub mod repo;

@@ -12,7 +12,7 @@ pub mod gateway;
 mod no_start;
 pub mod policy;
 mod process;
-mod providers;
+pub(crate) mod providers;
 pub mod run;
 pub mod types;
 

@@ -314,7 +314,6 @@ impl AppData {
     }
 
     /// Records the usage of a tutorial operation (the last [`MAX_USAGE`] are kept).
-    #[allow(dead_code)] // Called when a tutorial operation ends (the generation step of Phase 5).
     pub fn record_tutorial_usage(&self, root: &str, usage: TutorialUsage) -> AppResult<()> {
         self.update_folder_learning(root, |l| {
             l.tutorial_usage.push(usage);

@@ -238,6 +238,12 @@ pub struct AiSizeEstimate {
     /// The documents a generation inlines in its prompt (a quiz: anchor files, agent files as
     /// context); empty for a chat message, whose context the chat lists itself.
     pub inlined: Vec<AiInlinedDocument>,
+    /// Provider calls the operation makes at most before retries (a staged run: one per stage;
+    /// the size above is the first one's).
+    pub calls: u32,
+    /// What this kind of operation cost before, in plain words (the folder's last one, or the
+    /// range measured on real projects), when known.
+    pub cost_hint: Option<String>,
 }
 
 /// What `ai_estimate` measures: metadata only, nothing is read.

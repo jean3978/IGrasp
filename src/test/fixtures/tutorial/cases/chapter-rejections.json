@@ -1,0 +1,159 @@
+{
+  "description": "every step rule: agent file, lines beyond the end, generic, answer outside the snippet, items, mermaid, docs URL, binary only, a long tour stop, no source, a repeat, a self-check, a quiz rule, and no recap",
+  "kind": "chapter",
+  "length": "deep",
+  "output": {
+    "id": "c2",
+    "title": "The gateway",
+    "hootIntro": "Hoot opens Orbit's AI gateway.",
+    "steps": [
+      {
+        "type": "explain",
+        "title": "Agent rules",
+        "body": "Orbit's agents keep answers short.",
+        "sources": [{ "path": "AGENTS.md", "firstLine": 1, "lastLine": 3 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "explain",
+        "title": "The start",
+        "body": "AiGateway::start hands out an id.",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 7, "lastLine": 99 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "explain",
+        "title": "Routers in general",
+        "body": "A router is a common pattern that sends requests to services.",
+        "sources": [{ "path": "README.md", "firstLine": 1, "lastLine": 3 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "spotIt",
+        "title": "Find the id",
+        "prompt": "Click the line that picks the id.",
+        "path": "src/ai/gateway.rs",
+        "firstLine": 7,
+        "lastLine": 11,
+        "answerLine": 3,
+        "explanation": "next_id() in AiGateway::start.",
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "putInOrder",
+        "title": "Two steps",
+        "prompt": "Order AiGateway's steps.",
+        "items": ["start", "cancel"],
+        "explanation": "AiGateway::start then cancel.",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 7, "lastLine": 16 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "diagram",
+        "title": "A picture",
+        "mermaid": "AiGateway -> Slot",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 1, "lastLine": 4 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "conceptBridge",
+        "title": "Slots",
+        "concept": "A slot holds one running operation at a time.",
+        "applied": "AiGateway keeps its running operation in a Slot.",
+        "docsUrl": "ftp://docs.example.com",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 2, "lastLine": 4 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "explain",
+        "title": "The logo",
+        "body": "Orbit shows its logo.png.",
+        "sources": [{ "path": "assets/logo.png" }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "codeTour",
+        "title": "The policy",
+        "stops": [
+          {
+            "path": "src/ai/policy.rs",
+            "firstLine": 1,
+            "lastLine": 60,
+            "annotation": "The policy of AiGateway."
+          },
+          {
+            "path": "src/ai/gateway.rs",
+            "firstLine": 1,
+            "lastLine": 4,
+            "annotation": "The AiGateway."
+          }
+        ],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "tryIt",
+        "title": "Run Orbit",
+        "instruction": "Run make dev in Orbit.",
+        "sources": [],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "explain",
+        "title": "The start",
+        "body": "AiGateway::start again.",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 7, "lastLine": 11 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "explain",
+        "title": "Cancel",
+        "body": "AiGateway::cancel stops the slot.",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 13, "lastLine": 15 }],
+        "selfCheck": { "projectSpecific": false, "reason": "generic" }
+      },
+      {
+        "type": "quickCheck",
+        "kind": "multipleChoice",
+        "question": "What does AiGateway::start return in Orbit?",
+        "choices": ["the operation id", "nothing", "a slot"],
+        "answer": 0,
+        "hint": "It returns the operation id.",
+        "explanation": "AiGateway::start in src/ai/gateway.rs returns the id.",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 7, "lastLine": 11 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "match",
+        "title": "Who does what",
+        "prompt": "Match Orbit's parts to their jobs.",
+        "pairs": [
+          { "left": "AiGateway::start", "right": "hands out an id" },
+          { "left": "AiGateway::cancel", "right": "stops the slot" },
+          { "left": "WatchContext", "right": "keeps the generation" }
+        ],
+        "explanation": "src/ai/gateway.rs starts and cancels; watcher.rs keeps the generation.",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 7, "lastLine": 16 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      }
+    ]
+  },
+  "expected": {
+    "accepted": ["match"],
+    "rejected": {
+      "step 1": "agentFile",
+      "step 2": "beyondEnd",
+      "step 3": "generic",
+      "step 4": "answerLine",
+      "step 5": "items",
+      "step 6": "mermaid",
+      "step 7": "docsUrl",
+      "step 8": "binaryOnly",
+      "step 9": "rangeTooLong",
+      "step 10": "noSource",
+      "step 11": "duplicate",
+      "step 12": "selfCheck",
+      "step 13": "quickCheck",
+      "recap": "recap"
+    }
+  }
+}

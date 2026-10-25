@@ -151,6 +151,8 @@ describe('the confirmation card in the chat', () => {
             documents: 1,
             images: 1,
             inlined: [],
+            calls: 1,
+            costHint: null,
           }}
           onStart={onStart}
           onCancel={onCancel}

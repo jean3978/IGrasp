@@ -4,4 +4,4 @@ import type { Chapter } from "./Chapter";
 /**
  * The accepted answer of an outline generation (the `structuredOutput` of the operation).
  */
-export type OutlineResult = { title: string, intro: string, insufficientMaterial: boolean, materialNote?: string, docsNote?: string, suggestedSubjects: Array<string>, chapters: Array<Chapter>, rejectedCount: number, };
+export type OutlineResult = { title: string, intro: string, insufficientMaterial: boolean, materialNote: string | null, docsNote: string | null, suggestedSubjects: Array<string>, chapters: Array<Chapter>, rejectedCount: number, };
