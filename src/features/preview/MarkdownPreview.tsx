@@ -5,10 +5,28 @@ import { previewComponents } from './previewComponents';
 import { PreviewContext } from './previewContext';
 import type { PreviewContextValue } from './previewContext';
 import { FrontMatterCard } from './components/FrontMatterCard';
+import { QuizFileBanner } from './components/QuizFileBanner';
+import type { QuizFileFacts } from './components/QuizFileBanner';
+import { countQuizBlocks } from './pipeline/quizBlocks';
 import type { RenderedMarkdown } from './pipeline/processor';
 import './markdown.css';
 
 const noContainer = () => null;
+
+const text = (v: unknown) => (typeof v === 'string' ? v : null);
+
+/** A quiz file (ADR 0024) is recognised by its front matter. */
+function quizFacts(rendered: RenderedMarkdown): QuizFileFacts | null {
+  const data = rendered.frontMatter?.data;
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
+  const fields = data as Record<string, unknown>;
+  if (fields.igrasp !== 'quiz') return null;
+  return {
+    title: text(fields.title),
+    subject: text(fields.subject),
+    questions: countQuizBlocks(rendered.hast),
+  };
+}
 
 interface MarkdownPreviewProps {
   rendered: RenderedMarkdown;
@@ -34,10 +52,15 @@ export const MarkdownPreview = memo(function MarkdownPreview({
     () => ({ relPath, rootPath, getScrollContainer }),
     [relPath, rootPath, getScrollContainer],
   );
+  const quiz = useMemo(() => quizFacts(rendered), [rendered]);
   return (
     <PreviewContext.Provider value={context}>
       <article className="markdown-body">
-        {rendered.frontMatter && <FrontMatterCard frontMatter={rendered.frontMatter} />}
+        {quiz ? (
+          <QuizFileBanner relPath={relPath} facts={quiz} />
+        ) : (
+          rendered.frontMatter && <FrontMatterCard frontMatter={rendered.frontMatter} />
+        )}
         {element}
       </article>
     </PreviewContext.Provider>

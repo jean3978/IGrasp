@@ -18,7 +18,7 @@ export const SHIKI_THEMES = {
 } as const;
 
 /** Code languages rendered by other components instead of being highlighted. */
-const NOT_HIGHLIGHTED = new Set(['mermaid', 'math']);
+const NOT_HIGHLIGHTED = new Set(['mermaid', 'math', 'igrasp-quiz']);
 
 let highlighter: Promise<HighlighterCore> | null = null;
 const unavailable = new Set<string>();

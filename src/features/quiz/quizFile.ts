@@ -233,6 +233,10 @@ function parseQuestion(heading: string, yamlText: string, n: number): QuizQuesti
   };
 }
 
+/** One `igrasp-quiz` block on its own (the preview's card; the question is its heading). */
+export const parseQuestionBlock = (yamlText: string): QuizQuestion | null =>
+  parseQuestion('(question)', yamlText, 1);
+
 /** The front matter text, or null (same rule as Rust `learning/quiz/file.rs`). */
 function frontMatterText(text: string): { yaml: string; body: string } | null {
   const source = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;

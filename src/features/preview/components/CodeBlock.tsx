@@ -2,12 +2,22 @@ import { Check, Copy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { MermaidBlock } from '../../mermaid/MermaidBlock';
+import { QuizBlock } from './QuizBlock';
 
-type PreProps = ComponentProps<'pre'> & { 'data-language'?: string; 'data-mermaid'?: string };
+type PreProps = ComponentProps<'pre'> & {
+  'data-language'?: string;
+  'data-mermaid'?: string;
+  'data-quiz'?: string;
+};
 
-/** A code block with a language badge and a copy button; Mermaid blocks become diagrams. */
-export function CodeBlock({ 'data-mermaid': mermaid, ...props }: PreProps) {
+/**
+ * A code block with a language badge and a copy button; Mermaid blocks become diagrams, and
+ * `igrasp-quiz` blocks question cards.
+ */
+export function CodeBlock({ 'data-mermaid': mermaid, 'data-quiz': quiz, ...props }: PreProps) {
   if (mermaid !== undefined) return <MermaidBlock source={mermaid} />;
+  if (quiz !== undefined)
+    return <QuizBlock source={quiz} fallback={<HighlightedCode {...props} />} />;
   return <HighlightedCode {...props} />;
 }
 
