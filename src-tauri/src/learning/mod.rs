@@ -2,6 +2,12 @@
 //! folder as the generators see it, and later the corpus, the subjects and the quiz. Nothing here
 //! calls a provider: generations go through `ai_start` and the gateway like every AI operation.
 
+#[allow(dead_code)]
+pub mod agent_files;
+// Used by the quiz composer (step 14 of the phase 4 plan).
+#[allow(dead_code)]
+pub mod corpus;
+
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
