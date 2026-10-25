@@ -258,6 +258,34 @@ pub fn to_event(generation: u64, mut changes: Changes, plan: &Plan) -> Option<Fs
     }
     changes.removed.sort();
     changes.removed.dedup();
+    // Removed and added in the same batch: the file was replaced in place (saved through a
+    // temporary file renamed over it, as editors and the AI CLI do). It is a modification, never
+    // a deletion: an open tab must reload, not show "deleted". A markdown file renamed over
+    // another one stays a rename (its tab follows it).
+    let removed_set: BTreeSet<&str> = changes.removed.iter().map(String::as_str).collect();
+    let rename_targets: BTreeSet<&str> = plan
+        .renamed
+        .iter()
+        .filter(|(from, _)| removed_set.contains(from.as_str()))
+        .map(|(_, to)| to.as_str())
+        .collect();
+    let replaced: BTreeSet<String> = changes
+        .added
+        .iter()
+        .map(|f| f.rel_path.as_str())
+        .filter(|rel| removed_set.contains(rel) && !rename_targets.contains(rel))
+        .map(str::to_owned)
+        .collect();
+    drop(removed_set);
+    if !replaced.is_empty() {
+        changes.removed.retain(|rel| !replaced.contains(rel));
+        let (moved, kept): (Vec<_>, Vec<_>) = std::mem::take(&mut changes.added)
+            .into_iter()
+            .partition(|f| replaced.contains(&f.rel_path));
+        changes.added = kept;
+        changes.modified.retain(|f| !replaced.contains(&f.rel_path));
+        changes.modified.extend(moved);
+    }
     let added: BTreeSet<&str> = changes.added.iter().map(|f| f.rel_path.as_str()).collect();
     let removed: BTreeSet<&str> = changes.removed.iter().map(String::as_str).collect();
     let renamed = plan
@@ -614,6 +642,86 @@ mod tests {
         assert!(event.dirs_changed.contains(&"guide/deep".to_owned()));
         assert!(idx.file("build/out.md").is_none());
         assert!(!idx.has_dir("docs"));
+    }
+
+    #[test]
+    fn a_markdown_file_renamed_over_another_stays_a_rename() {
+        let d = tempfile::tempdir().unwrap();
+        let root = dunce::canonicalize(d.path()).unwrap();
+        std::fs::write(root.join("README.md"), "# Old").unwrap();
+        std::fs::write(root.join("draft.md"), "# Draft, now the readme").unwrap();
+        let none = AtomicBool::new(false);
+        let opts = ScanOptions::default();
+        let mut idx = scanner::scan(&root, &opts, &none, &|_| {}).unwrap().index;
+
+        std::fs::rename(root.join("draft.md"), root.join("README.md")).unwrap();
+        let events = vec![
+            ev(REMOVE, &["README.md"]),
+            ev(
+                EventKind::Modify(ModifyKind::Name(RenameMode::Both)),
+                &["draft.md", "README.md"],
+            ),
+        ];
+        let r = root.clone();
+        let plan = classify(&events, &idx, &|rel| {
+            std::fs::metadata(r.join(rel)).ok().map(|m| m.is_dir())
+        });
+        let changes = apply_plan(&root, &opts, &mut idx, &plan, &none);
+        let event = to_event(4, changes, &plan).unwrap();
+        assert_eq!(
+            event.renamed,
+            [RenamedPath {
+                from: "draft.md".into(),
+                to: "README.md".into()
+            }]
+        );
+        assert!(event.removed.contains(&"draft.md".to_owned()));
+        assert!(
+            event.added.iter().any(|f| f.rel_path == "README.md"),
+            "{:?}",
+            event.added
+        );
+    }
+
+    #[test]
+    fn a_file_replaced_by_a_rename_is_modified_not_deleted() {
+        // How editors and the AI CLI save: write a temporary file, then rename it over the
+        // original. Windows reports the original removed and the new name created in one batch.
+        let d = tempfile::tempdir().unwrap();
+        let root = dunce::canonicalize(d.path()).unwrap();
+        std::fs::write(root.join("README.md"), "# Old").unwrap();
+        let none = AtomicBool::new(false);
+        let opts = ScanOptions::default();
+        let mut idx = scanner::scan(&root, &opts, &none, &|_| {}).unwrap().index;
+
+        std::fs::write(root.join("README.md.tmp.123"), "# New, and longer").unwrap();
+        std::fs::rename(root.join("README.md.tmp.123"), root.join("README.md")).unwrap();
+        let events = vec![
+            ev(CREATE, &["README.md.tmp.123"]),
+            ev(REMOVE, &["README.md"]),
+            ev(
+                EventKind::Modify(ModifyKind::Name(RenameMode::Both)),
+                &["README.md.tmp.123", "README.md"],
+            ),
+        ];
+        let r = root.clone();
+        let plan = classify(&events, &idx, &|rel| {
+            std::fs::metadata(r.join(rel)).ok().map(|m| m.is_dir())
+        });
+        let changes = apply_plan(&root, &opts, &mut idx, &plan, &none);
+        let event = to_event(3, changes, &plan).unwrap();
+        assert!(event.removed.is_empty(), "{:?}", event.removed);
+        assert!(event.added.is_empty());
+        assert!(event.renamed.is_empty());
+        assert_eq!(
+            event
+                .modified
+                .iter()
+                .map(|f| f.rel_path.as_str())
+                .collect::<Vec<_>>(),
+            ["README.md"]
+        );
+        assert!(idx.file("README.md").is_some());
     }
 
     #[test]
