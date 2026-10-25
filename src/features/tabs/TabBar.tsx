@@ -7,6 +7,7 @@ import { useTabs, tabLabel } from '../../stores/tabs';
 import type { Tab } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
 import { panelDomId, tabDomId } from './tabIds';
+import { HootIcon } from '../hoot/HootIcon';
 import './tabs.css';
 
 function copy(text: string) {
@@ -23,6 +24,7 @@ function absolutePath(rootPath: string, relPath: string): string {
 function TabIcon({ tab }: { tab: Tab }) {
   if (tab.kind === 'settings') return <Settings aria-hidden />;
   if (tab.kind === 'shortcuts') return <Keyboard aria-hidden />;
+  if (tab.kind === 'quiz') return <HootIcon />;
   if (tab.kind === 'code') return <FileCode aria-hidden />;
   return <FileText aria-hidden />;
 }

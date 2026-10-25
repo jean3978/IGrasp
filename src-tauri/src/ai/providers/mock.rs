@@ -1,9 +1,12 @@
 //! A scripted provider for the gateway tests: the second implementation that keeps the trait
 //! honest without spawning anything. Words of the prompt pick the script: a markdown file name
 //! asks to edit it, `main.ts` asks to edit a code file, `command` to run one, `fetch` to fetch a
-//! URL, `slow` streams for a while; anything else is a short streamed answer. Every tool call
+//! URL, `slow` streams for a while, `error` reports an error; anything else is a short streamed
+//! answer. A request with an `output_schema` then answers the next queued structured value
+//! (`outputs`), as a text block when `text_only` is set. Every tool call
 //! waits for its answer; what the provider received is recorded for the tests.
 
+use std::collections::VecDeque;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
@@ -28,6 +31,14 @@ pub struct MockProvider {
     pub decisions: Arc<Mutex<Vec<PermissionDecision>>>,
     /// How many status checks ran.
     pub status_calls: Arc<AtomicU32>,
+    /// Every request a start received, in order (one per attempt of a validated run).
+    pub requests: Arc<Mutex<Vec<AiRequest>>>,
+    /// Provider starts (the gateway counts operations; a validated run makes several starts).
+    pub provider_starts: Arc<AtomicU32>,
+    /// The structured answers of the next starts with an `output_schema`, in order.
+    pub outputs: Arc<Mutex<VecDeque<Value>>>,
+    /// Declares no structured output: the answer comes as a text block (the fallback path).
+    pub text_only: Arc<AtomicBool>,
 }
 
 struct MockOperation {
@@ -101,7 +112,7 @@ impl AiProvider for MockProvider {
         AiCapabilities {
             streaming: true,
             resume: true,
-            structured_output: false,
+            structured_output: !self.text_only.load(Ordering::SeqCst),
             image_input: false,
             permission_prompts: true,
             read_only_mode: true,
@@ -136,6 +147,10 @@ impl AiProvider for MockProvider {
         mut sink: EventSink,
     ) -> AppResult<Box<dyn AiOperation>> {
         *lock(&self.last_request) = Some(request.clone());
+        lock(&self.requests).push(request.clone());
+        self.provider_starts.fetch_add(1, Ordering::SeqCst);
+        let outputs = self.outputs.clone();
+        let text_only = self.text_only.load(Ordering::SeqCst);
         let received = self.decisions.clone();
         let (tx, rx) = mpsc::channel::<PermissionDecision>();
         let cancelled = Arc::new(AtomicBool::new(false));
@@ -161,7 +176,11 @@ impl AiProvider for MockProvider {
                     .unwrap_or_else(|| "mock-session-1".into()),
                 model: request.model.clone().unwrap_or_else(|| "mock".into()),
             });
-            if request.prompt.split_whitespace().any(|w| w == "slow") {
+            if request.prompt.split_whitespace().any(|w| w == "error") {
+                sink(AiEvent::Error {
+                    message: "Not logged in".into(),
+                });
+            } else if request.prompt.split_whitespace().any(|w| w == "slow") {
                 for _ in 0..200 {
                     if cancelled.load(Ordering::SeqCst) {
                         end(&mut sink, AiOutcome::Cancelled);
@@ -219,6 +238,22 @@ impl AiProvider for MockProvider {
                 sink(AiEvent::Text {
                     text: "Hello there.".into(),
                 });
+            }
+            if request.output_schema.is_some() {
+                // The scripted structured answer of this attempt (Null when none is left).
+                let value = lock(&outputs).pop_front().unwrap_or(Value::Null);
+                if text_only {
+                    sink(AiEvent::Text {
+                        text: format!(
+                            "Here is the quiz:
+```json
+{value}
+```"
+                        ),
+                    });
+                } else if !value.is_null() {
+                    sink(AiEvent::StructuredOutput { value });
+                }
             }
             sink(AiEvent::Usage {
                 input_tokens: 10,

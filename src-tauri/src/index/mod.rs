@@ -74,6 +74,7 @@ pub fn start_scan(app: AppHandle, ctx: ScanContext) {
         cancel,
         watch,
         graph,
+        disk_revision,
     } = ctx;
     let root = guard.root().to_path_buf();
     std::thread::Builder::new()
@@ -119,6 +120,7 @@ pub fn start_scan(app: AppHandle, ctx: ScanContext) {
                         index.clone(),
                         cancel.clone(),
                         graph.clone(),
+                        disk_revision,
                     );
                     if !cancel.load(Ordering::SeqCst) {
                         *watch.lock().unwrap_or_else(|e| e.into_inner()) = handle;

@@ -12,6 +12,7 @@ Clicking a file in the Explorer shows it rendered, with a GitHub-like reading st
 | Math | `$inline$` and `$$display$$` math with [KaTeX](https://katex.org) (MathML kept for screen readers). Like GitHub, `$5 and $10` stays text. Invalid TeX shows in red instead of breaking the page. |
 | Mermaid | See [mermaid.md](mermaid.md). |
 | Front matter | YAML front matter is shown as a card above the document: fields, lists as chips, nested objects collapsed, a YAML toggle, and a message for invalid YAML. |
+| Quiz files | A file whose front matter says `igrasp: quiz` ([ADR 0024](../decisions/0024-shareable-learning-files-as-markdown.md)) shows a **Play this quiz** banner instead of the front matter card (it opens the Quiz tab and replays the quiz without the AI), and its ` ```igrasp-quiz ` blocks show as question cards with the choices and the answer, hint, explanation and sources folded. A block that does not parse stays a code block. See [quiz.md](quiz.md). |
 | Inline HTML | Allowed after sanitization (`details`, `summary`, `kbd`, `sup`, `sub`, `video`, …). |
 | Images and videos | Relative paths are resolved from the document's folder (a leading `/` means the opened folder). Remote media must use `https:`. |
 
@@ -29,6 +30,9 @@ AI agents write these files, so the preview treats them as untrusted (see
   "blocked insecure image" placeholder.
 - Every id gets a `user-content-` prefix, so a document cannot clash with the app's own ids.
 - The webview never navigates: every link click is handled by the app.
+- `igrasp-quiz` blocks are tagged after sanitization, like Mermaid blocks; the card reads the
+  block's text as YAML and renders every value as text, so a quiz file cannot inject markup or
+  run code.
 
 ## Links
 

@@ -1,0 +1,34 @@
+{
+  "name": "orbit",
+  "modules": ["src/index", "src/ai"],
+  "agentNames": ["AGENTS.md"],
+  "files": [
+    {
+      "path": "README.md",
+      "content": "# Orbit\n\nOrbit keeps a live index of a project's markdown files.\n\nRun `make dev` to start it.\n"
+    },
+    {
+      "path": "docs/architecture.md",
+      "content": "# Architecture\n\nThe watcher in src/index feeds the index; the AI gateway in src/ai is the only door to providers.\n\n## Index\n\nBatches of disk events are debounced for 200 ms before the index is updated.\n"
+    },
+    { "path": "docs/guide.md", "content": "# Guide\n\nOpen a folder with `orbit open <path>`.\n" },
+    {
+      "path": "src/index/watcher.rs",
+      "content": "//! Watches the folder and debounces events.\nuse std::time::Duration;\n\npub const DEBOUNCE_MS: u64 = 200;\n\npub struct WatchContext {\n    pub generation: u64,\n}\n\nimpl WatchContext {\n    pub fn handle(&self, batch: Vec<Event>) {\n        self.reindex(batch);\n    }\n}\n"
+    },
+    {
+      "path": "src/ai/gateway.rs",
+      "content": "//! The single door to every AI provider.\npub struct AiGateway {\n    running: Slot,\n}\n\nimpl AiGateway {\n    pub fn start(&self, action: UserAction) -> u32 {\n        let id = self.next_id();\n        self.running.set(id);\n        id\n    }\n\n    pub fn cancel(&self, id: u32) {\n        self.running.stop(id);\n    }\n}\n"
+    },
+    { "path": "src/ai/policy.rs", "lines": 212 },
+    {
+      "path": "src/main.ts",
+      "content": "import { startOrbit } from './orbit';\n\nstartOrbit({ port: 4321 });\n"
+    },
+    { "path": "Makefile", "content": "dev:\n\tcargo run -- --watch\n" },
+    { "path": "assets/logo.png", "binary": true },
+    { "path": "CLAUDE.md", "content": "# Rules\n\nKeep answers short.\n", "agent": true },
+    { "path": "AGENTS.md", "content": "# Agents\n\nCite the files you read.\n", "agent": true },
+    { "path": ".env", "content": "TOKEN=secret\n" }
+  ]
+}

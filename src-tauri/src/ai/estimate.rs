@@ -31,6 +31,7 @@ pub fn estimate(prompt_bytes: u64, documents: &[AiContextDocument], images: u32)
         bucket,
         documents: u32::try_from(documents.len()).unwrap_or(u32::MAX),
         images,
+        inlined: Vec::new(),
     }
 }
 

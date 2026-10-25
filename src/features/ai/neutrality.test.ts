@@ -33,7 +33,22 @@ const PROVIDER_NEUTRAL_FILES = [
   '/src/ipc/tauri.ts',
   '/src/ipc/mock/mockAi.ts',
   '/src/stores/eventBridge.ts',
+  '/src/features/quiz/',
+  '/src/features/hoot/',
+  '/src/features/profile/',
+  '/src/stores/quiz.ts',
+  '/src/stores/projectProfile.ts',
+  '/src/ipc/mock/mockQuiz',
+  '/src/ipc/mock/mockProfile.ts',
+  '/src/ipc/mock/mockSubjects.ts',
+  '/src/ipc/mock/mockLearning.ts',
 ];
+
+/**
+ * The table of instruction files written for AI agents (`CLAUDE.md`, `.codex/`, …): their names
+ * are data the learning features must recognize to never cite them, not a provider coupling.
+ */
+const EXEMPT = ['/src/ipc/mock/mockQuizValidate.ts'];
 
 describe('provider neutrality of the frontend', () => {
   it('reads the sources', () => {
@@ -55,7 +70,8 @@ describe('provider neutrality of the frontend', () => {
   it('keeps the AI feature, store, IPC and mock free of provider names', () => {
     const offenders: string[] = [];
     for (const [file, text] of Object.entries(SOURCES)) {
-      if (file === SELF || !PROVIDER_NEUTRAL_FILES.some((p) => file.startsWith(p))) continue;
+      if (file === SELF || EXEMPT.includes(file)) continue;
+      if (!PROVIDER_NEUTRAL_FILES.some((p) => file.startsWith(p))) continue;
       if (/claude|anthropic|codex|gemini|openai/i.test(text)) offenders.push(file);
     }
     expect(offenders).toEqual([]);

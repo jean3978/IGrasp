@@ -4,6 +4,7 @@ import { CodeTab } from '../code/CodeTab';
 import { DocumentTab } from '../preview/DocumentTab';
 import { SettingsTab } from '../settings/SettingsTab';
 import { ShortcutsReferenceTab } from '../shortcuts/ShortcutsReferenceTab';
+import { QuizTab } from '../quiz/QuizTab';
 import { EmptyState } from './EmptyState';
 import { panelDomId, tabDomId } from './tabIds';
 
@@ -36,6 +37,7 @@ export function TabContent() {
       )}
       {tab.kind === 'settings' && <SettingsTab />}
       {tab.kind === 'shortcuts' && <ShortcutsReferenceTab />}
+      {tab.kind === 'quiz' && <QuizTab />}
       <ViewportToolbar />
     </div>
   );

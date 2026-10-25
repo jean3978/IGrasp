@@ -19,16 +19,17 @@ describe('menu bar', () => {
     expect(screen.getByRole('menuitem', { name: /About IGrasp/ })).toBeVisible();
   });
 
-  it('lists the four menus with their shortcuts', () => {
+  it('lists the five menus with their shortcuts', () => {
     render(<App />);
     const triggers = screen
       .getAllByRole('menuitem')
       .filter((m) => m.hasAttribute('aria-keyshortcuts'));
-    expect(triggers.map((t) => t.textContent)).toEqual(['File', 'Edit', 'View', 'Help']);
+    expect(triggers.map((t) => t.textContent)).toEqual(['File', 'Edit', 'View', 'Learn', 'Help']);
     expect(triggers.map((t) => t.getAttribute('aria-keyshortcuts'))).toEqual([
       'Alt+F',
       'Alt+E',
       'Alt+V',
+      'Alt+L',
       'Alt+H',
     ]);
   });

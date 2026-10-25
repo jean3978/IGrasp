@@ -5,6 +5,8 @@ import { useAiConversation } from './aiConversation';
 import { useAiPanel } from './aiPanel';
 import { useDocuments } from './documents';
 import { useGraph } from './graph';
+import { useProjectProfile } from './projectProfile';
+import { useQuiz } from './quiz';
 import { useRecent } from './recent';
 import { useRecentFiles } from './recentFiles';
 import { useSearch } from './search';
@@ -114,6 +116,8 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
       await flushSession();
       // The conversation shown belongs to the folder being left: saved there, then cleared.
       await useAiConversation.getState().leaveFolder();
+      useQuiz.getState().leaveFolder();
+      useProjectProfile.getState().clear();
       const root = await backend.openRoot(path);
       const session = await backend.getSession(root.path).catch(() => null);
       suspendSaving();
@@ -145,6 +149,8 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => ({
     if (!get().root) return;
     await flushSession();
     await useAiConversation.getState().leaveFolder();
+    useQuiz.getState().leaveFolder();
+    useProjectProfile.getState().clear();
     await backend.closeRoot();
     clearPendingRestore();
     set({ root: null, index: IDLE });

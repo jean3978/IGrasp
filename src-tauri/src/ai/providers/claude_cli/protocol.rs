@@ -7,6 +7,9 @@ use serde_json::Value;
 
 use crate::ai::types::{AiEvent, AiPermissionKind, EditHunk, ProposedEdit};
 
+/// The tool the CLI uses to deliver the answer of `--json-schema`.
+const STRUCTURED_OUTPUT_TOOL: &str = "StructuredOutput";
+
 fn str_of<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
     value.get(key).and_then(Value::as_str)
 }
@@ -229,6 +232,11 @@ pub fn events_of(message: &Value) -> Vec<AiEvent> {
                         Some("text") => Some(AiEvent::Text {
                             text: str_of(b, "text").unwrap_or_default().to_owned(),
                         }),
+                        // How the CLI delivers `--json-schema` output: the value comes again in
+                        // the result line (`structured_output`), so the call is not shown.
+                        Some("tool_use") if str_of(b, "name") == Some(STRUCTURED_OUTPUT_TOOL) => {
+                            None
+                        }
                         Some("tool_use") => {
                             let tool = str_of(b, "name").unwrap_or("tool").to_owned();
                             let input = b.get("input").cloned().unwrap_or(Value::Null);
@@ -261,14 +269,20 @@ pub fn events_of(message: &Value) -> Vec<AiEvent> {
             .unwrap_or_default(),
         Some("result") => {
             let usage = message.get("usage").cloned().unwrap_or(Value::Null);
-            let mut events = vec![AiEvent::Usage {
+            let mut events = Vec::new();
+            if let Some(value) = message.get("structured_output").filter(|v| !v.is_null()) {
+                events.push(AiEvent::StructuredOutput {
+                    value: value.clone(),
+                });
+            }
+            events.push(AiEvent::Usage {
                 input_tokens: u64_of(&usage, "input_tokens")
                     + u64_of(&usage, "cache_creation_input_tokens")
                     + u64_of(&usage, "cache_read_input_tokens"),
                 output_tokens: u64_of(&usage, "output_tokens"),
                 cost_usd: message.get("total_cost_usd").and_then(Value::as_f64),
                 duration_ms: u64_of(message, "duration_ms"),
-            }];
+            });
             if message.get("is_error").and_then(Value::as_bool) == Some(true) {
                 events.push(AiEvent::Error {
                     message: str_of(message, "result")
@@ -361,6 +375,38 @@ mod tests {
         assert!(events_of(&json!({"type":"rate_limit_event"})).is_empty());
         assert!(events_of(&json!({"type":"system","subtype":"thinking_tokens"})).is_empty());
         assert!(events_of(&json!("junk")).is_empty());
+    }
+
+    /// Recorded from `claude -p --json-schema … --tools Read,Glob,Grep` (CLI 2.1.310): the value
+    /// comes through a `StructuredOutput` tool call and again in the result line.
+    #[test]
+    fn maps_the_structured_output_of_a_result() {
+        let call = json!({"type":"assistant","message":{"content":[{"type":"tool_use","id":"toolu_01Sf","name":"StructuredOutput","input":{"answer":42,"file":"docs/architecture.md"}}]}});
+        assert!(
+            events_of(&call).is_empty(),
+            "the internal call is not shown"
+        );
+        let result = json!({"type":"result","subtype":"success","is_error":false,"duration_ms":1450,"total_cost_usd":0.0062,"usage":{"input_tokens":2,"cache_creation_input_tokens":30771,"cache_read_input_tokens":0,"output_tokens":105},"result":"{\"answer\":42}","structured_output":{"answer":42}});
+        assert_eq!(
+            events_of(&result),
+            vec![
+                AiEvent::StructuredOutput {
+                    value: json!({ "answer": 42 })
+                },
+                AiEvent::Usage {
+                    input_tokens: 30773,
+                    output_tokens: 105,
+                    cost_usd: Some(0.0062),
+                    duration_ms: 1450
+                }
+            ]
+        );
+        let none = json!({"type":"result","is_error":false,"structured_output":null});
+        assert!(
+            !events_of(&none)
+                .iter()
+                .any(|e| matches!(e, AiEvent::StructuredOutput { .. }))
+        );
     }
 
     #[test]

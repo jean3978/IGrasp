@@ -1,0 +1,22 @@
+{
+  "description": "a difficulty outside 1-5 rejects the whole answer",
+  "count": 10,
+  "output": {
+    "insufficientMaterial": false,
+    "questions": [
+      {
+        "id": "q1",
+        "kind": "trueFalse",
+        "question": "Orbit debounces disk events for 200 ms before updating its index.",
+        "choices": ["True", "False"],
+        "answer": 0,
+        "hint": "The architecture page.",
+        "explanation": "docs/architecture.md says batches are debounced for 200 ms.",
+        "sources": [{ "path": "docs/architecture.md", "firstLine": 7, "lastLine": 7 }],
+        "difficulty": 7,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      }
+    ]
+  },
+  "expected": { "shapeError": true }
+}

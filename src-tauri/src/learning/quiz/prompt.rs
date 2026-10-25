@@ -1,0 +1,579 @@
+//! The quiz generation prompt and the repair prompt, assembled from fixed blocks (owned by the
+//! app, provider-neutral: every provider receives the same instructions) and the project's
+//! facts. A snapshot test keeps the text stable; a neutrality test checks it names no provider.
+
+use super::difficulty::plan_text;
+use super::{QuizCategory, QuizExclusion, QuizRound};
+use crate::learning::corpus::{SourceScope, profile_block};
+use crate::learning::hoot::HOOT_TONE;
+use crate::learning::role::{RoleFamily, family, focus};
+use crate::learning::subjects::Subject;
+use crate::profile::ProjectProfile;
+
+/// Everything the generation prompt is made of.
+pub struct PromptInput<'a> {
+    pub profile: &'a ProjectProfile,
+    pub subject: Option<&'a Subject>,
+    pub custom_subject: Option<&'a str>,
+    pub category: Option<QuizCategory>,
+    pub role: Option<&'a str>,
+    pub count: u32,
+    pub plan: [u32; 5],
+    pub scope: &'a SourceScope,
+    pub round: Option<QuizRound>,
+    pub exclude: &'a [QuizExclusion],
+    pub domain_gap: Option<&'a str>,
+    pub corpus_map: &'a str,
+    pub anchor_files: &'a str,
+    pub agent_files: &'a str,
+}
+
+/// What the quiz is about, as the prompt names it.
+pub fn subject_phrase(input: &PromptInput<'_>) -> String {
+    let name = &input.profile.name;
+    match (input.subject, input.custom_subject, input.scope) {
+        (Some(s), _, _) => format!("{name}'s \"{}\" ({})", s.title, s.focus),
+        (None, _, SourceScope::Paths { paths }) => {
+            format!("the code of {name} in {}", paths.join(", "))
+        }
+        (None, Some(t), _) => {
+            let what = match input.category {
+                Some(QuizCategory::Feature) => "a feature of the project",
+                Some(QuizCategory::Global) => "a concept across the project",
+                _ => "a subject",
+            };
+            format!(
+                "\"{t}\" in {name} ({what} that the player typed: interpret it in this project's terms; if the project has nothing about it, say so)"
+            )
+        }
+        (None, None, _) => format!(
+            "{name} as a whole (no specific subject): what it does, its architecture and main modules, how its parts interact, how it is built and tested, and the decisions behind it"
+        ),
+    }
+}
+
+/// "A" or "An" before a role.
+fn article(role: &str) -> &'static str {
+    if role.starts_with(['A', 'E', 'I', 'O', 'U', 'a', 'e', 'i', 'o', 'u']) {
+        "An"
+    } else {
+        "A"
+    }
+}
+
+/// Who takes the quiz: developers by default, else the role they gave, with the depth of code
+/// detail its family needs. The grounding rules stay the same for every role.
+fn audience_block(role: Option<&str>, gap: &str) -> String {
+    let developers = format!(
+        "They know how to program and how to use common tooling, but they may be new to this project, or new to a domain it uses ({gap}). Never explain programming basics (functions, variables, loops, git, package managers, what a framework is). Talk developer to developer: precise, concise, no hand-holding. Respect their expertise."
+    );
+    let Some(r) = role else {
+        return format!("Developers. {developers}");
+    };
+    let a = article(r);
+    let fam = family(r);
+    let focus = focus(fam).map_or_else(String::new, |f| {
+        format!(" Focus on what matters to their work: {f}.")
+    });
+    match fam {
+        RoleFamily::Developer => format!(
+            "{a} {r} on this project. {developers} Favour what they need to know to work on this project."
+        ),
+        RoleFamily::Qa => format!(
+            "{a} {r} on this project (new to a domain: {gap}). They read code and tests when they need to, but their craft is finding how things break: favour behaviour, edge cases, risks and tests over implementation details, and do not quiz them on syntax. Respect their expertise.{focus}"
+        ),
+        _ => format!(
+            "{a} {r} on this project, who may not read code every day (new to a domain: {gap}). Ask what they need to understand about how this project is made and how their own work fits into it: the structure, the behaviour, the pipelines and tools that touch their work, the conventions and the decisions. Prefer behaviour and structure to code details, and name code concepts in plain words when you need them, but every question is still about this project and cites the files that prove its answer. Do not quiz them on syntax. Respect their expertise in their own craft.{focus}"
+        ),
+    }
+}
+
+/// How the wizard's three choices (role, kind of quiz, subject) shape every question.
+fn fit_block(role: Option<&str>, category: Option<QuizCategory>) -> Option<String> {
+    let kind = category.map(|c| match c {
+        QuizCategory::Global => "global concepts: how the project is made across its parts (its architecture, its stack, the practices and patterns it follows), not one feature",
+        QuizCategory::Feature => "a feature: one thing the project does, followed end to end, not the project as a whole",
+        QuizCategory::Code => "a code check of the files they picked",
+    });
+    if role.is_none() && kind.is_none() {
+        return None;
+    }
+    let who = role.map_or_else(
+        || "this developer".to_owned(),
+        |r| format!("{} {r}", article(r).to_lowercase()),
+    );
+    let mut text = format!(
+        "Fit: the player chose their role, then the kind of quiz, then the subject; every question must serve all three. Ask only what {who} needs to know about this subject to do their work on this project."
+    );
+    if let Some(k) = kind {
+        text.push_str(&format!(" The kind of quiz is {k}."));
+    }
+    if let Some(r) = role
+        && !matches!(family(r), RoleFamily::Developer | RoleFamily::General)
+    {
+        text.push_str(" Never ask them to read code or reason about code they do not touch (function names, types, control flow, syntax): ask what this subject means for their work, and name code only in plain words, as the place where something is defined or what drives it. If this subject barely touches their work, ask about the places where it does, and say so in docsNote.");
+    }
+    Some(text)
+}
+
+/// What kind of questions to write: understanding by default, a precise code check for paths.
+fn style_block(scope: &SourceScope) -> &'static str {
+    match scope {
+        SourceScope::Paths { .. } => {
+            "Question style: a code check. The developer wants to be sure they understand this code precisely, for example before submitting it for review. Ask detailed questions about the code in these files: control flow and edge cases, early returns and error paths, invariants and assumptions, what a function returns or does in a given situation, what a change would break, how the code interacts with its callers. Precise line-level questions are welcome here."
+        }
+        _ => {
+            "Question style: test understanding, not memory. Ask what a concept or feature is in this project, how it is implemented and why that way, which parts collaborate and how data or control flows between them, what a design choice buys and what it costs, what would happen if something changed. Do not write trivia that only checks whether someone remembers one line: exact constant values, whether a function returns early, the name of a variable or parameter, the order of arguments, a count of lines or items. The explanation teaches the concept as this project implements it; the sources point to where it is implemented."
+        }
+    }
+}
+
+fn scope_block(scope: &SourceScope) -> String {
+    match scope {
+        SourceScope::WholeProject => "Sources: the whole project (code, configuration, build scripts, tests and documentation). Ask about how this project is made, not only about what its documentation says: at least half of the questions cite code, configuration, build or test files that you open with your tools (the anchor files below are only a starting point).".to_owned(),
+        SourceScope::DocumentationOnly => "Sources are limited to the project's documentation listed below; cite documentation files only. The code is not available in this quiz; questions are about what the documentation says about this project and how its parts fit.".to_owned(),
+        SourceScope::Paths { paths } => format!(
+            "Sources are limited to these files; cite them only: {}.",
+            paths.join(", ")
+        ),
+    }
+}
+
+fn round_block(round: Option<QuizRound>) -> Option<String> {
+    let r = round?;
+    Some(format!(
+        "This is round {} of {} of a quiz you write while the developer plays. They answered {} of {} right so far and are now at level {}: write this round at that level. Do not repeat the questions of the previous rounds of this conversation.",
+        r.number, r.of, r.right, r.asked, r.level
+    ))
+}
+
+fn exclusions_block(exclude: &[QuizExclusion]) -> Option<String> {
+    if exclude.is_empty() {
+        return None;
+    }
+    let items: Vec<String> = exclude
+        .iter()
+        .map(|e| match &e.source {
+            Some(s) => format!("- {} ({s})", e.question),
+            None => format!("- {}", e.question),
+        })
+        .collect();
+    Some(format!(
+        "The developer already answered these questions; do not ask them again, nor the same fact from the same lines:\n{}",
+        items.join("\n")
+    ))
+}
+
+/// How to write choices that do not give the answer away (players learn the tells fast: the
+/// longest, most detailed or most careful choice, or the one that echoes the question).
+const CHOICES_BLOCK: &str = "Choices that do not give the answer away: write every wrong choice with the same care as the right one, about the same length, detail, tone and grammar, so that only knowing this project tells them apart. Make them tempting: a real name of this project used in the wrong place, a reasonable design reason that is not this project's, what a similar project would do, a common misreading of this code. Never make the right choice the longest, the most precise or the most qualified (\"because\", \"so that\", \"only when\" only in the right one), never echo the question's words only in the right one, and never write a wrong choice that is absurd, a joke or off topic. The app shuffles the choices, so their order does not matter: never refer to a choice by its position or a letter (\"the first one\", \"option B\") in the question, the hint or the explanation; name what it says instead. For true/false, make about half of the statements false, each false one a plausible near-truth about this project.";
+
+/// The prompt of a generation (the first attempt).
+pub fn generation_prompt(input: &PromptInput<'_>) -> String {
+    let subject = subject_phrase(input);
+    let gap = input.domain_gap.map_or_else(
+        || "none stated".to_owned(),
+        |g| format!("they say: \"{g}\""),
+    );
+    let mut task = vec![
+        format!(
+            "Write {} questions about {subject}, with these difficulties: {}",
+            input.count,
+            plan_text(&input.plan)
+        ),
+        "(1 = a newcomer who read the README can answer it; 3 = you must have read the relevant code; 5 = you must understand how several parts of this project interact).".to_owned(),
+        scope_block(input.scope),
+        style_block(input.scope).to_owned(),
+    ];
+    task.extend(fit_block(input.role, input.category));
+    task.extend(round_block(input.round));
+    task.extend(exclusions_block(input.exclude));
+    task.push("Kinds: multiple choice (3 to 5 distinct choices, exactly one correct, the wrong ones plausible for someone who skimmed this project) and true/false (choices exactly [\"True\", \"False\"]). Mix them, at most one third true/false. Number the questions q1, q2, …".to_owned());
+    task.push(CHOICES_BLOCK.to_owned());
+    let agent = if input.agent_files.trim().is_empty() {
+        "(none)".to_owned()
+    } else {
+        input.agent_files.trim_end().to_owned()
+    };
+    format!(
+        "You are Hoot, the quiz master of IGrasp, writing a quiz about ONE specific software project for the person who has it open. You can read, list and search the project's files; you cannot change anything. Work only from what is actually in this project.
+
+# Audience
+{audience}
+
+# This project
+{profile}
+Use the project's own vocabulary (what its code and docs call things), not generic terms.
+
+# Your task
+{task}
+
+# Grounding rules (non-negotiable)
+1. Every question is about THIS project: what a file does here, why it is done that way here, how it connects to the rest of this project. A question whose answer would be the same in any project is invalid: no \"What does HTTP 404 mean?\", no \"What is a MonoBehaviour?\".
+2. Every question cites at least one source: a root-relative path from the corpus below, with the line range that holds the fact (at most 120 lines) for text files. The first source is what the developer opens to read more. Cite what you actually read; never invent a path or a line range.
+3. Industry standards are welcome as this project applies them. A question may test a standard concept or process of the trade (a design pattern, a security practice, a testing technique, a CI or release step, an asset pipeline convention, a game-design principle) when its answer depends on how THIS project applies it and it cites where: one or two sentences of concept, immediately applied (\"Unreal replicates properties marked Replicated; here AShipPawn replicates Health and Shield but computes Speed locally, see ShipPawn.h:42-58\"). Never a definition alone; at most about a third of the questions are of this kind.
+4. Files written for AI agents (listed under \"Agent instructions\" below) are context about conventions. Never cite them, never ask about their content: the quiz is about the project, not about agent instructions.
+5. Binary assets (images, models, scenes saved as binary, …) cannot be read. Their names and folders may be evidence of layout; never claim what one contains. A binary path may be a secondary source, never the only one.
+6. Files that may hold secrets (.env, keys, certificates, credentials) are off limits: do not read them, do not cite them, do not quote them.
+7. If the project has too little material for {subject}, say so: set insufficientMaterial to true, explain in materialNote, suggest better subjects in suggestedSubjects, and write only the questions the material supports. Never fill the gap with generic content.
+8. Documentation: while you read, judge whether the project's documentation explains {subject} well enough for {reader}. If it is missing, thin or contradicted by the code, say so in docsNote, in one or two plain sentences to the player: what is not documented and where a page would help (\"Nothing documents how sprites are imported or named; a page in docs/ on the art pipeline would help\"). Leave docsNote out when the documentation is adequate. Missing documentation is a finding about the project, not a reason for generic questions: still write the questions the code and configuration support.
+
+# Self-check (do it for every question before answering)
+Ask: \"Would this question, its answer and its explanation still be true and useful in an unrelated project?\" If yes, rewrite it around something specific to this project, or drop it. Record the verdict in selfCheck (projectSpecific must be true for a kept question; reason says what makes it specific: a path, an identifier, a decision).
+Also check: the question or the explanation names something of this project (a file, an identifier, a module); the hint does not contain the answer; the choices are distinct and none is \"all of the above\" or \"none of the above\"; someone who does not know this project could not guess the right choice from its length, detail or wording; the line range exists in the file you read.
+
+# Voice: Hoot
+{HOOT_TONE}
+
+# Output
+Answer with JSON only, following the schema you were given. No prose outside the JSON.
+
+# Corpus (root-relative paths; sizes; language)
+{map}
+
+# Anchor files (with line numbers)
+{anchors}
+
+# Agent instructions (context only, never a source)
+{agent}
+",
+        profile = profile_block(input.profile),
+        audience = audience_block(input.role, &gap),
+        reader = input.role.map_or_else(
+            || "a developer new to this project".to_owned(),
+            |r| format!("{} {r}", article(r).to_lowercase())
+        ),
+        task = task.join("\n"),
+        map = input.corpus_map,
+        anchors = input.anchor_files.trim_end(),
+    )
+}
+
+/// The prompt of a generation that continues a conversation (an adaptive round, or more
+/// questions): the project, the corpus and the rules are already in it.
+pub fn continuation_prompt(input: &PromptInput<'_>) -> String {
+    let subject = subject_phrase(input);
+    let mut lines = Vec::new();
+    lines.extend(round_block(input.round));
+    lines.push(format!(
+        "Write {} new questions about {subject}, with these difficulties: {}.",
+        input.count,
+        plan_text(&input.plan)
+    ));
+    lines.push(scope_block(input.scope));
+    lines.push(style_block(input.scope).to_owned());
+    lines.extend(fit_block(input.role, input.category));
+    lines.extend(exclusions_block(input.exclude));
+    lines.push(CHOICES_BLOCK.to_owned());
+    lines.push("Do not repeat any question of this conversation. The grounding rules, the self-check, Hoot's voice and the schema are the same as before: every question cites lines you actually read in this project. Number the questions q1, q2, … Answer with JSON only.".to_owned());
+    lines.join("\n")
+}
+
+/// The prompt of a retry: the accepted questions stay, the rejected ones are replaced.
+pub fn repair_prompt(
+    kept: usize,
+    rejected: &[(String, String)],
+    missing: &[u32],
+    short_by: usize,
+) -> String {
+    let mut lines = vec![format!(
+        "Thank you. IGrasp checked your questions against the project. {kept} were accepted."
+    )];
+    if rejected.is_empty() && short_by > 0 {
+        lines.push(format!(
+            "Add {short_by} new questions that respect the rules, and return the complete JSON again with the accepted questions unchanged (same ids)."
+        ));
+    } else if rejected.is_empty() {
+        lines.push(
+            "Your answer could not be read as the quiz JSON. Return the complete JSON again, following the schema."
+                .to_owned(),
+        );
+    } else {
+        lines.push(format!(
+            "Replace the following {} questions with new ones that respect the rules, and return the complete JSON again with the accepted questions unchanged (same ids):",
+            rejected.len()
+        ));
+        for (id, reason) in rejected {
+            lines.push(format!("- {id}: {reason}"));
+        }
+    }
+    if !missing.is_empty() {
+        let levels: Vec<String> = missing.iter().map(u32::to_string).collect();
+        lines.push(format!(
+            "The plan still needs at least one question of difficulty {}.",
+            levels.join(", ")
+        ));
+    }
+    lines.push("Same schema, JSON only.".to_owned());
+    lines.join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::*;
+    use crate::learning::subjects::Material;
+    use crate::profile::summary::DocsFacts;
+    use crate::profile::{Confidence, Detected, ProfileCorrections, ProjectKind};
+
+    fn profile() -> ProjectProfile {
+        ProjectProfile {
+            name: "demo".into(),
+            kinds: vec![Detected {
+                value: ProjectKind::Cli,
+                confidence: Confidence::High,
+                evidence: vec!["package.json".into()],
+            }],
+            engines: vec![],
+            frameworks: vec![],
+            languages: vec![],
+            dependencies: vec!["vitest".into()],
+            build: vec![],
+            tests: vec![],
+            ci: vec![],
+            modules: vec![],
+            docs: DocsFacts::default(),
+            repository: true,
+            summary: "demo: a command-line tool in TypeScript.".into(),
+            corrections: ProfileCorrections {
+                notes: "Also a server.".into(),
+                ..ProfileCorrections::default()
+            },
+            files_seen: 3,
+            truncated: false,
+            built_ms: 1,
+        }
+    }
+
+    fn subject() -> Subject {
+        Subject {
+            id: "build".into(),
+            group: crate::learning::subjects::SubjectGroup::Global,
+            title: "How demo is built".into(),
+            focus: "its scripts".into(),
+            anchors: vec!["Makefile".into()],
+            material: Material::Some,
+            files: 2,
+            bytes: 3000,
+            has_docs: false,
+        }
+    }
+
+    fn prompt(round: Option<QuizRound>, scope: &SourceScope, exclude: &[QuizExclusion]) -> String {
+        let p = profile();
+        let s = subject();
+        generation_prompt(&PromptInput {
+            profile: &p,
+            subject: Some(&s),
+            custom_subject: None,
+            category: None,
+            role: None,
+            count: 5,
+            plan: [1, 2, 1, 1, 0],
+            scope,
+            round,
+            exclude,
+            domain_gap: Some("I'm new to make"),
+            corpus_map: "Makefile (20 B)\nsrc/ (1 files, 300 B)\n  src/main.ts (300 B, TypeScript)",
+            anchor_files: "## Makefile (2 lines)\n  1 | build:\n  2 | \tnpm run build\n",
+            agent_files: "## AGENTS.md (1 lines)\n  1 | Be brief.\n",
+        })
+    }
+
+    /// The prompt of a fixed quiz, compared with `snapshots/generation.txt`. Run with
+    /// `UPDATE_SNAPSHOTS=1` to write the snapshot again after a deliberate change.
+    #[test]
+    fn the_generation_prompt_snapshot() {
+        let text = prompt(None, &SourceScope::WholeProject, &[]);
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src/learning/quiz/snapshots/generation.txt");
+        if std::env::var_os("UPDATE_SNAPSHOTS").is_some() {
+            std::fs::write(&path, &text).unwrap();
+        }
+        let expected = std::fs::read_to_string(&path)
+            .unwrap()
+            .replace("\r\n", "\n");
+        assert_eq!(text, expected);
+    }
+
+    #[test]
+    fn a_typed_subject_and_a_code_check() {
+        let p = profile();
+        let base = |custom: Option<&'static str>, scope: &'static SourceScope| PromptInput {
+            profile: &p,
+            subject: None,
+            custom_subject: custom,
+            category: None,
+            role: None,
+            count: 5,
+            plan: [1, 2, 1, 1, 0],
+            scope,
+            round: None,
+            exclude: &[],
+            domain_gap: None,
+            corpus_map: "",
+            anchor_files: "",
+            agent_files: "",
+        };
+        static WHOLE: SourceScope = SourceScope::WholeProject;
+        let typed = generation_prompt(&base(Some("How saving works"), &WHOLE));
+        assert!(typed.contains("\"How saving works\" in demo (a subject that the player typed"));
+        assert!(typed.contains("test understanding, not memory"));
+        assert!(typed.contains("whether a function returns early"));
+        // The kind of quiz tells what a typed subject is.
+        let feature = generation_prompt(&PromptInput {
+            category: Some(QuizCategory::Feature),
+            ..base(Some("Fishing"), &WHOLE)
+        });
+        assert!(
+            feature.contains("\"Fishing\" in demo (a feature of the project that the player typed")
+        );
+        // The role sets the audience: developers by default, a role's own depth otherwise.
+        assert!(typed.contains("# Audience\nDevelopers. They know how to program"));
+        let programmer = generation_prompt(&PromptInput {
+            role: Some("Gameplay programmer"),
+            ..base(None, &WHOLE)
+        });
+        assert!(
+            programmer.contains("A Gameplay programmer on this project. They know how to program")
+        );
+        let artist = generation_prompt(&PromptInput {
+            role: Some("Artist"),
+            ..base(None, &WHOLE)
+        });
+        assert!(artist.contains("An Artist on this project, who may not read code every day"));
+        assert!(artist.contains("cites the files that prove its answer"));
+        assert!(artist.contains("Focus on what matters to their work: how their assets get into"));
+        assert!(!artist.contains("Never explain programming basics"));
+        // The role, the kind and the subject shape every question together.
+        assert!(artist.contains("Ask only what an Artist needs to know about this subject"));
+        assert!(artist.contains("Never ask them to read code or reason about code"));
+        assert!(!programmer.contains("Never ask them to read code"));
+        let feature_artist = generation_prompt(&PromptInput {
+            role: Some("Artist"),
+            category: Some(QuizCategory::Feature),
+            ..base(Some("Fishing"), &WHOLE)
+        });
+        assert!(
+            feature_artist.contains("The kind of quiz is a feature: one thing the project does")
+        );
+        assert!(!typed.contains("Fit: "));
+        let qa = generation_prompt(&PromptInput {
+            role: Some("QA engineer"),
+            ..base(None, &WHOLE)
+        });
+        assert!(qa.contains("A QA engineer on this project (new to a domain"));
+        assert!(qa.contains("their craft is finding how things break"));
+        // Industry standards as the project applies them, and the documentation report.
+        assert!(artist.contains("Industry standards are welcome as this project applies them"));
+        assert!(artist.contains("well enough for an Artist. If it is missing"));
+        assert!(typed.contains("well enough for a developer new to this project"));
+        static PATHS: std::sync::LazyLock<SourceScope> =
+            std::sync::LazyLock::new(|| SourceScope::Paths {
+                paths: vec!["src/save".into(), "src/main.ts".into()],
+            });
+        let check = generation_prompt(&base(None, &PATHS));
+        assert!(check.contains("the code of demo in src/save, src/main.ts"));
+        assert!(check.contains("Question style: a code check"));
+        assert!(!check.contains("test understanding, not memory"));
+    }
+
+    /// The first prompt and every later round ask for choices that do not give the answer away,
+    /// never named by their position (the app shuffles them).
+    #[test]
+    fn every_round_asks_for_choices_alike_and_never_by_position() {
+        let p = profile();
+        let s = subject();
+        let input = PromptInput {
+            profile: &p,
+            subject: Some(&s),
+            custom_subject: None,
+            category: None,
+            role: None,
+            count: 5,
+            plan: [1, 2, 1, 1, 0],
+            scope: &SourceScope::WholeProject,
+            round: None,
+            exclude: &[],
+            domain_gap: None,
+            corpus_map: "",
+            anchor_files: "",
+            agent_files: "",
+        };
+        for text in [generation_prompt(&input), continuation_prompt(&input)] {
+            assert!(text.contains("Never make the right choice the longest"));
+            assert!(text.contains("never refer to a choice by its position"));
+        }
+    }
+
+    #[test]
+    fn the_prompt_names_no_provider() {
+        let text = prompt(None, &SourceScope::WholeProject, &[]).to_lowercase()
+            + &repair_prompt(1, &[("q2".into(), "generic".into())], &[4], 0).to_lowercase();
+        for name in [
+            "claude",
+            "anthropic",
+            "gpt",
+            "openai",
+            "gemini",
+            "codex",
+            "ollama",
+        ] {
+            assert!(!text.contains(name), "{name}");
+        }
+    }
+
+    #[test]
+    fn scope_round_and_exclusion_blocks() {
+        let docs = prompt(None, &SourceScope::DocumentationOnly, &[]);
+        assert!(docs.contains("cite documentation files only. The code is not available"));
+        let round = prompt(
+            Some(QuizRound {
+                number: 2,
+                of: 2,
+                asked: 5,
+                right: 4,
+                level: 3,
+            }),
+            &SourceScope::WholeProject,
+            &[QuizExclusion {
+                question: "Which file builds?".into(),
+                source: Some("Makefile".into()),
+            }],
+        );
+        assert!(round.contains("This is round 2 of 2"));
+        assert!(round.contains("They answered 4 of 5 right so far and are now at level 3"));
+        assert!(round.contains("- Which file builds? (Makefile)"));
+        assert!(round.contains("The developer adds: Also a server."));
+        assert!(round.contains("they say: \"I'm new to make\""));
+    }
+
+    #[test]
+    fn repair_prompt_lists_reasons_and_missing_levels() {
+        let text = repair_prompt(
+            7,
+            &[
+                (
+                    "q3".into(),
+                    "cites CLAUDE.md, an agent instruction file".into(),
+                ),
+                (
+                    "q5".into(),
+                    "src/a.rs has 212 lines; lines 400-420 do not exist".into(),
+                ),
+            ],
+            &[4],
+            0,
+        );
+        assert!(text.starts_with(
+            "Thank you. IGrasp checked your questions against the project. 7 were accepted."
+        ));
+        assert!(text.contains("Replace the following 2 questions"));
+        assert!(text.contains("- q3: cites CLAUDE.md, an agent instruction file"));
+        assert!(text.contains("at least one question of difficulty 4."));
+        assert!(text.ends_with("Same schema, JSON only."));
+        assert!(repair_prompt(0, &[], &[], 0).contains("could not be read as the quiz JSON"));
+        assert!(repair_prompt(4, &[], &[], 6).contains("Add 6 new questions"));
+    }
+}

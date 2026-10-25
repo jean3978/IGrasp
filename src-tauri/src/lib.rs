@@ -6,9 +6,11 @@ mod commands;
 mod error;
 mod graph;
 mod index;
+mod learning;
 mod paths;
 #[cfg(test)]
 mod perf;
+mod profile;
 mod search;
 mod state;
 
@@ -103,6 +105,18 @@ pub fn run() {
             commands::ai::save_conversation,
             commands::ai::delete_conversation,
             commands::ai::forget_conversations,
+            commands::learning::get_project_profile,
+            commands::learning::set_profile_corrections,
+            commands::learning::list_subjects,
+            commands::learning::get_current_quiz,
+            commands::learning::save_current_quiz,
+            commands::learning::clear_current_quiz,
+            commands::learning::list_quiz_history,
+            commands::learning::get_quiz_record,
+            commands::learning::forget_quizzes,
+            commands::learning::save_quiz_markdown,
+            commands::learning::list_quiz_files,
+            commands::learning::read_quiz_file,
         ])
         .build(tauri::generate_context!())
         .expect("error while building IGrasp")

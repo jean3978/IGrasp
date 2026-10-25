@@ -19,6 +19,8 @@ pub enum ErrorCode {
     Forbidden,
     InvalidPattern,
     Ai,
+    SaveCancelled,
+    NotAQuizFile,
 }
 
 /// Shape of every error returned by a command.
@@ -55,6 +57,10 @@ pub enum AppError {
     InvalidPattern(String),
     #[error("{0}")]
     Ai(String),
+    #[error("The save was cancelled.")]
+    SaveCancelled,
+    #[error("Not a quiz file: {0}")]
+    NotAQuizFile(String),
 }
 
 impl AppError {
@@ -72,6 +78,8 @@ impl AppError {
             Self::Forbidden(_) => ErrorCode::Forbidden,
             Self::InvalidPattern(_) => ErrorCode::InvalidPattern,
             Self::Ai(_) => ErrorCode::Ai,
+            Self::SaveCancelled => ErrorCode::SaveCancelled,
+            Self::NotAQuizFile(_) => ErrorCode::NotAQuizFile,
         }
     }
 }

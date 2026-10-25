@@ -22,6 +22,11 @@ Tabs behave like VS Code:
 The tab bar follows the WAI-ARIA tabs pattern with manual activation: ← / → move the focus,
 Enter or Space activates.
 
+Besides files, three special tabs open once each: Settings, Keyboard Shortcuts and **Quiz**
+(Learn → Quiz Me…, `Ctrl+Alt+Q`; see [quiz.md](quiz.md)). Special tabs are not part of the
+session; the quiz in progress is kept in app data (`learning/`) after each answer, and the Quiz
+tab offers to continue it when it opens again, even after a restart.
+
 ## Session restore
 
 For every folder, IGrasp remembers (in the app-data folder, `sessions.json`):

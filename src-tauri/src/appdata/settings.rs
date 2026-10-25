@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use crate::learning::quiz::QuizMode;
+
 pub const MIN_FONT_SIZE: u32 = 12;
 pub const MAX_FONT_SIZE: u32 = 24;
 
@@ -151,6 +153,105 @@ impl AiSettingsPatch {
     }
 }
 
+/// The sources a new quiz reads by default.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum QuizScopeSetting {
+    #[default]
+    WholeProject,
+    DocumentationOnly,
+}
+
+pub const DEFAULT_QUIZ_QUESTIONS: u32 = 10;
+pub const MIN_QUIZ_QUESTIONS: u32 = 5;
+pub const MAX_QUIZ_QUESTIONS: u32 = 30;
+pub const DEFAULT_QUIZ_RESULTS_FOLDER: &str = "quiz-results";
+pub const DEFAULT_QUIZZES_FOLDER: &str = "quizzes";
+
+/// The learning features (quiz now, tutorials later).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct LearningSettings {
+    /// Questions of a new quiz (5–30).
+    pub quiz_questions: u32,
+    pub quiz_mode: QuizMode,
+    pub quiz_scope: QuizScopeSetting,
+    /// Particles, confetti and shakes (also off when the system asks for reduced motion).
+    pub effects: bool,
+    /// Where "Save results…" and "Save quiz…" open, relative to the opened folder.
+    pub quiz_results_folder: String,
+    pub quizzes_folder: String,
+}
+
+impl Default for LearningSettings {
+    fn default() -> Self {
+        Self {
+            quiz_questions: DEFAULT_QUIZ_QUESTIONS,
+            quiz_mode: QuizMode::Fixed,
+            quiz_scope: QuizScopeSetting::WholeProject,
+            effects: true,
+            quiz_results_folder: DEFAULT_QUIZ_RESULTS_FOLDER.to_owned(),
+            quizzes_folder: DEFAULT_QUIZZES_FOLDER.to_owned(),
+        }
+    }
+}
+
+/// A folder name relative to the opened folder: `/`-separated plain segments, no `..`, no
+/// drive, no absolute path; anything else falls back to `default`.
+fn relative_folder(value: &str, default: &str) -> String {
+    let v = value.trim().replace('\\', "/");
+    let absolute = v.starts_with('/');
+    let v = v.trim_end_matches('/');
+    let ok = !absolute
+        && !v.is_empty()
+        && !v.contains(':')
+        && v.split('/').all(|s| {
+            !s.is_empty()
+                && s != "."
+                && s != ".."
+                && s.chars()
+                    .all(|c| c.is_alphanumeric() || matches!(c, '-' | '_' | '.' | ' '))
+        });
+    if ok { v.to_owned() } else { default.to_owned() }
+}
+
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, optional_fields)]
+pub struct LearningSettingsPatch {
+    pub quiz_questions: Option<u32>,
+    pub quiz_mode: Option<QuizMode>,
+    pub quiz_scope: Option<QuizScopeSetting>,
+    pub effects: Option<bool>,
+    pub quiz_results_folder: Option<String>,
+    pub quizzes_folder: Option<String>,
+}
+
+impl LearningSettingsPatch {
+    pub fn apply(self, s: &mut LearningSettings) {
+        if let Some(v) = self.quiz_questions {
+            s.quiz_questions = v;
+        }
+        if let Some(v) = self.quiz_mode {
+            s.quiz_mode = v;
+        }
+        if let Some(v) = self.quiz_scope {
+            s.quiz_scope = v;
+        }
+        if let Some(v) = self.effects {
+            s.effects = v;
+        }
+        if let Some(v) = self.quiz_results_folder {
+            s.quiz_results_folder = v;
+        }
+        if let Some(v) = self.quizzes_folder {
+            s.quizzes_folder = v;
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
 #[ts(export)]
@@ -169,6 +270,7 @@ pub struct Settings {
     pub show_ignored: bool,
     pub window_frame: WindowFrame,
     pub ai: AiSettings,
+    pub learning: LearningSettings,
 }
 
 impl Default for Settings {
@@ -184,6 +286,7 @@ impl Default for Settings {
             show_ignored: false,
             window_frame: WindowFrame::Custom,
             ai: AiSettings::default(),
+            learning: LearningSettings::default(),
         }
     }
 }
@@ -214,6 +317,13 @@ impl Settings {
             ai.model.clear();
         }
         ai.history_limit = ai.history_limit.clamp(MIN_HISTORY_LIMIT, MAX_HISTORY_LIMIT);
+        let learning = &mut self.learning;
+        learning.quiz_questions = learning
+            .quiz_questions
+            .clamp(MIN_QUIZ_QUESTIONS, MAX_QUIZ_QUESTIONS);
+        learning.quiz_results_folder =
+            relative_folder(&learning.quiz_results_folder, DEFAULT_QUIZ_RESULTS_FOLDER);
+        learning.quizzes_folder = relative_folder(&learning.quizzes_folder, DEFAULT_QUIZZES_FOLDER);
     }
 }
 
@@ -231,6 +341,7 @@ pub struct SettingsPatch {
     pub show_ignored: Option<bool>,
     pub window_frame: Option<WindowFrame>,
     pub ai: Option<AiSettingsPatch>,
+    pub learning: Option<LearningSettingsPatch>,
 }
 
 impl SettingsPatch {
@@ -258,6 +369,9 @@ impl SettingsPatch {
         }
         if let Some(v) = self.ai {
             v.apply(&mut s.ai);
+        }
+        if let Some(v) = self.learning {
+            v.apply(&mut s.learning);
         }
         if let Some(v) = self.window_frame {
             s.window_frame = v;
@@ -350,5 +464,38 @@ mod tests {
         s.normalize();
         assert_eq!(s.ai.model, "", "a flag-like model is dropped");
         assert_eq!(s.ai.permissions.commands, PermissionRule::Allow);
+    }
+
+    #[test]
+    fn learning_settings_default_patch_and_validate() {
+        let s: Settings = serde_json::from_str(r#"{ "theme": "dark" }"#).unwrap();
+        assert_eq!(s.learning, LearningSettings::default());
+        let json = serde_json::to_value(&s).unwrap();
+        assert_eq!(
+            json["learning"],
+            serde_json::json!({
+                "quizQuestions": 10,
+                "quizMode": "fixed",
+                "quizScope": "wholeProject",
+                "effects": true,
+                "quizResultsFolder": "quiz-results",
+                "quizzesFolder": "quizzes",
+            })
+        );
+        let mut s = Settings::default();
+        let patch: SettingsPatch = serde_json::from_str(
+            r#"{ "learning": { "quizQuestions": 99, "quizMode": "adaptive", "quizzesFolder": " docs\\quizzes/ ", "quizResultsFolder": "../out" } }"#,
+        )
+        .unwrap();
+        patch.apply(&mut s);
+        s.normalize();
+        assert_eq!(s.learning.quiz_questions, MAX_QUIZ_QUESTIONS);
+        assert_eq!(s.learning.quiz_mode, QuizMode::Adaptive);
+        assert_eq!(s.learning.quizzes_folder, "docs/quizzes");
+        assert_eq!(s.learning.quiz_results_folder, DEFAULT_QUIZ_RESULTS_FOLDER);
+        assert!(s.learning.effects, "untouched");
+        for bad in ["/abs", "C:/x", "a/../b", "", "  "] {
+            assert_eq!(relative_folder(bad, "d"), "d", "{bad:?}");
+        }
     }
 }

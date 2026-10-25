@@ -2,6 +2,7 @@
 import type { AiCapture } from "./AiCapture";
 import type { AiImage } from "./AiImage";
 import type { AiPolicy } from "./AiPolicy";
+import type { QuizGenerationInput } from "./QuizGenerationInput";
 import type { JsonValue } from "./serde_json/JsonValue";
 
 /**
@@ -12,4 +13,9 @@ export type AiStartRequest = { prompt: string, model?: string, resumeId?: string
 /**
  * Root-relative paths from `ai_context`, in its order.
  */
-contextPaths: Array<string>, capture?: AiCapture, images: Array<AiImage>, policy: AiPolicy, outputSchema?: JsonValue, };
+contextPaths: Array<string>, capture?: AiCapture, images: Array<AiImage>, policy: AiPolicy, outputSchema?: JsonValue, 
+/**
+ * For `QuizGeneration`: what the user chose. The backend composes the prompt and the schema
+ * and ignores `prompt`, `context_paths`, `capture`, `images`, `policy` and `output_schema`.
+ */
+quiz?: QuizGenerationInput, };

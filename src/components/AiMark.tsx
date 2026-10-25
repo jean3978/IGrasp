@@ -4,8 +4,11 @@ import { useAiProvider } from '../stores/aiProvider';
 import { useSettings } from '../stores/settings';
 import './aiMark.css';
 
-/** `uses`: the control spends tokens. `feature`: it opens the AI feature, which is free. */
-export type AiMarkVariant = 'uses' | 'feature';
+/**
+ * `uses`: the control spends tokens. `feature`: it opens the AI chat, which is free. `quiz`: it
+ * opens the quiz, which is free (its Start spends).
+ */
+export type AiMarkVariant = 'uses' | 'feature' | 'quiz';
 
 /**
  * The small sparkle that tells the user a control belongs to the AI feature. The provider's
@@ -22,11 +25,13 @@ export function AiMark({ variant = 'uses' }: { variant?: AiMarkVariant }) {
   }, [providers, loadProviders]);
   const name = statusName ?? providers?.find((p) => p.id === providerId)?.displayName;
   const tooltip =
-    variant === 'feature'
-      ? `Opening the chat is free; sending a message uses ${name ?? 'AI'}`
-      : name
-        ? `Uses AI (${name})`
-        : 'Uses AI';
+    variant === 'quiz'
+      ? `Opening the quiz is free; generating one uses ${name ?? 'AI'}`
+      : variant === 'feature'
+        ? `Opening the chat is free; sending a message uses ${name ?? 'AI'}`
+        : name
+          ? `Uses AI (${name})`
+          : 'Uses AI';
   return (
     <span
       className="ai-mark"

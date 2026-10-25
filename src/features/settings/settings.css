@@ -74,6 +74,29 @@
   resize: vertical;
 }
 
+.settings-number,
+.settings-text {
+  padding: 4px 8px;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-m);
+  background: var(--bg-input);
+  color: var(--fg);
+  font-size: var(--font-size-ui);
+}
+
+.settings-number {
+  width: 80px;
+}
+
+.settings-text {
+  width: 220px;
+  font-family: var(--font-mono);
+}
+
+.settings-text[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
 .settings-path {
   flex-basis: 100%;
   overflow: hidden;
@@ -194,4 +217,8 @@
 .settings-ai .ai-status-problem {
   padding: 8px;
   border-radius: var(--radius-m);
+}
+
+.settings-learning-profile {
+  margin: 8px 0 16px;
 }

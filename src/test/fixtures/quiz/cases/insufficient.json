@@ -1,0 +1,24 @@
+{
+  "description": "too little material is an accepted outcome with the questions the material supports",
+  "count": 10,
+  "output": {
+    "insufficientMaterial": true,
+    "materialNote": "Orbit has no tests yet: Hoot wrote one question about the watcher instead.",
+    "suggestedSubjects": ["How the watcher feeds the index"],
+    "questions": [
+      {
+        "id": "q1",
+        "kind": "multipleChoice",
+        "question": "Which constant of the watcher holds the debounce delay in Orbit?",
+        "choices": ["DEBOUNCE_MS", "POLL_INTERVAL", "DELAY"],
+        "answer": 0,
+        "hint": "Top of the watcher file.",
+        "explanation": "DEBOUNCE_MS in src/index/watcher.rs is 200.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 4, "lastLine": 4 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      }
+    ]
+  },
+  "expected": { "accepted": ["q1"], "rejected": {}, "insufficient": true }
+}

@@ -71,4 +71,35 @@
   --ai-highlight-border: #ec9a78;
   --ai-selection-bg: rgb(224 137 106 / 0.42);
   --ai-selection-fg: #ffffff;
+
+  /* Learning: the profile's language bar, the quiz's verdicts and flames, Hoot the owl. */
+  --profile-bar-0: #4d9be6;
+  --profile-bar-1: #e3935a;
+  --profile-bar-2: #51cf66;
+  --profile-bar-3: #cc5de8;
+  --profile-bar-4: #f06595;
+  --profile-bar-5: #8b949e;
+  --quiz-good: #3fb950;
+  --quiz-good-bg: #12261e;
+  --quiz-bad: #f85149;
+  --quiz-bad-bg: #2d1416;
+  --quiz-flame: #ff922b;
+  --quiz-flame-core: #ffe066;
+  --quiz-flame-off: #3d3d3d;
+  --quiz-flame-idle: #75706b;
+  --quiz-card: #252220;
+  --quiz-card-border: #3d3530;
+  --quiz-card-shadow: 0 6px 24px rgb(0 0 0 / 0.4);
+  --hoot-feather: #b07d4c;
+  --hoot-feather-dark: #85593a;
+  --hoot-belly: #ead7b4;
+  --hoot-beak: #f0ad4e;
+  --hoot-frame: #1a1412;
+  --hoot-eye: #1a1412;
+  --hoot-eye-white: #fffaf2;
+  --hoot-blush: #e8908a;
+  --hoot-outline: transparent;
+  --hoot-branch: #6b5139;
+  --hoot-bubble: #2d2724;
+  --hoot-bubble-border: #4d3a31;
 }

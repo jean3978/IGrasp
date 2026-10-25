@@ -110,7 +110,7 @@ export function estimateSize(
       : approxTokens < MEDIUM_BELOW_TOKENS
         ? 'medium'
         : 'large';
-  return { bytes, approxTokens, bucket, documents: documents.length, images };
+  return { bytes, approxTokens, bucket, documents: documents.length, images, inlined: [] };
 }
 
 /** The request the provider receives (`context::request_from`). */

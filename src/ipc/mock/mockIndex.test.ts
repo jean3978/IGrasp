@@ -18,6 +18,7 @@ describe('mock index', () => {
       'docs/guide/advanced/deep-dive.markdown',
       'docs/guide/getting-started.md',
       'notes/TODO.MD',
+      'quizzes/quiz-architecture.md',
     ]);
   });
 
@@ -37,7 +38,7 @@ describe('mock index', () => {
 
   it('lists folders first, in natural order, hiding folders without markdown', () => {
     const listing = listFixtureDir(scanFixture(files, base), '');
-    expect(listing?.dirs.map((d) => d.name)).toEqual(['docs', 'notes']);
+    expect(listing?.dirs.map((d) => d.name)).toEqual(['docs', 'notes', 'quizzes']);
     expect(listing?.dirs[0]?.mdCount).toBe(5);
     expect(listing?.files.map((f) => f.name)).toEqual(['AGENTS.md', 'CHANGELOG.md', 'README.md']);
     expect(listFixtureDir(scanFixture(files, base), 'src')).toBeNull();

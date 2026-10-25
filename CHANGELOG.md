@@ -7,8 +7,77 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-25
+
+Phase 4 — Quiz Me: Hoot the owl asks you questions about how the open project is made, written by
+the AI from the project's own files, each citing the lines that prove its answer. Built for
+developers by default and for every role of a team (artists, designers, producers, QA…), on any
+kind of project (games, web, tools, libraries), with nothing generic.
+
+### Added
+
+- **Project profile** detected locally, without AI, from a marker table: kinds, engines with
+  versions (Unreal, Unity, Godot, Bevy, ...), frameworks, languages, modules, build, tests, CI
+  and a one-line summary, with the files that justify each value. Correct it (remove, add, notes
+  for the generators) and the corrections are kept per folder in app data
+  ([ADR 0021](docs/decisions/0021-project-profile-from-a-marker-table.md)).
+- **Quiz Me** (Learn menu, `Ctrl+Alt+Q`): a Quiz tab with subjects proposed from the profile,
+  5 to 30 questions, **Fixed** (one AI call) or **Adaptive** (rounds of 5 at your level, each
+  round started by your Next round), **Whole project** or **Documentation only** sources, the
+  model, and the confirmation card before anything is sent. Multiple choice and true/false
+  cards played with the keyboard, a hint, the explanation, and **Read more →** opening the cited
+  file at its lines. **Look it up** (`L`) opens the cited files before you answer, in a glowing
+  window with Hoot perched on top, its eyes following the pointer. Five flames show your level;
+  the order follows it.
+- **New-quiz wizard**: your role (proposed for this kind of project, or typed: it sets the audience and focus of the questions), the kind of quiz, its subject (proposed, or typed and read as a concept or a feature), then options, one step at a time. The role and the kind of quiz are kept with the quiz (record, history, saved quiz files, results reports) and shown as tags. Subjects grouped as **Global** concepts (architecture, tech stack,
+  security, data and storage, state, design patterns, error handling, concurrency, UI,
+  networking, configuration, the engine's model, decisions, build, testing) and **Features**
+  (feature pages and folders, a game's own systems such as player, enemies or NPCs, common
+  features found by name), each detected locally and named as a concept, never a folder path;
+  **Something else** typed under the concepts or the features; and **Check specific code**: files or folders you pick (or
+  open in tabs) for detailed, line-level questions, e.g. before submitting a change. Other
+  subjects ask about understanding a concept and its implementation, not one-line trivia.
+  Each step adapts to the ones before: the kinds of quiz follow the role (no code check for an
+  artist, descriptions told from the role's work), the subjects that fit the role come first
+  and those it never touches wait behind **More subjects**, and the prompt asks only what this
+  role needs to know about this subject, for this kind of quiz. Questions may test an
+  industry-standard concept or process as the project applies it. When the project's
+  documentation is missing or thin for the subject, the wizard says so before Start and the
+  results show Hoot's **Documentation gap** note (also in the results report).
+- **Grounded generation**: the prompt and JSON schema belong to the app; every question is
+  checked (a real file of the project, a line range inside it, never an agent instruction file
+  or a secret, the scope, no duplicate, a hint that does not give the answer, choices alike in
+  length so the right one does not stand out, and a question
+  that names something of the project). Rejected questions are sent back with their reasons, at
+  most twice, inside the same operation, and the retry is shown
+  ([ADR 0022](docs/decisions/0022-grounded-generation-pipeline.md)).
+- **Hoot**, an original SVG owl with five animated states and local speech lines; still poses
+  under reduced motion ([ADR 0023](docs/decisions/0023-hoot-the-owl.md)).
+- **Effects**: confetti on a right answer, sparks for a streak, a ring on a level up (an
+  in-house particle system, off under reduced motion or with Settings → Learning → Effects).
+- **Results**: score, level reached, best streak, time, tokens and cost, every answer with its
+  sources; **Play again** (no AI), **Keep going** (more at your level) and **New quiz**. The quiz
+  in progress is saved after each answer and survives a restart; the last 20 quizzes are kept
+  per folder.
+- **Save results…**: a markdown report with front matter, a summary table and every question as
+  a task list, written where you choose in the save dialog (default `quiz-results/`).
+- **Shareable quiz files** (**Save quiz…**, default `quizzes/`): markdown with an
+  `igrasp: quiz` front matter and one `igrasp-quiz` block per question, readable on GitHub and
+  replayed by anyone **without the AI** from Saved quizzes, Learn → Open Quiz File… or the
+  preview's **Play this quiz** banner. Cited lines are hashed: a changed source shows a notice
+  on the reveal ([ADR 0024](docs/decisions/0024-shareable-learning-files-as-markdown.md)).
+- **Preview**: quiz files show the banner and their question blocks as cards with the answer
+  folded (parsed as YAML after sanitization, rendered as text).
+- **Settings → Learning**: questions per quiz, default mode and sources, effects, results and
+  quizzes folders, Forget this folder's quizzes, and the project profile with Reset to detected.
+- AI layer: `structuredOutput` and `attempt` events, validated runs with capped retries in the
+  gateway (`ai/run.rs`), and an ignored `real_quiz` test that runs a real generation.
+
 ### Changed
 
+- The app writes inside the opened folder only what you save through a save dialog (results
+  and quiz files); it still writes nothing there on its own.
+- The Keyboard Shortcuts tab lists the Learn menu and the quiz keys.
 - **Faster block diff**: the new version of a document is parsed only around its changed lines,
   the other blocks are reused from the old version. A 5 000-line review diff takes about 135 ms
   (whole-file write) and 100 ms (edit) instead of 225 ms and 180 ms.

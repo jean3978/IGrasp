@@ -18,6 +18,9 @@ import { useAiPanel } from '../../stores/aiPanel';
 import { startEventBridge } from '../../stores/eventBridge';
 import { useGraph } from '../../stores/graph';
 import { useOutline } from '../../stores/outline';
+import { useProjectProfile } from '../../stores/projectProfile';
+import { useQuiz } from '../../stores/quiz';
+import { useUi } from '../../stores/ui';
 import { useQuickOpen } from '../../stores/quickOpen';
 import { useSearch } from '../../stores/search';
 import { useSettings } from '../../stores/settings';
@@ -212,6 +215,19 @@ describe('no token without a user action', () => {
     });
     await useSettings.getState().update({ ai: { confirmFrom: 'never' } });
 
+    // The project profile and its corrections (local detection).
+    await useProjectProfile.getState().load(FIXTURE_ROOT, true);
+    await useProjectProfile.getState().loadSubjects();
+    await useProjectProfile.getState().saveCorrections({
+      addKinds: ['service'],
+      removeKinds: [],
+      addEngines: [],
+      removeEngines: [],
+      addFrameworks: ['Nakama'],
+      removeFrameworks: [],
+      notes: 'Also a dedicated server.',
+    });
+
     expect(starts()).toEqual([]);
   });
 
@@ -279,5 +295,98 @@ describe('no token without a user action', () => {
     expect(starts()).toEqual(['chatMessage']);
     expect(window.__igraspMock?.state.ai.lastRequest?.capture?.text).toBe('First paragraph.');
     page.remove();
+  });
+
+  it('starts a quiz only from its card, a Next round click or Keep going, never from playing', async () => {
+    render(createElement(App));
+    await useWorkspace.getState().openRoot(FIXTURE_ROOT);
+    await vi.waitFor(() => {
+      expect(useGraph.getState().status.ready).toBe(true);
+    });
+    const mock = window.__igraspMock;
+    if (!mock) throw new Error('no mock');
+    mock.state.ai.stepMs = 1;
+    // Opening the Quiz tab (menu, toolbar, profile) loads the profile, the subjects and the
+    // history: all local.
+    runAction('learn.quiz');
+    await vi.waitFor(() => {
+      expect(document.querySelector('.quiz-home')).not.toBeNull();
+    });
+    runAction('learn.profile');
+    await vi.waitFor(() => {
+      expect(document.querySelector('.profile-dialog')).not.toBeNull();
+    });
+    useUi.setState({ profileEditorOpen: false });
+    const quiz = () => useQuiz.getState();
+    quiz().setSetup({
+      subjectId: 'concept:build',
+      mode: 'adaptive',
+      count: 10,
+      scope: 'documentationOnly',
+    });
+    quiz().setSetup({ subjectId: null, mode: 'fixed', count: 5, scope: 'wholeProject' });
+    await quiz().prepare();
+    quiz().cancelConfirm();
+    await settle();
+    expect(starts()).toEqual([]);
+
+    // Start on the card: one.
+    await quiz().prepare();
+    await quiz().confirmStart();
+    await vi.waitFor(() => {
+      expect(quiz().screen).toBe('question');
+    });
+    expect(starts()).toEqual(['quizGeneration']);
+
+    // Playing, hints, the results, playing again, going home: none.
+    for (let i = 0; i < 5; i++) {
+      quiz().hint();
+      const { record, engine } = quiz();
+      const q = record?.questions.find((x) => x.id === engine?.current);
+      quiz().answer(q?.answer ?? 0);
+      quiz().next();
+    }
+    await vi.waitFor(() => {
+      expect(quiz().screen).toBe('results');
+    });
+    await quiz().playAgain();
+    quiz().goHome();
+    quiz().continueSaved();
+    quiz().newQuiz();
+    // Saving the quiz, the results, and playing quiz files (Saved quizzes, Open quiz file…).
+    await quiz().saveResults();
+    await quiz().saveQuiz();
+    await quiz().playFile('quizzes/quiz-architecture.md');
+    mock.state.openQuizFileResult = 'quizzes/quiz-architecture.md';
+    runAction('learn.openQuizFile');
+    await vi.waitFor(() => {
+      expect(quiz().record?.origin.type).toBe('file');
+    });
+    quiz().newQuiz();
+    await settle();
+    expect(starts()).toEqual(['quizGeneration']);
+
+    // Adaptive: round 1 from the card, nothing while playing it, one more on Next round.
+    quiz().setSetup({ mode: 'adaptive', count: 10 });
+    await quiz().prepare();
+    await quiz().confirmStart();
+    await vi.waitFor(() => {
+      expect(quiz().screen).toBe('question');
+    });
+    for (let i = 0; i < 5; i++) {
+      const { record, engine } = quiz();
+      const q = record?.questions.find((x) => x.id === engine?.current);
+      quiz().answer(q?.answer ?? 0);
+      if (i < 4) quiz().next();
+    }
+    // `next` on the last question of a round never starts the round.
+    quiz().next();
+    await settle();
+    expect(starts()).toEqual(['quizGeneration', 'quizGeneration']);
+    await quiz().nextRound();
+    await vi.waitFor(() => {
+      expect(quiz().screen).toBe('question');
+    });
+    expect(starts()).toHaveLength(3);
   });
 });

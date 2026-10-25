@@ -4,6 +4,8 @@
 import GithubSlugger from 'github-slugger';
 import { classifyHref } from '../../lib/linkTargets';
 import type { Backlink, BrokenDoc, LinkInfo, LinkStatus, LinkTarget } from '../types';
+import { quizInfo } from './mockSave';
+import type { QuizFileInfo } from './mockSave';
 
 export interface MockHeading {
   level: number;
@@ -16,6 +18,8 @@ export interface MockDoc {
   headings: MockHeading[];
   anchors: Set<string>;
   links: LinkInfo[];
+  /** Set for a quiz file (Rust `ParsedDoc::quiz`). */
+  quiz: QuizFileInfo | null;
 }
 
 interface RawLink {
@@ -209,6 +213,7 @@ export function buildGraph(
       headings: doc.headings,
       anchors: doc.anchors,
       links: doc.links.map((l) => ({ ...l, ...resolveLink(rel, l.href, doc.anchors, lookup) })),
+      quiz: quizInfo(files.get(rel) ?? ''),
     });
   }
   return graph;

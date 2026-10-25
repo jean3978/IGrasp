@@ -1,0 +1,56 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`resultsMarkdown > writes the front matter, the table and each question with its sources 1`] = `
+"---
+title: "Fixture \\"app\\" — The whole project"
+project: "Fixture \\"app\\""
+subject: "The whole project"
+date: "2026-10-25 14:06"
+provider: "mock"
+model: "mock-large"
+mode: fixed
+category: global
+role: "Producer"
+score: 1
+level: 2
+questions: 2
+---
+
+# Quiz results: Fixture "app" — The whole project
+
+2026-10-25 at 14:06, fixed mode.
+
+| Score | Level reached | Best streak | Hints | Looked up | Time | AI |
+|---|---|---|---|---|---|---|
+| 1/2 | 2/5 | 1 | 1 | 1 | 1 min 35 s | mock-large · $0.04 |
+
+## 1. Which helper does src/main.ts import to build its message?
+
+- [ ] greet ✓
+- [x] main
+- [ ] Options | flags
+
+**Missed** · with the hint
+
+src/main.ts imports greet from './greet'.
+
+Sources:
+
+- [src/main.ts:2-4](/src/main.ts#L2-L4) — the import
+- [docs/architecture.md:10-12](/docs/architecture.md)
+
+## 2. The logo is stored as a binary asset.
+
+- [x] True ✓
+- [ ] False
+
+**Right** · looked it up
+
+assets/logo bin.png is a binary file.
+
+Sources:
+
+- \`assets/logo bin.png\`
+- [src/greet.ts:7](/src/greet.ts#L7)
+"
+`;

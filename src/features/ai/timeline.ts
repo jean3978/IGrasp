@@ -201,10 +201,13 @@ export function applyEvent(items: ChatItem[], event: AiEvent): ChatItem[] {
           reason: event.reason,
         },
       ];
+    // structuredOutput and attempt belong to generations (the quiz); the chat never asks for them.
     case 'session':
     case 'permissionRequest':
     case 'usage':
     case 'done':
+    case 'structuredOutput':
+    case 'attempt':
       return items;
   }
 }

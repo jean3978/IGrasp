@@ -24,7 +24,15 @@ export interface ChangeBatch {
 export type Toast =
   | { id: string; type: 'change'; kind: ChangeKind; relPath: string; duration: number }
   | { id: string; type: 'grouped'; batch: ChangeBatch; duration: number; version: number }
-  | { id: string; type: 'message'; level: 'info' | 'error'; text: string; duration: number };
+  | {
+      id: string;
+      type: 'message';
+      level: 'info' | 'error';
+      text: string;
+      duration: number;
+      /** A file of the folder the toast opens when clicked (a file just saved). */
+      openPath?: string;
+    };
 
 interface ToastsState {
   toasts: Toast[];
@@ -37,7 +45,7 @@ interface ToastsState {
 
   ingestChanges: (changes: FsChangesEvent) => void;
   /** Shows a plain message (errors, recovered settings…). */
-  notify: (level: 'info' | 'error', text: string) => void;
+  notify: (level: 'info' | 'error', text: string, openPath?: string) => void;
   dismiss: (id: string) => void;
   openDetails: (id: string | null) => void;
   resetMutedCount: () => void;
@@ -173,8 +181,15 @@ export const useToasts = create<ToastsState>()((set, get) => {
       quietTimer = setTimeout(flush, QUIET_WINDOW_MS);
     },
 
-    notify(level, text) {
-      const toast: Toast = { id: newId(), type: 'message', level, text, duration: SINGLE_TOAST_MS };
+    notify(level, text, openPath) {
+      const toast: Toast = {
+        id: newId(),
+        type: 'message',
+        level,
+        text,
+        duration: SINGLE_TOAST_MS,
+        ...(openPath === undefined ? {} : { openPath }),
+      };
       set((s) => ({ toasts: [...s.toasts, toast].slice(-MAX_VISIBLE) }));
     },
 

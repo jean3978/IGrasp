@@ -1,0 +1,35 @@
+{
+  "description": "documentation only: code citations are out of scope",
+  "scope": { "type": "documentationOnly" },
+  "count": 10,
+  "output": {
+    "insufficientMaterial": false,
+    "questions": [
+      {
+        "id": "q1",
+        "kind": "multipleChoice",
+        "question": "Which port does Orbit's entry point start on?",
+        "choices": ["4321", "8080", "3000"],
+        "answer": 0,
+        "hint": "Read the entry point.",
+        "explanation": "src/main.ts calls startOrbit with port 4321.",
+        "sources": [{ "path": "src/main.ts", "firstLine": 3, "lastLine": 3 }],
+        "difficulty": 1,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q2",
+        "kind": "trueFalse",
+        "question": "Orbit debounces disk events for 200 ms before updating its index.",
+        "choices": ["True", "False"],
+        "answer": 0,
+        "hint": "The architecture page has an Index section.",
+        "explanation": "docs/architecture.md says batches are debounced for 200 ms before the index is updated.",
+        "sources": [{ "path": "docs/architecture.md", "firstLine": 7, "lastLine": 7 }],
+        "difficulty": 1,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      }
+    ]
+  },
+  "expected": { "accepted": ["q2"], "rejected": { "q1": "outOfScope" } }
+}

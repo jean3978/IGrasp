@@ -13,6 +13,10 @@
 //!   the code behind them.)
 //! - `only_ai_start_calls_the_gateway_start` reads the sources: `.start(` on the gateway appears
 //!   in the `ai_start` command and nowhere else, so no other command can spend tokens.
+//! - `only_the_gateway_starts_a_provider` reads the sources: a provider's `start` is called by
+//!   the gateway and by its validated runs (`ai/run.rs`, capped retries inside one operation)
+//!   only. The runs' own tests check that no attempt starts after `Done`, after a cancel, or
+//!   beyond `1 + MAX_RETRIES`.
 
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
@@ -37,6 +41,11 @@ use crate::paths::RootGuard;
 use crate::search::symbols::{Candidates, SymbolQuery, search};
 use crate::search::text::{TextSearch, TextSearchRequest, build_matcher};
 use crate::state::{AppState, Workspace};
+
+/// The app-data key of a folder (any stable string: the commands use the canonical path).
+fn key_of(root: &Path) -> String {
+    root.display().to_string()
+}
 
 fn write(root: &Path, rel: &str, content: &str) {
     let path = root.join(rel);
@@ -211,6 +220,66 @@ fn no_ai_operation_starts_without_a_user_action() {
     state.appdata.forget_conversations(&key).unwrap();
     assert_eq!(starts(&state), 0, "conversation commands");
 
+    // The learning commands: the project profile (a local walk) and its corrections.
+    state
+        .with_workspace(|ws| {
+            let (profile, _) = crate::learning::corrected_profile(ws, &state.appdata, true)?;
+            assert!(profile.files_seen > 0);
+            state
+                .appdata
+                .update_folder_learning(&crate::learning::root_key(ws), |l| {
+                    l.profile_corrections.notes = "also a server".into();
+                })?;
+            let (profile, walk) = crate::learning::corrected_profile(ws, &state.appdata, false)?;
+            crate::learning::subjects(ws, &state.appdata, &names)?;
+            // Composing a quiz (what `ai_estimate` with a quiz does) starts nothing.
+            crate::learning::quiz::compose::compose(
+                ws.guard.root(),
+                &profile,
+                &walk,
+                &names,
+                crate::learning::quiz::QuizGenerationInput::default(),
+                None,
+                None,
+            )
+            .map(|_| ())
+        })
+        .unwrap();
+    // The quiz in progress and the history (app data).
+    let record = crate::appdata::learning::QuizRecord {
+        id: "quiz-1".into(),
+        ..crate::appdata::learning::QuizRecord::default()
+    };
+    state
+        .appdata
+        .save_current_quiz(&key_of(root), record.clone())
+        .unwrap();
+    state.appdata.current_quiz(&key_of(root)).unwrap();
+    state
+        .appdata
+        .save_current_quiz(
+            &key_of(root),
+            crate::appdata::learning::QuizRecord {
+                finished_ms: Some(1),
+                ..record
+            },
+        )
+        .unwrap();
+    state.appdata.quiz_history(&key_of(root)).unwrap();
+    state.appdata.quiz_record(&key_of(root), "quiz-1").unwrap();
+    state.appdata.clear_current_quiz(&key_of(root)).unwrap();
+    state.appdata.forget_quizzes(&key_of(root)).unwrap();
+    let patch: SettingsPatch = serde_json::from_value(serde_json::json!({
+        "learning": { "quizQuestions": 12, "quizMode": "adaptive", "effects": false }
+    }))
+    .unwrap();
+    state.appdata.update_settings(|s| patch.apply(s)).unwrap();
+    assert_eq!(
+        starts(&state),
+        0,
+        "profile, corrections, subjects and quiz estimate"
+    );
+
     // Closing the folder.
     state.ai.cancel_all();
     state.workspace.write().unwrap().take();
@@ -232,6 +301,7 @@ fn no_ai_operation_starts_without_a_user_action() {
             },
             root,
             AiPermissionSettings::default(),
+            None,
             Box::new(move |_, event| {
                 let _ = tx.send(event);
             }),
@@ -299,11 +369,42 @@ fn only_ai_start_calls_the_gateway_start() {
     );
     // And that call is inside `ai_start`.
     let (_, text) = files.iter().find(|(r, _)| r == "commands/ai.rs").unwrap();
-    let at = text.find("pub fn ai_start(").expect("ai_start exists");
+    let at = text.find("fn ai_start(").expect("ai_start exists");
     let call = text.find(".ai.start(").expect("the call exists");
     assert!(call > at);
     let next_command = text[at + 1..]
         .find("#[tauri::command]")
         .map_or(text.len(), |i| at + 1 + i);
     assert!(call < next_command, "the call is in the body of ai_start");
+}
+
+#[test]
+fn only_the_gateway_starts_a_provider() {
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut files = Vec::new();
+    sources(&src, &src, &mut files);
+    let mut callers: Vec<String> = Vec::new();
+    for (rel, text) in &files {
+        if rel == "ai/no_start.rs" {
+            continue;
+        }
+        // Only the code before a `#[cfg(test)]` module counts, comments dropped, and whitespace
+        // removed so a call split over lines still matches.
+        let code: String = text
+            .split("#[cfg(test)]\nmod ")
+            .next()
+            .unwrap_or(text)
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .flat_map(|l| l.chars().filter(|c| !c.is_whitespace()))
+            .collect();
+        if code.contains("provider.start(") {
+            callers.push(rel.clone());
+        }
+    }
+    callers.sort();
+    assert_eq!(
+        callers,
+        vec!["ai/gateway.rs".to_owned(), "ai/run.rs".to_owned()]
+    );
 }

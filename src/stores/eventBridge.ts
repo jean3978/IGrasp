@@ -6,6 +6,7 @@ import { useAiConversation } from './aiConversation';
 import { applyDiskChanges } from './diskChanges';
 import { useGraph } from './graph';
 import { useHistory } from './history';
+import { useQuiz } from './quiz';
 import { useRecentFiles } from './recentFiles';
 import { useSearch } from './search';
 import { useToasts } from './toasts';
@@ -39,9 +40,11 @@ export async function startEventBridge(): Promise<Unsubscribe> {
     }),
     backend.listen('graph://ready', (e) => {
       useGraph.getState().onReady(e);
+      void useQuiz.getState().refreshQuizFiles();
     }),
     backend.listen('graph://changed', (e) => {
       useGraph.getState().onChanged(e);
+      void useQuiz.getState().refreshQuizFiles();
     }),
     backend.listen('search://results', (e) => {
       useSearch.getState().onResults(e);
@@ -50,7 +53,9 @@ export async function startEventBridge(): Promise<Unsubscribe> {
       useWorkspace.getState().setWatchStatus(e.mode, e.reason);
     }),
     backend.listen('ai://event', (e) => {
-      useAiConversation.getState().onEvent(e);
+      // An operation belongs to the quiz or to the chat (one runs at a time).
+      if (useQuiz.getState().owns(e.operationId)) useQuiz.getState().onEvent(e);
+      else useAiConversation.getState().onEvent(e);
     }),
     backend.listen('appdata://recovered', (e) => {
       useToasts

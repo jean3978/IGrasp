@@ -11,11 +11,12 @@ use super::policy::{
     AiPermissionSettings, DENIED_BY_SETTINGS, DENIED_READ_ONLY, PermissionRule,
     REASON_ALLOWED_BY_SETTINGS, REASON_DENIED_BY_SETTINGS, REASON_READ_ONLY, decide,
 };
+use super::run::{self, OutputValidator};
 use super::types::{
     AiCapabilities, AiEvent, AiPermissionKind, AiPolicy, AiProviderStatus, AiRequest, AiUserAction,
     PermissionDecision, ProposedEdit,
 };
-use super::{AiOperation, AiProvider, DEFAULT_PROVIDER_ID, build_provider};
+use super::{AiOperation, AiProvider, DEFAULT_PROVIDER_ID, EventSink, build_provider};
 use crate::appdata::settings::Settings;
 use crate::error::{AppError, AppResult};
 
@@ -183,6 +184,7 @@ impl AiGateway {
         request: AiRequest,
         root: &Path,
         permissions: AiPermissionSettings,
+        validator: Option<Box<dyn OutputValidator>>,
         mut sink: Box<dyn FnMut(u32, AiEvent) + Send + 'static>,
     ) -> AppResult<u32> {
         let mut slot = lock(&self.running);
@@ -211,68 +213,68 @@ impl AiGateway {
             size.bucket,
         );
         let running = self.running.clone();
-        let operation = provider.start(
-            request,
-            root,
-            Box::new(move |event| match event {
-                AiEvent::PermissionRequest {
-                    request_id,
-                    tool,
-                    kind,
-                    description,
-                    input,
-                    proposed_edit,
-                } => {
-                    let kind = effective_kind(kind, proposed_edit.as_ref());
-                    match answer_automatically(policy, kind, &permissions) {
-                        None => sink(
+        let gate: EventSink = Box::new(move |event| match event {
+            AiEvent::PermissionRequest {
+                request_id,
+                tool,
+                kind,
+                description,
+                input,
+                proposed_edit,
+            } => {
+                let kind = effective_kind(kind, proposed_edit.as_ref());
+                match answer_automatically(policy, kind, &permissions) {
+                    None => sink(
+                        id,
+                        AiEvent::PermissionRequest {
+                            request_id,
+                            tool,
+                            kind,
+                            description,
+                            input,
+                            proposed_edit,
+                        },
+                    ),
+                    Some((decision, reason)) => {
+                        sink(
                             id,
-                            AiEvent::PermissionRequest {
-                                request_id,
+                            AiEvent::PermissionDecided {
                                 tool,
                                 kind,
                                 description,
-                                input,
-                                proposed_edit,
+                                allowed: matches!(decision, PermissionDecision::Allow { .. }),
+                                reason: reason.to_owned(),
                             },
-                        ),
-                        Some((decision, reason)) => {
-                            sink(
-                                id,
-                                AiEvent::PermissionDecided {
-                                    tool,
-                                    kind,
-                                    description,
-                                    allowed: matches!(decision, PermissionDecision::Allow { .. }),
-                                    reason: reason.to_owned(),
-                                },
-                            );
-                            // The slot is set once `start` returns (it holds the lock until
-                            // then), so the operation is there to answer.
-                            let slot = lock(&running);
-                            let answered = match slot.as_ref() {
-                                Some(r) if r.id == id => {
-                                    r.operation.respond(&request_id, &decision)
-                                }
-                                _ => Err(AppError::Ai("The operation is over.".to_owned())),
-                            };
-                            if let Err(e) = answered {
-                                log::warn!("ai operation {id}: cannot answer {request_id}: {e}");
-                            }
+                        );
+                        // The slot is set once `start` returns (it holds the lock until
+                        // then), so the operation is there to answer.
+                        let slot = lock(&running);
+                        let answered = match slot.as_ref() {
+                            Some(r) if r.id == id => r.operation.respond(&request_id, &decision),
+                            _ => Err(AppError::Ai("The operation is over.".to_owned())),
+                        };
+                        if let Err(e) = answered {
+                            log::warn!("ai operation {id}: cannot answer {request_id}: {e}");
                         }
                     }
                 }
-                event => {
-                    if matches!(event, AiEvent::Done { .. }) {
-                        let mut slot = lock(&running);
-                        if slot.as_ref().is_some_and(|r| r.id == id) {
-                            slot.take();
-                        }
+            }
+            event => {
+                if matches!(event, AiEvent::Done { .. }) {
+                    let mut slot = lock(&running);
+                    if slot.as_ref().is_some_and(|r| r.id == id) {
+                        slot.take();
                     }
-                    sink(id, event);
                 }
-            }),
-        )?;
+                sink(id, event);
+            }
+        });
+        // With a validator, the operation is a validated run: up to `1 + MAX_RETRIES` provider
+        // attempts under this one id, the slot freed by the run's final `Done` only.
+        let operation = match validator {
+            Some(validator) => run::start(provider.clone(), request, root, validator, gate)?,
+            None => provider.start(request, root, gate)?,
+        };
         self.starts.fetch_add(1, Ordering::SeqCst);
         *slot = Some(Running { id, operation });
         Ok(id)
@@ -365,6 +367,7 @@ mod tests {
                 request("hello"),
                 Path::new("."),
                 AiPermissionSettings::default(),
+                None,
                 Box::new(move |id, e| {
                     let _ = tx.send((id, e));
                 }),
@@ -392,6 +395,7 @@ mod tests {
                 request("again"),
                 Path::new("."),
                 AiPermissionSettings::default(),
+                None,
                 Box::new(move |id, e| {
                     let _ = tx.send((id, e));
                 }),
@@ -411,6 +415,7 @@ mod tests {
                 request("please edit notes.md"),
                 Path::new("."),
                 AiPermissionSettings::default(),
+                None,
                 Box::new(move |id, e| {
                     let _ = tx.send((id, e));
                 }),
@@ -429,6 +434,7 @@ mod tests {
             request("x"),
             Path::new("."),
             AiPermissionSettings::default(),
+            None,
             Box::new(|_, _| {}),
         );
         assert!(matches!(busy, Err(AppError::Ai(_))));
@@ -476,6 +482,7 @@ mod tests {
                 request("please edit notes.md"),
                 Path::new("."),
                 AiPermissionSettings::default(),
+                None,
                 Box::new(move |id, e| {
                     let _ = tx.send((id, e));
                 }),
@@ -547,6 +554,7 @@ mod tests {
             },
             Path::new("."),
             permissions,
+            None,
             Box::new(move |id, e| {
                 let _ = tx.send((id, e));
             }),
@@ -665,6 +673,7 @@ mod tests {
                 request("edit src/main.ts"),
                 Path::new("."),
                 AiPermissionSettings::default(),
+                None,
                 Box::new(move |id, e| {
                     let _ = tx.send((id, e));
                 }),
@@ -736,6 +745,7 @@ mod tests {
                 request("a slow answer"),
                 Path::new("."),
                 AiPermissionSettings::default(),
+                None,
                 Box::new(move |id, e| {
                     let _ = tx.send((id, e));
                 }),

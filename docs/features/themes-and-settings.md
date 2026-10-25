@@ -31,6 +31,13 @@ surfaces so the chat stands apart from the app, a bloom of layered shadows behin
 the colour of a selection highlighted for the chat. High Contrast keeps black surfaces, orange
 outlines, no bloom and no tinted highlight (an underline and a dashed outline instead).
 
+The quiz has `--quiz-*` tokens (`--quiz-good`, `--quiz-bad` and their `-bg`, `--quiz-flame`,
+`--quiz-flame-core`, `--quiz-flame-idle` for an unlit level flame at 3:1, `--quiz-flame-off` for
+the progress tracks, `--quiz-card`, `--quiz-card-border`, `--quiz-card-shadow`), the project
+profile `--profile-bar-*` for the language bar, and Hoot `--hoot-*` (feathers, belly, beak,
+glasses frame, eyes, blush, outline: transparent in Light and Dark, white in High Contrast).
+Verdict colours and texts on the quiz card meet 4.5:1 in the three themes.
+
 ## Settings
 
 Open with File › Settings or `Ctrl+,`. Changes apply instantly and are saved in the app-data
@@ -52,6 +59,13 @@ folder (`settings.json`), never in the opened folder.
 | | Confirm before sending | From medium, from large (default) or never: the confirmation card with the size estimate. |
 | | Conversations kept per folder | 25, 100 (default) or 500. |
 | | Forget this folder's conversations | Deletes the chat history kept for the open folder (app data); asks first. |
+| Learning | Questions per quiz (5–30) | Where the quiz home starts. |
+| | Default mode | Fixed (one AI call) or Adaptive (rounds of 5, one call per round). |
+| | Default sources | Whole project or Documentation only. |
+| | Effects | Confetti, sparks and Hoot's animations; always off under reduced motion. |
+| | Results folder / Quizzes folder | Where Save results… and Save quiz… open, inside the open folder (`quiz-results`, `quizzes`); an invalid folder is shown and not saved. |
+| | Forget this folder's quizzes | Deletes the quiz history and the quiz in progress kept for the open folder (app data); asks first. Saved files stay. |
+| | Profile corrections / Project profile | The profile of the open folder, Edit, Detect again, and Reset to detected. See [project-profile.md](project-profile.md). |
 | Data | App data folder | Shows the folder and opens it in the file manager. |
 | | Reset settings | Restores every default. |
 

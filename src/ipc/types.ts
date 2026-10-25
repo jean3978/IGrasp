@@ -44,6 +44,15 @@ import type { AiSizeEstimate } from './generated/AiSizeEstimate';
 import type { AiStartRequest } from './generated/AiStartRequest';
 import type { AiUserAction } from './generated/AiUserAction';
 import type { PermissionDecision } from './generated/PermissionDecision';
+import type { ProfileCorrections } from './generated/ProfileCorrections';
+import type { ProjectProfile } from './generated/ProjectProfile';
+import type { Subject } from './generated/Subject';
+import type { QuizRecord } from './generated/QuizRecord';
+import type { QuizSummary } from './generated/QuizSummary';
+import type { QuizSaveKind } from './generated/QuizSaveKind';
+import type { SavedQuizFile } from './generated/SavedQuizFile';
+import type { QuizFileSummary } from './generated/QuizFileSummary';
+import type { QuizFileText } from './generated/QuizFileText';
 
 export type {
   AppInfo,
@@ -113,9 +122,44 @@ export type { AiPolicy } from './generated/AiPolicy';
 export type { AiCapture } from './generated/AiCapture';
 export type { AiContextRole } from './generated/AiContextRole';
 export type { AiSizeBucket } from './generated/AiSizeBucket';
+export type { AiInlinedDocument } from './generated/AiInlinedDocument';
 export type { EditHunk } from './generated/EditHunk';
 export type { ProposedEdit } from './generated/ProposedEdit';
 export type { ConversationUsage } from './generated/ConversationUsage';
+export type { Confidence } from './generated/Confidence';
+export type { Detected } from './generated/Detected';
+export type { DocsFacts } from './generated/DocsFacts';
+export type { LanguageShare } from './generated/LanguageShare';
+export type { Module } from './generated/Module';
+export type { ProfileCorrections } from './generated/ProfileCorrections';
+export type { ProjectKind } from './generated/ProjectKind';
+export type { ProjectProfile } from './generated/ProjectProfile';
+export type { Material } from './generated/Material';
+export type { SourceScope } from './generated/SourceScope';
+export type { Subject } from './generated/Subject';
+export type { SubjectGroup } from './generated/SubjectGroup';
+export type { QuizCategory } from './generated/QuizCategory';
+export type { RoleFamily } from './generated/RoleFamily';
+export type { QuestionKind } from './generated/QuestionKind';
+export type { QuizExclusion } from './generated/QuizExclusion';
+export type { QuizGenerationInput } from './generated/QuizGenerationInput';
+export type { QuizMode } from './generated/QuizMode';
+export type { QuizQuestion } from './generated/QuizQuestion';
+export type { QuizResult } from './generated/QuizResult';
+export type { QuizRound } from './generated/QuizRound';
+export type { QuizSource } from './generated/QuizSource';
+export type { QuizSourceKind } from './generated/QuizSourceKind';
+export type { QuizAnswer } from './generated/QuizAnswer';
+export type { QuizOrigin } from './generated/QuizOrigin';
+export type { QuizRecord } from './generated/QuizRecord';
+export type { QuizSummary } from './generated/QuizSummary';
+export type { QuizSaveKind } from './generated/QuizSaveKind';
+export type { SavedQuizFile } from './generated/SavedQuizFile';
+export type { QuizFileSummary } from './generated/QuizFileSummary';
+export type { QuizFileText } from './generated/QuizFileText';
+export type { LearningSettings } from './generated/LearningSettings';
+export type { LearningSettingsPatch } from './generated/LearningSettingsPatch';
+export type { QuizScopeSetting } from './generated/QuizScopeSetting';
 export type {
   AiCapabilities,
   AiEventEnvelope,
@@ -289,6 +333,45 @@ export interface Backend {
   deleteConversation(id: string): Promise<void>;
   /** Deletes every conversation of the open folder. */
   forgetConversations(): Promise<void>;
+
+  /**
+   * The project profile of the open folder, built locally from one walk (no AI), cached until
+   * the disk changes (`force` rebuilds), with the user's corrections applied.
+   */
+  getProjectProfile(force?: boolean): Promise<ProjectProfile>;
+  /** Saves the corrections of the open folder (app data) and returns the corrected profile. */
+  setProfileCorrections(corrections: ProfileCorrections): Promise<ProjectProfile>;
+  /** Subject proposals for the open folder (local: the profile and the corpus, no AI). */
+  listSubjects(): Promise<Subject[]>;
+  /** The quiz being played in the open folder (app data), or null. */
+  getCurrentQuiz(): Promise<QuizRecord | null>;
+  /** Saves the quiz being played; a finished one (`finishedMs` set) moves to the history. */
+  saveCurrentQuiz(record: QuizRecord): Promise<void>;
+  clearCurrentQuiz(): Promise<void>;
+  /** The finished quizzes of the open folder, newest first. */
+  listQuizHistory(): Promise<QuizSummary[]>;
+  /** A finished quiz (for Play again, which calls no AI). */
+  getQuizRecord(id: string): Promise<QuizRecord>;
+  /** Forgets the history and the current quiz of the open folder (quiz files stay). */
+  forgetQuizzes(): Promise<void>;
+  /**
+   * Save results… / Save quiz…: the save dialog on the folder of the kind (settings.learning),
+   * then `markdown` written where the user chose. Rejects with `SaveCancelled` when dismissed,
+   * and with `NotAQuizFile` for a quiz without its front matter. The only learning write in the folder.
+   */
+  saveQuizMarkdown(
+    kind: QuizSaveKind,
+    markdown: string,
+    suggestedName: string,
+  ): Promise<SavedQuizFile>;
+  /** The quiz files of the open folder (`igrasp: quiz` front matter), newest first, from the graph. */
+  listQuizFiles(): Promise<QuizFileSummary[]>;
+  /**
+   * A quiz file to play: `relPath` inside the folder, or without it the file the user picks in
+   * the open dialog (anywhere). Rejects with `SaveCancelled` when dismissed, with `NotAQuizFile`
+   * for a file without the quiz front matter.
+   */
+  readQuizFile(relPath?: string): Promise<QuizFileText>;
 
   listen<E extends EventName>(
     event: E,

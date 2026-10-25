@@ -8,6 +8,10 @@ import {
   MIN_FONT_SIZE,
   MIN_HISTORY_LIMIT,
   applySettingsPatch,
+  DEFAULT_LEARNING_SETTINGS,
+  MAX_QUIZ_QUESTIONS,
+  MIN_QUIZ_QUESTIONS,
+  relativeFolder,
 } from '../defaults';
 import { BackendError } from '../types';
 import type {
@@ -21,6 +25,7 @@ import type {
   RenamedPath,
   RootInfo,
   Session,
+  ProfileCorrections,
   Settings,
 } from '../types';
 import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT, FIXTURE_SIZES, fixtureMtimes } from './fixture';
@@ -33,6 +38,17 @@ import { gitignorePatterns, isMarkdown, listFixtureDir, scanFixture } from './mo
 import type { MockScanOptions } from './mockIndex';
 import { DEFAULT_MOCK_AI, MOCK_PROVIDER_ID, createMockAi } from './mockAi';
 import type { MockAiState } from './mockAi';
+import {
+  EMPTY_CORRECTIONS,
+  applyCorrections,
+  fixtureProfile,
+  normalizeCorrections,
+} from './mockProfile';
+import { fixtureSubjects } from './mockSubjects';
+import { emptyQuizzes, saveCurrent, summaryOf as quizSummaryOf } from './mockLearning';
+import type { FolderQuizzes } from './mockLearning';
+import { isQuizMarkdown, safeFileName } from './mockSave';
+import type { SavedMarkdown } from './mockSave';
 
 type Handler = (payload: never) => void;
 
@@ -63,6 +79,17 @@ export interface MockState {
   pickFolderResult: string | null;
   /** Files and URLs the app asked to open externally, in order. */
   opened: string[];
+  /** Profile corrections by root path (app data of the learning features). */
+  learning: Map<string, ProfileCorrections>;
+  /** The quiz in progress and the history by root path (app data). */
+  quizzes: Map<string, FolderQuizzes>;
+  /** What the next save dialog returns (root-relative): null = the suggested name in the folder
+   * of the kind, '' = dismissed. */
+  saveDialogResult: string | null;
+  /** Files written by Save results… / Save quiz…, in order. */
+  saved: SavedMarkdown[];
+  /** What the next Open quiz file… dialog returns (root-relative), null = dismissed. */
+  openQuizFileResult: string | null;
   /** The mock AI provider: installed, logged in, speed, operations started. */
   ai: MockAiState;
 }
@@ -107,6 +134,11 @@ function initialState(): MockState {
     graph: null,
     graphDelayMs: 0,
     pickFolderResult: FIXTURE_ROOT,
+    learning: new Map(),
+    quizzes: new Map(),
+    saveDialogResult: null,
+    saved: [],
+    openQuizFileResult: null,
     ai: { ...DEFAULT_MOCK_AI, starts: [], conversations: new Map() },
   };
 }
@@ -210,6 +242,13 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     writeFiles: (files) => {
       controls.writeFiles(files);
     },
+    files: () => state.files,
+    profile: () =>
+      applyCorrections(
+        fixtureProfile(state.files, state.root?.name ?? FIXTURE_NAME),
+        (state.root && state.learning.get(state.root.path)) ?? EMPTY_CORRECTIONS,
+      ),
+    subjects: () => fixtureSubjects(state.files),
   });
 
   // Strictly increasing, so two writes in the same millisecond still count as a change.
@@ -588,6 +627,19 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         MAX_HISTORY_LIMIT,
         Math.max(MIN_HISTORY_LIMIT, next.ai.historyLimit),
       );
+      // Like `Settings::normalize` for the learning section.
+      next.learning.quizQuestions = Math.min(
+        MAX_QUIZ_QUESTIONS,
+        Math.max(MIN_QUIZ_QUESTIONS, next.learning.quizQuestions),
+      );
+      next.learning.quizResultsFolder = relativeFolder(
+        next.learning.quizResultsFolder,
+        DEFAULT_LEARNING_SETTINGS.quizResultsFolder,
+      );
+      next.learning.quizzesFolder = relativeFolder(
+        next.learning.quizzesFolder,
+        DEFAULT_LEARNING_SETTINGS.quizzesFolder,
+      );
       state.settings = next;
       return Promise.resolve(structuredClone(next));
     },
@@ -621,6 +673,103 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     saveConversation: ai.saveConversation,
     deleteConversation: ai.deleteConversation,
     forgetConversations: ai.forgetConversations,
+
+    getProjectProfile: () => {
+      const root = state.root;
+      if (!root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const corrections = state.learning.get(root.path) ?? EMPTY_CORRECTIONS;
+      return Promise.resolve(applyCorrections(fixtureProfile(state.files, root.name), corrections));
+    },
+    setProfileCorrections: (corrections) => {
+      const root = state.root;
+      if (!root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const normalized = normalizeCorrections(corrections);
+      state.learning.set(root.path, normalized);
+      return Promise.resolve(applyCorrections(fixtureProfile(state.files, root.name), normalized));
+    },
+    getCurrentQuiz: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      return Promise.resolve(structuredClone(state.quizzes.get(state.root.path)?.current ?? null));
+    },
+    // Async so the errors thrown by the helpers become rejections.
+    // eslint-disable-next-line @typescript-eslint/require-await
+    saveCurrentQuiz: async (record) => {
+      if (!state.root) throw new BackendError('NoRootOpen', 'No folder is open.');
+      const folder = state.quizzes.get(state.root.path) ?? emptyQuizzes();
+      state.quizzes.set(state.root.path, saveCurrent(folder, record));
+    },
+    clearCurrentQuiz: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const folder = state.quizzes.get(state.root.path);
+      if (folder) state.quizzes.set(state.root.path, { ...folder, current: null });
+      return Promise.resolve();
+    },
+    listQuizHistory: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      return Promise.resolve(
+        (state.quizzes.get(state.root.path)?.history ?? []).map(quizSummaryOf),
+      );
+    },
+    getQuizRecord: (id) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const found = state.quizzes.get(state.root.path)?.history.find((r) => r.id === id);
+      if (!found) return Promise.reject(new BackendError('NotFound', `Not found: quiz ${id}`));
+      return Promise.resolve(structuredClone(found));
+    },
+    forgetQuizzes: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      state.quizzes.delete(state.root.path);
+      return Promise.resolve();
+    },
+    listSubjects: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      return Promise.resolve(fixtureSubjects(state.files));
+    },
+    saveQuizMarkdown: (kind, markdown, suggestedName) => {
+      const root = state.root;
+      if (!root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      if (kind === 'quiz' && !isQuizMarkdown(markdown))
+        return Promise.reject(
+          new BackendError('NotAQuizFile', 'Not a quiz file: no `igrasp: quiz` front matter'),
+        );
+      // Like the dialog opening on the folder of the kind and the user pressing Save.
+      const folder =
+        kind === 'results'
+          ? state.settings.learning.quizResultsFolder
+          : state.settings.learning.quizzesFolder;
+      const relPath = state.saveDialogResult ?? `${folder}/${safeFileName(suggestedName)}`;
+      if (relPath === '')
+        return Promise.reject(new BackendError('SaveCancelled', 'The save was cancelled.'));
+      state.saved.push({ kind, relPath, markdown });
+      controls.writeFiles({ [relPath]: markdown });
+      return Promise.resolve({ path: `${root.path}/${relPath}`, relPath });
+    },
+    listQuizFiles: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const files = [...(state.graph ?? new Map<string, MockDoc>())].flatMap(([relPath, doc]) =>
+        doc.quiz ? [{ relPath, ...doc.quiz, modifiedMs: state.mtimes.get(relPath) ?? 0 }] : [],
+      );
+      files.sort((a, b) => b.modifiedMs - a.modifiedMs || a.relPath.localeCompare(b.relPath));
+      return Promise.resolve(files);
+    },
+    readQuizFile: (relPath) => {
+      const root = state.root;
+      if (!root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      // Without a path, the open dialog: `openQuizFileResult` is what the user picks.
+      const picked = relPath ?? state.openQuizFileResult;
+      if (picked === null)
+        return Promise.reject(new BackendError('SaveCancelled', 'The save was cancelled.'));
+      const content = state.files.get(picked);
+      if (content === undefined)
+        return Promise.reject(new BackendError('NotFound', `Not found: ${picked}`));
+      if (!isQuizMarkdown(content))
+        return Promise.reject(new BackendError('NotAQuizFile', `Not a quiz file: ${picked}`));
+      return Promise.resolve({
+        path: `${root.path}/${picked}`,
+        relPath: picked,
+        content: content.startsWith(BOM) ? content.slice(1) : content,
+      });
+    },
 
     openAppDataDir: () => {
       state.opened.push(appInfo.appDataDir);

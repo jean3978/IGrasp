@@ -5,6 +5,7 @@
 //! are used, so a broken file never prevents the app from starting.
 
 pub mod conversations;
+pub mod learning;
 pub mod recent;
 pub mod session;
 pub mod settings;

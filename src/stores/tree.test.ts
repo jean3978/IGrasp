@@ -78,7 +78,7 @@ describe('tree store with the mock backend', () => {
     await flush();
     expect(useWorkspace.getState().index.state).toBe('ready');
     const root = useTree.getState().listings[''];
-    expect(root?.dirs.map((d) => d.name)).toEqual(['docs', 'notes']);
+    expect(root?.dirs.map((d) => d.name)).toEqual(['docs', 'notes', 'quizzes']);
   });
 
   it('expands folders lazily and keeps them expanded across a rescan', async () => {

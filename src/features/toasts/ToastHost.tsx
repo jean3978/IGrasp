@@ -2,7 +2,7 @@ import { clsx } from 'clsx';
 import { Popover } from 'radix-ui';
 import { AlertCircle, FileMinus, FilePen, FilePlus, Files, Info, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useTabs } from '../../stores/tabs';
+import { openSourceFile, useTabs } from '../../stores/tabs';
 import { batchSize, describeBatch, useToasts } from '../../stores/toasts';
 import type { ChangeBatch, ChangeKind, Toast } from '../../stores/toasts';
 import './toasts.css';
@@ -129,6 +129,19 @@ function ToastView({ toast }: { toast: Toast }) {
     icon = toast.level === 'error' ? <AlertCircle aria-hidden /> : <Info aria-hidden />;
     tone = toast.level;
     body = <span className="toast-text toast-text-wrap">{toast.text}</span>;
+    const { openPath } = toast;
+    if (openPath !== undefined) {
+      body = (
+        <>
+          {body}
+          <span className="toast-text">Open</span>
+        </>
+      );
+      onActivate = () => {
+        openSourceFile(openPath);
+        dismiss(toast.id);
+      };
+    }
   }
 
   const card = (

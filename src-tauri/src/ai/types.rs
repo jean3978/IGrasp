@@ -4,6 +4,8 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use crate::learning::quiz::QuizGenerationInput;
+
 /// Whether a provider can be used right now, and how to fix it when it cannot.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -190,6 +192,9 @@ pub struct AiStartRequest {
     pub images: Vec<AiImage>,
     pub policy: AiPolicy,
     pub output_schema: Option<serde_json::Value>,
+    /// For `QuizGeneration`: what the user chose. The backend composes the prompt and the schema
+    /// and ignores `prompt`, `context_paths`, `capture`, `images`, `policy` and `output_schema`.
+    pub quiz: Option<QuizGenerationInput>,
 }
 
 /// The size class of an operation, for the confirmation card.
@@ -202,6 +207,18 @@ pub enum AiSizeBucket {
     Large,
 }
 
+/// A document a generation inlines in its prompt, for the confirmation card.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct AiInlinedDocument {
+    /// Root-relative with `/`.
+    pub path: String,
+    pub bytes: u64,
+    /// Read for context only (an agent instruction file), never a source.
+    pub context_only: bool,
+}
+
 /// An approximate size of what an operation sends (`ai::estimate`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -212,6 +229,9 @@ pub struct AiSizeEstimate {
     pub bucket: AiSizeBucket,
     pub documents: u32,
     pub images: u32,
+    /// The documents a generation inlines in its prompt (a quiz: anchor files, agent files as
+    /// context); empty for a chat message, whose context the chat lists itself.
+    pub inlined: Vec<AiInlinedDocument>,
 }
 
 /// What `ai_estimate` measures: metadata only, nothing is read.
@@ -223,6 +243,9 @@ pub struct AiEstimateInput {
     pub prompt_bytes: u64,
     pub context_paths: Vec<String>,
     pub images: u32,
+    /// A quiz generation to measure (the inlined set the backend composes).
+    #[ts(optional)]
+    pub quiz: Option<QuizGenerationInput>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TS)]
@@ -334,6 +357,16 @@ pub enum AiEvent {
     },
     /// An error the provider reported inside the conversation (not logged in, unknown model).
     Error { message: String },
+    /// The final answer of an operation started with `AiRequest::output_schema`. In a validated
+    /// operation (`ai::run`), only the accepted answer is emitted, once, before `Done`.
+    StructuredOutput { value: serde_json::Value },
+    /// A validated operation starts another attempt (a retry with a repair prompt), `number` of
+    /// `of`, because of `reason` (plain language, for the user).
+    Attempt {
+        number: u32,
+        of: u32,
+        reason: String,
+    },
     #[serde(rename_all = "camelCase")]
     Done {
         outcome: AiOutcome,

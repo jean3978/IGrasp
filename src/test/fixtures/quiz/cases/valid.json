@@ -1,0 +1,49 @@
+{
+  "description": "three grounded questions, one with a binary secondary source",
+  "count": 10,
+  "output": {
+    "insufficientMaterial": false,
+    "questions": [
+      {
+        "id": "q1",
+        "kind": "multipleChoice",
+        "question": "In Orbit's watcher, which type receives a debounced batch of disk events?",
+        "choices": ["WatchContext", "AiGateway", "IndexBuilder", "EventQueue"],
+        "answer": 0,
+        "hint": "Look at the impl block in the index module's watcher.",
+        "explanation": "WatchContext::handle in src/index/watcher.rs takes the batch and reindexes it; the gateway never sees disk events.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 6, "lastLine": 14 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "names WatchContext and the watcher" }
+      },
+      {
+        "id": "q2",
+        "kind": "trueFalse",
+        "question": "Orbit debounces disk events for 200 ms before updating its index.",
+        "choices": ["True", "False"],
+        "answer": 0,
+        "hint": "The architecture page has an Index section.",
+        "explanation": "docs/architecture.md says batches are debounced for 200 ms; DEBOUNCE_MS in the watcher holds the value.",
+        "sources": [{ "path": "docs/architecture.md", "firstLine": 7, "lastLine": 7 }],
+        "difficulty": 1,
+        "selfCheck": { "projectSpecific": true, "reason": "the project's debounce delay" }
+      },
+      {
+        "id": "q3",
+        "kind": "multipleChoice",
+        "question": "Which method of AiGateway stops a running operation?",
+        "choices": ["cancel", "start", "next_id"],
+        "answer": 0,
+        "hint": "Read the second method of the gateway's impl block.",
+        "explanation": "AiGateway::cancel in src/ai/gateway.rs stops the slot's operation by id.",
+        "sources": [
+          { "path": "src/ai/gateway.rs", "firstLine": 13, "lastLine": 15 },
+          { "path": "assets/logo.png", "why": "the logo shown while it runs" }
+        ],
+        "difficulty": 3,
+        "selfCheck": { "projectSpecific": true, "reason": "names AiGateway::cancel" }
+      }
+    ]
+  },
+  "expected": { "accepted": ["q1", "q2", "q3"], "rejected": {} }
+}

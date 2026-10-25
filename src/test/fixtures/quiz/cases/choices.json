@@ -1,0 +1,108 @@
+{
+  "description": "choices: true/false wording, counts, duplicates, 'all of the above', answer index, a right choice whose length gives it away",
+  "count": 10,
+  "output": {
+    "insufficientMaterial": false,
+    "questions": [
+      {
+        "id": "q1",
+        "kind": "trueFalse",
+        "question": "Orbit's watcher debounces events for 200 ms.",
+        "choices": ["Yes", "No"],
+        "answer": 0,
+        "hint": "Top of the watcher.",
+        "explanation": "DEBOUNCE_MS in src/index/watcher.rs is 200.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 4, "lastLine": 4 }],
+        "difficulty": 1,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q2",
+        "kind": "multipleChoice",
+        "question": "Which constant holds Orbit's debounce delay?",
+        "choices": ["DEBOUNCE_MS", "DELAY"],
+        "answer": 0,
+        "hint": "Top of the watcher.",
+        "explanation": "DEBOUNCE_MS in src/index/watcher.rs is 200.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 4, "lastLine": 4 }],
+        "difficulty": 1,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q3",
+        "kind": "multipleChoice",
+        "question": "Which constant holds the debounce delay of Orbit's watcher?",
+        "choices": ["Same", "same!", "Other"],
+        "answer": 2,
+        "hint": "Top of the watcher.",
+        "explanation": "DEBOUNCE_MS in src/index/watcher.rs is 200.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 4, "lastLine": 4 }],
+        "difficulty": 1,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q4",
+        "kind": "multipleChoice",
+        "question": "Which types does Orbit's index module define?",
+        "choices": ["WatchContext", "AiGateway", "All of the above"],
+        "answer": 0,
+        "hint": "Read the watcher.",
+        "explanation": "WatchContext lives in src/index/watcher.rs.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 6, "lastLine": 8 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q5",
+        "kind": "multipleChoice",
+        "question": "Which type of Orbit owns the running slot?",
+        "choices": ["AiGateway", "WatchContext", "Slot"],
+        "answer": 3,
+        "hint": "Read the gateway.",
+        "explanation": "AiGateway in src/ai/gateway.rs owns the running slot.",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 2, "lastLine": 4 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q6",
+        "kind": "multipleChoice",
+        "question": "Which type of Orbit owns the running slot of an AI operation?",
+        "choices": ["AiGateway", "WatchContext", "Slot"],
+        "answer": 0,
+        "hint": "Read the gateway module.",
+        "explanation": "AiGateway in src/ai/gateway.rs holds `running: Slot`.",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 2, "lastLine": 4 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q7",
+        "kind": "multipleChoice",
+        "question": "Why does Orbit keep the running AI operation in one place?",
+        "choices": [
+          "Speed",
+          "AiGateway holds a single running Slot, so a second operation cannot start while one runs",
+          "Logging"
+        ],
+        "answer": 1,
+        "hint": "Read the gateway module.",
+        "explanation": "AiGateway in src/ai/gateway.rs holds `running: Slot`.",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 2, "lastLine": 4 }],
+        "difficulty": 3,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      }
+    ]
+  },
+  "expected": {
+    "accepted": ["q6"],
+    "rejected": {
+      "q1": "trueFalse",
+      "q2": "choices",
+      "q3": "choices",
+      "q4": "allOfTheAbove",
+      "q5": "answerRange",
+      "q7": "longestAnswer"
+    }
+  }
+}

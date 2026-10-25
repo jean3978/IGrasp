@@ -20,8 +20,12 @@ are never deleted; a decision that changes gets a new record that supersedes the
 | [0013](0013-opening-files-with-the-default-app.md) | Opening files with the default application: text only, deny-listed, user-initiated | Accepted |
 | [0014](0014-claude-cli-integration.md) | Claude through the `claude` CLI: one `stream-json` process per turn, permissions over stdio | Accepted, Linux verification pending |
 | [0015](0015-ai-provider-abstraction-and-gateway.md) | AI provider abstraction (`AiProvider`, neutral events) and the "no token without a user action" gateway | Accepted, amended by 0020 |
-| [0016](0016-learning-features-grounded-in-the-project.md) | Learning features (quiz, tutorials) grounded in the whole project | Accepted |
+| [0016](0016-learning-features-grounded-in-the-project.md) | Learning features (quiz, tutorials) grounded in the whole project | Accepted, Phase 4 notes added |
 | [0017](0017-rendered-markdown-diff-at-block-level.md) | Rendered markdown diff at block level, shared by AI review, tutorials and Git | Accepted |
 | [0018](0018-region-capture-by-dom-rendering.md) | Region capture by rendering the DOM (modern-screenshot) with `data-line` mapping | Superseded in part by 0020 (no screenshot) |
 | [0019](0019-permission-policy-history-and-floating-chat.md) | Permission policy in the gateway, conversation history owned by the app, chat as an in-page floating panel | Accepted |
 | [0020](0020-viewport-ai-tools-and-text-selections.md) | AI tools on the document view, text and region selections sent as text, the models the CLI offers, a chat with its own look | Accepted |
+| [0021](0021-project-profile-from-a-marker-table.md) | Project profile detected locally from a marker table, corrected by the user | Accepted |
+| [0022](0022-grounded-generation-pipeline.md) | Grounded generation: app-owned prompt and schema, typed validation, validated runs with capped retries | Accepted |
+| [0023](0023-hoot-the-owl.md) | Hoot: an original SVG owl with CSS states and local lines | Accepted |
+| [0024](0024-shareable-learning-files-as-markdown.md) | Shareable learning files as markdown with fenced `igrasp-*` blocks, replayed without AI | Accepted |

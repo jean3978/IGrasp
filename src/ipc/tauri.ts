@@ -117,6 +117,19 @@ export const tauriBackend: Backend = {
   saveConversation: (conversation) => invoke('save_conversation', { conversation }),
   deleteConversation: (id) => invoke('delete_conversation', { id }),
   forgetConversations: () => invoke('forget_conversations'),
+  getProjectProfile: (force) => invoke('get_project_profile', { force: force ?? false }),
+  setProfileCorrections: (corrections) => invoke('set_profile_corrections', { corrections }),
+  listSubjects: () => invoke('list_subjects'),
+  getCurrentQuiz: () => invoke('get_current_quiz'),
+  saveCurrentQuiz: (record) => invoke('save_current_quiz', { record }),
+  clearCurrentQuiz: () => invoke('clear_current_quiz'),
+  listQuizHistory: () => invoke('list_quiz_history'),
+  getQuizRecord: (id) => invoke('get_quiz_record', { id }),
+  forgetQuizzes: () => invoke('forget_quizzes'),
+  saveQuizMarkdown: (kind, markdown, suggestedName) =>
+    invoke('save_quiz_markdown', { kind, markdown, suggestedName }),
+  listQuizFiles: () => invoke('list_quiz_files'),
+  readQuizFile: (relPath) => invoke('read_quiz_file', { relPath: relPath ?? null }),
 
   listen: (event, handler) =>
     tauriListen<Parameters<typeof handler>[0]>(event, (e) => {

@@ -18,6 +18,7 @@ No Confluence, no editor plugin, no note-taking vault — just the project's own
 | ![Search in files with highlighted matches, the outline and backlinks, in the dark theme](docs/screenshots/search-dark.png) | ![Search everything (Ctrl+T) over file names and headings](docs/screenshots/quick-open-light.png) |
 | ![The Broken links view next to a document with flagged links](docs/screenshots/broken-links-light.png) | ![The AI chat opened next to highlighted text, with the selection line, an answer and the quick actions](docs/screenshots/ai-chat-light.png) |
 | ![An AI edit reviewed in the rendered document, with Accept and Reject per change](docs/screenshots/ai-review-light.png) | ![A region dragged over a table: it stays highlighted and the chat opens beside it](docs/screenshots/ai-capture-dark.png) |
+| ![A quiz question answered: Hoot explains, the level flames and the streak, and Read more on the cited file](docs/screenshots/quiz-dark.png) | ![A shared quiz file in the preview: the Play this quiz banner and a question card with its answer folded](docs/screenshots/quiz-file-light.png) |
 
 ## Features
 
@@ -59,14 +60,27 @@ No Confluence, no editor plugin, no note-taking vault — just the project's own
   edits, commands, web, anything else); every automatic answer is shown in the conversation.
 - **History.** Conversations are kept per folder (in the app's data folder, never in your
   project) and can be reopened and continued, or forgotten.
+- **Quiz Me.** `Ctrl+Alt+Q`: Hoot the owl asks you questions about how **this** project is
+  made, written by the AI from its code, configuration, build, tests and docs, each citing the
+  lines that prove the answer (**Read more →** opens them). Every question is checked before you
+  see it: real files, real lines, nothing generic. A short wizard asks **who you are** on the
+  project (programmer, artist, game or UX designer, producer, QA…), then a global concept, a
+  feature, or **specific code to check** before you submit it, and Hoot writes for that role.
+  Fixed or adaptive to your level, whole project or docs only, hints, **Look it up** (`L`) to
+  open the cited files before answering, streaks, confetti, a **Documentation gap** note when
+  the project's docs are thin, and a detected **project profile** (engine, frameworks,
+  languages, modules) you can correct. Works on games (Godot, Unity, Unreal), web apps, tools
+  and libraries alike.
+- **Share a quiz.** Save results as a readable report, or save the quiz itself as a markdown file
+  your teammates replay **without the AI**; it tells them when the cited code has changed.
 - **Themes.** Light, Dark, High Contrast and Follow System.
 - **Safe by design.** IGrasp never writes inside the folder you open on its own (an edit you
-  accept is written by the AI provider). HTML in markdown is sanitized, links never navigate the
-  app or launch programs, and the app reads only the folder you chose. AI features only ever
-  spend tokens when you ask for it.
+  accept is written by the AI provider; results and quizzes only where you save them). HTML in
+  markdown is sanitized, links never navigate the app or launch programs, and the app reads only
+  the folder you chose. AI features only ever spend tokens when you ask for it.
 
-Coming next: a quiz and generated tutorials about your project (its code, not only its docs),
-editing, and a beginner-friendly git view with "what changed since I last looked". See the
+Coming next: generated tutorials about your project (its code, not only its docs), editing, and
+a beginner-friendly git view with "what changed since I last looked". See the
 [roadmap](#roadmap).
 
 ## Download and installation
@@ -155,11 +169,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the details, and
 | `Ctrl+Alt+R` | Ask about a region |
 | `Ctrl+Alt+N` / `Ctrl+Alt+H` | New AI conversation / history |
 | `Alt+Shift+A` / `Alt+Shift+R` | Accept all / reject all changes of an AI edit under review |
+| `Ctrl+Alt+Q` | Quiz Me (then `1`–`4`, `T` / `F`, `H` for a hint, `L` to look it up, `Enter`) |
 | `Ctrl+W` | Close the tab |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab |
 | `Alt+1` … `Alt+9` | Go to a tab |
 | `Ctrl+=` / `Ctrl+-` / `Ctrl+0` | Larger / smaller / default text |
-| `Alt+F`, `Alt+E`, `Alt+V`, `Alt+H` | Open a menu |
+| `Alt+F`, `Alt+E`, `Alt+V`, `Alt+L`, `Alt+H` | Open a menu |
 
 In the Explorer: arrows, Home/End, Enter (open), Space (preview), `*` (expand siblings) and
 type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
@@ -183,8 +198,11 @@ type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
       permissions and per-folder history, inline diff review, and AI tools over the document:
       highlight text or drag a region, the chat opens beside it, with quick actions (Rewrite,
       Shorten, Expand, Fix grammar, Make a table, Make a diagram, Explain).
-- [ ] **Phase 4 — Quiz**: a fun quiz about the project with Hoot the owl, grounded in the whole
-      project (code, config, docs), for developers new to it.
+- [x] **Phase 4 — Quiz** (0.4.0): a fun quiz about the project with Hoot the owl, grounded in
+      the whole project (code, config, docs) with checked citations, a local project profile, a
+      wizard that adapts to your role (kind of quiz, concepts, features or a code check),
+      documentation gaps reported, Look it up, fixed and adaptive modes, effects, saved results,
+      and shareable quiz files replayed without the AI.
 - [ ] **Phase 5 — Tutorials**: Hoot's Academy, interactive tutorials generated about the project
       (architecture, features, dependencies, how things are built, any engine or stack), saved
       privately with your progress, shareable with the team, and checked for freshness only when

@@ -58,3 +58,31 @@ programmed. Generic lessons about a technology are everywhere online; what is mi
   shows the expected size before anything runs.
 - The rule "IGrasp never writes inside the folder you open" becomes "never on its own": shared
   tutorials, like future editing, are written only on an explicit user action.
+
+## As implemented in Phase 4 (0.4.0)
+
+- The project profile is `src-tauri/src/profile/`, detected from a marker table (ADR 0021).
+- The grounding rule is enforced by the quiz validator (`learning/quiz/validate.rs`): every
+  question cites a file of the corpus with a line range inside the file for text files, never an
+  agent instruction file or a secret, and must name something of the project; rejected
+  questions trigger at most two visible retries inside one operation (ADR 0022).
+- Two quiz modes: **Fixed** (all questions in one call, ordered by the player's level) and
+  **Adaptive** (rounds of 5 at the current level, each started by the player's Next round).
+- Sources: **Whole project** or **Documentation only** (markdown files only, enforced by the
+  validator), or, for a **code check**, only the files and folders the player picked.
+- **Audience**, refined after 0.4.0: developers remain the default, but the new-quiz wizard asks
+  for the player's role first (proposed from the profile's kinds: a game team's artists, level
+  designers and producers, a web product's UX designers and product managers…). The role is read
+  as a family of crafts (`learning/role.rs`); it decides which kinds of quiz are offered (global
+  concepts, a feature, a code check only for roles that read code), which subjects come first,
+  and the prompt's audience: plain words and a craft-specific focus for roles that do not read
+  code, never questions that ask them to. The grounding rule does not change with the role.
+- The **bridge** rule is applied as: an industry-standard concept or process (a design pattern,
+  a security practice, a CI step, an asset pipeline convention) may be the subject of a question
+  when its answer depends on how this project applies it, at most about a third of the questions;
+  a definition alone is still rejected.
+- When the project's documentation is thin for the subject and the role, the generator reports
+  it (`docsNote`, shown as a **Documentation gap** with the results) instead of hiding it: an
+  undocumented project is a finding, not a reason for generic questions.
+- The first write in the folder is Phase 4's "Save results…" and "Save quiz…", each through the
+  system save dialog (ADR 0024).

@@ -15,7 +15,7 @@ import { selectCanGoBack, selectCanGoForward, useHistory } from '../../stores/hi
 import { useSettings } from '../../stores/settings';
 import { fileName } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
-import { actions, runAction } from './menuActions';
+import { actions, markOf, runAction } from './menuActions';
 import type { ActionId } from './menuActions';
 import { ThemeMenu } from './ThemeMenu';
 
@@ -49,9 +49,7 @@ export function ActionButton({
       }}
     >
       {children}
-      {(action.usesAi || action.aiFeature) && (
-        <AiMark variant={action.usesAi ? 'uses' : 'feature'} />
-      )}
+      {markOf(id) !== null && <AiMark variant={markOf(id) ?? 'uses'} />}
     </IconButton>
   );
 }
