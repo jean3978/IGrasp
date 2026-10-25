@@ -1,0 +1,384 @@
+/* Hoot's look and its five states. Each state has a still pose (the transforms) and, unless
+   motion is reduced, an animation on top. */
+
+.hoot {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.hoot-svg {
+  flex: none;
+  overflow: visible;
+}
+
+.hoot-svg g,
+.hoot-svg path,
+.hoot-svg circle,
+.hoot-svg ellipse {
+  transform-box: fill-box;
+}
+
+.hoot-branch {
+  fill: var(--hoot-branch);
+}
+.hoot-feet {
+  fill: var(--hoot-beak);
+}
+.hoot-feather,
+.hoot-wing-left path,
+.hoot-wing-right path,
+.hoot-wing-raised path,
+.hoot-tuft {
+  fill: var(--hoot-feather);
+  stroke: var(--hoot-outline);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.hoot-wing-left path,
+.hoot-wing-right path,
+.hoot-wing-raised path,
+.hoot-tuft {
+  fill: var(--hoot-feather-dark);
+}
+.hoot-belly {
+  fill: var(--hoot-belly);
+}
+.hoot-scallop {
+  fill: none;
+  stroke: var(--hoot-feather);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+.hoot-eye-white {
+  fill: var(--hoot-eye-white);
+  stroke: var(--hoot-outline);
+  stroke-width: 1.5;
+}
+.hoot-pupil {
+  fill: var(--hoot-eye);
+}
+.hoot-catchlight {
+  fill: var(--hoot-eye-white);
+}
+.hoot-happy {
+  fill: none;
+  stroke: var(--hoot-eye);
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0;
+}
+.hoot-lens {
+  fill: none;
+  stroke: var(--hoot-frame);
+  stroke-width: 3;
+}
+.hoot-bridge {
+  fill: none;
+  stroke: var(--hoot-frame);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.hoot-glint {
+  fill: none;
+  stroke: var(--hoot-eye-white);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.7;
+}
+.hoot-beak {
+  fill: var(--hoot-beak);
+  stroke: var(--hoot-outline);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.hoot-smile {
+  fill: none;
+  stroke: var(--hoot-eye);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0;
+}
+.hoot-blush {
+  fill: var(--hoot-blush);
+  opacity: 0;
+}
+.hoot-thought {
+  fill: var(--hoot-bubble);
+  stroke: var(--hoot-bubble-border);
+  stroke-width: 1.5;
+  opacity: 0;
+}
+
+/* Pivots: the figure stands on its feet, the wings hang from the shoulders, the head turns
+   around the face. */
+.hoot-figure {
+  transform-origin: 50% 100%;
+}
+.hoot-wing-left {
+  transform-origin: 100% 4%;
+}
+.hoot-wing-right {
+  transform-origin: 0% 4%;
+}
+.hoot-head {
+  transform-origin: 50% 75%;
+}
+.hoot-eyes {
+  transform-origin: 50% 50%;
+}
+
+.hoot-figure,
+.hoot-wing-left,
+.hoot-wing-right,
+.hoot-head,
+.hoot-pupils,
+.hoot-glasses,
+.hoot-brows,
+.hoot-eyes,
+.hoot-happy,
+.hoot-smile,
+.hoot-blush,
+.hoot-thought {
+  transition:
+    transform 200ms ease,
+    opacity 200ms ease;
+}
+
+/* Blink (idle). */
+.hoot[data-blink] .hoot-eyes {
+  transform: scaleY(0.1);
+  transition-duration: 70ms;
+}
+
+/* idle: a slow bob. */
+.hoot[data-state='idle'] .hoot-figure {
+  animation: hoot-bob 3s ease-in-out infinite;
+}
+
+/* thinking: head tilted, eyes up-left, wing tapping the beak, thought dots. */
+.hoot[data-state='thinking'] .hoot-head {
+  transform: rotate(-8deg);
+}
+.hoot[data-state='thinking'] .hoot-pupils {
+  transform: translate(-2.5px, -3px);
+}
+.hoot[data-state='thinking'] .hoot-glasses {
+  transform: translateY(2px);
+}
+.hoot[data-state='thinking'] .hoot-wing-left {
+  transform: rotate(-72deg);
+  animation: hoot-tap 0.9s ease-in-out infinite;
+}
+.hoot[data-state='thinking'] .hoot-thought {
+  opacity: 1;
+}
+.hoot[data-state='thinking'] .hoot-thought circle {
+  animation: hoot-dot 1.4s ease-in-out infinite;
+}
+.hoot[data-state='thinking'] .hoot-thought circle:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.hoot[data-state='thinking'] .hoot-thought circle:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* cheering: wings up, happy eyes, blush, two hops, a glint. */
+.hoot[data-state='cheering'] .hoot-wing-left {
+  transform: rotate(115deg);
+}
+.hoot[data-state='cheering'] .hoot-wing-right {
+  transform: rotate(-115deg);
+}
+.hoot[data-state='cheering'] .hoot-pupils {
+  opacity: 0;
+}
+.hoot[data-state='cheering'] .hoot-happy,
+.hoot[data-state='cheering'] .hoot-blush {
+  opacity: 0.9;
+}
+.hoot[data-state='cheering'] .hoot-brows {
+  transform: translateY(-2px);
+}
+.hoot[data-state='cheering'] .hoot-figure {
+  animation: hoot-hop 0.9s ease-out 1;
+}
+.hoot[data-state='cheering'] .hoot-glint {
+  animation: hoot-glint 0.9s ease-out 1;
+}
+
+/* explaining: the right wing pushes the glasses up (the signature move), one slow nod. */
+.hoot[data-state='explaining'] .hoot-wing-right {
+  opacity: 0;
+}
+.hoot[data-state='explaining'] .hoot-wing-raised {
+  opacity: 1;
+  animation: hoot-push 2.6s ease-in-out infinite;
+}
+.hoot[data-state='explaining'] .hoot-glasses {
+  transform: translateY(-2px);
+  animation: hoot-push 2.6s ease-in-out infinite;
+}
+.hoot[data-state='explaining'] .hoot-head {
+  animation: hoot-nod 2.6s ease-in-out infinite;
+}
+.hoot[data-state='explaining'] .hoot-pupils {
+  transform: translateY(0.5px);
+}
+
+/* encouraging: a tilt the other way, a soft smile, a slow wave. No sad face. */
+.hoot[data-state='encouraging'] .hoot-head {
+  transform: rotate(6deg);
+}
+.hoot[data-state='encouraging'] .hoot-smile {
+  opacity: 1;
+}
+.hoot[data-state='encouraging'] .hoot-wing-left {
+  transform: rotate(110deg);
+  animation: hoot-wave 1.2s ease-in-out 1;
+}
+
+@keyframes hoot-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+@keyframes hoot-tap {
+  0%,
+  100% {
+    transform: rotate(-72deg);
+  }
+  50% {
+    transform: rotate(-62deg);
+  }
+}
+@keyframes hoot-dot {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes hoot-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-9px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  70% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes hoot-glint {
+  0% {
+    opacity: 0.2;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+@keyframes hoot-push {
+  0%,
+  70%,
+  100% {
+    transform: translateY(-2px);
+  }
+  80% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes hoot-nod {
+  0%,
+  60%,
+  100% {
+    transform: rotate(0);
+  }
+  75% {
+    transform: rotate(4deg);
+  }
+}
+@keyframes hoot-wave {
+  0%,
+  100% {
+    transform: rotate(110deg);
+  }
+  30% {
+    transform: rotate(130deg);
+  }
+  60% {
+    transform: rotate(100deg);
+  }
+}
+
+/* Reduced motion: the still poses only. */
+.hoot-still *,
+.hoot-still {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hoot *,
+  .hoot {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.hoot-bubble {
+  position: relative;
+  max-width: 280px;
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  border: var(--border-width) solid var(--hoot-bubble-border);
+  border-radius: var(--radius-l);
+  background: var(--hoot-bubble);
+  color: var(--fg-strong);
+  font-size: var(--font-size-ui);
+  line-height: 1.4;
+}
+
+.hoot-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* The development gallery (?hoot=1). */
+.hoot-gallery {
+  min-height: 100vh;
+  padding: 24px;
+  background: var(--bg-editor);
+  color: var(--fg);
+  font-family: var(--font-ui);
+}
+
+.hoot-gallery-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 32px;
+  margin-bottom: 24px;
+}
+
+.hoot-gallery figure {
+  margin: 0;
+  text-align: center;
+}
+
+.hoot-wing-raised {
+  opacity: 0;
+  transform-origin: 50% 100%;
+}

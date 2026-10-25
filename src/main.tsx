@@ -14,6 +14,8 @@ const root = createRoot(container);
 // Browser dev mode only: `/?diff=<fixture>&theme=<theme>` shows a rendered diff for a visual check.
 const params = new URLSearchParams(window.location.search);
 const diffFixture = import.meta.env.DEV ? params.get('diff') : null;
+// `/?hoot=1&theme=<theme>` shows Hoot's states side by side.
+const hootGallery = import.meta.env.DEV && params.has('hoot');
 
 if (diffFixture) {
   document.documentElement.dataset['theme'] = params.get('theme') ?? 'light';
@@ -21,6 +23,15 @@ if (diffFixture) {
     root.render(
       <StrictMode>
         <DiffPlayground name={diffFixture} />
+      </StrictMode>,
+    );
+  });
+} else if (hootGallery) {
+  document.documentElement.dataset['theme'] = params.get('theme') ?? 'light';
+  void import('./features/hoot/HootGallery').then(({ HootGallery }) => {
+    root.render(
+      <StrictMode>
+        <HootGallery />
       </StrictMode>,
     );
   });
