@@ -1,6 +1,6 @@
 [package]
 name = "igrasp"
-version = "0.4.0"
+version = "0.5.0"
 description = "Read the markdown documentation of a project and grasp what AI agents are writing."
 authors = ["Jean-Rene Choiniere"]
 license = "MIT"
