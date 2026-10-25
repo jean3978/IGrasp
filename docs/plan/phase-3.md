@@ -43,7 +43,7 @@ provider, as the direct result of that click.
   read-only policy, the `AiUserAction` variants, structured output in the request.
 - Editing the document by hand, saving, file management (Phase 6). The only write in the folder
   is an accepted AI edit, performed by the provider.
-- Rendered diff between **commits** or against the **last-read snapshot** (Phase 7). The diff
+- Rendered diff between **commits** or against the **last-read snapshot** (Phase 9). The diff
   module is built so that it only needs two markdown strings.
 - A second provider. The paper check of ADR 0015 stays on paper; the "AI provider" setting has
   one entry.
@@ -764,7 +764,7 @@ the overlay and the floating panel are written with pointer events (no library).
 
 | ADR | Decision |
 |---|---|
-| 0017 | **Rendered markdown diff at block level**, built from two markdown strings through the existing sanitized pipeline, shared by AI review (Phase 3), tutorial review (Phase 5) and Git diffs (Phase 7); line diff as the fallback. |
+| 0017 | **Rendered markdown diff at block level**, built from two markdown strings through the existing sanitized pipeline, shared by AI review (Phase 3), tutorial review (Phase 5) and Git diffs (Phase 9); line diff as the fallback. |
 | 0018 | **Region capture by rendering the DOM** (`modern-screenshot`) with the `data-line` source mapping, instead of an OS screenshot. |
 | 0019 | **Permission policy in the gateway, conversation history owned by the app**: kinds classified by the provider, decisions by the app's settings, the CLI's transcript as the resume source and the app's copy as the readable history; chat as an in-page floating panel. |
 | 0014, 0015 | Status updated to Accepted (Linux table completed; "not done in the proof of concept" list resolved with pointers to this plan). |

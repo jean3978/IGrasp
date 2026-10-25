@@ -209,9 +209,14 @@ type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
       you ask.
 - [ ] **Phase 6 — Editing**: WYSIWYG editing with lossless round-trip, file management, edit
       conflicts.
-- [ ] **Phase 7 — Git**: branch graph, commit details, status panel, stash, beginner-friendly
+- [ ] **Phase 7 — Images and videos**: drop images and videos from the file explorer where the
+      mouse points, paste screenshots from the clipboard, and import them next to the document
+      (with optional compression); an "Unused media" view.
+- [ ] **Phase 8 — Media annotations**: draw rectangles, arrows, labels and numbered steps on
+      screenshots and videos right in the preview, saved in the markdown, to write how-to guides.
+- [ ] **Phase 9 — Git**: branch graph, commit details, status panel, stash, beginner-friendly
       operations, and "what changed since I last looked".
-- [ ] **Phase 8 — Mermaid visual editor**: flowcharts first.
+- [ ] **Phase 10 — Mermaid visual editor**: flowcharts first.
 
 ## License
 

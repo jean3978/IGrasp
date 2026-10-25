@@ -7,6 +7,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Roadmap**: two phases after Editing, Phase 7 — Images and videos (drop and paste into a
+  document, import with compression, unused media) and Phase 8 — Media annotations (rectangles,
+  arrows, labels and steps drawn on screenshots and videos, saved in the markdown). Git moves to
+  Phase 9 and the Mermaid visual editor to Phase 10.
+
 ## [0.4.0] - 2026-10-25
 
 Phase 4 — Quiz Me: Hoot the owl asks you questions about how the open project is made, written by
