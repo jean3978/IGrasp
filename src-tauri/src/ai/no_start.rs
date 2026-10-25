@@ -324,9 +324,19 @@ fn no_ai_operation_starts_without_a_user_action() {
                 ws,
                 &state.appdata,
                 "mock",
-                &crate::learning::tutorial::share::WriteTarget::Shared { rel_path: readme },
+                &crate::learning::tutorial::share::WriteTarget::Shared {
+                    rel_path: readme.clone(),
+                },
                 None,
             )?;
+            // The freshness check and "Mark as verified", private and shared.
+            for reference in [
+                crate::learning::tutorial::TutorialRef::Private { id: t.id.clone() },
+                crate::learning::tutorial::TutorialRef::Shared { rel_path: readme },
+            ] {
+                crate::commands::tutorials::check_freshness(ws, &state.appdata, &reference)?;
+                crate::commands::tutorials::verified(ws, &state.appdata, &reference)?;
+            }
             state.appdata.save_suggested_subjects(
                 &key_of(root),
                 cards.cards.into_iter().take(1).collect(),

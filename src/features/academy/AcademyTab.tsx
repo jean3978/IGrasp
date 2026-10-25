@@ -14,6 +14,7 @@ import { AcademyConfirm } from './AcademyConfirm';
 import { AcademyGeneration } from './AcademyGeneration';
 import { AcademyHome } from './AcademyHome';
 import { OutlineReview } from './OutlineReview';
+import { ReviewScreen } from './ReviewScreen';
 import { TutorialOptions } from './TutorialOptions';
 import { TutorialView } from './TutorialView';
 import { WriteConfirmDialog } from './WriteConfirmDialog';
@@ -25,6 +26,7 @@ export function AcademyTab() {
   const root = useWorkspace((s) => s.root?.path ?? null);
   const screen = useAcademy((s) => s.screen);
   const open = useAcademy((s) => s.open);
+  const review = useAcademy((s) => s.review);
   const openHome = useAcademy((s) => s.openHome);
   const checkStatus = useAiProvider((s) => s.checkStatus);
   const motion = useSettings((s) => s.settings.learning.effects);
@@ -52,6 +54,7 @@ export function AcademyTab() {
           {screen === 'generating' && <AcademyGeneration motion={motion} />}
           {screen === 'outline' && <OutlineReview />}
           {screen === 'tutorial' && open && <TutorialView reference={open} motion={motion} />}
+          {screen === 'review' && review && <ReviewScreen review={review} />}
         </div>
       </div>
       <WriteConfirmDialog />

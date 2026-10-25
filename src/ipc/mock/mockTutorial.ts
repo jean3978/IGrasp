@@ -57,13 +57,13 @@ export interface MockTutorialDeps {
   agentNames: string[];
 }
 
-interface Base {
+export interface Base {
   corpus: QuizCorpus;
   ctx: TutorialValidationContext;
   input: TutorialInput;
 }
 
-function base(deps: MockTutorialDeps, input: TutorialInput): Base {
+export function base(deps: MockTutorialDeps, input: TutorialInput): Base {
   const corpus = corpusOfFiles(deps.files, { type: 'wholeProject' }, deps.agentNames);
   return {
     corpus,
@@ -78,7 +78,7 @@ function base(deps: MockTutorialDeps, input: TutorialInput): Base {
   };
 }
 
-function inlinedOf(deps: MockTutorialDeps, anchors: string[]): AiInlinedDocument[] {
+export function inlinedOf(deps: MockTutorialDeps, anchors: string[]): AiInlinedDocument[] {
   const docs: AiInlinedDocument[] = [];
   for (const a of anchors) {
     const content = deps.files.get(a);

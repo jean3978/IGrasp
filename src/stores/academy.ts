@@ -19,6 +19,7 @@ import type {
   Tutorial,
   TutorialRef,
   TutorialRequest,
+  TutorialReview,
   TutorialSubject,
   TutorialSubjects,
   TutorialSummary,
@@ -28,7 +29,8 @@ import { useProjectProfile } from './projectProfile';
 import { useSettings } from './settings';
 import { useToasts } from './toasts';
 
-export type AcademyScreen = 'home' | 'options' | 'confirm' | 'generating' | 'outline' | 'tutorial';
+export type AcademyScreen =
+  'home' | 'options' | 'confirm' | 'generating' | 'outline' | 'tutorial' | 'review';
 
 /** Tool summaries kept for the activity line. */
 const ACTIVITY_LINES = 4;
@@ -48,7 +50,36 @@ export interface TutorialSetup {
   role: string;
 }
 
-export type GenerationKind = 'outline' | 'chapters' | 'suggest';
+export type GenerationKind = 'outline' | 'chapters' | 'suggest' | 'review';
+
+/** A review ("Check with Claude") of a tutorial, accepted proposal by proposal. */
+export interface ReviewState {
+  reference: TutorialRef;
+  /** The tutorial as it was reviewed. */
+  tutorial: Tutorial;
+  result: TutorialReview;
+}
+
+/** `"<chapter index>:<step index>"`: a proposal of a review. */
+export const proposalKey = (chapter: number, step: number) => `${String(chapter)}:${String(step)}`;
+
+/** The tutorial with the accepted proposals' replacements (others left as they were). */
+export function withProposals(
+  t: Tutorial,
+  review: TutorialReview,
+  accepted: Set<string>,
+): Tutorial {
+  const chapters = t.chapters.map((c, ci) => {
+    const r = review.chapters.find((x) => x.index === ci);
+    if (!r) return c;
+    const steps = c.steps.map((step, si) => {
+      const p = r.proposals.find((x) => x.step === si);
+      return p && accepted.has(proposalKey(ci, si)) ? p.replacement : step;
+    });
+    return { ...c, steps };
+  });
+  return { ...t, chapters };
+}
 
 export interface PendingConfirm {
   kind: GenerationKind;
@@ -94,6 +125,8 @@ interface AcademyState {
   tutorial: Tutorial | null;
   /** The tutorial open in the reader (the course map and the chapters). */
   open: TutorialRef | null;
+  /** The review shown on the review screen. */
+  review: ReviewState | null;
 
   /** Loads what the home shows: the profile, the cards, the library (all local). */
   openHome: (root: string) => Promise<void>;
@@ -113,6 +146,14 @@ interface AcademyState {
   prepareChapter: (tutorialId: string, index: number, goal?: string) => Promise<void>;
   /** Estimates "Suggest more subjects" (spends nothing). */
   prepareSuggest: () => Promise<void>;
+  /** Estimates "Check with Claude" of a tutorial (spends nothing). */
+  prepareReview: (ref: TutorialRef) => Promise<void>;
+  /**
+   * Applies the accepted proposals: a private tutorial is saved; for a shared one, resolves to
+   * the new version, which the caller hands to the write confirmation (nothing written here).
+   */
+  applyReview: (accepted: string[]) => Promise<Tutorial | null>;
+  closeReview: () => void;
   cancelConfirm: () => void;
   /** Start on the confirmation card: the operation it describes (the user action). */
   confirmStart: () => Promise<void>;
@@ -198,6 +239,9 @@ export const useAcademy = create<AcademyState>()((set, get) => {
     model: string | null;
     outline: OutlineResult | null;
     suggest: SuggestResult | null;
+    review: TutorialReview | null;
+    /** The tutorial a review is about. */
+    reviewing: TutorialRef | null;
     error: string | null;
     /** Saves of accepted chapters still in flight (the next one waits for the previous). */
     saving: Promise<void>;
@@ -238,6 +282,8 @@ export const useAcademy = create<AcademyState>()((set, get) => {
       model: null,
       outline: null,
       suggest: null,
+      review: null,
+      reviewing: pending.request.kind === 'review' ? pending.request.tutorial : null,
       error: null,
       saving: Promise.resolve(),
     };
@@ -276,7 +322,12 @@ export const useAcademy = create<AcademyState>()((set, get) => {
         starting: false,
         buffered: [],
         generation: null,
-        screen: pending.kind === 'chapters' && get().tutorial ? 'outline' : 'home',
+        screen:
+          pending.kind === 'review'
+            ? 'tutorial'
+            : pending.kind === 'chapters' && get().tutorial
+              ? 'outline'
+              : 'home',
         failure: { message: errorMessage(err), suggestedSubjects: [] },
       });
     }
@@ -352,6 +403,20 @@ export const useAcademy = create<AcademyState>()((set, get) => {
     }
   };
 
+  /** An accepted review: the tutorial as reviewed, then the review screen. */
+  const showReview = async (reference: TutorialRef, result: TutorialReview) => {
+    try {
+      const tutorial = await backend.getTutorial(reference);
+      set({ review: { reference, tutorial, result }, screen: 'review', generation: null });
+    } catch (err) {
+      set({
+        generation: null,
+        screen: 'home',
+        failure: { message: errorMessage(err), suggestedSubjects: [] },
+      });
+    }
+  };
+
   return {
     screen: 'home',
     subjects: null,
@@ -365,6 +430,7 @@ export const useAcademy = create<AcademyState>()((set, get) => {
     failure: null,
     tutorial: null,
     open: null,
+    review: null,
 
     async openHome(root) {
       await useProjectProfile.getState().load(root);
@@ -477,6 +543,42 @@ export const useAcademy = create<AcademyState>()((set, get) => {
       await prepare('suggest', 'subjectSuggestion', { kind: 'suggest' }, 'Suggest more subjects');
     },
 
+    async prepareReview(ref) {
+      await prepare(
+        'review',
+        'tutorialReview',
+        { kind: 'review', tutorial: ref },
+        'Check this tutorial',
+      );
+    },
+
+    async applyReview(accepted) {
+      const review = get().review;
+      if (!review) return null;
+      const next = withProposals(review.tutorial, review.result, new Set(accepted));
+      const ref = review.reference;
+      if (ref.type === 'shared') {
+        set({ review: null, screen: 'tutorial', open: ref });
+        return accepted.length > 0 ? next : null;
+      }
+      try {
+        if (accepted.length > 0) await save(next);
+        set({ review: null, screen: 'tutorial', open: ref });
+      } catch (err) {
+        notifyError('Cannot save the accepted changes', err);
+      }
+      return null;
+    },
+
+    closeReview() {
+      const review = get().review;
+      set({
+        review: null,
+        screen: review ? 'tutorial' : 'home',
+        open: review?.reference ?? get().open,
+      });
+    },
+
     cancelConfirm() {
       const pending = get().pending;
       set({
@@ -486,7 +588,7 @@ export const useAcademy = create<AcademyState>()((set, get) => {
             ? 'options'
             : pending?.kind === 'chapters' && get().open === null
               ? 'outline'
-              : pending?.kind === 'chapters'
+              : pending?.kind === 'chapters' || pending?.kind === 'review'
                 ? 'tutorial'
                 : 'home',
       });
@@ -555,6 +657,7 @@ export const useAcademy = create<AcademyState>()((set, get) => {
         case 'structuredOutput':
           if (r.kind === 'outline') r.outline = event.value as unknown as OutlineResult;
           else if (r.kind === 'suggest') r.suggest = event.value as unknown as SuggestResult;
+          else if (r.kind === 'review') r.review = event.value as unknown as TutorialReview;
           else applyChapter(event.value as unknown as ChapterResult);
           return;
         case 'error':
@@ -576,6 +679,10 @@ export const useAcademy = create<AcademyState>()((set, get) => {
             set({ generation: null });
             if (event.outcome === 'Completed' && r.outline) void applyOutline(r.outline, r.model);
             else set({ screen: 'options', failure });
+          } else if (r.kind === 'review') {
+            if (event.outcome === 'Completed' && r.review && r.reviewing)
+              void showReview(r.reviewing, r.review);
+            else set({ generation: null, screen: 'tutorial', failure });
           } else if (r.kind === 'suggest') {
             set({ generation: null });
             if (event.outcome === 'Completed' && r.suggest) void applySuggestions(r.suggest);
@@ -651,6 +758,7 @@ export const useAcademy = create<AcademyState>()((set, get) => {
       if (operationId !== null) void backend.aiCancel(operationId).catch(() => undefined);
       run = null;
       set({
+        review: null,
         screen: 'home',
         subjects: null,
         library: [],

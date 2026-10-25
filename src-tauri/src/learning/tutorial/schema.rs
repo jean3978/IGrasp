@@ -604,10 +604,10 @@ fn step_schema(kind: &str, required: &[&str], properties: Value) -> Value {
     })
 }
 
-/// The JSON schema of [`ChapterOutput`].
-pub fn chapter_schema() -> Value {
+/// The schema of each step type (a chapter's steps, a review's replacements).
+pub fn step_schemas() -> Vec<Value> {
     let title = json!({ "type": "string", "minLength": 4, "maxLength": 80 });
-    let steps = vec![
+    vec![
         step_schema(
             "explain",
             &["title", "body", "sources"],
@@ -750,7 +750,12 @@ pub fn chapter_schema() -> Value {
                 "sources": citations_schema(0)
             }),
         ),
-    ];
+    ]
+}
+
+/// The JSON schema of [`ChapterOutput`].
+pub fn chapter_schema() -> Value {
+    let steps = step_schemas();
     json!({
         "type": "object",
         "additionalProperties": false,

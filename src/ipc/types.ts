@@ -212,6 +212,11 @@ export type { FreshnessReport } from './generated/FreshnessReport';
 export type { SourceCheck } from './generated/SourceCheck';
 export type { SourceState } from './generated/SourceState';
 export type { StepRef } from './generated/StepRef';
+export type { ChapterReview } from './generated/ChapterReview';
+export type { ChapterVerdict } from './generated/ChapterVerdict';
+export type { MissingTopic } from './generated/MissingTopic';
+export type { StepProposal } from './generated/StepProposal';
+export type { TutorialReview } from './generated/TutorialReview';
 export type { WriteTarget } from './generated/WriteTarget';
 export type { WrittenTutorial } from './generated/WrittenTutorial';
 export type { TutorialProgress } from './generated/TutorialProgress';
@@ -476,6 +481,12 @@ export interface Backend {
    * relocated version is returned (`relocated`), to write only after a confirmation.
    */
   checkTutorialFreshness(reference: TutorialRef): Promise<FreshnessReport>;
+  /**
+   * "Mark as verified": the user states the tutorial is correct for the project as it is now.
+   * Stamps the date, the HEAD commit and the git user name and hashes the cited ranges again. A
+   * private tutorial is saved; a shared one is returned stamped, to write after a confirmation.
+   */
+  markTutorialVerified(reference: TutorialRef): Promise<Tutorial>;
 
   listen<E extends EventName>(
     event: E,

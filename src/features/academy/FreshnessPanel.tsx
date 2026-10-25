@@ -3,12 +3,19 @@
 // affect. Moved citations of a private tutorial were relocated and saved; for a shared one, the
 // relocation is offered as a write the user confirms.
 
-import { CircleCheck, MoveVertical, TriangleAlert } from 'lucide-react';
+import { BadgeCheck, CircleCheck, MoveVertical, SearchCheck, TriangleAlert } from 'lucide-react';
+import { useState } from 'react';
+import { AiMark } from '../../components/AiMark';
 import { Button } from '../../components/ui/Button';
 import type { FreshnessReport, Tutorial, TutorialRef } from '../../ipc/types';
 import { stepTitle } from '../../lib/tutorial';
 import { openSourceFile } from '../../stores/tabs';
+import { selectAcademyBusy, useAcademy } from '../../stores/academy';
+import { useTutorialPlayer } from '../../stores/tutorialPlayer';
 import { useTutorialWrite } from '../../stores/tutorialWrite';
+import { backend } from '../../ipc/client';
+import { useToasts } from '../../stores/toasts';
+import { errorMessage } from '../../stores/aiProvider';
 import { badgeLabel } from './freshnessView';
 
 const STATE_LABEL = { changed: 'changed', missing: 'missing', moved: 'moved' } as const;
@@ -23,6 +30,21 @@ export function FreshnessPanel({
   report: FreshnessReport;
 }) {
   const prepareWrite = useTutorialWrite((s) => s.prepare);
+  const prepareReview = useAcademy((s) => s.prepareReview);
+  const busy = useAcademy(selectAcademyBusy);
+  const [confirming, setConfirming] = useState(false);
+  const written = tutorial.chapters.some((c) => c.steps.length > 0);
+  const verify = async () => {
+    setConfirming(false);
+    try {
+      const stamped = await backend.markTutorialVerified(reference);
+      if (reference.type === 'shared')
+        await prepareWrite({ type: 'shared', relPath: reference.relPath }, tutorial.title, stamped);
+      else await useTutorialPlayer.getState().load(reference);
+    } catch (err) {
+      useToasts.getState().notify('error', `Cannot mark it as verified: ${errorMessage(err)}`);
+    }
+  };
   const fine = report.badge.badge === 'upToDate';
   const problems = report.checks.filter(
     (c) => c.state === 'changed' || c.state === 'missing' || c.state === 'moved',
@@ -91,6 +113,53 @@ export function FreshnessPanel({
             </>
           )}
         </details>
+      )}
+      {tutorial.verified && (
+        <p className="quiz-muted">
+          <BadgeCheck aria-hidden className="academy-inline-icon" /> Verified{' '}
+          {tutorial.verified.date.slice(0, 10)}
+          {tutorial.verified.by ? ` by ${tutorial.verified.by}` : ''}
+          {tutorial.verified.commit ? ` at ${tutorial.verified.commit.slice(0, 8)}` : ''}
+        </p>
+      )}
+      {written && (
+        <div className="academy-head-actions">
+          <Button
+            onClick={() => void prepareReview(reference)}
+            disabled={busy}
+            title="The AI rereads the tutorial against the project and proposes updates (you confirm first)"
+          >
+            <SearchCheck aria-hidden /> Check with the AI <AiMark />
+          </Button>
+          {confirming ? (
+            <span className="academy-row-confirm" role="group" aria-label="Mark as verified?">
+              <span className="quiz-muted">
+                You confirm this tutorial is correct for the project as it is now. IGrasp records
+                the date, the commit and your name.
+              </span>
+              <Button variant="primary" onClick={() => void verify()}>
+                Mark as verified
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setConfirming(false);
+                }}
+              >
+                Cancel
+              </Button>
+            </span>
+          ) : (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setConfirming(true);
+              }}
+            >
+              <BadgeCheck aria-hidden /> Mark as verified…
+            </Button>
+          )}
+        </div>
       )}
       {relocated && reference.type === 'shared' && (
         <div className="academy-head-actions">

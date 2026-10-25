@@ -50,7 +50,9 @@ export function AcademyGeneration({ motion }: { motion: boolean }) {
             ? `Chapter ${String(stage.number)} of ${String(stage.of)}: ${stage.label}`
             : generation.kind === 'outline'
               ? 'Planning the outline'
-              : 'Writing the chapters'}
+              : generation.kind === 'review'
+                ? 'Checking the tutorial against the project'
+                : 'Writing the chapters'}
         </h2>
         <ul className="quiz-activity" aria-label="What the AI reads">
           {generation.activity.map((a, i) => (

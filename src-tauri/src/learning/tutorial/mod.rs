@@ -17,6 +17,7 @@ pub mod operation;
 pub mod progress;
 pub mod prompt;
 pub mod repo;
+pub mod review;
 pub mod schema;
 pub mod share;
 pub mod suggest;

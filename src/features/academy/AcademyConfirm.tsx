@@ -40,6 +40,12 @@ export function AcademyConfirm() {
         {pending.kind === 'outline' && (
           <li>One call: a short outline you can reorder, rename and trim before any chapter.</li>
         )}
+        {pending.kind === 'review' && (
+          <li>
+            One call: the AI rereads the tutorial against the project as it is now and proposes
+            replacements for outdated steps. Nothing changes until you accept them.
+          </li>
+        )}
         {estimate.costHint && <li>{estimate.costHint}</li>}
         <li>
           Read-only: the AI may read, list and search the files of this folder; it cannot change
@@ -49,7 +55,9 @@ export function AcademyConfirm() {
           The size is a floor: the AI reads other files of the project while it works. Steps whose
           citations do not check out are rewritten, at most twice per call.
         </li>
-        <li>The tutorial stays private, in the app&apos;s data, until you share it.</li>
+        {pending.kind !== 'review' && (
+          <li>The tutorial stays private, in the app&apos;s data, until you share it.</li>
+        )}
       </ul>
     </div>
   );

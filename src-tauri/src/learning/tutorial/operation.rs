@@ -6,8 +6,10 @@
 
 use super::compose::{ChapterStages, compose_outline};
 use super::cost;
+use super::review::compose_review;
+use super::share;
 use super::suggest::compose_suggest;
-use super::{Length, TutorialRequest};
+use super::{Length, TutorialRef, TutorialRequest};
 use crate::ai::run::RunPlan;
 use crate::ai::types::{AiPolicy, AiRequest, AiUserAction};
 use crate::appdata::AppData;
@@ -119,7 +121,31 @@ pub fn compose_operation(
                 calls: 1,
             })
         }
-        (AiUserAction::TutorialGeneration | AiUserAction::SubjectSuggestion, _) => Err(mismatch()),
+        (AiUserAction::TutorialReview, TutorialRequest::Review { tutorial }) => {
+            let t = match tutorial {
+                TutorialRef::Private { id } => {
+                    appdata.private_tutorial(&root_key(ws), id)?.tutorial
+                }
+                TutorialRef::Shared { rel_path } => share::read_shared(&ws.guard, rel_path)?,
+            };
+            let (profile, walk) = learning::corrected_profile(ws, appdata, false)?;
+            let composed = compose_review(ws.guard.root(), &profile, &walk, names, &t, model)?;
+            Ok(TutorialOperation {
+                kind: cost::REVIEW,
+                length: t.length,
+                prompt_bytes: composed.prompt_bytes,
+                inlined: composed.inlined,
+                request: composed.request,
+                plan: RunPlan::Validated(Box::new(composed.validator)),
+                calls: 1,
+            })
+        }
+        (
+            AiUserAction::TutorialGeneration
+            | AiUserAction::SubjectSuggestion
+            | AiUserAction::TutorialReview,
+            _,
+        ) => Err(mismatch()),
         _ => Err(AppError::Ai(
             "This tutorial operation is not available yet.".to_owned(),
         )),

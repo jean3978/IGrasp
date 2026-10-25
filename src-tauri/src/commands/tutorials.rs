@@ -16,7 +16,7 @@ use crate::learning::save::SaveDialog;
 use crate::learning::tutorial::families::{TutorialSubject, TutorialSubjects};
 use crate::learning::tutorial::freshness::FreshnessReport;
 use crate::learning::tutorial::progress::TutorialProgress;
-use crate::learning::tutorial::schema::Tutorial;
+use crate::learning::tutorial::schema::{Tutorial, Verification};
 use crate::learning::tutorial::share::{self, WritePlan, WriteTarget, WrittenTutorial};
 use crate::learning::tutorial::{TutorialRef, compose, freshness, markdown, new_tutorial_id, repo};
 use crate::learning::{self, root_key};
@@ -165,6 +165,33 @@ pub fn check_tutorial_freshness(
     reference: TutorialRef,
 ) -> AppResult<FreshnessReport> {
     state.with_workspace(|ws| check_freshness(ws, &state.appdata, &reference))
+}
+
+/// "Mark as verified": the user states the tutorial is correct for the project as it is now.
+/// Stamps the date, the HEAD commit and the git user name, and hashes the cited ranges again
+/// (the freshness check starts from now). A private tutorial is saved; a shared one is returned
+/// stamped, written only by `write_tutorial` after the confirmation. The AI never sets it.
+pub fn verified(ws: &Workspace, appdata: &AppData, reference: &TutorialRef) -> AppResult<Tutorial> {
+    let root = ws.guard.root();
+    let mut t = read_tutorial(ws, appdata, reference)?;
+    t.verified = Some(Verification {
+        date: compose::rfc3339_now(),
+        commit: repo::head_commit(root),
+        by: repo::user_name(root),
+    });
+    t.sources = freshness::source_hashes(root, &t);
+    if let TutorialRef::Private { .. } = reference {
+        return Ok(appdata.save_private_tutorial(&root_key(ws), t)?.tutorial);
+    }
+    Ok(t)
+}
+
+#[tauri::command]
+pub fn mark_tutorial_verified(
+    state: State<'_, AppState>,
+    reference: TutorialRef,
+) -> AppResult<Tutorial> {
+    state.with_workspace(|ws| verified(ws, &state.appdata, &reference))
 }
 
 /// What a save of `t` stores: a new tutorial gets its id, date, provider and generation commit;
@@ -517,5 +544,53 @@ mod tests {
             "{changed:?}"
         );
         assert!(!changed.affected.is_empty());
+    }
+
+    #[test]
+    fn verifying_stamps_saves_a_private_tutorial_and_only_returns_a_shared_one() {
+        let dir = tree(&[("src/index/watcher.rs", "a\nb\nc\nd\ne\nf\ng\n")]);
+        let appdata = tempfile::tempdir().unwrap();
+        let appdata = AppData::new(appdata.path().to_path_buf());
+        let guard = RootGuard::new(dir.path()).unwrap();
+        let ws = Workspace::new(guard.clone(), 1, ScanOptions::default());
+        let t = prepared(guard.root(), "mock", sample());
+        appdata
+            .save_private_tutorial(&root_key(&ws), t.clone())
+            .unwrap();
+        let private = TutorialRef::Private { id: t.id.clone() };
+        // The sample's recorded hash is stale: verifying starts the check from now.
+        assert_ne!(
+            freshness::check(guard.root(), &t).badge,
+            freshness::Badge::UpToDate
+        );
+        let v = verified(&ws, &appdata, &private).unwrap();
+        assert!(v.verified.as_ref().is_some_and(|s| !s.date.is_empty()));
+        assert_eq!(
+            freshness::check(guard.root(), &v).badge,
+            freshness::Badge::UpToDate
+        );
+        assert_eq!(read_tutorial(&ws, &appdata, &private).unwrap(), v);
+
+        let folder = share::share_folder(&guard, "docs/tutorials", &t, None).unwrap();
+        let readme = share::write(&guard, &folder, &t).unwrap().readme.unwrap();
+        let before = std::fs::read_to_string(dir.path().join(&readme)).unwrap();
+        let shared = TutorialRef::Shared {
+            rel_path: readme.clone(),
+        };
+        let stamped = verified(&ws, &appdata, &shared).unwrap();
+        assert!(stamped.verified.is_some());
+        assert_eq!(
+            std::fs::read_to_string(dir.path().join(&readme)).unwrap(),
+            before
+        );
+        // Written after the confirmation: only the README changes.
+        let plan = share::plan(&guard, &folder, &stamped).unwrap();
+        let changed: Vec<&str> = plan
+            .files
+            .iter()
+            .filter(|f| f.state != share::PlannedState::Unchanged)
+            .map(|f| f.name.as_str())
+            .collect();
+        assert_eq!(changed, vec!["README.md"]);
     }
 }

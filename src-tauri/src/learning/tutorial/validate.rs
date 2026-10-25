@@ -117,7 +117,7 @@ pub struct Context<'a> {
     pub input: &'a TutorialInput,
 }
 
-type Verdict<T> = Result<T, (Rejection, String)>;
+pub(crate) type Verdict<T> = Result<T, (Rejection, String)>;
 
 /// Checks one citation: a citable path, lines that exist (at most `max_lines` for text files);
 /// returns the normalized citation and the words of the cited lines (none for a binary asset).
@@ -508,7 +508,7 @@ fn check_quick(step: &super::schema::QuickCheckStep, ctx: &mut Context<'_>) -> V
 }
 
 /// Checks one step; returns it normalized (citations cleaned, self-check stripped).
-fn check_step(step: &Step, ctx: &mut Context<'_>) -> Verdict<Step> {
+pub(crate) fn check_step(step: &Step, ctx: &mut Context<'_>) -> Verdict<Step> {
     let mut out = step.clone();
     let specific = step.self_check().is_some_and(|c| c.project_specific);
     // Citations, with the words of the cited lines for the generic check.

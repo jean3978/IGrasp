@@ -27,6 +27,8 @@ import {
   scriptedAnswer,
 } from './mockQuiz';
 import type { MockQuizComposed, MockQuizScript } from './mockQuiz';
+import { MockReviewValidator, composeMockReview, scriptedReview } from './mockTutorialReview';
+import type { MockReviewComposed } from './mockTutorialReview';
 import {
   MOCK_TUTORIAL_RULES_BYTES,
   MOCK_TUTORIAL_SCHEMA,
@@ -181,6 +183,8 @@ interface Deps {
   subjects: () => Subject[];
   /** A private tutorial of the open folder, and the Academy's cards (`mockTutorialStore`). */
   tutorial: (id: string) => Tutorial | undefined;
+  /** A shared tutorial of the open folder, by its README (undefined when it is not one). */
+  sharedTutorial: (relPath: string) => Tutorial | undefined;
   tutorialCards: () => TutorialSubject[];
   tutorialUsage: () => TutorialUsage[];
   recordUsage: (usage: TutorialUsage) => void;
@@ -353,6 +357,7 @@ export function createMockAi({
   profile,
   subjects,
   tutorial,
+  sharedTutorial,
   tutorialCards,
   tutorialUsage,
   recordUsage,
@@ -809,6 +814,7 @@ export function createMockAi({
   type TutorialOp =
     | { kind: 'outline'; length: Length; calls: 1; outline: MockOutlineComposed }
     | { kind: 'suggest'; length: Length; calls: 1; suggest: MockSuggestComposed }
+    | { kind: 'review'; length: Length; calls: 1; review: MockReviewComposed }
     | {
         kind: 'chapters';
         length: Length;
@@ -827,6 +833,23 @@ export function createMockAi({
         calls: 1,
         suggest: composeMockSuggest(deps, tutorialCards()),
       };
+    }
+    if (action === 'tutorialReview') {
+      if (request.kind !== 'review')
+        throw new BackendError('Ai', 'This tutorial request does not match its action.');
+      const ref = request.tutorial;
+      const t = ref.type === 'private' ? tutorial(ref.id) : sharedTutorial(ref.relPath);
+      if (!t)
+        throw new BackendError(
+          'TutorialNotFound',
+          `This tutorial no longer exists: ${ref.type === 'private' ? ref.id : ref.relPath}`,
+        );
+      if (!t.chapters.some((c) => c.steps.length > 0))
+        throw new BackendError(
+          'ChapterNotWritten',
+          'This chapter is not written yet: this tutorial has no written chapter to check',
+        );
+      return { kind: 'review', length: t.length, calls: 1, review: composeMockReview(deps, t) };
     }
     if (action !== 'tutorialGeneration')
       throw new BackendError('Ai', 'This tutorial operation is not available yet.');
@@ -991,6 +1014,21 @@ export function createMockAi({
         ),
       ];
     }
+    if (op.kind === 'review') {
+      const composed = op.review;
+      return [
+        session,
+        ...validatedSteps(
+          composed.tutorial.sources.map((s) => s.path),
+          (n) => scriptedReview(script, composed, n),
+          new MockReviewValidator(composed),
+          (o) => {
+            completed(o);
+          },
+          usageFor,
+        ),
+      ];
+    }
     if (op.kind === 'outline') {
       const composed = op.outline;
       const validator = new MockOutlineValidator(composed);
@@ -1116,7 +1154,9 @@ export function createMockAi({
             ? op.outline
             : op.kind === 'suggest'
               ? op.suggest
-              : op.stages([])[0];
+              : op.kind === 'review'
+                ? op.review
+                : op.stages([])[0];
         const inlined = first?.inlined ?? [];
         const inlinedBytes = inlined.reduce((n, d) => n + d.bytes, 0);
         const size = estimateSize(
@@ -1177,7 +1217,9 @@ export function createMockAi({
             ? tutorialOp.outline.prompt
             : tutorialOp.kind === 'suggest'
               ? tutorialOp.suggest.prompt
-              : (tutorialOp.stages([])[0]?.prompt ?? '');
+              : tutorialOp.kind === 'review'
+                ? tutorialOp.review.prompt
+                : (tutorialOp.stages([])[0]?.prompt ?? '');
       const request: AiRequest = tutorialOp
         ? {
             prompt: firstPrompt,

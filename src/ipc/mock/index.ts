@@ -76,7 +76,8 @@ import {
   tutorialFileInfo,
   tutorialSlug,
 } from './mockTutorialShare';
-import { summaryOf as tutorialSummaryOf } from './mockTutorialStore';
+import { MOCK_HEAD, MOCK_USER, summaryOf as tutorialSummaryOf } from './mockTutorialStore';
+import { mergeSourceHashes } from '../../lib/tutorial';
 import { checkFreshness, freshnessReport } from './mockTutorialFreshness';
 import { emptyQuizzes, saveCurrent, summaryOf as quizSummaryOf } from './mockLearning';
 import type { FolderQuizzes } from './mockLearning';
@@ -357,6 +358,13 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       ),
     subjects: () => fixtureSubjects(state.files),
     tutorial: (id) => tutorialsOf().stored.get(id)?.tutorial,
+    sharedTutorial: (relPath) => {
+      try {
+        return readShared(relPath);
+      } catch {
+        return undefined;
+      }
+    },
     tutorialCards: () => fixtureTutorialSubjects(state.files, tutorialsOf().suggested).cards,
     tutorialUsage: () => tutorialsOf().usage,
     recordUsage: (usage) => {
@@ -950,6 +958,29 @@ export function createMockBackend(): Backend & { controls: MockControls } {
           return true;
         },
       );
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    markTutorialVerified: async (reference) => {
+      const folder = tutorialsOf();
+      const found =
+        reference.type === 'shared'
+          ? readShared(reference.relPath)
+          : folder.stored.get(reference.id)?.tutorial;
+      if (!found)
+        throw new BackendError(
+          'TutorialNotFound',
+          `This tutorial no longer exists: ${reference.type === 'shared' ? reference.relPath : reference.id}`,
+        );
+      const t = structuredClone(found);
+      t.verified = {
+        date: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        commit: MOCK_HEAD,
+        by: MOCK_USER,
+      };
+      // Hashed again: the freshness check starts from now.
+      t.sources = mergeSourceHashes({ ...t, sources: [] }, (p) => state.files.get(p));
+      if (reference.type === 'private') return saveStored(folder, t, Date.now()).tutorial;
+      return t;
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     planTutorialWrite: async (target, tutorial) => {

@@ -65,18 +65,18 @@ pub struct ChapterResult {
 }
 
 /// What both validators know about the project.
-struct Shared {
-    root: PathBuf,
-    corpus: Corpus,
-    agent_names: Vec<String>,
-    project_name: String,
-    modules: Vec<String>,
-    input: TutorialInput,
-    cache: HashMap<String, Arc<Vec<String>>>,
+pub(crate) struct Shared {
+    pub(crate) root: PathBuf,
+    pub(crate) corpus: Corpus,
+    pub(crate) agent_names: Vec<String>,
+    pub(crate) project_name: String,
+    pub(crate) modules: Vec<String>,
+    pub(crate) input: TutorialInput,
+    pub(crate) cache: HashMap<String, Arc<Vec<String>>>,
 }
 
 impl Shared {
-    fn with_context<T>(&mut self, f: impl FnOnce(&mut Context<'_>) -> T) -> T {
+    pub(crate) fn with_context<T>(&mut self, f: impl FnOnce(&mut Context<'_>) -> T) -> T {
         let root = self.root.clone();
         let cache = &mut self.cache;
         let mut read = |path: &str| {

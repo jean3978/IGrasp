@@ -85,7 +85,7 @@ export interface TutorialValidationContext {
 }
 
 type Rejected = { id: string; rejection: TutorialRejection; message: string };
-type Verdict<T> =
+export type Verdict<T> =
   { ok: true; value: T } | { ok: false; rejection: TutorialRejection; message: string };
 const reject = (rejection: TutorialRejection, message: string) =>
   ({ ok: false, rejection, message }) as const;
@@ -633,7 +633,7 @@ function checkQuick(
   return { ok: true, value: null };
 }
 
-function checkStep(step: Step, ctx: TutorialValidationContext): Verdict<Step> {
+export function checkStep(step: Step, ctx: TutorialValidationContext): Verdict<Step> {
   const out: Step = structuredClone(step);
   const specific = step.selfCheck?.projectSpecific === true;
   const cited = new Set<string>();
