@@ -15,6 +15,8 @@ pub mod markdown;
 pub mod operation;
 pub mod progress;
 pub mod prompt;
+#[cfg(test)]
+mod real;
 pub mod repo;
 pub mod review;
 pub mod schema;
