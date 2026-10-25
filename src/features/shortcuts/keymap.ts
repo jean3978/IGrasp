@@ -26,6 +26,7 @@ export const KEYMAP: KeyBinding[] = [
   { key: 's', ctrl: true, alt: true, action: 'ai.selectText' },
   { key: 'n', ctrl: true, alt: true, action: 'ai.newConversation' },
   { key: 'h', ctrl: true, alt: true, action: 'ai.history' },
+  { key: 'q', ctrl: true, alt: true, action: 'learn.quiz' },
   { key: 'a', alt: true, shift: true, action: 'ai.acceptAllChanges' },
   { key: 'r', alt: true, shift: true, action: 'ai.rejectAllChanges' },
   { key: 'f4', action: 'search.next' },

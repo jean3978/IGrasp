@@ -70,7 +70,7 @@ describe('the "uses AI" marker', () => {
 
   it('is on exactly the flagged items of every menu', async () => {
     renderBars();
-    for (const title of ['File', 'Edit', 'View', 'Help']) {
+    for (const title of ['File', 'Edit', 'View', 'Learn', 'Help']) {
       await userEvent.click(screen.getByRole('menuitem', { name: title }));
       const menu = await screen.findByRole('menu');
       for (const item of within(menu).getAllByRole('menuitem')) {

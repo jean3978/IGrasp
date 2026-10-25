@@ -17,6 +17,7 @@ import { useWorkspace } from '../../stores/workspace';
 import { useAiConversation } from '../../stores/aiConversation';
 import { useAiPanel } from '../../stores/aiPanel';
 import { canCapture, useCapture } from '../../stores/capture';
+import type { AiMarkVariant } from '../../components/AiMark';
 
 export type ActionId =
   | 'file.openFolder'
@@ -49,6 +50,8 @@ export type ActionId =
   | 'ai.history'
   | 'ai.acceptAllChanges'
   | 'ai.rejectAllChanges'
+  | 'learn.quiz'
+  | 'learn.profile'
   | 'help.about'
   | 'view.zoomIn'
   | 'view.zoomOut'
@@ -82,7 +85,7 @@ interface ActionDef {
   /** The action can start an AI operation (spends tokens): its controls show the AI marker. */
   usesAi?: boolean;
   /** The action opens the AI feature without spending anything: its controls show the marker. */
-  aiFeature?: boolean;
+  aiFeature?: boolean | 'quiz';
   run(): void | Promise<void>;
 }
 
@@ -250,6 +253,23 @@ export const actions: Record<ActionId, ActionDef> = {
       if (reviewShown()) return useAiConversation.getState().rejectAllChanges();
     },
   },
+  'learn.quiz': {
+    label: 'Quiz Me…',
+    shortcut: 'Ctrl+Alt+Q',
+    aiFeature: 'quiz',
+    run: () => {
+      // Opens the Quiz tab, which is free; its Start spends tokens.
+      if (useWorkspace.getState().root) useTabs.getState().openSpecial('quiz');
+    },
+  },
+  'learn.profile': {
+    label: 'Project Profile…',
+    run: () => {
+      if (!useWorkspace.getState().root) return;
+      useTabs.getState().openSpecial('quiz');
+      useUi.getState().setProfileEditorOpen(true);
+    },
+  },
   'help.shortcuts': {
     label: 'Keyboard Shortcuts',
     shortcut: 'F1',
@@ -404,6 +424,14 @@ export const actions: Record<ActionId, ActionDef> = {
     run: () => setFontSize(DEFAULT_FONT_SIZE),
   },
 };
+
+/** The AI marker of an action's controls, if it has one. */
+export function markOf(id: ActionId): AiMarkVariant | null {
+  const action = actions[id];
+  if (action.usesAi) return 'uses';
+  if (action.aiFeature === 'quiz') return 'quiz';
+  return action.aiFeature ? 'feature' : null;
+}
 
 export function runAction(id: ActionId): void {
   try {

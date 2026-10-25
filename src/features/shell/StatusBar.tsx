@@ -1,5 +1,6 @@
 import { BellOff, Eye, FileText, Link2, LoaderCircle, TriangleAlert } from 'lucide-react';
 import { AiActivityItem } from '../ai/AiActivityItem';
+import { QuizActivityItem } from '../quiz/QuizActivityItem';
 import { BrokenLinksStatus } from '../links/BrokenLinksStatus';
 import { THEME_OPTIONS } from '../titlebar/menuActions';
 import { useSettings } from '../../stores/settings';
@@ -91,6 +92,7 @@ export function StatusBar() {
       </div>
       <div className="statusbar-end">
         <AiActivityItem />
+        <QuizActivityItem />
         <BrokenLinksStatus />
         <MutedItem />
         <span className="statusbar-item">{themeLabel}</span>

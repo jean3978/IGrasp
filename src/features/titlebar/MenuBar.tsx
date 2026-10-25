@@ -9,7 +9,7 @@ import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
 import { useTree } from '../../stores/tree';
 import { useWorkspace } from '../../stores/workspace';
-import { THEME_OPTIONS, actions, isTheme, runAction, setTheme } from './menuActions';
+import { THEME_OPTIONS, actions, isTheme, markOf, runAction, setTheme } from './menuActions';
 import type { ActionId } from './menuActions';
 
 function Item({ id, disabled }: { id: ActionId; disabled?: boolean }) {
@@ -23,9 +23,7 @@ function Item({ id, disabled }: { id: ActionId; disabled?: boolean }) {
       }}
     >
       <span className="menu-item-label">{action.label}</span>
-      {(action.usesAi || action.aiFeature) && (
-        <AiMark variant={action.usesAi ? 'uses' : 'feature'} />
-      )}
+      {markOf(id) !== null && <AiMark variant={markOf(id) ?? 'uses'} />}
       {action.shortcut && <span className="menu-shortcut">{action.shortcut}</span>}
     </Menubar.Item>
   );
@@ -81,6 +79,7 @@ const MENUS = [
   { value: 'file', title: 'File', mnemonic: 'f' },
   { value: 'edit', title: 'Edit', mnemonic: 'e' },
   { value: 'view', title: 'View', mnemonic: 'v' },
+  { value: 'learn', title: 'Learn', mnemonic: 'l' },
   { value: 'help', title: 'Help', mnemonic: 'h' },
 ] as const;
 
@@ -309,6 +308,10 @@ export function MenuBar() {
         <Item id="view.zoomIn" />
         <Item id="view.zoomOut" />
         <Item id="view.zoomReset" />
+      </Menu>
+      <Menu value="learn">
+        <Item id="learn.quiz" disabled={!hasRoot} />
+        <Item id="learn.profile" disabled={!hasRoot} />
       </Menu>
       <Menu value="help">
         <Item id="help.shortcuts" />
