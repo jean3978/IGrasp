@@ -39,6 +39,7 @@ grep-searcher = "0.1.17"
 grep-matcher = "0.1.9"
 globset = "0.4.20"
 which = "8.0.6"
+toml = { version = "1.1.8", default-features = false, features = ["parse", "serde", "std"] }
 
 [target.'cfg(windows)'.dependencies]
 # Job object that kills AI subprocesses with the app (ADR 0015).
