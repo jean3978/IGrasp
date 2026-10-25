@@ -84,12 +84,21 @@ const record: QuizRecord = {
   rounds: 1,
   resumeId: null,
   materialNote: null,
+  docsNote: null,
   suggestedSubjects: [],
 };
 
 describe('resultsMarkdown', () => {
   it('writes the front matter, the table and each question with its sources', () => {
     expect(resultsMarkdown(record, 'Fixture "app"')).toMatchSnapshot();
+  });
+
+  it('reports what the documentation lacks', () => {
+    const md = resultsMarkdown(
+      { ...record, docsNote: 'Nothing documents the release.\nA page would help.' },
+      'p',
+    );
+    expect(md).toContain('> **Documentation:** Nothing documents the release. A page would help.');
   });
 
   it('says a replay used no AI', () => {

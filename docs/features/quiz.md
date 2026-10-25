@@ -20,20 +20,40 @@ today).
      designer, level designer, artist, technical artist, sound designer, producer, QA tester; a
      web product: frontend and backend developers, UX/UI designer, product manager…), or *Other
      role* typed. Preselected from your last quiz.
-  2. **Kind of quiz**: three cards, *Global concepts*, *A feature*, *Check specific code*; a click
-     moves on.
-  3. **Subject**: the concept chips (with *The whole project*) or the feature chips, plus
-     *Something else* to type a concept or feature that is not listed (sent as such, so Hoot
-     knows whether it is a concept or a feature), or the code picker for a code check.
-  4. **Options**: a summary ("As Artist · A feature: Player · Change"), the number of questions
-     (5 to 30), the mode, the sources (not for a code check), the model, and **Start**.
+  2. **Kind of quiz**: the cards your role is offered, each described for your work: *Global
+     concepts* and *A feature* for everyone, *Check specific code* only for the roles that read
+     code (developers, QA, and roles the app does not recognise). An artist reads "How the
+     project is made, seen from your work: the engine's scenes and assets, the art pipeline…". A
+     click moves on; a kind kept from an earlier quiz that the new role is not offered waits for
+     a new choice.
+  3. **Subject**: the concept chips (with *The whole project*) or the feature chips, the ones
+     that fit your role first (an artist: the engine's model, the UI, animation, player,
+     levels…); those about what the role never touches (concurrency, state management, payments
+     for an artist) wait behind **More subjects (n), further from your work**. *Something else*
+     types a concept or feature that is not listed, with an example for your role (sent as such,
+     so Hoot knows whether it is a concept or a feature), or the code picker for a code check.
+  4. **Options**: a summary ("As Artist · A feature: Player · Change"), a note when the project
+     has no documentation on the subject (local, no AI: Hoot will work from the code and report
+     what the documentation lacks), the number of questions (5 to 30), the mode, the sources
+     (not for a code check), the model, and **Start**.
 
   Back and the step bar go back to an earlier step.
-- **Your role shapes the questions**: developers (and roles that write code) get the
-  developer-to-developer audience; other roles get questions about how their work fits in the
-  project, in plain words, with a focus that fits them (an artist: how sprites, animations,
-  scenes and materials are wired; a producer: structure, pipeline, risks; QA: behaviour, edge
-  cases, tests…). Every question still cites the project's files.
+- **All three choices shape every question.** The role is read as a family of crafts
+  (developer, QA, art, audio, level design, design, production, writing, or general; the same
+  rules in Rust and TypeScript, checked on `src/test/fixtures/quiz/roles.json`). Developers get
+  the developer-to-developer audience; QA gets behaviour, edge cases and tests; other roles get
+  questions about how their work fits in the project, in plain words, with a focus that fits
+  them (an artist: how sprites, animations, scenes and materials are wired; a producer:
+  structure, pipeline, risks…), and never questions that ask them to read code. The prompt says
+  the kind of quiz and asks only what this role needs to know about this subject. Questions may
+  test an industry-standard concept or process (a design pattern, a security practice, a CI
+  step, an asset pipeline convention, a game-design principle) when the answer depends on how
+  this project applies it, at most about a third of them. Every question still cites the
+  project's files.
+- **Documentation gaps are reported.** While it reads, Hoot judges whether the documentation
+  explains the subject well enough for your role; when it does not, the results show a
+  **Documentation gap** note (what is not documented and where a page would help), also written
+  in the results report. It is a finding about the project, not about you.
 - **The wizard's choices are kept with the quiz**: the kind of quiz (`category`: global,
   feature, code) and the role are stored in the quiz record and the history, written in saved
   quiz files and results reports, listed with the saved quizzes, and shown as tags (the basis of

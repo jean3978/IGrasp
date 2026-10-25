@@ -36,6 +36,13 @@ developers on any kind of project (games, web, tools, libraries), with nothing g
   **your own subject** typed freely; and **Check specific code**: files or folders you pick (or
   open in tabs) for detailed, line-level questions, e.g. before submitting a change. Other
   subjects ask about understanding a concept and its implementation, not one-line trivia.
+  Each step adapts to the ones before: the kinds of quiz follow the role (no code check for an
+  artist, descriptions told from the role's work), the subjects that fit the role come first
+  and those it never touches wait behind **More subjects**, and the prompt asks only what this
+  role needs to know about this subject, for this kind of quiz. Questions may test an
+  industry-standard concept or process as the project applies it. When the project's
+  documentation is missing or thin for the subject, the wizard says so before Start and the
+  results show Hoot's **Documentation gap** note (also in the results report).
 - **Grounded generation**: the prompt and JSON schema belong to the app; every question is
   checked (a real file of the project, a line range inside it, never an agent instruction file
   or a secret, the scope, no duplicate, a hint that does not give the answer, and a question

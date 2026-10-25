@@ -164,6 +164,8 @@ describe('the quiz store', () => {
     await startQuiz();
     expect(quiz().record?.questions).toHaveLength(2);
     expect(quiz().record?.materialNote).toMatch(/little material/);
+    // What the documentation lacks is kept apart: a finding about the project.
+    expect(quiz().record?.docsNote).toMatch(/Nothing documents/);
     expect(quiz().record?.suggestedSubjects.length).toBeGreaterThan(0);
   });
 

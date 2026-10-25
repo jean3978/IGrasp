@@ -208,6 +208,7 @@ export function composeMockQuiz(
     `Write ${String(input.count)} questions about ${about}, with these difficulties: ${planText}.`,
     input.scope.type === 'documentationOnly' ? 'Sources are limited to the documentation.' : '',
     input.role ? `Audience: ${input.role} on this project.` : 'Audience: developers.',
+    input.category ? `Kind of quiz: ${input.category}.` : '',
     input.exclude.length > 0
       ? `Do not ask again: ${input.exclude.map((e) => e.question).join(' | ')}`
       : '',
@@ -251,6 +252,7 @@ export class MockQuizValidator {
       questions: v.accepted,
       insufficientMaterial: v.insufficientMaterial,
       materialNote: note ?? v.materialNote,
+      docsNote: v.docsNote,
       suggestedSubjects: v.suggestedSubjects,
       rejectedCount: this.rejectedTotal,
     };
@@ -384,6 +386,8 @@ export function scriptedAnswer(
           insufficientMaterial: true,
           materialNote:
             'igrasp-demo has little material on this subject: Hoot wrote two questions.',
+          docsNote:
+            'Nothing documents how the greeting is built or released; a page in docs/ would help.',
           suggestedSubjects: ['Build, CI and release'],
         },
       );

@@ -86,6 +86,7 @@ const record: QuizRecord = {
   rounds: 1,
   resumeId: null,
   materialNote: null,
+  docsNote: null,
   suggestedSubjects: [],
 };
 

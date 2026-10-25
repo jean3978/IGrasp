@@ -98,6 +98,68 @@ describe('the new-quiz wizard', () => {
     expect(heading()).toHaveTextContent('What kind of quiz?');
   });
 
+  it('adapts the kinds and the subjects to the role, and warns of missing documentation', async () => {
+    show();
+    await userEvent.type(screen.getByRole('textbox', { name: 'Other role' }), 'Artist');
+    await userEvent.click(next());
+    // No code check for an artist, and each kind is told from their work.
+    expect(screen.getByText(/For an Artist: .*without reading code/)).toBeInTheDocument();
+    const kinds = within(screen.getByRole('radiogroup', { name: 'What kind of quiz?' }));
+    expect(
+      kinds.getAllByRole('radio').map((r) => r.querySelector('.quiz-kind-title')?.textContent),
+    ).toEqual(['Global concepts', 'A feature']);
+    expect(kind('Global concepts')).toHaveTextContent(/seen from your work/);
+    await userEvent.click(kind('Global concepts'));
+
+    // The concepts that fit first; the code's inside behind "More subjects".
+    const concepts = () =>
+      within(screen.getByRole('radiogroup', { name: 'Concepts' }))
+        .getAllByRole('radio')
+        .map((r) => r.textContent);
+    expect(concepts()).toEqual(['The whole project', 'Architecture']);
+    expect(screen.getByRole('textbox', { name: 'Something else' })).toHaveAttribute(
+      'placeholder',
+      expect.stringMatching(/sprite naming/) as string,
+    );
+    await userEvent.click(screen.getByRole('button', { name: /More subjects \(2\)/ }));
+    expect(concepts()).toEqual([
+      'The whole project',
+      'Architecture',
+      'Tech stack',
+      'Build, CI and release',
+    ]);
+    await userEvent.click(screen.getByRole('radio', { name: 'Tech stack' }));
+    await userEvent.click(next());
+
+    // Tech stack has no documentation in the fixture: said before Start, locally.
+    expect(screen.getByText(/No documentation was found on this subject/)).toHaveTextContent(
+      /fewer questions about your own work/,
+    );
+    await userEvent.click(screen.getByRole('button', { name: /^Start/ }));
+    await waitFor(() => {
+      expect(useQuiz.getState().pending?.input).toMatchObject({
+        subjectId: 'concept:stack',
+        category: 'global',
+        role: 'Artist',
+      });
+    });
+    useQuiz.getState().cancelConfirm();
+  });
+
+  it('asks the kind again when the role is not offered the one kept', async () => {
+    useQuiz
+      .getState()
+      .setSetup({ role: 'Artist', category: 'code', target: 'paths', paths: ['src/main.ts'] });
+    show();
+    await userEvent.click(next());
+    for (const r of within(
+      screen.getByRole('radiogroup', { name: 'What kind of quiz?' }),
+    ).getAllByRole('radio'))
+      expect(r).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('button', { name: /Subject/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Options/ })).toBeDisabled();
+  });
+
   it('types a feature that is not in the list, read as a feature', async () => {
     show();
     await asRole();

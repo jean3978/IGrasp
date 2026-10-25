@@ -1,8 +1,9 @@
-// A new quiz in four steps: who you are on the project (a role proposed for this kind of
-// project, or your own), what kind of quiz (global concepts, a feature, or specific code to
-// check), its subject (a proposed one or something else you type, read in the light of the kind),
-// then the options (questions, mode, sources, model) and Start (the AI marker: the confirmation
-// card that follows leads to the one call). The role and the kind are kept with the quiz.
+// A new quiz in four steps, each adapted to the ones before: who you are on the project (a role
+// proposed for this kind of project, or your own), what kind of quiz (global concepts, a
+// feature, or specific code to check, as fits the role: no code check for an artist), its
+// subject (the ones that fit the role and the kind first, or something else you type), then the
+// options (questions, mode, sources, model) and Start (the AI marker: the confirmation card that
+// follows leads to the one call). All three choices reach the prompt and are kept with the quiz.
 
 import { clsx } from 'clsx';
 import { ArrowLeft, ArrowRight, FileCode, Layers, Puzzle } from 'lucide-react';
@@ -10,7 +11,14 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { AiMark } from '../../components/AiMark';
 import { Button } from '../../components/ui/Button';
-import type { QuizCategory, QuizMode, QuizScopeSetting, Subject } from '../../ipc/types';
+import type {
+  ProjectProfile,
+  QuizCategory,
+  QuizMode,
+  QuizScopeSetting,
+  RoleFamily,
+  Subject,
+} from '../../ipc/types';
 import { selectUsable, useAiProvider } from '../../stores/aiProvider';
 import { useProjectProfile } from '../../stores/projectProfile';
 import { selectQuizBusy, targetReady, useQuiz } from '../../stores/quiz';
@@ -19,7 +27,7 @@ import { ModelPicker } from '../ai/ModelPicker';
 import { StatusLine } from '../ai/StatusLine';
 import { Segmented } from '../settings/fields';
 import { roundsOf } from './quizEngine';
-import { rolesFor } from './quizRoles';
+import { checksCode, kindDescription, kindsFor, roleFamily, rolesFor } from './quizRoles';
 import { CodeToCheck, CustomSubjectField, SubjectChoices } from './SubjectPicker';
 import { useSubjects } from './useSubjects';
 
@@ -38,30 +46,15 @@ const SCOPES: { value: QuizScopeSetting; label: string }[] = [
 
 interface KindInfo {
   title: string;
-  description: string;
   icon: LucideIcon;
 }
 
+/** The kinds' titles; their descriptions follow the role (`kindDescription`). */
 const KINDS: Record<QuizCategory, KindInfo> = {
-  global: {
-    title: 'Global concepts',
-    description:
-      'How the project is made across its parts: architecture, tech stack, security, patterns…',
-    icon: Layers,
-  },
-  feature: {
-    title: 'A feature',
-    description: 'One thing the project does, end to end: a feature or a game system.',
-    icon: Puzzle,
-  },
-  code: {
-    title: 'Check specific code',
-    description:
-      'Detailed, line-level questions on files or folders you pick, e.g. before submitting.',
-    icon: FileCode,
-  },
+  global: { title: 'Global concepts', icon: Layers },
+  feature: { title: 'A feature', icon: Puzzle },
+  code: { title: 'Check specific code', icon: FileCode },
 };
-const KIND_ORDER: QuizCategory[] = ['global', 'feature', 'code'];
 
 const STEPS = ['Your role', 'Kind of quiz', 'Subject', 'Options'] as const;
 type Step = 1 | 2 | 3 | 4;
@@ -71,6 +64,36 @@ function subjectLabel(setup: QuizSetup, subjects: Subject[]): string {
   if (setup.target === 'paths') return setup.paths.join(', ');
   if (setup.target === 'custom') return `“${setup.customSubject.trim()}”`;
   return subjects.find((s) => s.id === setup.subjectId)?.title ?? 'The whole project';
+}
+
+/** "an Artist", "a Producer". */
+function articled(role: string): string {
+  return `${/^[aeiou]/i.test(role) ? 'an' : 'a'} ${role}`;
+}
+
+/**
+ * Said before Start when the project has little documentation on the chosen subject (local, no
+ * AI): Hoot then works from the code and reports what the documentation is missing.
+ */
+function docsHint(
+  setup: QuizSetup,
+  subjects: Subject[],
+  profile: ProjectProfile | null,
+  family: RoleFamily,
+): string | null {
+  if (setup.target !== 'subject') return null;
+  const forRole = checksCode(family)
+    ? ''
+    : ' Without it, expect fewer questions about your own work.';
+  if (setup.subjectId === null) {
+    const docs = profile?.docs;
+    if (!docs || docs.readme !== null || docs.architecture !== null || docs.markdownFiles > 2)
+      return null;
+    return `This project has little documentation (no README or architecture page): Hoot will work from the code and tell you what is missing.${forRole}`;
+  }
+  const subject = subjects.find((s) => s.id === setup.subjectId);
+  if (!subject || subject.hasDocs) return null;
+  return `No documentation was found on this subject: Hoot will work from the code and tell you what the documentation is missing.${forRole}`;
 }
 
 function RoleStep() {
@@ -198,6 +221,7 @@ export function QuizWizard() {
   const busy = useQuiz(selectQuizBusy);
   const usable = useAiProvider(selectUsable);
   const subjects = useProjectProfile((s) => s.subjects) ?? [];
+  const profile = useProjectProfile((s) => s.profile);
   const global = useSubjects('global');
   const features = useSubjects('feature');
   const [step, setStep] = useState<Step>(1);
@@ -205,17 +229,25 @@ export function QuizWizard() {
   const moved = useRef(false);
   const headingId = useId();
   const kind = setup.category;
+  const family = roleFamily(setup.role);
+  const kinds = kindsFor(family);
 
   const roleReady = setup.role.trim() !== '';
+  // A kind the role is not offered (a code check kept from a programmer's quiz, for an artist)
+  // waits for a new choice at step 2.
+  const kindReady = kinds.includes(kind);
   const subjectReady =
-    setup.target === 'custom'
+    kindReady &&
+    (setup.target === 'custom'
       ? targetReady(setup)
       : kind === 'code'
         ? setup.target === 'paths' && setup.paths.length > 0
         : kind === 'feature'
           ? setup.target === 'subject' && features.some((f) => f.id === setup.subjectId)
-          : setup.target === 'subject';
-  const reachable = (n: Step) => n === 1 || (roleReady && (n === 2 || n === 3 || subjectReady));
+          : setup.target === 'subject');
+  const reachable = (n: Step) =>
+    n === 1 || (roleReady && (n === 2 || (kindReady && (n === 3 || subjectReady))));
+  const hint = docsHint(setup, subjects, profile, family);
 
   // A step change moves the focus to its heading, not on first show.
   useEffect(() => {
@@ -302,43 +334,55 @@ export function QuizWizard() {
         )}
 
         {step === 2 && (
-          <div className="quiz-kinds" role="radiogroup" aria-labelledby={headingId}>
-            {KIND_ORDER.map((k) => {
-              const { title, description, icon: Icon } = KINDS[k];
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  role="radio"
-                  aria-checked={kind === k}
-                  className={clsx('quiz-kind', { 'quiz-kind-selected': kind === k })}
-                  onClick={() => {
-                    choose(k);
-                  }}
-                >
-                  <Icon aria-hidden className="quiz-kind-icon" />
-                  <span className="quiz-kind-title">{title}</span>
-                  <span className="quiz-kind-text">{description}</span>
-                </button>
-              );
-            })}
-          </div>
+          <>
+            <p className="quiz-muted quiz-wizard-intro">
+              For {articled(setup.role.trim())}
+              {checksCode(family)
+                ? '.'
+                : ': questions on how your work fits into the project, without reading code.'}
+            </p>
+            <div className="quiz-kinds" role="radiogroup" aria-labelledby={headingId}>
+              {kinds.map((k) => {
+                const { title, icon: Icon } = KINDS[k];
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    role="radio"
+                    aria-checked={kind === k}
+                    className={clsx('quiz-kind', { 'quiz-kind-selected': kind === k })}
+                    onClick={() => {
+                      choose(k);
+                    }}
+                  >
+                    <Icon aria-hidden className="quiz-kind-icon" />
+                    <span className="quiz-kind-title">{title}</span>
+                    <span className="quiz-kind-text">{kindDescription(k, family)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {step === 3 && (
           <>
-            <p className="quiz-muted quiz-wizard-intro">{KINDS[kind].description}</p>
+            <p className="quiz-muted quiz-wizard-intro">{kindDescription(kind, family)}</p>
             {kind === 'code' ? (
               <CodeToCheck />
             ) : (
               <>
-                <SubjectChoices group={kind} label={kind === 'global' ? 'Concepts' : 'Features'} />
+                <SubjectChoices
+                  group={kind}
+                  label={kind === 'global' ? 'Concepts' : 'Features'}
+                  family={family}
+                />
                 {kind === 'feature' && features.length === 0 && (
                   <p className="quiz-muted">
                     No feature was detected in this project: type the one you want below.
                   </p>
                 )}
-                <CustomSubjectField group={kind} />
+                <CustomSubjectField group={kind} family={family} />
               </>
             )}
           </>
@@ -360,6 +404,7 @@ export function QuizWizard() {
                 Change
               </button>
             </p>
+            {hint && <p className="quiz-note quiz-docs-note">{hint}</p>}
             <Options checkingCode={kind === 'code'} />
             <StatusLine part="problem" showSession={false} />
           </>

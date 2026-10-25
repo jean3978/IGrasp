@@ -22,6 +22,15 @@ retries capped and visible), and the frontend must stay provider-neutral.
   roles that write code) by default; other roles get questions about how their work fits into
   the project, in plain words, with a focus per common role (artists, sound, level and game
   designers, producers, QA, writers). The grounding rules do not change with the role.
+- **Role, kind and subject together.** The role is read as a family (`learning/role.rs`, mirrored
+  in `quizRoles.ts` on a shared fixture). The wizard offers the kinds of quiz and ranks the
+  subjects for that family (no code check for a role that does not read code); the prompt names
+  the kind and asks only what this role needs to know about this subject. Industry-standard
+  concepts and processes are allowed when the answer depends on how the project applies them
+  (at most about a third of the questions); a definition alone stays invalid.
+- **Documentation gaps are a result.** The schema's optional `docsNote` reports what the
+  project's documentation lacks for the subject and the reader; it is kept in the quiz record
+  apart from `materialNote` (too little material) and shown with the results.
 - **Two question styles.** Proposed subjects (global concepts and features) and typed subjects
   ask for understanding: concepts, implementation, collaboration between parts, trade-offs, and
   explicitly not one-line trivia. A code check (`SourceScope::Paths`, files or folders) asks for

@@ -133,7 +133,10 @@ export function resultsMarkdown(record: QuizRecord, project: string): string {
     const q = record.questions.find((x) => x.id === a.questionId);
     return q ? [questionSection(i + 1, q, a.chosen, a.correct, a)] : [];
   });
-  const notes = record.materialNote ? ['', `> ${oneLine(record.materialNote)}`] : [];
+  const notes = [
+    ...(record.materialNote ? ['', `> ${oneLine(record.materialNote)}`] : []),
+    ...(record.docsNote ? ['', `> **Documentation:** ${oneLine(record.docsNote)}`] : []),
+  ];
   return `${[
     ...front,
     '',

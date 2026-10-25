@@ -29,6 +29,7 @@ const record = (id: string, finishedMs: number | null): QuizRecord => ({
   rounds: 1,
   resumeId: null,
   materialNote: null,
+  docsNote: null,
   suggestedSubjects: [],
 });
 

@@ -1,14 +1,16 @@
 // The subject step of the quiz wizard, one input per kind of quiz: the global concepts (with the
 // whole project), the features, a subject of your own, or specific code to check (files or
-// folders, for detailed questions, e.g. before submitting a change).
+// folders, for detailed questions, e.g. before submitting a change). The subjects follow the
+// role: those that fit its work first, those it never touches behind "More subjects".
 
 import { clsx } from 'clsx';
 import { Plus, X } from 'lucide-react';
 import { useId, useState } from 'react';
-import type { Subject, SubjectGroup } from '../../ipc/types';
+import type { RoleFamily, Subject, SubjectGroup } from '../../ipc/types';
 import { useProjectProfile } from '../../stores/projectProfile';
 import { useQuiz } from '../../stores/quiz';
 import { fileName, useTabs } from '../../stores/tabs';
+import { rankSubjects, subjectPlaceholder } from './quizRoles';
 import { useSubjects } from './useSubjects';
 
 function SubjectChip({
@@ -42,45 +44,70 @@ function SubjectChip({
   );
 }
 
-/** The chips of the global concepts (and the whole project) or of the features. */
-export function SubjectChoices({ group, label }: { group: SubjectGroup; label: string }) {
+/** The chips of the global concepts (and the whole project) or of the features, for a role. */
+export function SubjectChoices({
+  group,
+  label,
+  family,
+}: {
+  group: SubjectGroup;
+  label: string;
+  family: RoleFamily;
+}) {
   const setup = useQuiz((s) => s.setup);
   const setSetup = useQuiz((s) => s.setSetup);
-  const shown = useSubjects(group);
+  const all = useSubjects(group);
+  const ranked = rankSubjects(all, family);
   const onSubject = setup.target === 'subject';
-  const selected = onSubject ? (shown.find((s) => s.id === setup.subjectId) ?? null) : null;
+  const selected = onSubject ? (all.find((s) => s.id === setup.subjectId) ?? null) : null;
+  // A subject chosen before (under another role, or in the last quiz) stays in sight.
+  const [expanded, setExpanded] = useState(
+    () => selected !== null && ranked.more.some((s) => s.id === selected.id),
+  );
+  const shown = expanded ? [...ranked.shown, ...ranked.more] : ranked.shown;
   return (
-    <div className="quiz-subjects" role="radiogroup" aria-label={label}>
-      {group === 'global' && (
-        <SubjectChip
-          subject={null}
-          selected={onSubject && setup.subjectId === null}
-          onSelect={() => {
-            setSetup({ target: 'subject', subjectId: null });
+    <>
+      <div className="quiz-subjects" role="radiogroup" aria-label={label}>
+        {group === 'global' && (
+          <SubjectChip
+            subject={null}
+            selected={onSubject && setup.subjectId === null}
+            onSelect={() => {
+              setSetup({ target: 'subject', subjectId: null });
+            }}
+          />
+        )}
+        {shown.map((s) => (
+          <SubjectChip
+            key={s.id}
+            subject={s}
+            selected={selected?.id === s.id}
+            onSelect={() => {
+              setSetup({ target: 'subject', subjectId: s.id });
+            }}
+          />
+        ))}
+      </div>
+      {ranked.more.length > 0 && (
+        <button
+          type="button"
+          className="quiz-link-button quiz-more-subjects"
+          aria-expanded={expanded}
+          onClick={() => {
+            setExpanded(!expanded);
           }}
-        />
+        >
+          {expanded
+            ? 'Fewer subjects'
+            : `More subjects (${String(ranked.more.length)}), further from your work`}
+        </button>
       )}
-      {shown.map((s) => (
-        <SubjectChip
-          key={s.id}
-          subject={s}
-          selected={selected?.id === s.id}
-          onSelect={() => {
-            setSetup({ target: 'subject', subjectId: s.id });
-          }}
-        />
-      ))}
-    </div>
+    </>
   );
 }
 
-const CUSTOM_PLACEHOLDERS: Record<SubjectGroup, string> = {
-  global: 'e.g. rendering pipeline, threading model, localization',
-  feature: 'e.g. fishing, the shop, matchmaking, exporting to PDF',
-};
-
 /** "Something else": a concept or a feature that is not in the list, typed. */
-export function CustomSubjectField({ group }: { group: SubjectGroup }) {
+export function CustomSubjectField({ group, family }: { group: SubjectGroup; family: RoleFamily }) {
   const customSubject = useQuiz((s) => s.setup.customSubject);
   const selected = useQuiz((s) => s.setup.target === 'custom');
   const setSetup = useQuiz((s) => s.setSetup);
@@ -95,7 +122,7 @@ export function CustomSubjectField({ group }: { group: SubjectGroup }) {
         className="quiz-custom-subject text-input"
         type="text"
         maxLength={200}
-        placeholder={CUSTOM_PLACEHOLDERS[group]}
+        placeholder={subjectPlaceholder(family, group)}
         value={customSubject}
         onChange={(e) => {
           const text = e.target.value;

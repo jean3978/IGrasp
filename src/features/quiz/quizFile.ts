@@ -399,6 +399,7 @@ export function recordFromFile(file: ParsedQuizFile, path: string): QuizRecord {
             file.skipped > 1 ? 'were' : 'was'
           } skipped.`
         : null,
+    docsNote: null,
     suggestedSubjects: [],
   };
 }

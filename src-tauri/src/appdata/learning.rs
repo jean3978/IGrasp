@@ -95,6 +95,8 @@ pub struct QuizRecord {
     /// What continues the generation's conversation (the next adaptive round).
     pub resume_id: Option<String>,
     pub material_note: Option<String>,
+    /// What the project's documentation lacks for this quiz, as the generation reported it.
+    pub docs_note: Option<String>,
     pub suggested_subjects: Vec<String>,
 }
 

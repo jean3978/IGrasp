@@ -44,4 +44,8 @@ usage: ConversationUsage, durationMs: number, attempts: number, rounds: number,
 /**
  * What continues the generation's conversation (the next adaptive round).
  */
-resumeId: string | null, materialNote: string | null, suggestedSubjects: Array<string>, };
+resumeId: string | null, materialNote: string | null, 
+/**
+ * What the project's documentation lacks for this quiz, as the generation reported it.
+ */
+docsNote: string | null, suggestedSubjects: Array<string>, };

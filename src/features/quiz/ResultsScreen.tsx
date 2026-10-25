@@ -4,7 +4,7 @@
 // new quiz.
 
 import { clsx } from 'clsx';
-import { ChevronRight, FilePlus2, Plus, RotateCcw, Save, Share2 } from 'lucide-react';
+import { ChevronRight, FilePlus2, FileWarning, Plus, RotateCcw, Save, Share2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { AiMark } from '../../components/AiMark';
 import { Button } from '../../components/ui/Button';
@@ -124,6 +124,14 @@ export function ResultsScreen({
             <p className="quiz-muted">Replayed: no AI call.</p>
           )}
           {record.materialNote && <p className="quiz-note">{record.materialNote}</p>}
+          {record.docsNote && (
+            <p className="quiz-note quiz-docs-note">
+              <FileWarning aria-hidden className="quiz-docs-note-icon" />
+              <span>
+                <strong>Documentation gap.</strong> {record.docsNote}
+              </span>
+            </p>
+          )}
           {record.suggestedSubjects.length > 0 && (
             <p className="quiz-muted">
               Subjects that may work better: {record.suggestedSubjects.join(' · ')}

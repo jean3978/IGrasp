@@ -451,6 +451,7 @@ export const useQuiz = create<QuizState>()((set, get) => {
         rounds: 1,
         resumeId: r.resumeId,
         materialNote: result.materialNote,
+        docsNote: result.docsNote,
         suggestedSubjects: result.suggestedSubjects,
       };
       const engine = engineNext(initialEngine(record.startLevel), record.questions);
@@ -473,6 +474,7 @@ export const useQuiz = create<QuizState>()((set, get) => {
       rounds: round,
       resumeId: r.resumeId ?? current.resumeId,
       materialNote: result.materialNote ?? current.materialNote,
+      docsNote: result.docsNote ?? current.docsNote,
     };
     const engine = get().engine ?? initialEngine(record.level);
     set({

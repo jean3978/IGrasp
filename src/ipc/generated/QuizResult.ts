@@ -4,7 +4,11 @@ import type { QuizQuestion } from "./QuizQuestion";
 /**
  * The accepted answer of a quiz generation (the `structuredOutput` of the operation).
  */
-export type QuizResult = { questions: Array<QuizQuestion>, insufficientMaterial: boolean, materialNote: string | null, suggestedSubjects: Array<string>, 
+export type QuizResult = { questions: Array<QuizQuestion>, insufficientMaterial: boolean, materialNote: string | null, 
+/**
+ * The documentation gap the model reported (the project is not well documented here).
+ */
+docsNote: string | null, suggestedSubjects: Array<string>, 
 /**
  * Questions the validation rejected over all attempts.
  */

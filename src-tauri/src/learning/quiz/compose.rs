@@ -196,6 +196,7 @@ impl QuizValidator {
             questions: v.accepted.clone(),
             insufficient_material: v.insufficient_material,
             material_note: note.or_else(|| v.material_note.clone()),
+            docs_note: v.docs_note.clone(),
             suggested_subjects: v.suggested_subjects.clone(),
             rejected_count: self.rejected_total,
         };

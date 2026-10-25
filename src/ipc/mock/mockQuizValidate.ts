@@ -337,6 +337,7 @@ export interface ValidatedQuiz {
   rejected: { id: string; rejection: Rejection; message: string }[];
   insufficientMaterial: boolean;
   materialNote: string | null;
+  docsNote: string | null;
   suggestedSubjects: string[];
 }
 
@@ -410,6 +411,7 @@ interface RawQuestion {
 interface RawOutput {
   insufficientMaterial: boolean;
   materialNote?: string | null;
+  docsNote?: string | null;
   suggestedSubjects?: string[];
   questions: RawQuestion[];
 }
@@ -442,7 +444,7 @@ function parseOutput(v: unknown): RawOutput {
   if (!isObject(v)) throw new ShapeError('expected an object');
   onlyKeys(
     v,
-    ['insufficientMaterial', 'materialNote', 'suggestedSubjects', 'questions'],
+    ['insufficientMaterial', 'materialNote', 'docsNote', 'suggestedSubjects', 'questions'],
     'the answer',
   );
   if (typeof v.insufficientMaterial !== 'boolean')
@@ -455,6 +457,7 @@ function parseOutput(v: unknown): RawOutput {
   return {
     insufficientMaterial: v.insufficientMaterial,
     materialNote: optional(v.materialNote, (n) => str(n, 'materialNote')),
+    docsNote: optional(v.docsNote, (n) => str(n, 'docsNote')),
     suggestedSubjects: suggested ?? [],
     questions: v.questions.map((q, i): RawQuestion => {
       const at = `questions[${String(i)}]`;
@@ -670,6 +673,7 @@ export function validateQuiz(
     rejected: [],
     insufficientMaterial: parsed.insufficientMaterial,
     materialNote: parsed.materialNote?.trim() ? parsed.materialNote : null,
+    docsNote: parsed.docsNote?.trim() ? parsed.docsNote : null,
     suggestedSubjects: parsed.suggestedSubjects ?? [],
   };
   const ids = new Set<string>();

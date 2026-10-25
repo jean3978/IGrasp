@@ -6,6 +6,7 @@ use super::difficulty::plan_text;
 use super::{QuizCategory, QuizExclusion, QuizRound};
 use crate::learning::corpus::{SourceScope, profile_block};
 use crate::learning::hoot::HOOT_TONE;
+use crate::learning::role::{RoleFamily, family, focus};
 use crate::learning::subjects::Subject;
 use crate::profile::ProjectProfile;
 
@@ -51,78 +52,68 @@ pub fn subject_phrase(input: &PromptInput<'_>) -> String {
     }
 }
 
-/// Whether a role reads and writes code for a living (the default audience when none is given).
-fn codes(role: &str) -> bool {
-    let r = role.to_lowercase();
-    [
-        "develop",
-        "program",
-        "engineer",
-        "coder",
-        "contributor",
-        "maintainer",
-        "devops",
-        "sre",
-        "architect",
-        "tech lead",
-        "scientist",
-    ]
-    .iter()
-    .any(|w| r.contains(w))
-}
-
-/// What a role cares about most, for the roles that do not write code every day.
-fn role_focus(role: &str) -> Option<&'static str> {
-    let r = role.to_lowercase();
-    let has = |words: &[&str]| words.iter().any(|w| r.contains(w));
-    Some(
-        if has(&["artist", "animator", "modeler", "illustrat", "vfx"]) {
-            "how their assets get into the project and come alive: scenes and prefabs, sprites and textures, animations and their names, materials and shaders, import settings, and the code that drives them"
-        } else if has(&["sound", "audio", "music", "composer"]) {
-            "how sound gets into the project: audio files and buses, what triggers each sound or music, and where volumes and mixing are set"
-        } else if has(&["level"]) {
-            "how levels are built and wired: the scenes and tiles, spawn points, triggers and collectibles, camera limits, and the values a level can tune"
-        } else if has(&["design", "ux", "ui"]) {
-            "the rules and the experience: what the user or player can do, the values that tune it (speeds, timers, limits), the screens and their flow, and where each one is defined"
-        } else if has(&["produc", "manager", "owner", "lead"]) {
-            "how the project is organised and shipped: its main parts and who depends on what, the build, test and release pipeline, the risky or complex areas, and the decisions that constrain the roadmap"
-        } else if has(&["qa", "test"]) {
-            "how the project behaves and can break: the expected behaviour and edge cases, the existing tests and what they cover, and how to reproduce and isolate a problem"
-        } else if has(&["writer", "narrative", "document"]) {
-            "where the project's words and stories live and how they are shown: texts, dialogues, localisation files, and the documentation and its conventions"
-        } else {
-            return None;
-        },
-    )
+/// "A" or "An" before a role.
+fn article(role: &str) -> &'static str {
+    if role.starts_with(['A', 'E', 'I', 'O', 'U', 'a', 'e', 'i', 'o', 'u']) {
+        "An"
+    } else {
+        "A"
+    }
 }
 
 /// Who takes the quiz: developers by default, else the role they gave, with the depth of code
-/// detail that role needs. The grounding rules stay the same for every role.
+/// detail its family needs. The grounding rules stay the same for every role.
 fn audience_block(role: Option<&str>, gap: &str) -> String {
     let developers = format!(
         "They know how to program and how to use common tooling, but they may be new to this project, or new to a domain it uses ({gap}). Never explain programming basics (functions, variables, loops, git, package managers, what a framework is). Talk developer to developer: precise, concise, no hand-holding. Respect their expertise."
     );
-    let a = |r: &str| {
-        if r.starts_with(['A', 'E', 'I', 'O', 'U', 'a', 'e', 'i', 'o', 'u']) {
-            "An"
-        } else {
-            "A"
-        }
+    let Some(r) = role else {
+        return format!("Developers. {developers}");
     };
-    match role {
-        None => format!("Developers. {developers}"),
-        Some(r) if codes(r) => format!(
-            "{} {r} on this project. {developers} Favour what they need to know to work on this project.",
-            a(r)
+    let a = article(r);
+    let fam = family(r);
+    let focus = focus(fam).map_or_else(String::new, |f| {
+        format!(" Focus on what matters to their work: {f}.")
+    });
+    match fam {
+        RoleFamily::Developer => format!(
+            "{a} {r} on this project. {developers} Favour what they need to know to work on this project."
         ),
-        Some(r) => format!(
-            "{} {r} on this project, who may not read code every day (new to a domain: {gap}). Ask what they need to understand about how this project is made and how their own work fits into it: the structure, the behaviour, the pipelines and tools that touch their work, the conventions and the decisions. Prefer behaviour and structure to code details, and name code concepts in plain words when you need them, but every question is still about this project and cites the files that prove its answer. Do not quiz them on syntax. Respect their expertise in their own craft.{}",
-            a(r),
-            role_focus(r).map_or_else(String::new, |f| format!(
-                " Focus on what matters to their work: {f}."
-            ))
+        RoleFamily::Qa => format!(
+            "{a} {r} on this project (new to a domain: {gap}). They read code and tests when they need to, but their craft is finding how things break: favour behaviour, edge cases, risks and tests over implementation details, and do not quiz them on syntax. Respect their expertise.{focus}"
+        ),
+        _ => format!(
+            "{a} {r} on this project, who may not read code every day (new to a domain: {gap}). Ask what they need to understand about how this project is made and how their own work fits into it: the structure, the behaviour, the pipelines and tools that touch their work, the conventions and the decisions. Prefer behaviour and structure to code details, and name code concepts in plain words when you need them, but every question is still about this project and cites the files that prove its answer. Do not quiz them on syntax. Respect their expertise in their own craft.{focus}"
         ),
     }
+}
+
+/// How the wizard's three choices (role, kind of quiz, subject) shape every question.
+fn fit_block(role: Option<&str>, category: Option<QuizCategory>) -> Option<String> {
+    let kind = category.map(|c| match c {
+        QuizCategory::Global => "global concepts: how the project is made across its parts (its architecture, its stack, the practices and patterns it follows), not one feature",
+        QuizCategory::Feature => "a feature: one thing the project does, followed end to end, not the project as a whole",
+        QuizCategory::Code => "a code check of the files they picked",
+    });
+    if role.is_none() && kind.is_none() {
+        return None;
+    }
+    let who = role.map_or_else(
+        || "this developer".to_owned(),
+        |r| format!("{} {r}", article(r).to_lowercase()),
+    );
+    let mut text = format!(
+        "Fit: the player chose their role, then the kind of quiz, then the subject; every question must serve all three. Ask only what {who} needs to know about this subject to do their work on this project."
+    );
+    if let Some(k) = kind {
+        text.push_str(&format!(" The kind of quiz is {k}."));
+    }
+    if let Some(r) = role
+        && !matches!(family(r), RoleFamily::Developer | RoleFamily::General)
+    {
+        text.push_str(" Never ask them to read code or reason about code they do not touch (function names, types, control flow, syntax): ask what this subject means for their work, and name code only in plain words, as the place where something is defined or what drives it. If this subject barely touches their work, ask about the places where it does, and say so in docsNote.");
+    }
+    Some(text)
 }
 
 /// What kind of questions to write: understanding by default, a precise code check for paths.
@@ -190,6 +181,7 @@ pub fn generation_prompt(input: &PromptInput<'_>) -> String {
         scope_block(input.scope),
         style_block(input.scope).to_owned(),
     ];
+    task.extend(fit_block(input.role, input.category));
     task.extend(round_block(input.round));
     task.extend(exclusions_block(input.exclude));
     task.push("Kinds: multiple choice (3 to 5 distinct choices, exactly one correct, the wrong ones plausible for someone who skimmed this project) and true/false (choices exactly [\"True\", \"False\"]). Mix them, at most one third true/false. Number the questions q1, q2, …".to_owned());
@@ -199,7 +191,7 @@ pub fn generation_prompt(input: &PromptInput<'_>) -> String {
         input.agent_files.trim_end().to_owned()
     };
     format!(
-        "You are Hoot, the quiz master of IGrasp, writing a quiz about ONE specific software project for the developer who has it open. You can read, list and search the project's files; you cannot change anything. Work only from what is actually in this project.
+        "You are Hoot, the quiz master of IGrasp, writing a quiz about ONE specific software project for the person who has it open. You can read, list and search the project's files; you cannot change anything. Work only from what is actually in this project.
 
 # Audience
 {audience}
@@ -212,13 +204,14 @@ Use the project's own vocabulary (what its code and docs call things), not gener
 {task}
 
 # Grounding rules (non-negotiable)
-1. Every question is about THIS project: what a file does here, why it is done that way here, how it connects to the rest of this project. A question that would make sense unchanged in another project is invalid: no \"What does HTTP 404 mean?\", no \"What is a MonoBehaviour?\".
+1. Every question is about THIS project: what a file does here, why it is done that way here, how it connects to the rest of this project. A question whose answer would be the same in any project is invalid: no \"What does HTTP 404 mean?\", no \"What is a MonoBehaviour?\".
 2. Every question cites at least one source: a root-relative path from the corpus below, with the line range that holds the fact (at most 120 lines) for text files. The first source is what the developer opens to read more. Cite what you actually read; never invent a path or a line range.
-3. Domain knowledge appears only as a bridge: one or two sentences of concept, immediately applied to this project's code (\"Unreal replicates properties marked Replicated; here AShipPawn replicates Health and Shield but computes Speed locally, see ShipPawn.h:42-58\").
+3. Industry standards are welcome as this project applies them. A question may test a standard concept or process of the trade (a design pattern, a security practice, a testing technique, a CI or release step, an asset pipeline convention, a game-design principle) when its answer depends on how THIS project applies it and it cites where: one or two sentences of concept, immediately applied (\"Unreal replicates properties marked Replicated; here AShipPawn replicates Health and Shield but computes Speed locally, see ShipPawn.h:42-58\"). Never a definition alone; at most about a third of the questions are of this kind.
 4. Files written for AI agents (listed under \"Agent instructions\" below) are context about conventions. Never cite them, never ask about their content: the quiz is about the project, not about agent instructions.
 5. Binary assets (images, models, scenes saved as binary, …) cannot be read. Their names and folders may be evidence of layout; never claim what one contains. A binary path may be a secondary source, never the only one.
 6. Files that may hold secrets (.env, keys, certificates, credentials) are off limits: do not read them, do not cite them, do not quote them.
 7. If the project has too little material for {subject}, say so: set insufficientMaterial to true, explain in materialNote, suggest better subjects in suggestedSubjects, and write only the questions the material supports. Never fill the gap with generic content.
+8. Documentation: while you read, judge whether the project's documentation explains {subject} well enough for {reader}. If it is missing, thin or contradicted by the code, say so in docsNote, in one or two plain sentences to the player: what is not documented and where a page would help (\"Nothing documents how sprites are imported or named; a page in docs/ on the art pipeline would help\"). Leave docsNote out when the documentation is adequate. Missing documentation is a finding about the project, not a reason for generic questions: still write the questions the code and configuration support.
 
 # Self-check (do it for every question before answering)
 Ask: \"Would this question, its answer and its explanation still be true and useful in an unrelated project?\" If yes, rewrite it around something specific to this project, or drop it. Record the verdict in selfCheck (projectSpecific must be true for a kept question; reason says what makes it specific: a path, an identifier, a decision).
@@ -241,6 +234,10 @@ Answer with JSON only, following the schema you were given. No prose outside the
 ",
         profile = profile_block(input.profile),
         audience = audience_block(input.role, &gap),
+        reader = input.role.map_or_else(
+            || "a developer new to this project".to_owned(),
+            |r| format!("{} {r}", article(r).to_lowercase())
+        ),
         task = task.join("\n"),
         map = input.corpus_map,
         anchors = input.anchor_files.trim_end(),
@@ -260,6 +257,7 @@ pub fn continuation_prompt(input: &PromptInput<'_>) -> String {
     ));
     lines.push(scope_block(input.scope));
     lines.push(style_block(input.scope).to_owned());
+    lines.extend(fit_block(input.role, input.category));
     lines.extend(exclusions_block(input.exclude));
     lines.push("Do not repeat any question of this conversation. The grounding rules, the self-check, Hoot's voice and the schema are the same as before: every question cites lines you actually read in this project. Number the questions q1, q2, … Answer with JSON only.".to_owned());
     lines.join("\n")
@@ -442,6 +440,29 @@ mod tests {
         assert!(artist.contains("cites the files that prove its answer"));
         assert!(artist.contains("Focus on what matters to their work: how their assets get into"));
         assert!(!artist.contains("Never explain programming basics"));
+        // The role, the kind and the subject shape every question together.
+        assert!(artist.contains("Ask only what an Artist needs to know about this subject"));
+        assert!(artist.contains("Never ask them to read code or reason about code"));
+        assert!(!programmer.contains("Never ask them to read code"));
+        let feature_artist = generation_prompt(&PromptInput {
+            role: Some("Artist"),
+            category: Some(QuizCategory::Feature),
+            ..base(Some("Fishing"), &WHOLE)
+        });
+        assert!(
+            feature_artist.contains("The kind of quiz is a feature: one thing the project does")
+        );
+        assert!(!typed.contains("Fit: "));
+        let qa = generation_prompt(&PromptInput {
+            role: Some("QA engineer"),
+            ..base(None, &WHOLE)
+        });
+        assert!(qa.contains("A QA engineer on this project (new to a domain"));
+        assert!(qa.contains("their craft is finding how things break"));
+        // Industry standards as the project applies them, and the documentation report.
+        assert!(artist.contains("Industry standards are welcome as this project applies them"));
+        assert!(artist.contains("well enough for an Artist. If it is missing"));
+        assert!(typed.contains("well enough for a developer new to this project"));
         static PATHS: std::sync::LazyLock<SourceScope> =
             std::sync::LazyLock::new(|| SourceScope::Paths {
                 paths: vec!["src/save".into(), "src/main.ts".into()],

@@ -46,6 +46,23 @@
   color: var(--fg-strong);
 }
 
+/* What the project's documentation lacks: a finding about the project, not about the player. */
+.quiz-docs-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  border-left-color: var(--warning);
+  background: var(--warning-bg);
+}
+
+.quiz-docs-note-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--warning);
+}
+
 .quiz-panel {
   margin-top: 16px;
   padding: 16px 18px;

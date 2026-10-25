@@ -188,6 +188,7 @@ pub struct Validated {
     pub rejected: Vec<(String, Rejection, String)>,
     pub insufficient_material: bool,
     pub material_note: Option<String>,
+    pub docs_note: Option<String>,
     pub suggested_subjects: Vec<String>,
 }
 
@@ -495,6 +496,7 @@ pub fn validate(output: &Value, ctx: &mut Context<'_>) -> Result<Validated, Stri
         rejected: Vec::new(),
         insufficient_material: parsed.insufficient_material,
         material_note: parsed.material_note.filter(|n| !n.trim().is_empty()),
+        docs_note: parsed.docs_note.filter(|n| !n.trim().is_empty()),
         suggested_subjects: parsed.suggested_subjects,
     };
     let mut ids = BTreeSet::new();
@@ -761,6 +763,7 @@ mod tests {
             ],
             insufficient_material: false,
             material_note: None,
+            docs_note: None,
             suggested_subjects: vec![],
         };
         assert_eq!(

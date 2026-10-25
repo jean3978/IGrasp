@@ -62,6 +62,9 @@ pub struct QuizOutput {
     pub insufficient_material: bool,
     #[serde(default)]
     pub material_note: Option<String>,
+    /// What the project's documentation lacks for this subject and this reader, if anything.
+    #[serde(default)]
+    pub docs_note: Option<String>,
     #[serde(default)]
     pub suggested_subjects: Vec<String>,
     pub questions: Vec<RawQuestion>,
@@ -116,6 +119,8 @@ pub struct QuizResult {
     pub questions: Vec<QuizQuestion>,
     pub insufficient_material: bool,
     pub material_note: Option<String>,
+    /// The documentation gap the model reported (the project is not well documented here).
+    pub docs_note: Option<String>,
     pub suggested_subjects: Vec<String>,
     /// Questions the validation rejected over all attempts.
     pub rejected_count: u32,
@@ -133,6 +138,11 @@ pub fn schema() -> Value {
                 "description": "true when the project has too little material for the subject; then questions may be few and suggestedSubjects says what to ask instead."
             },
             "materialNote": { "type": "string", "maxLength": 400 },
+            "docsNote": {
+                "type": "string",
+                "maxLength": 400,
+                "description": "Only when the project's documentation is missing, thin or out of date for this subject and this reader: what is not documented and where a page would help."
+            },
             "suggestedSubjects": {
                 "type": "array",
                 "maxItems": 5,
@@ -203,6 +213,7 @@ mod tests {
         QuizOutput {
             insufficient_material: false,
             material_note: Some("n".into()),
+            docs_note: Some("d".into()),
             suggested_subjects: vec!["s".into()],
             questions: vec![RawQuestion {
                 id: "q1".into(),

@@ -139,6 +139,7 @@ export type { SourceScope } from './generated/SourceScope';
 export type { Subject } from './generated/Subject';
 export type { SubjectGroup } from './generated/SubjectGroup';
 export type { QuizCategory } from './generated/QuizCategory';
+export type { RoleFamily } from './generated/RoleFamily';
 export type { QuestionKind } from './generated/QuestionKind';
 export type { QuizExclusion } from './generated/QuizExclusion';
 export type { QuizGenerationInput } from './generated/QuizGenerationInput';
