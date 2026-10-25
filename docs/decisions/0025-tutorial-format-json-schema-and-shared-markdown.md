@@ -1,6 +1,6 @@
 # 0025 — Tutorial format: a typed JSON schema and a shared markdown folder
 
-- Status: Accepted (proof of concept before Phase 5; see [the PoC report](../plan/poc-tutorials.md))
+- Status: Accepted (proof of concept before Phase 5, see [the PoC report](../plan/poc-tutorials.md)); amended in Phase 5 (0.5.0)
 - Date: 2026-10-25
 
 ## Context
@@ -77,7 +77,40 @@ moved citations can be relocated locally.
   it either way.
 - Relocation finds exact moves only; a range that moved *and* changed is reported as changed,
   which is what the AI review (Phase 5) is for.
-- Phase 5 owns the format in the frontend as the quiz does (ADR 0024) and makes Rust recognise
-  tutorial folders in the scan; this proof of concept keeps everything in Rust
-  (`serde_yaml` for the blocks, `sha2` for the hashes) because the generation and the checks
-  run there.
+- The proof of concept expected Phase 5 to move the format to the frontend, as the quiz does
+  (ADR 0024). Phase 5 decided the opposite: Rust keeps it (see the amendment below).
+
+## Amendment (Phase 5, 0.5.0)
+
+- **Rust owns the format.** `learning/tutorial/markdown.rs` is the only full writer and reader
+  (`write`, the tolerant `read`, `normalize`, and `info` for the graph). The backend needs them
+  anyway: the freshness check and the review read a shared tutorial from its files, and sharing,
+  Save as… and the updates of a shared tutorial write it. A full TypeScript mirror would be a
+  thousand lines whose only caller would be the mock. `serde_yaml` (pinned) reads and writes the
+  blocks, `sha2` computes the hashes.
+- **The frontend holds two small pieces.** `features/academy/tutorialBlocks.ts` parses one
+  `igrasp-*` fenced block (YAML through the `yaml` package) for the preview's folded cards; it is
+  tolerant and renders text only. `src/ipc/mock/mockTutorialMarkdown.ts` is a writer that
+  mirrors `markdown::write` **byte for byte**, so the mock's Share writes real files to the fake
+  disk, and the browser dev mode and the e2e tests read what the app would write. There is no
+  TypeScript reader of the whole format: the mock returns the JSON it holds for a shared path.
+- **Shared fixtures.** Each `src/test/fixtures/tutorial/format/<case>/` holds `input.json` (a
+  tutorial) and the exact files the writer produces (`README.md` and the chapter files; the
+  cases are `sample` and `every-step`). `cargo test` asserts Rust's output against them and
+  `read(write(t)) == t`; Vitest asserts the mock's writer against the same files.
+  `IGRASP_UPDATE_FIXTURES=1 cargo test` regenerates them from Rust; the mock must then match
+  again.
+- **Ids.** A new tutorial's id is `<slug of the subject, at most 40 characters>-<yyyymmdd>-<4
+  hex>` (`new_tutorial_id`), given when it is first saved. The proof of concept embedded the
+  whole subject. Chapter ids stay positional.
+- **The graph recognises tutorial files.** `graph/parse.rs` flags a README with
+  `igrasp: tutorial` and a chapter file with `igrasp: tutorial-chapter`; the Academy's library
+  lists the READMEs.
+- **The preview banner.** A tutorial README or chapter file shows a banner (what it is, and
+  **Take it in the Academy**) instead of the front matter card. The five interactive blocks
+  render as folded cards; quick checks reuse the `igrasp-quiz` card. Nothing in them runs or
+  navigates.
+- **Plan review, question 1** (Rust owns the format, versus the quiz's arrangement): answered
+  as recommended, Rust. **Question 14** (the preview keeps the blocks folded and
+  non-interactive, with a banner to the Academy): answered as recommended; the step components
+  need the player's state and the Academy's layout.

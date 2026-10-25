@@ -18,5 +18,6 @@ are updated together with the code.
 | [code-viewer.md](code-viewer.md) | Read-only viewer for linked source files, Open in default editor |
 | [ai-chat.md](ai-chat.md) | AI chat (Claude through its CLI today): the AI tools over the document, text and region selections, quick actions, context, permissions and settings, inline edit review, conversation history, provider abstraction and gateway |
 | [quiz.md](quiz.md) | Quiz Me: grounded questions about the project, the new-quiz wizard (role, kind, subject, code checks), modes and sources, Look it up, documentation gaps, Hoot, effects, saving results, shareable quiz files replayed without AI |
+| [academy.md](academy.md) | Hoot's Academy: tutorials about the project, subject cards and "I'm new to…", the outline and chapters, the course map and the ten step types, XP and graduation, sharing, freshness, the AI review, verification, real runs |
 | [project-profile.md](project-profile.md) | The project profile detected locally, its corrections, adding an ecosystem |
 | [keyboard.md](keyboard.md) | Keyboard shortcuts and accessibility |

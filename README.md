@@ -73,15 +73,26 @@ No Confluence, no editor plugin, no note-taking vault — just the project's own
   and libraries alike.
 - **Share a quiz.** Save results as a readable report, or save the quiz itself as a markdown file
   your teammates replay **without the AI**; it tells them when the cited code has changed.
+- **Hoot's Academy.** `Ctrl+Alt+A`: tutorials about **this** project, written by the AI from its
+  files and taken one step at a time. Pick a subject card built from the project (The Big
+  Picture, Trace It, a feature, the engine's or framework's concepts as the project uses them…)
+  or type one, say what you are new to ("Godot shaders", "FastAPI, I know Express"), review the
+  outline, then the chapters arrive one by one. Ten kinds of steps: explanations, concept
+  bridges, diagrams, **code tours** over the real files, spot the line, put in order, match,
+  quick checks, and things to try yourself (shown, never run), all with the keyboard, with XP, a
+  streak and a graduation. Every step cites the project's lines and is checked before you see
+  it. Tutorials stay private until you **share them with the project** as markdown (after a
+  confirmation that lists every file); opening one checks its cited lines locally, **Check with
+  the AI** proposes updates you accept or reject, and only you can mark it verified.
 - **Themes.** Light, Dark, High Contrast and Follow System.
 - **Safe by design.** IGrasp never writes inside the folder you open on its own (an edit you
-  accept is written by the AI provider; results and quizzes only where you save them). HTML in
-  markdown is sanitized, links never navigate the app or launch programs, and the app reads only
-  the folder you chose. AI features only ever spend tokens when you ask for it.
+  accept is written by the AI provider; results and quizzes only where you save them; a tutorial
+  only after you confirm the files it writes). HTML in markdown is sanitized, links never
+  navigate the app or launch programs, and the app reads only the folder you chose. AI features
+  only ever spend tokens when you ask for it.
 
-Coming next: generated tutorials about your project (its code, not only its docs), editing, and
-a beginner-friendly git view with "what changed since I last looked". See the
-[roadmap](#roadmap).
+Coming next: editing, and a beginner-friendly git view with "what changed since I last looked".
+See the [roadmap](#roadmap).
 
 ## Download and installation
 
@@ -170,6 +181,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the details, and
 | `Ctrl+Alt+N` / `Ctrl+Alt+H` | New AI conversation / history |
 | `Alt+Shift+A` / `Alt+Shift+R` | Accept all / reject all changes of an AI edit under review |
 | `Ctrl+Alt+Q` | Quiz Me (then `1`–`4`, `T` / `F`, `H` for a hint, `L` to look it up, `Enter`) |
+| `Ctrl+Alt+A` | Hoot's Academy (then arrows on the course map, `Enter` / `→` next step, `Esc` back to the map) |
 | `Ctrl+W` | Close the tab |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab |
 | `Alt+1` … `Alt+9` | Go to a tab |
@@ -203,10 +215,13 @@ type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
       wizard that adapts to your role (kind of quiz, concepts, features or a code check),
       documentation gaps reported, Look it up, fixed and adaptive modes, effects, saved results,
       and shareable quiz files replayed without the AI.
-- [ ] **Phase 5 — Tutorials**: Hoot's Academy, interactive tutorials generated about the project
-      (architecture, features, dependencies, how things are built, any engine or stack), saved
-      privately with your progress, shareable with the team, and checked for freshness only when
-      you ask.
+- [x] **Phase 5 — Tutorials** (0.5.0): Hoot's Academy, interactive tutorials generated about
+      the project from subject cards built locally (architecture, features, a request traced end
+      to end, dependencies, how things are built, any engine or stack, "I'm new to…"), an
+      outline you edit then chapters written one by one, ten step types with the keyboard, XP
+      and graduation, saved privately with your progress, shared with the team as markdown after
+      a confirmation, checked for freshness locally, reviewed by the AI only when you ask, and
+      verified only by you.
 - [ ] **Phase 6 — Editing**: WYSIWYG editing with lossless round-trip, file management, edit
       conflicts.
 - [ ] **Phase 7 — Git**: branch graph, commit details, status panel, stash, beginner-friendly

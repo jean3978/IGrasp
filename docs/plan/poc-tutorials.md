@@ -7,6 +7,14 @@ UI; the code lives in `src-tauri/src/learning/tutorial/` and the outputs in
 
 The format decision is [ADR 0025](../decisions/0025-tutorial-format-json-schema-and-shared-markdown.md).
 
+> **After Phase 5 (0.5.0):** the Academy kept the schema, the prompts, the validator, the shared
+> format (still owned by Rust, against recommendation 1 below) and the freshness check with
+> relocation; it changed how chapters run (one staged run of fresh prompts with the recaps,
+> [ADR 0026](../decisions/0026-staged-runs.md)), and added sharing through a confirmed write
+> plan and verification by the user ([ADR 0027](../decisions/0027-tutorial-storage-sharing-and-verification.md)),
+> the AI review, and the subject families ([ADR 0028](../decisions/0028-subject-families-built-locally.md)).
+> See [the Academy](../features/academy.md).
+
 ## What was built
 
 | Piece | Where | What it shows |

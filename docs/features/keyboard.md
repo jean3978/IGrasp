@@ -26,6 +26,7 @@ IGrasp can be used entirely from the keyboard. Press **F1** for the full list of
 | `Escape` (AI chat panel) | Stop the running answer; pressed again, close the panel |
 | `Alt+Shift+A` / `Alt+Shift+R` | Accept all / Reject all proposed changes (while an AI edit is shown in review mode) |
 | `Ctrl+Alt+Q` | Quiz Me: open the Quiz tab (free; only the confirmation card's Start spends tokens) |
+| `Ctrl+Alt+A` | Hoot's Academy: open the Academy tab (free; only a confirmation card's Start spends tokens) |
 | `Ctrl+T` | Search everything: files and headings |
 | `Alt+←` / `Alt+→`, mouse back / forward | Back / forward through the documents read |
 | `F4` / `Shift+F4` | Next / previous search result |
@@ -47,6 +48,10 @@ In a view or dialog:
 | Code viewer | `Ctrl+G` go to line |
 | Review mode (an AI edit in the preview) | `Tab` moves between the changes and their buttons; `A` / `R` on a focused change accepts / rejects it |
 | Quiz question | `1`–`4` choose, `T` / `F` true / false, `H` hint, `L` look it up (the cited files in a window; `Esc` closes it and the focus returns to its button), `Enter` next (after the answer; the Next button has the focus), `Esc` back to the quiz home (the quiz is kept). The focus starts on the first choice; the verdict, level and streak are announced; the results screen takes the focus on its heading, which reads the score |
+| Academy outline review | `Shift+↑` / `Shift+↓` move the focused chapter; `Enter` ends a rename |
+| Academy course map | Arrows (and `Home` / `End`) move between chapters, `Enter` opens one |
+| Academy step | `Enter` / `→` next (a read step) or check the answer, `←` previous, `R` read more (the first cited file), `Esc` or `M` back to the course map (the place is kept). Code tour: `→` / `←` or `N` / `P` stops, `O` open in the code viewer. Spot it: `↑` / `↓` move to a line, `Enter` picks it. Put in order: `Space` picks up or drops an item, `↑` / `↓` move it, `Enter` checks. Match: `↑` / `↓` within a column, `Enter` selects, `Backspace` undoes a pair. Quick check: the quiz question's keys. Try it yourself: `C` copy the command, `O` open the file, `Enter` I did it, `S` skip. The step card takes the focus on every transition; XP gains, a streak and a completed chapter are announced |
+| Academy review | `A` / `R` on a focused proposal accepts / rejects it |
 | Region selection | Arrows move a 200 × 120 rectangle from the centre, `Shift+arrows` resize it, `Enter` captures, `Esc` cancels (a mouse drag works too) |
 | Links, results, backlinks | `Ctrl+click`, middle click, double click or `Ctrl+Enter` open in a kept tab |
 

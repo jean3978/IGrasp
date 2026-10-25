@@ -1,6 +1,6 @@
 # Phase 5 — Tutorials (Hoot's Academy) implementation plan
 
-Status: **draft for review** (§16 to answer) · Branch: `phase-5-tutorials` · Release: `v0.5.0`
+Status: **done** (0.5.0); the §16 questions were answered as recommended, recorded in ADRs 0025 to 0028 · Branch: `phase-5-tutorials` · Release: `v0.5.0`
 
 Phase 5 adds the second learning feature ([ADR 0016](../decisions/0016-learning-features-grounded-in-the-project.md)):
 **tutorials** about the open project, written by the AI provider from the **whole project**,
