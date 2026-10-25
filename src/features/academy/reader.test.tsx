@@ -131,11 +131,13 @@ describe('the player store', () => {
 describe('reading with the keyboard', () => {
   it('opens a chapter from the map, reads, tours and spots the line', async () => {
     const t = await written();
-    render(
-      <Tooltip.Provider>
-        <TutorialView reference={{ type: 'private', id: t.id }} motion={false} />
-      </Tooltip.Provider>,
-    );
+    const view = () =>
+      render(
+        <Tooltip.Provider>
+          <TutorialView reference={{ type: 'private', id: t.id }} motion={false} />
+        </Tooltip.Provider>,
+      );
+    const first = view();
     const map = await screen.findByRole('list', { name: 'Chapters' });
     const current = within(map).getByRole('button', { name: /Chapter 1: .*current/ });
     expect(
@@ -150,9 +152,16 @@ describe('reading with the keyboard', () => {
     const explain = await screen.findByRole('article', { name: /^Explain:/ });
     fireEvent.keyDown(document.activeElement ?? explain, { key: 'Enter' });
     // Code tour: three stops, → each, the last one goes on.
-    const tour = await screen.findByRole('article', { name: /^Code tour:/ });
+    let tour = await screen.findByRole('article', { name: /^Code tour:/ });
     expect(within(tour).getByText('Stop 1 of 3')).toBeInTheDocument();
-    for (let i = 0; i < 3; i++)
+    fireEvent.keyDown(document.activeElement ?? tour, { key: 'ArrowRight' });
+    expect(within(tour).getByText('Stop 2 of 3')).toBeInTheDocument();
+    // Leaving the Academy (Open in the code viewer) and coming back finds the same stop.
+    first.unmount();
+    view();
+    tour = await screen.findByRole('article', { name: /^Code tour:/ });
+    expect(within(tour).getByText('Stop 2 of 3')).toBeInTheDocument();
+    for (let i = 0; i < 2; i++)
       fireEvent.keyDown(document.activeElement ?? tour, { key: 'ArrowRight' });
     // Spot it: ↓ ↓ Enter picks line 11, the right one.
     const spot = await screen.findByRole('article', { name: /^Spot it:/ });

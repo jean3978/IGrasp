@@ -10,6 +10,7 @@ import { CodeView } from '../../../components/CodeView';
 import { Button } from '../../../components/ui/Button';
 import type { CodeTourStep, SpotItStep } from '../../../ipc/types';
 import { openSourceFile } from '../../../stores/tabs';
+import { useTutorialPlayer } from '../../../stores/tutorialPlayer';
 import { playEffect } from '../../quiz/effects/effects';
 import { InlineCode } from '../../quiz/InlineCode';
 import { StepMarkdown, StepSources } from './common';
@@ -17,7 +18,15 @@ import { MAX_TRIES } from './stepUtils';
 import type { StepProps } from './types';
 
 export function CodeTour({ step, props }: { step: CodeTourStep; props: StepProps }) {
-  const [stop, setStop] = useState(0);
+  // In the player's store: coming back from the code viewer (the Academy tab was left) finds the
+  // same stop.
+  const stop = useTutorialPlayer((s) =>
+    Math.min(s.stops[props.stepKey] ?? 0, Math.max(0, step.stops.length - 1)),
+  );
+  const keepStop = useTutorialPlayer((s) => s.setStop);
+  const setStop = (i: number) => {
+    keepStop(props.stepKey, i);
+  };
   const current = step.stops[stop];
   const last = stop === step.stops.length - 1;
   const onKeyDown = (e: KeyboardEvent) => {

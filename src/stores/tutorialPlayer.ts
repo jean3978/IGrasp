@@ -40,6 +40,11 @@ interface PlayerState {
   event: PlayerEvent | null;
   /** The graduation screen is shown (once, when the last chapter completes). */
   graduation: boolean;
+  /**
+   * The stop each code tour is on, by step key: kept while the tutorial is open, so leaving the
+   * Academy (Open in the code viewer) and coming back finds the same stop.
+   */
+  stops: Record<string, number>;
 
   load: (reference: TutorialRef) => Promise<void>;
   /** Runs the local freshness check again (after a write, or files changed on disk). */
@@ -52,6 +57,7 @@ interface PlayerState {
   /** Completes the step on screen; moves on unless `stay`. */
   complete: (outcome: StepOutcome, stay?: boolean) => void;
   closeGraduation: () => void;
+  setStop: (stepKey: string, stop: number) => void;
   /** The tutorial was saved (a chapter written, a proposal accepted): shown at once. */
   onSaved: (t: Tutorial) => void;
   close: () => void;
@@ -82,10 +88,15 @@ export const useTutorialPlayer = create<PlayerState>()((set, get) => {
     freshness: null,
     event: null,
     graduation: false,
+    stops: {},
 
     async load(reference) {
       const same = get().reference && keyOf(get().reference as TutorialRef) === keyOf(reference);
-      set({ reference, error: null, ...(same ? {} : { tutorial: null, progress: null }) });
+      set({
+        reference,
+        error: null,
+        ...(same ? {} : { tutorial: null, progress: null, stops: {} }),
+      });
       try {
         // First: a private tutorial's moved citations are relocated and saved by the check.
         const freshness = await backend.checkTutorialFreshness(reference).catch(() => null);
@@ -183,6 +194,10 @@ export const useTutorialPlayer = create<PlayerState>()((set, get) => {
       }
     },
 
+    setStop(stepKey, stop) {
+      if (get().stops[stepKey] !== stop) set((s) => ({ stops: { ...s.stops, [stepKey]: stop } }));
+    },
+
     closeGraduation() {
       set({ graduation: false, chapter: null });
     },
@@ -205,6 +220,7 @@ export const useTutorialPlayer = create<PlayerState>()((set, get) => {
         freshness: null,
         event: null,
         graduation: false,
+        stops: {},
       });
     },
   };
