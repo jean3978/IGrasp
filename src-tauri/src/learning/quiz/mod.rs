@@ -3,6 +3,7 @@
 //! `ai_start` sends. Provider-neutral: no provider name, flag or wire format here.
 
 pub mod difficulty;
+pub mod prompt;
 pub mod schema;
 
 use serde::{Deserialize, Serialize};

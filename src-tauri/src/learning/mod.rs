@@ -6,6 +6,7 @@ pub mod agent_files;
 // Partly used by the quiz composer (step 14 of the phase 4 plan).
 #[allow(dead_code)]
 pub mod corpus;
+pub mod hoot;
 pub mod subjects;
 // Used by the quiz composer (step 14 of the phase 4 plan).
 #[allow(dead_code)]

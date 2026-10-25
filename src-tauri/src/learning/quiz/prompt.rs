@@ -1,0 +1,328 @@
+//! The quiz generation prompt and the repair prompt, assembled from fixed blocks (owned by the
+//! app, provider-neutral: every provider receives the same instructions) and the project's
+//! facts. A snapshot test keeps the text stable; a neutrality test checks it names no provider.
+
+use super::difficulty::plan_text;
+use super::{QuizExclusion, QuizRound};
+use crate::learning::corpus::{SourceScope, profile_block};
+use crate::learning::hoot::HOOT_TONE;
+use crate::learning::subjects::Subject;
+use crate::profile::ProjectProfile;
+
+/// Everything the generation prompt is made of.
+pub struct PromptInput<'a> {
+    pub profile: &'a ProjectProfile,
+    pub subject: Option<&'a Subject>,
+    pub count: u32,
+    pub plan: [u32; 5],
+    pub scope: &'a SourceScope,
+    pub round: Option<QuizRound>,
+    pub exclude: &'a [QuizExclusion],
+    pub domain_gap: Option<&'a str>,
+    pub corpus_map: &'a str,
+    pub anchor_files: &'a str,
+    pub agent_files: &'a str,
+}
+
+/// What the quiz is about, as the prompt names it.
+pub fn subject_phrase(profile: &ProjectProfile, subject: Option<&Subject>) -> String {
+    match subject {
+        Some(s) => format!("\"{}\" ({})", s.title, s.focus),
+        None => format!(
+            "{} as a whole (no specific subject): what it does, its architecture and main modules, how its parts interact, how it is built and tested, and the decisions behind it",
+            profile.name
+        ),
+    }
+}
+
+fn scope_block(scope: &SourceScope) -> String {
+    match scope {
+        SourceScope::WholeProject => "Sources: the whole project (code, configuration, build scripts, tests and documentation). Ask about how this project is made, not only about what its documentation says.".to_owned(),
+        SourceScope::DocumentationOnly => "Sources are limited to the project's documentation listed below; cite documentation files only. The code is not available in this quiz; questions are about what the documentation says about this project and how its parts fit.".to_owned(),
+        SourceScope::Paths { paths } => format!(
+            "Sources are limited to these files; cite them only: {}.",
+            paths.join(", ")
+        ),
+    }
+}
+
+fn round_block(round: Option<QuizRound>) -> Option<String> {
+    let r = round?;
+    Some(format!(
+        "This is round {} of {} of a quiz you write while the developer plays. They answered {} of {} right so far and are now at level {}: write this round at that level. Do not repeat the questions of the previous rounds of this conversation.",
+        r.number, r.of, r.right, r.asked, r.level
+    ))
+}
+
+fn exclusions_block(exclude: &[QuizExclusion]) -> Option<String> {
+    if exclude.is_empty() {
+        return None;
+    }
+    let items: Vec<String> = exclude
+        .iter()
+        .map(|e| match &e.source {
+            Some(s) => format!("- {} ({s})", e.question),
+            None => format!("- {}", e.question),
+        })
+        .collect();
+    Some(format!(
+        "The developer already answered these questions; do not ask them again, nor the same fact from the same lines:\n{}",
+        items.join("\n")
+    ))
+}
+
+/// The prompt of a generation (the first attempt).
+pub fn generation_prompt(input: &PromptInput<'_>) -> String {
+    let subject = subject_phrase(input.profile, input.subject);
+    let gap = input.domain_gap.map_or_else(
+        || "none stated".to_owned(),
+        |g| format!("they say: \"{g}\""),
+    );
+    let mut task = vec![
+        format!(
+            "Write {} questions about {subject}, with these difficulties: {}",
+            input.count,
+            plan_text(&input.plan)
+        ),
+        "(1 = a newcomer who read the README can answer it; 3 = you must have read the relevant code; 5 = you must understand how several parts of this project interact).".to_owned(),
+        scope_block(input.scope),
+    ];
+    task.extend(round_block(input.round));
+    task.extend(exclusions_block(input.exclude));
+    task.push("Kinds: multiple choice (3 to 5 distinct choices, exactly one correct, the wrong ones plausible for someone who skimmed this project) and true/false (choices exactly [\"True\", \"False\"]). Mix them, at most one third true/false. Number the questions q1, q2, …".to_owned());
+    let agent = if input.agent_files.trim().is_empty() {
+        "(none)".to_owned()
+    } else {
+        input.agent_files.trim_end().to_owned()
+    };
+    format!(
+        "You are Hoot, the quiz master of IGrasp, writing a quiz about ONE specific software project for the developer who has it open. You can read, list and search the project's files; you cannot change anything. Work only from what is actually in this project.
+
+# Audience
+Developers. They know how to program and how to use common tooling, but they may be new to this project, or new to a domain it uses ({gap}). Never explain programming basics (functions, variables, loops, git, package managers, what a framework is). Talk developer to developer: precise, concise, no hand-holding. Respect their expertise.
+
+# This project
+{profile}
+Use the project's own vocabulary (what its code and docs call things), not generic terms.
+
+# Your task
+{task}
+
+# Grounding rules (non-negotiable)
+1. Every question is about THIS project: what a file does here, why it is done that way here, how it connects to the rest of this project. A question that would make sense unchanged in another project is invalid: no \"What does HTTP 404 mean?\", no \"What is a MonoBehaviour?\".
+2. Every question cites at least one source: a root-relative path from the corpus below, with the line range that holds the fact (at most 120 lines) for text files. The first source is what the developer opens to read more. Cite what you actually read; never invent a path or a line range.
+3. Domain knowledge appears only as a bridge: one or two sentences of concept, immediately applied to this project's code (\"Unreal replicates properties marked Replicated; here AShipPawn replicates Health and Shield but computes Speed locally, see ShipPawn.h:42-58\").
+4. Files written for AI agents (listed under \"Agent instructions\" below) are context about conventions. Never cite them, never ask about their content: the quiz is about the project, not about agent instructions.
+5. Binary assets (images, models, scenes saved as binary, …) cannot be read. Their names and folders may be evidence of layout; never claim what one contains. A binary path may be a secondary source, never the only one.
+6. Files that may hold secrets (.env, keys, certificates, credentials) are off limits: do not read them, do not cite them, do not quote them.
+7. If the project has too little material for {subject}, say so: set insufficientMaterial to true, explain in materialNote, suggest better subjects in suggestedSubjects, and write only the questions the material supports. Never fill the gap with generic content.
+
+# Self-check (do it for every question before answering)
+Ask: \"Would this question, its answer and its explanation still be true and useful in an unrelated project?\" If yes, rewrite it around something specific to this project, or drop it. Record the verdict in selfCheck (projectSpecific must be true for a kept question; reason says what makes it specific: a path, an identifier, a decision).
+Also check: the question or the explanation names something of this project (a file, an identifier, a module); the hint does not contain the answer; the choices are distinct and none is \"all of the above\" or \"none of the above\"; the line range exists in the file you read.
+
+# Voice: Hoot
+{HOOT_TONE}
+
+# Output
+Answer with JSON only, following the schema you were given. No prose outside the JSON.
+
+# Corpus (root-relative paths; sizes; language)
+{map}
+
+# Anchor files (with line numbers)
+{anchors}
+
+# Agent instructions (context only, never a source)
+{agent}
+",
+        profile = profile_block(input.profile),
+        task = task.join("\n"),
+        map = input.corpus_map,
+        anchors = input.anchor_files.trim_end(),
+    )
+}
+
+/// The prompt of a retry: the accepted questions stay, the rejected ones are replaced.
+pub fn repair_prompt(kept: usize, rejected: &[(String, String)], missing: &[u32]) -> String {
+    let mut lines = vec![format!(
+        "Thank you. IGrasp checked your questions against the project. {kept} were accepted."
+    )];
+    if rejected.is_empty() {
+        lines.push(
+            "Your answer could not be read as the quiz JSON. Return the complete JSON again, following the schema."
+                .to_owned(),
+        );
+    } else {
+        lines.push(format!(
+            "Replace the following {} questions with new ones that respect the rules, and return the complete JSON again with the accepted questions unchanged (same ids):",
+            rejected.len()
+        ));
+        for (id, reason) in rejected {
+            lines.push(format!("- {id}: {reason}"));
+        }
+    }
+    if !missing.is_empty() {
+        let levels: Vec<String> = missing.iter().map(u32::to_string).collect();
+        lines.push(format!(
+            "The plan still needs at least one question of difficulty {}.",
+            levels.join(", ")
+        ));
+    }
+    lines.push("Same schema, JSON only.".to_owned());
+    lines.join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::*;
+    use crate::learning::subjects::Material;
+    use crate::profile::summary::DocsFacts;
+    use crate::profile::{Confidence, Detected, ProfileCorrections, ProjectKind};
+
+    fn profile() -> ProjectProfile {
+        ProjectProfile {
+            name: "demo".into(),
+            kinds: vec![Detected {
+                value: ProjectKind::Cli,
+                confidence: Confidence::High,
+                evidence: vec!["package.json".into()],
+            }],
+            engines: vec![],
+            frameworks: vec![],
+            languages: vec![],
+            dependencies: vec!["vitest".into()],
+            build: vec![],
+            tests: vec![],
+            ci: vec![],
+            modules: vec![],
+            docs: DocsFacts::default(),
+            repository: true,
+            summary: "demo: a command-line tool in TypeScript.".into(),
+            corrections: ProfileCorrections {
+                notes: "Also a server.".into(),
+                ..ProfileCorrections::default()
+            },
+            files_seen: 3,
+            truncated: false,
+            built_ms: 1,
+        }
+    }
+
+    fn subject() -> Subject {
+        Subject {
+            id: "build".into(),
+            title: "How demo is built".into(),
+            focus: "its scripts".into(),
+            anchors: vec!["Makefile".into()],
+            material: Material::Some,
+            files: 2,
+            bytes: 3000,
+            has_docs: false,
+        }
+    }
+
+    fn prompt(round: Option<QuizRound>, scope: &SourceScope, exclude: &[QuizExclusion]) -> String {
+        let p = profile();
+        let s = subject();
+        generation_prompt(&PromptInput {
+            profile: &p,
+            subject: Some(&s),
+            count: 5,
+            plan: [1, 2, 1, 1, 0],
+            scope,
+            round,
+            exclude,
+            domain_gap: Some("I'm new to make"),
+            corpus_map: "Makefile (20 B)\nsrc/ (1 files, 300 B)\n  src/main.ts (300 B, TypeScript)",
+            anchor_files: "## Makefile (2 lines)\n  1 | build:\n  2 | \tnpm run build\n",
+            agent_files: "## AGENTS.md (1 lines)\n  1 | Be brief.\n",
+        })
+    }
+
+    /// The prompt of a fixed quiz, compared with `snapshots/generation.txt`. Run with
+    /// `UPDATE_SNAPSHOTS=1` to write the snapshot again after a deliberate change.
+    #[test]
+    fn the_generation_prompt_snapshot() {
+        let text = prompt(None, &SourceScope::WholeProject, &[]);
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("src/learning/quiz/snapshots/generation.txt");
+        if std::env::var_os("UPDATE_SNAPSHOTS").is_some() {
+            std::fs::write(&path, &text).unwrap();
+        }
+        let expected = std::fs::read_to_string(&path)
+            .unwrap()
+            .replace("\r\n", "\n");
+        assert_eq!(text, expected);
+    }
+
+    #[test]
+    fn the_prompt_names_no_provider() {
+        let text = prompt(None, &SourceScope::WholeProject, &[]).to_lowercase()
+            + &repair_prompt(1, &[("q2".into(), "generic".into())], &[4]).to_lowercase();
+        for name in [
+            "claude",
+            "anthropic",
+            "gpt",
+            "openai",
+            "gemini",
+            "codex",
+            "ollama",
+        ] {
+            assert!(!text.contains(name), "{name}");
+        }
+    }
+
+    #[test]
+    fn scope_round_and_exclusion_blocks() {
+        let docs = prompt(None, &SourceScope::DocumentationOnly, &[]);
+        assert!(docs.contains("cite documentation files only. The code is not available"));
+        let round = prompt(
+            Some(QuizRound {
+                number: 2,
+                of: 2,
+                asked: 5,
+                right: 4,
+                level: 3,
+            }),
+            &SourceScope::WholeProject,
+            &[QuizExclusion {
+                question: "Which file builds?".into(),
+                source: Some("Makefile".into()),
+            }],
+        );
+        assert!(round.contains("This is round 2 of 2"));
+        assert!(round.contains("They answered 4 of 5 right so far and are now at level 3"));
+        assert!(round.contains("- Which file builds? (Makefile)"));
+        assert!(round.contains("The developer adds: Also a server."));
+        assert!(round.contains("they say: \"I'm new to make\""));
+    }
+
+    #[test]
+    fn repair_prompt_lists_reasons_and_missing_levels() {
+        let text = repair_prompt(
+            7,
+            &[
+                (
+                    "q3".into(),
+                    "cites CLAUDE.md, an agent instruction file".into(),
+                ),
+                (
+                    "q5".into(),
+                    "src/a.rs has 212 lines; lines 400-420 do not exist".into(),
+                ),
+            ],
+            &[4],
+        );
+        assert!(text.starts_with(
+            "Thank you. IGrasp checked your questions against the project. 7 were accepted."
+        ));
+        assert!(text.contains("Replace the following 2 questions"));
+        assert!(text.contains("- q3: cites CLAUDE.md, an agent instruction file"));
+        assert!(text.contains("at least one question of difficulty 4."));
+        assert!(text.ends_with("Same schema, JSON only."));
+        assert!(repair_prompt(0, &[], &[]).contains("could not be read as the quiz JSON"));
+    }
+}
