@@ -11,6 +11,7 @@ import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
 import { MarkdownPreview } from './MarkdownPreview';
 import { MAX_RENDERED_CHARS, useMarkdown } from './useMarkdown';
+import { keepScrollTop } from './keepScroll';
 import { clearMatchHighlight, revealPending } from './reveal';
 import './document.css';
 
@@ -123,6 +124,20 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
     };
   }, []);
 
+  // Leaving review mode (Accept all, Apply, Reject all) swaps the review for the preview in the
+  // same scroll container; the preview renders asynchronously, so the container is briefly
+  // short and the browser drops the position to the top. Keep the reader where they were.
+  const lastTop = useRef(0);
+  const inReview = review !== null;
+  const wasInReview = useRef(inReview);
+  useLayoutEffect(() => {
+    const was = wasInReview.current;
+    wasInReview.current = inReview;
+    const el = scrollRef.current;
+    if (!el || inReview || !was) return;
+    return keepScrollTop(el, lastTop.current);
+  }, [inReview]);
+
   // Restore the tab's scroll position once its content has been laid out.
   useLayoutEffect(() => {
     const el = scrollRef.current;
@@ -134,17 +149,9 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
       return;
     }
     // The preview renders asynchronously: retry until the content is tall enough (max ~1 s).
-    let frames = 0;
-    const apply = () => {
-      el.scrollTop = tab.scrollTop;
-      frames += 1;
-      if (Math.abs(el.scrollTop - tab.scrollTop) > 1 && frames < 60) {
-        requestAnimationFrame(apply);
-      } else {
-        restored.current = true;
-      }
-    };
-    apply();
+    return keepScrollTop(el, tab.scrollTop, () => {
+      restored.current = true;
+    });
   }, [doc?.status, tabId]);
 
   return (
@@ -154,6 +161,7 @@ export function DocumentTab({ tabId, relPath }: DocumentTabProps) {
       tabIndex={0}
       aria-label={relPath}
       onScroll={(e) => {
+        lastTop.current = e.currentTarget.scrollTop;
         if (restored.current && !review) {
           useTabs.getState().setScroll(tabId, Math.round(e.currentTarget.scrollTop));
         }
