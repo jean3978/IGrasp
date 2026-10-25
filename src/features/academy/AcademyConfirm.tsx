@@ -5,6 +5,7 @@
 import { useAiProvider, selectProviderName } from '../../stores/aiProvider';
 import { useAcademy } from '../../stores/academy';
 import { ConfirmCard } from '../ai/ConfirmCard';
+import { WizardSteps } from './WizardSteps';
 
 export function AcademyConfirm() {
   const pending = useAcademy((s) => s.pending);
@@ -16,6 +17,11 @@ export function AcademyConfirm() {
   const { estimate } = pending;
   return (
     <div className="quiz-confirm academy-confirm">
+      {pending.kind === 'outline' && (
+        <div className="academy-wizard-head">
+          <WizardSteps current="confirm" />
+        </div>
+      )}
       <ConfirmCard
         title={pending.title}
         provider={provider}

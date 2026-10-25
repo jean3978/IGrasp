@@ -23,6 +23,8 @@ export interface HootProps {
   motion?: boolean;
   /** The eyes follow the pointer (the Look it up window); they look down until it moves. */
   followPointer?: boolean;
+  /** The teacher's mortarboard (the Academy). */
+  hat?: boolean;
   className?: string;
 }
 
@@ -40,6 +42,7 @@ export function Hoot({
   announce = false,
   motion = true,
   followPointer = false,
+  hat = false,
   className,
 }: HootProps) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -168,6 +171,15 @@ export function Hoot({
             </g>
             <path className="hoot-beak" d="M54 71 L 66 71 L 60 81 Z" />
             <path className="hoot-smile" d="M53 84 q 7 5 14 0" />
+            {hat && (
+              <g className="hoot-hat">
+                <path className="hoot-hat-cap" d="M41 15 L 79 15 L 77 29 Q 60 24 43 29 Z" />
+                <path className="hoot-hat-board" d="M60 2 L 100 12 L 60 22 L 20 12 Z" />
+                <path className="hoot-hat-cord" d="M60 12 L 94 15 L 94 30" />
+                <path className="hoot-hat-tassel" d="M91 29 L 97 29 L 98 38 L 90 38 Z" />
+                <circle className="hoot-hat-button" cx="60" cy="12" r="2.4" />
+              </g>
+            )}
           </g>
           {/* Explaining: the right wing raised to the glasses, in front of the face. */}
           <g className="hoot-wing-raised">

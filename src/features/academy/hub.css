@@ -1,0 +1,540 @@
+/* The Academy's hub (a classroom: Hoot in front of the blackboard where the tutorials are
+   listed, owls at their desks), the new-tutorial wizard's steps and Hoot's welcome. Colors come
+   from the theme tokens only (--academy-* for the classroom, --hoot-* for the owls). */
+
+/* --- The hub --------------------------------------------------------------------------- */
+
+.academy-hub-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+
+.academy-hub-text {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
+.academy-hub-text .quiz-lead {
+  margin-bottom: 0;
+}
+
+.academy-hub-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 300px;
+  text-align: right;
+}
+
+.academy-hub-cta .quiz-muted {
+  font-size: var(--font-size-small);
+}
+
+.button.academy-new {
+  min-height: 44px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: var(--quiz-card-shadow);
+}
+
+.button.academy-new svg {
+  width: 18px;
+  height: 18px;
+}
+
+.academy-classroom {
+  overflow: hidden;
+  border: var(--border-width) solid var(--quiz-card-border);
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--academy-wall) 0 76%, var(--academy-floor) 76% 100%);
+}
+
+.academy-classroom-front {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  align-items: end;
+  gap: 8px 16px;
+  padding: 20px 20px 0;
+}
+
+.academy-teacher {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 6px;
+}
+
+/* The speech bubble above the teacher, not beside it (the board is there). */
+.academy-teacher .hoot {
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 4px;
+}
+
+.academy-teacher .hoot-bubble {
+  max-width: 176px;
+  margin: 0;
+  font-size: var(--font-size-small);
+  text-align: center;
+}
+
+/* --- The blackboard -------------------------------------------------------------------- */
+
+.academy-board {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 14px 16px 0;
+  border: 10px solid var(--academy-board-frame);
+  border-bottom-width: 0;
+  border-radius: 8px 8px 0 0;
+  background: var(--academy-board);
+  color: var(--academy-chalk);
+}
+
+.academy-board-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 2px dashed var(--academy-chalk-muted);
+}
+
+.academy-board-title {
+  margin: 0;
+  color: var(--academy-chalk);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.academy-board-count {
+  padding: 0 8px;
+  border: var(--border-width) solid var(--academy-chalk-accent);
+  border-radius: 999px;
+  color: var(--academy-chalk-accent);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+}
+
+/* Tall enough to see a good part of the list, short enough to keep the whole classroom in view;
+   many tutorials scroll inside the board. */
+.academy-board-list {
+  max-height: clamp(150px, 30vh, 340px);
+  margin-top: 10px;
+  padding-right: 4px;
+  overflow-y: auto;
+  scrollbar-color: var(--academy-chalk-muted) transparent;
+}
+
+.academy-board .academy-row-main {
+  background: var(--academy-board-row);
+  color: var(--academy-chalk);
+}
+
+.academy-board .academy-row-main:hover {
+  background: var(--academy-board-row-hover);
+}
+
+.academy-board .academy-row-title {
+  color: var(--academy-chalk);
+}
+
+.academy-row-meta {
+  grid-column: 2;
+  color: var(--academy-chalk-muted);
+  font-size: var(--font-size-small);
+}
+
+.academy-board .academy-row-icon {
+  color: var(--academy-chalk-accent);
+}
+
+.academy-board .academy-tag,
+.academy-board .academy-tag-done {
+  border-color: var(--academy-chalk-muted);
+  color: var(--academy-chalk-muted);
+}
+
+.academy-board .academy-tag-warn {
+  border-color: var(--academy-chalk-accent);
+  color: var(--academy-chalk-accent);
+}
+
+.academy-board .button-ghost {
+  color: var(--academy-chalk-muted);
+}
+
+.academy-board .button-ghost:hover:not(:disabled) {
+  background: var(--academy-board-row-hover);
+  color: var(--academy-chalk);
+}
+
+.academy-board-empty {
+  padding: 18px 4px 6px;
+}
+
+.academy-board-empty p {
+  margin: 0 0 6px;
+  color: var(--academy-chalk-muted);
+}
+
+.academy-board-empty p:first-child {
+  color: var(--academy-chalk);
+  font-size: 16px;
+}
+
+.academy-board-empty strong {
+  color: var(--academy-chalk-accent);
+}
+
+/* The chalk ledge under the board. */
+.academy-board-ledge {
+  display: flex;
+  gap: 12px;
+  height: 10px;
+  margin: 14px -26px 0;
+  padding-left: 40px;
+  background: var(--academy-board-frame);
+}
+
+.academy-chalk-piece {
+  width: 22px;
+  height: 5px;
+  margin-top: -4px;
+  border-radius: 2px;
+  background: var(--academy-chalk);
+}
+
+.academy-chalk-piece[data-tone='accent'] {
+  width: 14px;
+  background: var(--academy-chalk-accent);
+}
+
+/* --- The students ---------------------------------------------------------------------- */
+
+.academy-desks {
+  display: flex;
+  justify-content: center;
+  gap: clamp(24px, 8vw, 96px);
+  padding: 14px 20px 0;
+}
+
+.academy-seat {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 120px;
+  height: 92px;
+}
+
+/* Seated: the owl's feet and branch hide behind the desk. */
+.academy-seat .hoot {
+  position: absolute;
+  bottom: 6px;
+}
+
+.academy-desk {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 32px;
+  border-top: 5px solid var(--academy-desk-edge);
+  border-radius: 4px 4px 0 0;
+  background: var(--academy-desk);
+}
+
+.academy-seat[data-variant='a'] {
+  --hoot-feather: var(--academy-owl-a);
+  --hoot-feather-dark: var(--academy-owl-a-dark);
+}
+
+.academy-seat[data-variant='b'] {
+  --hoot-feather: var(--academy-owl-b);
+  --hoot-feather-dark: var(--academy-owl-b-dark);
+}
+
+.academy-seat[data-variant='c'] {
+  --hoot-feather: var(--academy-owl-c);
+  --hoot-feather-dark: var(--academy-owl-c-dark);
+}
+
+.academy-seat[data-glasses='off'] .hoot-glasses {
+  display: none;
+}
+
+/* Not all in step. */
+.academy-seat:nth-child(2) .hoot-figure {
+  animation-delay: 0.7s;
+}
+
+.academy-seat:nth-child(3) .hoot-figure {
+  animation-delay: 1.4s;
+}
+
+/* The third owl raises a wing now and then: a question for the teacher. */
+.academy-seat[data-variant='c'] .hoot-wing-left {
+  animation: academy-raise 7s ease-in-out 2s infinite;
+}
+
+@keyframes academy-raise {
+  0%,
+  70%,
+  100% {
+    transform: none;
+  }
+
+  76%,
+  92% {
+    transform: rotate(125deg);
+  }
+}
+
+@media (max-width: 720px) {
+  .academy-classroom-front {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .academy-teacher {
+    display: none;
+  }
+}
+
+/* --- The wizard ------------------------------------------------------------------------ */
+
+.academy-wizard-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.academy-wizard-steps {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.academy-wizard-steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px 3px 3px;
+  border: var(--border-width) solid var(--quiz-card-border);
+  border-radius: 999px;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.academy-wizard-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  font-weight: 600;
+}
+
+.academy-wizard-number svg {
+  width: 13px;
+  height: 13px;
+}
+
+.academy-wizard-steps li[data-state='current'] {
+  border-color: var(--ai-accent);
+  color: var(--fg-strong);
+  font-weight: 600;
+}
+
+.academy-wizard-steps li[data-state='current'] .academy-wizard-number {
+  background: var(--ai-accent);
+  color: var(--bg);
+}
+
+.academy-wizard-steps li[data-state='done'] {
+  border-color: var(--quiz-good);
+  color: var(--quiz-good);
+}
+
+.academy-wizard-steps li[data-state='done'] .academy-wizard-number {
+  background: var(--quiz-good);
+  color: var(--bg);
+}
+
+.academy-create {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.academy-create .quiz-title {
+  margin-bottom: 0;
+}
+
+.academy-create .quiz-lead {
+  margin: 0;
+}
+
+/* --- Hoot's welcome -------------------------------------------------------------------- */
+
+.academy-welcome {
+  position: absolute;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--academy-wall);
+  cursor: pointer;
+  animation: academy-welcome-in 0.25s ease-out both;
+  transition: opacity 0.45s ease-in;
+}
+
+.academy-welcome[data-leaving='true'] {
+  opacity: 0;
+}
+
+.academy-welcome-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.academy-welcome-hoot {
+  margin-bottom: 8px;
+  animation: academy-welcome-pop 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.academy-welcome .hoot-hat {
+  animation: academy-hat-drop 0.6s 0.4s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+
+.academy-welcome-eyebrow,
+.academy-welcome-title,
+.academy-welcome-lead {
+  margin: 0;
+  animation: academy-welcome-up 0.4s ease-out both;
+}
+
+.academy-welcome-eyebrow {
+  color: var(--ai-accent);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  animation-delay: 0.55s;
+}
+
+.academy-welcome-title {
+  color: var(--fg-strong);
+  font-size: 30px;
+  font-weight: 700;
+  animation-delay: 0.7s;
+}
+
+.academy-welcome-lead {
+  margin-top: 4px;
+  color: var(--fg-muted);
+  animation-delay: 0.85s;
+}
+
+.academy-welcome-spark {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--hoot-beak);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: academy-twinkle 1.2s ease-in-out infinite both;
+}
+
+.academy-welcome-spark[data-i='1'] {
+  top: 10px;
+  left: 18%;
+  animation-delay: 0.3s;
+}
+
+.academy-welcome-spark[data-i='2'] {
+  top: 40px;
+  right: 16%;
+  width: 14px;
+  height: 14px;
+  animation-delay: 0.5s;
+}
+
+.academy-welcome-spark[data-i='3'] {
+  top: 120px;
+  left: 8%;
+  width: 8px;
+  height: 8px;
+  animation-delay: 0.8s;
+}
+
+.academy-welcome-spark[data-i='4'] {
+  top: 100px;
+  right: 6%;
+  width: 9px;
+  height: 9px;
+  animation-delay: 0.65s;
+}
+
+@keyframes academy-welcome-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes academy-welcome-pop {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.6);
+  }
+}
+
+@keyframes academy-hat-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-46px) rotate(-14deg);
+  }
+}
+
+@keyframes academy-welcome-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes academy-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4) rotate(0deg);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(45deg);
+  }
+}
+
+[data-motion='off'] .academy-seat .hoot-wing-left {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .academy-seat .hoot-wing-left {
+    animation: none;
+  }
+}

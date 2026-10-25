@@ -102,4 +102,25 @@
   --hoot-branch: #6b5139;
   --hoot-bubble: #2d2724;
   --hoot-bubble-border: #4d3a31;
+  --hoot-hat: #15141a;
+  --hoot-hat-tassel: #f0ad4e;
+
+  /* Hoot's Academy: the classroom of the hub. */
+  --academy-wall: #24201e;
+  --academy-floor: #1d1a18;
+  --academy-board: #22382b;
+  --academy-board-frame: #6b5139;
+  --academy-board-row: rgb(255 255 255 / 0.05);
+  --academy-board-row-hover: rgb(255 255 255 / 0.11);
+  --academy-chalk: #eeeadf;
+  --academy-chalk-muted: #a7b6aa;
+  --academy-chalk-accent: #f3cf6f;
+  --academy-desk: #7a5a3c;
+  --academy-desk-edge: #5a4029;
+  --academy-owl-a: #6f7f96;
+  --academy-owl-a-dark: #515e72;
+  --academy-owl-b: #b58757;
+  --academy-owl-b-dark: #8a6440;
+  --academy-owl-c: #8c776c;
+  --academy-owl-c-dark: #67564e;
 }

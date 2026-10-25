@@ -23,6 +23,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The recap at the end of a chapter: Hoot, how the chapter went (steps done, answers right, the
   chapter bonus to come), the takeaways as numbered cards, the steps still to do with a way back
   to the first one, and what comes next.
+- The Academy's hub is a classroom: Hoot in a mortarboard in front of the blackboard, where your
+  tutorials are listed (scrolled when there are many), and owls at their desks. A clear **New
+  tutorial** button opens a three-step wizard (Subject, Options, Confirm) with the subject cards
+  and the options as before. Opening the Academy tab plays a short welcome by Hoot (about two
+  seconds, skipped by a click or a key, not shown when the effects are off or with reduced
+  motion).
 
 ### Fixed
 

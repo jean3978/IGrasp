@@ -18,10 +18,21 @@ a tutorial on its own and never marks it verified.
 - **Open**: **Learn → Academy…** (`Ctrl+Alt+A`), the graduation-cap button of the AI tools over
   the view, or **Take it in the Academy** on a shared tutorial in the preview. The Academy tab
   opens; opening it is free: the profile, the cards, the library and the badges are local.
-- **Home**: Hoot, **Continue where you left off** (the last tutorial in progress, its chapter and
-  step), **What do you want to learn?** (type a subject, Enter), the **subject cards** grouped by
-  family, **I'm new to…** chips, **Suggest more subjects**, **Your tutorials** (the library) and
-  the project profile with **Edit** (the Phase 4 dialog; a correction rebuilds the cards).
+- **Welcome**: when the tab opens (it was not open), Hoot pops up, its mortarboard drops on its
+  head, "Welcome to Hoot's Academy", and the screen fades into the hub after about two seconds.
+  A click or any key skips it; switching back to an open Academy tab does not replay it, and it
+  is not shown when the learning effects are off or the system asks for reduced motion.
+- **The hub** is a classroom: Hoot in a mortarboard in front of the blackboard, three owls at
+  their desks (one thinks, one raises a wing now and then), and **Your tutorials** on the
+  blackboard (title, tags, progress, Share, Save as…, Delete). Many tutorials scroll inside the
+  board, which stays short enough to keep the whole classroom in view. Above it, **New
+  tutorial** (the wizard below) and **Continue where you left off** (the last tutorial in
+  progress, its chapter and step); under it, the project profile with **Edit** (the Phase 4
+  dialog; a correction rebuilds the cards).
+- **New tutorial** is a wizard of three steps, shown at the top of each: **Subject**, **Options**,
+  **Confirm**. The subject step has **What do you want to learn?** (type a subject, Enter), the
+  **subject cards** grouped by family and **Suggest more subjects**; a failed outline comes back
+  to it with the subjects that may work better.
 - **Subject cards** are built locally from the project profile, without AI
   ([ADR 0028](../decisions/0028-subject-families-built-locally.md)). Twelve universal families
   (The Big Picture; Tech Stack, as used here; Architecture Tour; Feature Deep Dive; Trace It;
@@ -32,9 +43,9 @@ a tutorial on its own and never marks it verified.
   its amount of material, and is offered only when the project has enough files about it. Feature
   Deep Dive and Trace It open a pick list (a feature, or an action such as "a file changes on
   disk"). At most 24 cards.
-- **I'm new to…**: chips for the engines, frameworks and domain topics the project uses (for
-  example "Godot materials and shaders", "web security"), or type your own. A domain card fills
-  it in. Hoot then teaches that domain through this project's own use of it, a concept at a
+- **I'm new to…** (in the options): chips for the engines, frameworks and domain topics the
+  project uses (for example "Godot materials and shaders", "web security"), or type your own. A
+  domain card fills it in. Hoot then teaches that domain through this project's own use of it, a concept at a
   time, never as a separate course.
 - **Suggest more subjects** (marked as using AI) asks the AI for subjects the cards missed,
   through its confirmation card. The accepted ones appear as cards of the **Suggested** family

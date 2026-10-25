@@ -25,6 +25,25 @@
 .hoot-feet {
   fill: var(--hoot-beak);
 }
+/* The teacher's mortarboard (the Academy). */
+.hoot-hat-cap,
+.hoot-hat-board {
+  fill: var(--hoot-hat);
+  stroke: var(--hoot-outline);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.hoot-hat-cord {
+  fill: none;
+  stroke: var(--hoot-hat-tassel);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.hoot-hat-tassel,
+.hoot-hat-button {
+  fill: var(--hoot-hat-tassel);
+}
 .hoot-feather,
 .hoot-wing-left path,
 .hoot-wing-right path,

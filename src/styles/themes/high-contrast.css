@@ -108,6 +108,27 @@
   --hoot-branch: #ffffff;
   --hoot-bubble: #000000;
   --hoot-bubble-border: #ffffff;
+  --hoot-hat: #000000;
+  --hoot-hat-tassel: #ffff00;
+
+  /* Hoot's Academy: the classroom of the hub. */
+  --academy-wall: #000000;
+  --academy-floor: #000000;
+  --academy-board: #000000;
+  --academy-board-frame: #ffffff;
+  --academy-board-row: #000000;
+  --academy-board-row-hover: #1a1a1a;
+  --academy-chalk: #ffffff;
+  --academy-chalk-muted: #ffffff;
+  --academy-chalk-accent: #ffff00;
+  --academy-desk: #000000;
+  --academy-desk-edge: #ffffff;
+  --academy-owl-a: #8fa3c0;
+  --academy-owl-a-dark: #5d6b80;
+  --academy-owl-b: #d9a56c;
+  --academy-owl-b-dark: #9b7449;
+  --academy-owl-c: #b39a8c;
+  --academy-owl-c-dark: #74625a;
 }
 
 [data-theme='high-contrast'] a {

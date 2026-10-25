@@ -1,5 +1,6 @@
-// The options of a new tutorial: familiarity, "I'm new to…", length, role and model, then Start
-// (which shows the confirmation card: nothing is spent before its own Start).
+// "New tutorial", step 2 of the wizard: familiarity, "I'm new to…" (the project's domains as
+// chips), length, role and model, then "Plan the outline" (which shows the confirmation card:
+// nothing is spent before its own Start).
 
 import { ArrowLeft, Play } from 'lucide-react';
 import { useId } from 'react';
@@ -7,6 +8,7 @@ import { AiMark } from '../../components/AiMark';
 import { Button } from '../../components/ui/Button';
 import { selectAcademyBusy, useAcademy } from '../../stores/academy';
 import { ModelPicker } from '../ai/ModelPicker';
+import { WizardSteps } from './WizardSteps';
 import {
   FAMILIARITIES,
   FAMILIARITY_HINT,
@@ -19,7 +21,8 @@ export function TutorialOptions() {
   const setup = useAcademy((s) => s.setup);
   const setSetup = useAcademy((s) => s.setSetup);
   const prepareOutline = useAcademy((s) => s.prepareOutline);
-  const backHome = useAcademy((s) => s.backHome);
+  const startNew = useAcademy((s) => s.startNew);
+  const domains = useAcademy((s) => s.subjects?.domains ?? []);
   const failure = useAcademy((s) => s.failure);
   const busy = useAcademy(selectAcademyBusy);
   const ids = {
@@ -32,9 +35,12 @@ export function TutorialOptions() {
 
   return (
     <div className="academy-options">
-      <Button variant="ghost" onClick={backHome}>
-        <ArrowLeft aria-hidden /> Back
-      </Button>
+      <div className="academy-wizard-head">
+        <Button variant="ghost" onClick={startNew}>
+          <ArrowLeft aria-hidden /> Back
+        </Button>
+        <WizardSteps current="options" />
+      </div>
       <h1 className="quiz-title">Your tutorial</h1>
 
       {failure && (
@@ -95,6 +101,23 @@ export function TutorialOptions() {
             setSetup({ domainGap: e.target.value });
           }}
         />
+        {domains.length > 0 && (
+          <div className="academy-chips" role="group" aria-label="Domains this project uses">
+            {domains.map((d) => (
+              <button
+                key={d}
+                type="button"
+                className="academy-chip"
+                aria-pressed={setup.domainGap === d}
+                onClick={() => {
+                  setSetup({ domainGap: setup.domainGap === d ? '' : d });
+                }}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        )}
         <p className="quiz-muted">
           Hoot teaches that domain through this project&apos;s own use of it, a concept at a time,
           never as a separate course.

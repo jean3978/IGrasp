@@ -12,6 +12,11 @@ test('a tutorial written from its cards, read with the keyboard, spending only a
 }) => {
   await openAcademy(page);
   expect(await academyMock(page, (m) => m.state.ai.starts)).toEqual([]);
+  // The hub: the classroom, an empty blackboard, and New tutorial into the wizard.
+  await expect(page.getByRole('heading', { name: 'Your tutorials' })).toBeVisible();
+  await expect(page.getByText('No tutorial on the board yet.')).toBeVisible();
+  await page.getByRole('button', { name: 'New tutorial' }).click();
+  await expect(page.getByRole('list', { name: 'New tutorial steps' })).toBeVisible();
   await page.getByPlaceholder(/How does a file change/).fill('How igrasp-demo starts');
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: /Plan the outline/ }).click();

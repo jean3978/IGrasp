@@ -29,8 +29,12 @@ import { useProjectProfile } from './projectProfile';
 import { useSettings } from './settings';
 import { useToasts } from './toasts';
 
+/**
+ * `home` is the hub (the classroom, the tutorials on the blackboard); a new tutorial is a wizard:
+ * `create` (the subject), `options`, then `confirm` (the outline's confirmation card).
+ */
 export type AcademyScreen =
-  'home' | 'options' | 'confirm' | 'generating' | 'outline' | 'tutorial' | 'review';
+  'home' | 'create' | 'options' | 'confirm' | 'generating' | 'outline' | 'tutorial' | 'review';
 
 /** Tool summaries kept for the activity line. */
 const ACTIVITY_LINES = 4;
@@ -127,7 +131,16 @@ interface AcademyState {
   open: TutorialRef | null;
   /** The review shown on the review screen. */
   review: ReviewState | null;
+  /**
+   * The Academy tab was just opened (it was not open; `eventBridge` watches the tabs): Hoot
+   * welcomes the reader for a moment before the hub shows. Cleared when the welcome ends or is
+   * skipped.
+   */
+  welcome: boolean;
 
+  endWelcome: () => void;
+  /** "New tutorial": the wizard's first step, the subject (the setup chosen so far is kept). */
+  startNew: () => void;
   /** Loads what the home shows: the profile, the cards, the library (all local). */
   openHome: (root: string) => Promise<void>;
   refreshLibrary: () => Promise<void>;
@@ -292,7 +305,7 @@ export const useAcademy = create<AcademyState>()((set, get) => {
       saving: Promise.resolve(),
     };
     set({
-      screen: pending.kind === 'suggest' ? 'home' : 'generating',
+      screen: pending.kind === 'suggest' ? 'create' : 'generating',
       starting: true,
       buffered: [],
       failure: null,
@@ -331,7 +344,7 @@ export const useAcademy = create<AcademyState>()((set, get) => {
             ? 'tutorial'
             : pending.kind === 'chapters' && get().tutorial
               ? 'outline'
-              : 'home',
+              : 'create',
         failure: { message: errorMessage(err), suggestedSubjects: [] },
       });
     }
@@ -348,7 +361,7 @@ export const useAcademy = create<AcademyState>()((set, get) => {
   const applyOutline = async (outline: OutlineResult, model: string | null) => {
     if (outline.chapters.length === 0) {
       set({
-        screen: 'home',
+        screen: 'create',
         failure: {
           message:
             outline.materialNote ?? 'Hoot found nothing in this project to build that tutorial on.',
@@ -368,7 +381,7 @@ export const useAcademy = create<AcademyState>()((set, get) => {
       const saved = await save(planned);
       set({ tutorial: saved, screen: 'outline' });
     } catch (err) {
-      set({ screen: 'home', failure: { message: errorMessage(err), suggestedSubjects: [] } });
+      set({ screen: 'create', failure: { message: errorMessage(err), suggestedSubjects: [] } });
     }
   };
 
@@ -435,6 +448,16 @@ export const useAcademy = create<AcademyState>()((set, get) => {
     tutorial: null,
     open: null,
     review: null,
+    welcome: false,
+
+    endWelcome() {
+      if (get().welcome) set({ welcome: false });
+    },
+
+    startNew() {
+      if (get().operationId !== null || get().starting) return;
+      set({ screen: 'create', failure: null, pending: null, open: null });
+    },
 
     async openHome(root) {
       await useProjectProfile.getState().load(root);
@@ -594,7 +617,9 @@ export const useAcademy = create<AcademyState>()((set, get) => {
               ? 'outline'
               : pending?.kind === 'chapters' || pending?.kind === 'review'
                 ? 'tutorial'
-                : 'home',
+                : pending?.kind === 'suggest'
+                  ? 'create'
+                  : 'home',
       });
     },
 
@@ -720,7 +745,7 @@ export const useAcademy = create<AcademyState>()((set, get) => {
     startAgain(subject) {
       if (get().operationId !== null) return;
       if (subject) get().chooseText(subject);
-      else set({ screen: 'home', tutorial: null });
+      else set({ screen: 'create', tutorial: null });
     },
 
     openTutorial(ref) {

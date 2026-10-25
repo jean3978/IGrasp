@@ -10,6 +10,7 @@ import { useQuiz } from './quiz';
 import { useAcademy } from './academy';
 import { useRecentFiles } from './recentFiles';
 import { useSearch } from './search';
+import { useTabs } from './tabs';
 import { useToasts } from './toasts';
 import { useTree } from './tree';
 import { useWorkspace } from './workspace';
@@ -72,7 +73,22 @@ export async function startEventBridge(): Promise<Unsubscribe> {
         .notify('error', `${e.file} was unreadable and has been reset to defaults.`);
     }),
   ]);
+  const offTabs = useTabs.subscribe(watchAcademyTab);
   return () => {
     for (const off of offs) off();
+    offTabs();
   };
+}
+
+const ACADEMY_TAB = 'tab-academy';
+
+/**
+ * The Academy tab opened (it was not open): Hoot's welcome plays when it shows. Switching back to
+ * an open Academy tab does not replay it.
+ */
+function watchAcademyTab(s: { tabs: { id: string }[] }, prev: { tabs: { id: string }[] }) {
+  const open = s.tabs.some((t) => t.id === ACADEMY_TAB);
+  const wasOpen = prev.tabs.some((t) => t.id === ACADEMY_TAB);
+  if (open && !wasOpen) useAcademy.setState({ welcome: true });
+  else if (!open && wasOpen) useAcademy.setState({ welcome: false });
 }

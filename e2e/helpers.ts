@@ -257,6 +257,8 @@ export async function openAcademy(page: Page): Promise<void> {
   });
   await page.keyboard.press('Control+Alt+a');
   await expect(page.locator('.academy-home')).toBeVisible();
+  // Hoot's welcome plays for about two seconds over the hub, then goes.
+  await expect(page.locator('.academy-welcome')).toHaveCount(0, { timeout: 5000 });
 }
 
 /**
@@ -264,6 +266,7 @@ export async function openAcademy(page: Page): Promise<void> {
  * then every chapter's card and Start. Ends on the course map.
  */
 export async function writeTutorial(page: Page, subject = 'How igrasp-demo starts'): Promise<void> {
+  await page.getByRole('button', { name: 'New tutorial' }).click();
   await page.getByPlaceholder(/How does a file change/).fill(subject);
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: /Plan the outline/ }).click();
