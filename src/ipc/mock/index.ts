@@ -88,6 +88,8 @@ export interface MockState {
   saveDialogResult: string | null;
   /** Files written by Save results… / Save quiz…, in order. */
   saved: SavedMarkdown[];
+  /** What the next Open quiz file… dialog returns (root-relative), null = dismissed. */
+  openQuizFileResult: string | null;
   /** The mock AI provider: installed, logged in, speed, operations started. */
   ai: MockAiState;
 }
@@ -136,6 +138,7 @@ function initialState(): MockState {
     quizzes: new Map(),
     saveDialogResult: null,
     saved: [],
+    openQuizFileResult: null,
     ai: { ...DEFAULT_MOCK_AI, starts: [], conversations: new Map() },
   };
 }
@@ -740,6 +743,32 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       state.saved.push({ kind, relPath, markdown });
       controls.writeFiles({ [relPath]: markdown });
       return Promise.resolve({ path: `${root.path}/${relPath}`, relPath });
+    },
+    listQuizFiles: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const files = [...(state.graph ?? new Map<string, MockDoc>())].flatMap(([relPath, doc]) =>
+        doc.quiz ? [{ relPath, ...doc.quiz, modifiedMs: state.mtimes.get(relPath) ?? 0 }] : [],
+      );
+      files.sort((a, b) => b.modifiedMs - a.modifiedMs || a.relPath.localeCompare(b.relPath));
+      return Promise.resolve(files);
+    },
+    readQuizFile: (relPath) => {
+      const root = state.root;
+      if (!root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      // Without a path, the open dialog: `openQuizFileResult` is what the user picks.
+      const picked = relPath ?? state.openQuizFileResult;
+      if (picked === null)
+        return Promise.reject(new BackendError('SaveCancelled', 'The save was cancelled.'));
+      const content = state.files.get(picked);
+      if (content === undefined)
+        return Promise.reject(new BackendError('NotFound', `Not found: ${picked}`));
+      if (!isQuizMarkdown(content))
+        return Promise.reject(new BackendError('NotAQuizFile', `Not a quiz file: ${picked}`));
+      return Promise.resolve({
+        path: `${root.path}/${picked}`,
+        relPath: picked,
+        content: content.startsWith(BOM) ? content.slice(1) : content,
+      });
     },
 
     openAppDataDir: () => {

@@ -1,0 +1,72 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`quiz files > writes the front matter with the hashes and one block per question 1`] = `
+"---
+igrasp: quiz
+id: quiz-abc
+title: Demo — How the app fits together
+project: Demo
+subject: How the app fits together
+scope: wholeProject
+level: 3
+generated: 2026-10-24T14:02:00.000Z
+provider: mock
+model: mock-large
+sources:
+  - path: src/main.ts
+    lines: 2-3
+    sha256: 38a5c8d987a9d8d0effa18e6c9f528a6f7233ee8134cbbf1d50245d9125d1eb9
+  - path: docs/architecture.md
+    lines: "3"
+    sha256: bdf7d58447a1dc445bbcada3ee0e11b1a994450d85f10102d75723bb7e98a1fc
+---
+
+# How the app fits together
+
+A quiz about Demo written by Hoot, with 2 questions. Open this file in IGrasp to play it; the answers are below each question.
+
+## 1. Which helper does src/main.ts import: from where?
+
+\`\`\`igrasp-quiz
+id: r1-q1
+kind: multipleChoice
+difficulty: 2
+choices:
+  - greet
+  - "main: the entry"
+  - "\`Options\`"
+answer: 0
+hint: Line 2.
+explanation: |-
+  src/main.ts imports greet from './greet'.
+
+  It is the only import.
+sources:
+  - path: src/main.ts
+    lines: 2-3
+    why: the import
+    kind: code
+  - path: docs/architecture.md
+    lines: "3"
+    kind: markdown
+\`\`\`
+
+## 2. The architecture page describes two parts.
+
+\`\`\`igrasp-quiz
+id: r1-q2
+kind: trueFalse
+difficulty: 1
+choices:
+  - "True"
+  - "False"
+answer: 0
+hint: ""
+explanation: docs/architecture.md says so.
+sources:
+  - path: docs/architecture.md
+    lines: "3"
+    kind: markdown
+\`\`\`
+"
+`;

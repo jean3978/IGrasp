@@ -17,14 +17,8 @@ import { QuestionCard } from './QuestionCard';
 /** How long Hoot cheers or encourages before it explains. */
 export const REACTION_MS = 1000;
 
-export function QuestionScreen({
-  motion,
-  sourceNotes,
-}: {
-  motion: boolean;
-  /** Per question id, the notices of its sources (a replayed quiz file). */
-  sourceNotes?: Record<string, Record<string, string>>;
-}) {
+export function QuestionScreen({ motion }: { motion: boolean }) {
+  const sourceNotes = useQuiz((s) => s.sourceNotes);
   const record = useQuiz((s) => s.record);
   const engine = useQuiz((s) => s.engine);
   const answer = useQuiz((s) => s.answer);
@@ -38,6 +32,8 @@ export function QuestionScreen({
 
   const question = record?.questions.find((q) => q.id === engine?.current) ?? null;
   const chosen = engine?.chosen ?? null;
+  const noteList = question ? sourceNotes[question.id] : undefined;
+  const notes = noteList && Object.fromEntries(noteList.map((n) => [n.path, n.state]));
   const answered = record?.answers.length ?? 0;
   const right = question !== null && chosen === question.answer;
   const lastAnswer = record?.answers[record.answers.length - 1];
@@ -169,7 +165,7 @@ export function QuestionScreen({
             else next();
           }}
           onEscape={goHome}
-          {...(sourceNotes?.[question.id] ? { sourceNotes: sourceNotes[question.id] } : {})}
+          {...(notes ? { sourceNotes: notes } : {})}
           actions={actions}
         />
       </div>

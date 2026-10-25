@@ -40,9 +40,11 @@ export async function startEventBridge(): Promise<Unsubscribe> {
     }),
     backend.listen('graph://ready', (e) => {
       useGraph.getState().onReady(e);
+      void useQuiz.getState().refreshQuizFiles();
     }),
     backend.listen('graph://changed', (e) => {
       useGraph.getState().onChanged(e);
+      void useQuiz.getState().refreshQuizFiles();
     }),
     backend.listen('search://results', (e) => {
       useSearch.getState().onResults(e);

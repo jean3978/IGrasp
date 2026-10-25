@@ -20,6 +20,7 @@ export function QuizTab() {
   const screen = useQuiz((s) => s.screen);
   const openHome = useQuiz((s) => s.openHome);
   const saveResults = useQuiz((s) => s.saveResults);
+  const saveQuiz = useQuiz((s) => s.saveQuiz);
   const checkStatus = useAiProvider((s) => s.checkStatus);
   const motion = useSettings((s) => s.settings.learning.effects);
   const [homeLine] = useState(() => pickLine('home'));
@@ -43,7 +44,11 @@ export function QuizTab() {
         {screen === 'generating' && <GenerationScreen motion={motion} />}
         {screen === 'question' && <QuestionScreen motion={motion} />}
         {screen === 'results' && (
-          <ResultsScreen motion={motion} onSaveResults={() => void saveResults()} />
+          <ResultsScreen
+            motion={motion}
+            onSaveResults={() => void saveResults()}
+            onSaveQuiz={() => void saveQuiz()}
+          />
         )}
       </div>
     </div>

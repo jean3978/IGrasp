@@ -11,6 +11,7 @@ use pulldown_cmark::{Event, HeadingLevel, LinkType, Options, Parser, Tag, TagEnd
 use regex::Regex;
 
 use super::slug::Slugger;
+use crate::learning::quiz::file::{self, QuizFileInfo};
 
 /// Headings and links kept per document; beyond, the rest is ignored (and counted).
 pub const MAX_ITEMS_PER_DOC: usize = 5000;
@@ -40,6 +41,8 @@ pub struct ParsedDoc {
     pub links: Vec<RawLink>,
     /// Headings or links beyond `MAX_ITEMS_PER_DOC`.
     pub truncated: bool,
+    /// Set when the document is a quiz file (`igrasp: quiz` front matter).
+    pub quiz: Option<QuizFileInfo>,
 }
 
 static HTML_HREF: LazyLock<Regex> = LazyLock::new(|| {
@@ -194,6 +197,7 @@ pub fn parse(text: &str) -> ParsedDoc {
             _ => {}
         }
     }
+    doc.quiz = file::info(text);
     doc
 }
 
@@ -246,6 +250,18 @@ mod tests {
                 (3, "Third code em", "third-code-em", 8),
             ]
         );
+    }
+
+    #[test]
+    fn flags_quiz_files() {
+        let quiz = parse(
+            "---\nigrasp: quiz\nsubject: Gateway\n---\n\n## 1. Q\n\n```igrasp-quiz\nid: q1\n```\n",
+        );
+        let info = quiz.quiz.expect("a quiz file");
+        assert_eq!(info.subject.as_deref(), Some("Gateway"));
+        assert_eq!(info.questions, 1);
+        assert_eq!(quiz.headings.len(), 1);
+        assert!(parse("# Notes\n").quiz.is_none());
     }
 
     #[test]

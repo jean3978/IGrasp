@@ -12,7 +12,7 @@ export interface SavedMarkdown {
 
 /** The front matter of `text` (between the leading `---` and the next `---`), if any. */
 export function frontMatter(text: string): string | null {
-  const body = text.startsWith('﻿') ? text.slice(1) : text;
+  const body = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
   const opening = body.startsWith('---\r\n') ? 5 : body.startsWith('---\n') ? 4 : 0;
   if (opening === 0) return null;
   const rest = body.slice(opening);
@@ -37,6 +37,55 @@ export function isQuizMarkdown(text: string): boolean {
       .replace(/^["']+|["']+$/g, '');
     return line.slice(0, colon).trim() === 'igrasp' && value === 'quiz';
   });
+}
+
+/** What the graph keeps of a quiz file (Rust `QuizFileInfo`). */
+export interface QuizFileInfo {
+  title: string | null;
+  subject: string | null;
+  generated: string | null;
+  questions: number;
+}
+
+/** A top-level scalar of the front matter: plain, single- or double-quoted (Rust `field`). */
+function field(fm: string, key: string): string | null {
+  let value: string | null = null;
+  for (const line of fm.split('\n')) {
+    const colon = line.indexOf(':');
+    if (colon >= 0 && line.slice(0, colon) === key) {
+      value = line.slice(colon + 1).trim();
+      break;
+    }
+  }
+  if (value === null) return null;
+  if (!value.startsWith('"') && !value.startsWith("'")) {
+    const comment = value.indexOf(' #');
+    if (comment >= 0) value = value.slice(0, comment).trimEnd();
+  }
+  let text = value;
+  if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+    try {
+      text = JSON.parse(value) as string;
+    } catch {
+      text = value.slice(1, -1);
+    }
+  } else if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) {
+    text = value.slice(1, -1).replace(/''/g, "'");
+  }
+  return text === '' ? null : text;
+}
+
+/** The summary of a quiz file, or null when `text` is not one (Rust `info`). */
+export function quizInfo(text: string): QuizFileInfo | null {
+  if (!isQuizMarkdown(text)) return null;
+  const fm = frontMatter(text) ?? '';
+  const questions = text.split('\n').filter((l) => /^\s*(```|~~~)igrasp-quiz/.test(l)).length;
+  return {
+    title: field(fm, 'title'),
+    subject: field(fm, 'subject'),
+    generated: field(fm, 'generated'),
+    questions,
+  };
 }
 
 /** A file name for the dialog: no folders, no characters a file system refuses, `.md`. */

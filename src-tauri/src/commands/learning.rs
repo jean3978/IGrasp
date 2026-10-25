@@ -9,6 +9,7 @@ use tauri_plugin_dialog::DialogExt;
 use crate::appdata::learning::{QuizRecord, QuizSummary};
 use crate::commands::appdata::notify_recovered;
 use crate::error::{AppError, AppResult};
+use crate::learning::quiz::file::{self, QuizFileSummary, QuizFileText};
 use crate::learning::save::{self, QuizSaveKind, SaveDialog, SavedQuizFile};
 use crate::learning::subjects::Subject;
 use crate::learning::{self, root_key};
@@ -118,6 +119,71 @@ pub fn get_quiz_record(state: State<'_, AppState>, id: String) -> AppResult<Quiz
 #[tauri::command]
 pub fn forget_quizzes(state: State<'_, AppState>) -> AppResult<()> {
     state.appdata.forget_quizzes(&folder_key(&state)?)
+}
+
+/// The quiz files of the open folder, newest first, from the graph (nothing read again).
+#[tauri::command]
+pub fn list_quiz_files(state: State<'_, AppState>) -> AppResult<Vec<QuizFileSummary>> {
+    state.with_workspace(|ws| {
+        let graph = ws.graph.read().unwrap_or_else(|e| e.into_inner());
+        let index = ws.index.read().unwrap_or_else(|e| e.into_inner());
+        let mut files: Vec<QuizFileSummary> = graph
+            .docs()
+            .filter_map(|(rel, doc)| {
+                let quiz = doc.quiz.as_ref()?;
+                Some(QuizFileSummary {
+                    rel_path: rel.clone(),
+                    title: quiz.title.clone(),
+                    subject: quiz.subject.clone(),
+                    generated: quiz.generated.clone(),
+                    questions: quiz.questions,
+                    modified_ms: index
+                        .as_ref()
+                        .and_then(|i| i.file(rel))
+                        .map_or(0, |f| f.modified_ms),
+                })
+            })
+            .collect();
+        files.sort_by(|a, b| {
+            b.modified_ms
+                .cmp(&a.modified_ms)
+                .then_with(|| a.rel_path.cmp(&b.rel_path))
+        });
+        Ok(files)
+    })
+}
+
+/// A quiz file to play: `rel_path` inside the folder (Saved quizzes, the preview's banner), or
+/// the file the user picks in the open dialog (Open quiz file…, anywhere). `SaveCancelled` when
+/// the dialog is dismissed, `NotAQuizFile` without the quiz front matter.
+#[tauri::command]
+pub async fn read_quiz_file(app: AppHandle, rel_path: Option<String>) -> AppResult<QuizFileText> {
+    let handle = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = handle.state::<AppState>();
+        let (root, inside) = state.with_workspace(|ws| {
+            let inside = rel_path
+                .as_deref()
+                .map(|rel| ws.guard.resolve(rel))
+                .transpose()?;
+            Ok((ws.guard.root().to_path_buf(), inside))
+        })?;
+        let path = match inside {
+            Some(path) => path,
+            None => handle
+                .dialog()
+                .file()
+                .set_title("Open quiz file")
+                .set_directory(&root)
+                .add_filter("Markdown", &["md", "markdown"])
+                .blocking_pick_file()
+                .and_then(|p| p.into_path().ok())
+                .ok_or(AppError::SaveCancelled)?,
+        };
+        file::read(&root, &path)
+    })
+    .await
+    .map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))?
 }
 
 /// The system's save dialog.

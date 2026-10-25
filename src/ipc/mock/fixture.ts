@@ -1,6 +1,8 @@
 // A small fake project served by the mock backend. It exercises the tree rules (ignored folders,
 // dotfiles, folders without markdown, both extensions) and the preview features.
 
+import { sha256Hex } from '../../lib/sha256';
+
 export const FIXTURE_ROOT = '/home/demo/igrasp-demo';
 export const FIXTURE_NAME = 'igrasp-demo';
 
@@ -95,6 +97,99 @@ export function main({ name, loud = false }: Options): string {
 console.log(main({ name: 'IGrasp' }));
 `;
 
+const cited = (text: string, first: number, last: number) =>
+  text
+    .split('\n')
+    .slice(first - 1, last)
+    .join('\n');
+
+/** A shared quiz file (ADR 0024): two citations still match, the third one's hash is stale. */
+const QUIZ_ARCHITECTURE = `---
+igrasp: quiz
+id: quiz-fixture-architecture
+title: "igrasp-demo — How igrasp-demo fits together"
+project: igrasp-demo
+subject: How igrasp-demo fits together
+scope: wholeProject
+level: 2
+generated: "2026-10-20T09:30:00.000Z"
+provider: mock
+model: mock-fast
+sources:
+  - path: src/main.ts
+    lines: 9-12
+    sha256: ${sha256Hex(cited(MAIN_TS, 9, 12))}
+  - path: docs/architecture.md
+    lines: "12"
+    sha256: ${sha256Hex(cited(ARCHITECTURE, 12, 12))}
+  - path: src/main.ts
+    lines: "2"
+    sha256: ${sha256Hex("import { greet } from './hello';")}
+---
+
+# How igrasp-demo fits together
+
+A quiz about igrasp-demo written by Hoot, with 3 questions. Open this file in IGrasp to play it;
+the answers are below each question.
+
+## 1. What does main() in src/main.ts return when the loud option is set?
+
+\`\`\`igrasp-quiz
+id: q1
+kind: multipleChoice
+difficulty: 2
+choices:
+  - The greeting in upper case
+  - The greeting unchanged
+  - An empty string
+answer: 0
+hint: Look at the return statement of main().
+explanation: main() builds the message with greet(name), then returns message.toUpperCase() when loud is true.
+sources:
+  - path: src/main.ts
+    lines: 9-12
+    why: the body of main()
+    kind: code
+\`\`\`
+
+## 2. According to docs/architecture.md, the frontend owns the file system.
+
+\`\`\`igrasp-quiz
+id: q2
+kind: trueFalse
+difficulty: 1
+choices:
+  - "True"
+  - "False"
+answer: 1
+hint: Read the Components section.
+explanation: The backend owns the file system; the frontend renders.
+sources:
+  - path: docs/architecture.md
+    lines: "12"
+    kind: markdown
+\`\`\`
+
+## 3. Which module does src/main.ts import greet from?
+
+\`\`\`igrasp-quiz
+id: q3
+kind: multipleChoice
+difficulty: 2
+choices:
+  - ./greet
+  - ./hello
+  - ./main
+answer: 0
+hint: The second line of the entry point.
+explanation: "src/main.ts starts with import { greet } from './greet'."
+sources:
+  - path: src/main.ts
+    lines: "2"
+    kind: code
+\`\`\`
+`;
+
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
@@ -108,6 +203,7 @@ const AGES: Record<string, number> = {
   'docs/guide/getting-started.md': 25 * MINUTE,
   'docs/guide/advanced/deep-dive.markdown': 40 * DAY,
   'notes/TODO.MD': 5 * DAY,
+  'quizzes/quiz-architecture.md': 4 * DAY,
 };
 
 /** Modification times of the fixture files relative to `now` (others default to 0). */
@@ -128,6 +224,7 @@ export const FIXTURE_FILES: Record<string, string> = {
   'docs/guide/advanced/deep-dive.markdown': '# Deep dive\n\nThe `.markdown` extension works too.\n',
   'docs/images/diagram.svg':
     '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40"><rect width="120" height="40" fill="#6d4de0"/></svg>',
+  'quizzes/quiz-architecture.md': QUIZ_ARCHITECTURE,
   'notes/TODO.MD':
     '# TODO\n\nUpper-case extensions count as markdown.\n\n- Revisit the [CLI decision](../docs/decisions/0001-use-git-cli.md).\n',
   '.github/CONTRIBUTING.md': '# Contributing\n\nA dotfolder, hidden unless dotfiles are shown.\n',

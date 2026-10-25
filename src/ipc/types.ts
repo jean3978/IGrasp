@@ -51,6 +51,8 @@ import type { QuizRecord } from './generated/QuizRecord';
 import type { QuizSummary } from './generated/QuizSummary';
 import type { QuizSaveKind } from './generated/QuizSaveKind';
 import type { SavedQuizFile } from './generated/SavedQuizFile';
+import type { QuizFileSummary } from './generated/QuizFileSummary';
+import type { QuizFileText } from './generated/QuizFileText';
 
 export type {
   AppInfo,
@@ -150,6 +152,8 @@ export type { QuizRecord } from './generated/QuizRecord';
 export type { QuizSummary } from './generated/QuizSummary';
 export type { QuizSaveKind } from './generated/QuizSaveKind';
 export type { SavedQuizFile } from './generated/SavedQuizFile';
+export type { QuizFileSummary } from './generated/QuizFileSummary';
+export type { QuizFileText } from './generated/QuizFileText';
 export type { LearningSettings } from './generated/LearningSettings';
 export type { LearningSettingsPatch } from './generated/LearningSettingsPatch';
 export type { QuizScopeSetting } from './generated/QuizScopeSetting';
@@ -357,6 +361,14 @@ export interface Backend {
     markdown: string,
     suggestedName: string,
   ): Promise<SavedQuizFile>;
+  /** The quiz files of the open folder (`igrasp: quiz` front matter), newest first, from the graph. */
+  listQuizFiles(): Promise<QuizFileSummary[]>;
+  /**
+   * A quiz file to play: `relPath` inside the folder, or without it the file the user picks in
+   * the open dialog (anywhere). Rejects with `SaveCancelled` when dismissed, with `NotAQuizFile`
+   * for a file without the quiz front matter.
+   */
+  readQuizFile(relPath?: string): Promise<QuizFileText>;
 
   listen<E extends EventName>(
     event: E,

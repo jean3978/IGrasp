@@ -115,6 +115,8 @@ pub fn run() {
             commands::learning::get_quiz_record,
             commands::learning::forget_quizzes,
             commands::learning::save_quiz_markdown,
+            commands::learning::list_quiz_files,
+            commands::learning::read_quiz_file,
         ])
         .build(tauri::generate_context!())
         .expect("error while building IGrasp")

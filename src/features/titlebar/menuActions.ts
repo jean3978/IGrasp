@@ -6,6 +6,7 @@ import { MAX_FONT_SIZE, MIN_FONT_SIZE } from '../../ipc/defaults';
 import type { SidebarView, Theme } from '../../ipc/types';
 import { useHistory } from '../../stores/history';
 import { useQuickOpen } from '../../stores/quickOpen';
+import { useQuiz } from '../../stores/quiz';
 import { useSearch } from '../../stores/search';
 import { useRecent } from '../../stores/recent';
 import { useSettings } from '../../stores/settings';
@@ -51,6 +52,7 @@ export type ActionId =
   | 'ai.acceptAllChanges'
   | 'ai.rejectAllChanges'
   | 'learn.quiz'
+  | 'learn.openQuizFile'
   | 'learn.profile'
   | 'help.about'
   | 'view.zoomIn'
@@ -260,6 +262,15 @@ export const actions: Record<ActionId, ActionDef> = {
     run: () => {
       // Opens the Quiz tab, which is free; its Start spends tokens.
       if (useWorkspace.getState().root) useTabs.getState().openSpecial('quiz');
+    },
+  },
+  'learn.openQuizFile': {
+    label: 'Open Quiz File…',
+    run: () => {
+      // A shared quiz plays without the AI.
+      if (!useWorkspace.getState().root) return;
+      useTabs.getState().openSpecial('quiz');
+      void useQuiz.getState().playFile();
     },
   },
   'learn.profile': {

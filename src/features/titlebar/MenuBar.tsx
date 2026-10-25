@@ -311,6 +311,7 @@ export function MenuBar() {
       </Menu>
       <Menu value="learn">
         <Item id="learn.quiz" disabled={!hasRoot} />
+        <Item id="learn.openQuizFile" disabled={!hasRoot} />
         <Item id="learn.profile" disabled={!hasRoot} />
       </Menu>
       <Menu value="help">

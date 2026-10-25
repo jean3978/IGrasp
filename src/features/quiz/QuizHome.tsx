@@ -3,7 +3,7 @@
 // the quiz to continue, the last results with Play again (no AI) and the provider's problems.
 
 import { clsx } from 'clsx';
-import { Play, RotateCcw } from 'lucide-react';
+import { FolderOpen, Play, RotateCcw } from 'lucide-react';
 import { useId } from 'react';
 import { AiMark } from '../../components/AiMark';
 import { Button } from '../../components/ui/Button';
@@ -72,10 +72,12 @@ export function QuizHome({ hootLine }: { hootLine: string }) {
   const history = useQuiz((s) => s.history);
   const continueSaved = useQuiz((s) => s.continueSaved);
   const playAgain = useQuiz((s) => s.playAgain);
+  const playFile = useQuiz((s) => s.playFile);
+  const quizFiles = useQuiz((s) => s.quizFiles);
   const busy = useQuiz(selectQuizBusy);
   const subjects = useProjectProfile((s) => s.subjects);
   const usable = useAiProvider(selectUsable);
-  const ids = { count: useId(), subjects: useId() };
+  const ids = { count: useId(), subjects: useId(), files: useId() };
   const shown = (subjects ?? []).filter((s) => setup.scope === 'wholeProject' || s.hasDocs);
   const selected = shown.find((s) => s.id === setup.subjectId) ?? null;
   const last = history[0];
@@ -238,7 +240,57 @@ export function QuizHome({ hootLine }: { hootLine: string }) {
         </section>
       )}
 
+      <section className="quiz-panel quiz-files" aria-labelledby={ids.files}>
+        <div className="quiz-files-head">
+          <h2 className="quiz-panel-title" id={ids.files}>
+            Saved quizzes
+          </h2>
+          <Button onClick={() => void playFile()} disabled={busy}>
+            <FolderOpen aria-hidden /> Open quiz file…
+          </Button>
+        </div>
+        {quizFiles.length === 0 ? (
+          <p className="quiz-muted">
+            Quizzes saved with “Save quiz…” on the results appear here; anyone can replay them
+            without the AI.
+          </p>
+        ) : (
+          <ul className="quiz-files-list">
+            {quizFiles.map((f) => (
+              <li key={f.relPath}>
+                <button
+                  type="button"
+                  className="quiz-file"
+                  disabled={busy}
+                  onClick={() => void playFile(f.relPath)}
+                  title={`Play ${f.relPath} (no AI call)`}
+                >
+                  <Play aria-hidden className="quiz-file-icon" />
+                  <span className="quiz-file-title">{f.subject ?? f.title ?? f.relPath}</span>
+                  <span className="quiz-muted">
+                    {f.questions} question{f.questions === 1 ? '' : 's'}
+                    {f.generated ? ` · ${formatGenerated(f.generated)}` : ''} · {f.relPath}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <ProjectProfilePanel compact />
     </div>
   );
+}
+
+/** The `generated` date of a quiz file as a short date (as written when it does not parse). */
+function formatGenerated(value: string): string {
+  const ms = Date.parse(value);
+  return Number.isNaN(ms)
+    ? value
+    : new Date(ms).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
 }

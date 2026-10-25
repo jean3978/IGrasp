@@ -4,7 +4,7 @@
 // new quiz.
 
 import { clsx } from 'clsx';
-import { ChevronRight, FilePlus2, Plus, RotateCcw, Save } from 'lucide-react';
+import { ChevronRight, FilePlus2, Plus, RotateCcw, Save, Share2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AiMark } from '../../components/AiMark';
 import { Button } from '../../components/ui/Button';
@@ -60,9 +60,12 @@ function ScoreRing({ score, total, motion }: { score: number; total: number; mot
 export function ResultsScreen({
   motion,
   onSaveResults,
+  onSaveQuiz,
 }: {
   motion: boolean;
   onSaveResults?: () => void;
+  /** Save quiz… (not for a quiz played from a file: it is already one). */
+  onSaveQuiz?: () => void;
 }) {
   const record = useQuiz((s) => s.record);
   const failure = useQuiz((s) => s.failure);
@@ -133,6 +136,11 @@ export function ResultsScreen({
         {onSaveResults && (
           <Button onClick={onSaveResults}>
             <Save aria-hidden /> Save results…
+          </Button>
+        )}
+        {onSaveQuiz && record.origin.type !== 'file' && (
+          <Button onClick={onSaveQuiz} title="A file anyone can replay without the AI">
+            <Share2 aria-hidden /> Save quiz…
           </Button>
         )}
         <Button onClick={() => void playAgain()} title="The same questions again, without the AI">

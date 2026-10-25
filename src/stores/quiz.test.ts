@@ -278,6 +278,53 @@ describe('the quiz store', () => {
     expect(starts()).toHaveLength(2);
   });
 
+  it('saves a quiz as a file, lists it, and plays files without the AI', async () => {
+    setUp();
+    quiz().setSetup({ count: 5 });
+    await startQuiz();
+    for (let i = 0; i < 5; i++) {
+      play(true);
+      quiz().next();
+    }
+    await vi.waitFor(() => {
+      expect(quiz().screen).toBe('results');
+    });
+    await quiz().saveQuiz();
+    const [saved] = mock().state.saved;
+    expect(saved?.kind).toBe('quiz');
+    expect(saved?.relPath).toMatch(/^quizzes\/quiz-.+\.md$/);
+    expect(saved?.markdown).toMatch(/sha256: [0-9a-f]{64}/);
+    await vi.waitFor(() => {
+      expect(quiz().quizFiles.map((f) => f.relPath)).toContain(saved?.relPath);
+    });
+    expect(quiz().quizFiles.find((f) => f.relPath === saved?.relPath)?.questions).toBe(5);
+
+    // Logged out: a quiz file still plays, and the saved one has fresh sources.
+    mock().state.ai.loggedIn = false;
+    await quiz().playFile(saved?.relPath);
+    expect(quiz().screen).toBe('question');
+    expect(quiz().record?.origin).toEqual({ type: 'file', path: saved?.relPath });
+    expect(quiz().record?.questions).toHaveLength(5);
+    expect(quiz().sourceNotes).toEqual({});
+
+    // The fixture's quiz: its third question cites a line that changed.
+    await quiz().playFile('quizzes/quiz-architecture.md');
+    expect(quiz().record?.questions.map((q) => q.id)).toEqual(['q1', 'q2', 'q3']);
+    expect(quiz().record?.startLevel).toBe(2);
+    expect(quiz().sourceNotes).toEqual({ q3: [{ path: 'src/main.ts', state: 'changed' }] });
+    expect(starts()).toHaveLength(1);
+
+    // Open quiz file…: dismissed says nothing; a non-quiz file is refused.
+    mock().state.openQuizFileResult = null;
+    const toasts = useToasts.getState().toasts.length;
+    await quiz().playFile();
+    expect(useToasts.getState().toasts).toHaveLength(toasts);
+    mock().state.openQuizFileResult = 'README.md';
+    await quiz().playFile();
+    const last = useToasts.getState().toasts.at(-1);
+    expect(last?.type === 'message' && last.text).toMatch(/Cannot play that quiz: Not a quiz/);
+  });
+
   it('restores a quiz in progress from app data', async () => {
     setUp();
     await startQuiz();

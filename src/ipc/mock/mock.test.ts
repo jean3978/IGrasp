@@ -44,9 +44,9 @@ describe('mock backend', () => {
     b.controls.writeFiles({ 'docs/architecture.md': '# Architecture\n' });
     const first = await b.listRecentFiles(0, 2);
     expect(first.files.map((f) => f.relPath)).toEqual(['docs/architecture.md', 'notes/TODO.MD']);
-    expect(first.total).toBe(9);
+    expect(first.total).toBe(10);
     const rest = await b.listRecentFiles(2, 100);
-    expect(rest.files).toHaveLength(7);
+    expect(rest.files).toHaveLength(8);
     expect(rest.files[0]?.relPath).toBe('docs/guide/getting-started.md');
     const times = rest.files.map((f) => f.modifiedMs);
     expect([...times].sort((x, y) => y - x)).toEqual(times);

@@ -10,6 +10,7 @@ import type {
   AiEventEnvelope,
   AiSizeEstimate,
   QuizExclusion,
+  QuizFileSummary,
   QuizGenerationInput,
   QuizMode,
   QuizQuestion,
@@ -21,6 +22,15 @@ import type {
 } from '../ipc/types';
 import { BackendError } from '../ipc/types';
 import { resultsFileName, resultsMarkdown } from '../features/quiz/quizMarkdown';
+import {
+  checkSources,
+  hashSources,
+  parseQuizFile,
+  quizFileMarkdown,
+  quizFileName,
+  recordFromFile,
+} from '../features/quiz/quizFile';
+import type { ReadSource, SourceNote } from '../features/quiz/quizFile';
 import {
   answer as engineAnswer,
   initialEngine,
@@ -98,6 +108,10 @@ interface QuizState {
   /** An unfinished quiz found in app data (the Continue card). */
   saved: QuizRecord | null;
   history: QuizSummary[];
+  /** The quiz files of the folder (Saved quizzes). */
+  quizFiles: QuizFileSummary[];
+  /** Sources of a quiz file that changed or went missing, by question id. */
+  sourceNotes: Record<string, SourceNote[]>;
 
   /** Loads what the home shows: profile, subjects, history, a quiz to continue (all local). */
   openHome: (root: string) => Promise<void>;
@@ -125,7 +139,10 @@ interface QuizState {
   /** Plays a finished quiz again from the history or the results (no AI). */
   playAgain: (id?: string) => Promise<void>;
   /** Plays a quiz built elsewhere (a quiz file), no AI. */
-  play: (record: QuizRecord) => Promise<void>;
+  play: (record: QuizRecord, notes?: Record<string, SourceNote[]>) => Promise<void>;
+  /** Plays a quiz file: `relPath` in the folder, or the one picked in the open dialog. No AI. */
+  playFile: (relPath?: string) => Promise<void>;
+  refreshQuizFiles: () => Promise<void>;
   continueSaved: () => void;
   /** Back to the home; an unfinished quiz stays as the current quiz. */
   goHome: () => void;
@@ -133,6 +150,8 @@ interface QuizState {
   forgetHistory: () => Promise<void>;
   /** Save results…: the save dialog, then a toast that opens the file (silent when dismissed). */
   saveResults: () => Promise<void>;
+  /** Save quiz…: the quiz as a shareable file (with the hashes of its cited lines). */
+  saveQuiz: () => Promise<void>;
   /** The folder closed or changed. */
   leaveFolder: () => void;
 }
@@ -178,6 +197,13 @@ function save(record: QuizRecord) {
 }
 
 const emptyUsage = () => ({ inputTokens: 0, outputTokens: 0, costUsd: null });
+
+/** A source file's text for the freshness hashes; null when it is gone or not text. */
+const readSource: ReadSource = (relPath) =>
+  backend.readTextFile(relPath).then(
+    (f) => ({ content: f.content, truncated: f.truncated }),
+    () => null,
+  );
 
 export const useQuiz = create<QuizState>()((set, get) => {
   /** What the running operation produced so far. */
@@ -396,6 +422,8 @@ export const useQuiz = create<QuizState>()((set, get) => {
     engine: null,
     saved: null,
     history: [],
+    quizFiles: [],
+    sourceNotes: {},
 
     async openHome(root) {
       const profile = useProjectProfile.getState();
@@ -414,6 +442,7 @@ export const useQuiz = create<QuizState>()((set, get) => {
             if (!get().record) set({ saved });
           })
           .catch(() => undefined),
+        get().refreshQuizFiles(),
       ]);
     },
 
@@ -650,11 +679,12 @@ export const useQuiz = create<QuizState>()((set, get) => {
       if (!source) return;
       const origin =
         source.origin.type === 'file' ? source.origin : { type: 'replay' as const, of: source.id };
-      await get().play({ ...source, origin });
+      // A quiz file played again keeps the notes of its sources.
+      await get().play({ ...source, origin }, origin.type === 'file' ? get().sourceNotes : {});
     },
 
     // eslint-disable-next-line @typescript-eslint/require-await
-    async play(source) {
+    async play(source, notes = {}) {
       const record: QuizRecord = {
         ...source,
         id: newQuizId(),
@@ -679,6 +709,7 @@ export const useQuiz = create<QuizState>()((set, get) => {
         screen: 'question',
         saved: null,
         failure: null,
+        sourceNotes: notes,
       });
       save(record);
     },
@@ -748,6 +779,49 @@ export const useQuiz = create<QuizState>()((set, get) => {
       }
     },
 
+    async saveQuiz() {
+      const { record } = get();
+      if (!record) return;
+      const project = useProjectProfile.getState().profile?.name ?? 'project';
+      try {
+        const hashes = await hashSources(record.questions, readSource);
+        const file = await backend.saveQuizMarkdown(
+          'quiz',
+          quizFileMarkdown(record, project, hashes),
+          quizFileName(record),
+        );
+        useToasts
+          .getState()
+          .notify('info', `Quiz saved to ${file.relPath ?? file.path}`, file.relPath ?? undefined);
+        void get().refreshQuizFiles();
+      } catch (err) {
+        if (err instanceof BackendError && err.code === 'SaveCancelled') return;
+        useToasts.getState().notify('error', `Cannot save the quiz: ${errorMessage(err)}`);
+      }
+    },
+
+    async playFile(relPath) {
+      if (get().operationId !== null || get().starting) return;
+      try {
+        const text = await backend.readQuizFile(relPath);
+        const parsed = parseQuizFile(text.content);
+        // Citations resolve against the open folder, even for a file picked outside it.
+        const notes = await checkSources(parsed, readSource);
+        await get().play(recordFromFile(parsed, text.relPath ?? text.path), notes);
+      } catch (err) {
+        if (err instanceof BackendError && err.code === 'SaveCancelled') return;
+        useToasts.getState().notify('error', `Cannot play that quiz: ${errorMessage(err)}`);
+      }
+    },
+
+    async refreshQuizFiles() {
+      try {
+        set({ quizFiles: await backend.listQuizFiles() });
+      } catch {
+        set({ quizFiles: [] });
+      }
+    },
+
     leaveFolder() {
       const { operationId } = get();
       if (operationId !== null) void backend.aiCancel(operationId).catch(() => undefined);
@@ -766,6 +840,8 @@ export const useQuiz = create<QuizState>()((set, get) => {
         engine: null,
         saved: null,
         history: [],
+        quizFiles: [],
+        sourceNotes: {},
       });
     },
   };

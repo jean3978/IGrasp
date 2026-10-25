@@ -353,6 +353,16 @@ describe('no token without a user action', () => {
     quiz().goHome();
     quiz().continueSaved();
     quiz().newQuiz();
+    // Saving the quiz, the results, and playing quiz files (Saved quizzes, Open quiz file…).
+    await quiz().saveResults();
+    await quiz().saveQuiz();
+    await quiz().playFile('quizzes/quiz-architecture.md');
+    mock.state.openQuizFileResult = 'quizzes/quiz-architecture.md';
+    runAction('learn.openQuizFile');
+    await vi.waitFor(() => {
+      expect(quiz().record?.origin.type).toBe('file');
+    });
+    quiz().newQuiz();
     await settle();
     expect(starts()).toEqual(['quizGeneration']);
 

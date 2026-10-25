@@ -128,6 +128,8 @@ export const tauriBackend: Backend = {
   forgetQuizzes: () => invoke('forget_quizzes'),
   saveQuizMarkdown: (kind, markdown, suggestedName) =>
     invoke('save_quiz_markdown', { kind, markdown, suggestedName }),
+  listQuizFiles: () => invoke('list_quiz_files'),
+  readQuizFile: (relPath) => invoke('read_quiz_file', { relPath: relPath ?? null }),
 
   listen: (event, handler) =>
     tauriListen<Parameters<typeof handler>[0]>(event, (e) => {

@@ -9,6 +9,7 @@ import { ArrowRight, Check, Lightbulb, X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import type { QuizQuestion } from '../../ipc/types';
+import type { SourceNote } from './quizFile';
 import { openSource, sourceLabel } from './quizSources';
 import { LevelFlames } from './LevelFlames';
 
@@ -26,8 +27,8 @@ export interface QuestionCardProps {
   onEscape?: () => void;
   /** Hoot's line for the reveal ("Nailed it."). */
   verdictLine?: string | null;
-  /** A notice per source path (a replayed quiz whose source changed or went missing). */
-  sourceNotes?: Record<string, string>;
+  /** Per source path, how it differs from when a quiz file was written. */
+  sourceNotes?: Record<string, SourceNote['state']>;
   /** The buttons after the reveal (Next, Next round, See results). */
   actions?: ReactNode;
 }
@@ -167,7 +168,7 @@ export function QuestionCard(props: QuestionCardProps) {
                 const note = props.sourceNotes?.[s.path];
                 return (
                   <li key={`${s.path}-${String(i)}`}>
-                    {s.kind === 'binary' ? (
+                    {s.kind === 'binary' || note === 'missing' ? (
                       <span className="quiz-source quiz-source-binary">{s.path}</span>
                     ) : (
                       <button
@@ -182,7 +183,14 @@ export function QuestionCard(props: QuestionCardProps) {
                       </button>
                     )}
                     {s.why && <span className="quiz-source-why"> · {s.why}</span>}
-                    {note && <span className="quiz-source-note"> · {note}</span>}
+                    {note && (
+                      <span className="quiz-source-note">
+                        {' · '}
+                        {note === 'missing'
+                          ? 'this file is not in the folder'
+                          : 'the source changed since this quiz was written'}
+                      </span>
+                    )}
                   </li>
                 );
               })}
