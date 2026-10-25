@@ -13,6 +13,8 @@ import { QuestionScreen } from './QuestionScreen';
 import { QuizConfirm } from './QuizConfirm';
 import { QuizHome } from './QuizHome';
 import { ResultsScreen } from './ResultsScreen';
+import { EffectsCanvas } from './effects/EffectsCanvas';
+import { prefersReducedMotion } from './effects/effects';
 import './quiz.css';
 
 export function QuizTab() {
@@ -24,6 +26,8 @@ export function QuizTab() {
   const checkStatus = useAiProvider((s) => s.checkStatus);
   const motion = useSettings((s) => s.settings.learning.effects);
   const [homeLine] = useState(() => pickLine('home'));
+  // Read once: the system setting rarely changes while the tab is open.
+  const [reducedMotion] = useState(prefersReducedMotion);
 
   useEffect(() => {
     if (root) void openHome(root);
@@ -33,24 +37,27 @@ export function QuizTab() {
   }, [checkStatus]);
 
   return (
-    <div
-      className="document-scroll quiz-tab"
-      aria-label="Quiz"
-      data-motion={motion ? undefined : 'off'}
-    >
-      <div className="quiz-page" data-screen={screen}>
-        {screen === 'home' && <QuizHome hootLine={homeLine} />}
-        {screen === 'confirm' && <QuizConfirm />}
-        {screen === 'generating' && <GenerationScreen motion={motion} />}
-        {screen === 'question' && <QuestionScreen motion={motion} />}
-        {screen === 'results' && (
-          <ResultsScreen
-            motion={motion}
-            onSaveResults={() => void saveResults()}
-            onSaveQuiz={() => void saveQuiz()}
-          />
-        )}
+    <>
+      <div
+        className="document-scroll quiz-tab"
+        aria-label="Quiz"
+        data-motion={motion ? undefined : 'off'}
+      >
+        <div className="quiz-page" data-screen={screen}>
+          {screen === 'home' && <QuizHome hootLine={homeLine} />}
+          {screen === 'confirm' && <QuizConfirm />}
+          {screen === 'generating' && <GenerationScreen motion={motion} />}
+          {screen === 'question' && <QuestionScreen motion={motion} />}
+          {screen === 'results' && (
+            <ResultsScreen
+              motion={motion}
+              onSaveResults={() => void saveResults()}
+              onSaveQuiz={() => void saveQuiz()}
+            />
+          )}
+        </div>
       </div>
-    </div>
+      {motion && !reducedMotion && <EffectsCanvas />}
+    </>
   );
 }

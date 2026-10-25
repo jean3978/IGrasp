@@ -37,6 +37,9 @@ Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
 });
 Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, get: () => 800 });
 
+// jsdom has no 2D canvas (and logs an error when asked): the quiz effects then draw nothing.
+HTMLCanvasElement.prototype.getContext = () => null;
+
 if (typeof Element.prototype.scrollIntoView !== 'function') {
   Element.prototype.scrollIntoView = () => {
     /* no layout in jsdom */

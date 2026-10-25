@@ -3,7 +3,7 @@
 
 import { clsx } from 'clsx';
 import { ArrowRight, Flame, Home } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AiMark } from '../../components/AiMark';
 import { Button } from '../../components/ui/Button';
 import { IconButton } from '../../components/ui/IconButton';
@@ -13,6 +13,7 @@ import type { HootState } from '../hoot/Hoot';
 import { pickLine } from '../hoot/hootLines';
 import { LevelFlames } from './LevelFlames';
 import { QuestionCard } from './QuestionCard';
+import { playEffect } from './effects/effects';
 
 /** How long Hoot cheers or encourages before it explains. */
 export const REACTION_MS = 1000;
@@ -51,6 +52,18 @@ export function QuestionScreen({ motion }: { motion: boolean }) {
     if (right && streak >= 3) return pickLine('streak', { n: streak });
     return pickLine(right ? 'right' : 'wrong');
     // A new answer (or a new question) picks a new line, nothing else.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chosen, question?.id]);
+
+  // The effects of an answer (drawn only when the effects canvas is mounted).
+  const playRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = playRef.current;
+    if (chosen === null || !root || lastAnswer?.questionId !== question?.id) return;
+    if (right) playEffect('confetti', root.querySelector('.quiz-choice-right'));
+    if (right && streak >= 3) playEffect('sparks', root.querySelector('.quiz-streak'));
+    if (levelUp) playEffect('ring', root.querySelector('.quiz-play-header .quiz-flames'));
+    // Once per answer.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chosen, question?.id]);
 
@@ -96,7 +109,7 @@ export function QuestionScreen({ motion }: { motion: boolean }) {
     );
 
   return (
-    <div className="quiz-play">
+    <div className="quiz-play" ref={playRef}>
       <header className="quiz-play-header">
         <IconButton label="Back to the quiz home (Escape)" onClick={goHome}>
           <Home aria-hidden />
