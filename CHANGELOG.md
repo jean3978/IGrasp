@@ -45,7 +45,8 @@ developers on any kind of project (games, web, tools, libraries), with nothing g
   results show Hoot's **Documentation gap** note (also in the results report).
 - **Grounded generation**: the prompt and JSON schema belong to the app; every question is
   checked (a real file of the project, a line range inside it, never an agent instruction file
-  or a secret, the scope, no duplicate, a hint that does not give the answer, and a question
+  or a secret, the scope, no duplicate, a hint that does not give the answer, choices alike in
+  length so the right one does not stand out, and a question
   that names something of the project). Rejected questions are sent back with their reasons, at
   most twice, inside the same operation, and the retry is shown
   ([ADR 0022](docs/decisions/0022-grounded-generation-pipeline.md)).

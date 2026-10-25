@@ -184,6 +184,27 @@ export const roundsOf = (count: number) => Math.max(1, Math.ceil(count / ROUND_S
 export const roundSize = (count: number, number: number) =>
   Math.max(0, Math.min(ROUND_SIZE, count - ROUND_SIZE * (number - 1)));
 
+/**
+ * A multiple choice question with its choices in a random order and its answer following, so
+ * the right choice is never where the AI tends to put it (first). True/false keeps "True",
+ * "False". Done once, when the questions arrive: the record keeps the order, replays reuse it.
+ */
+export function shuffleChoices(q: QuizQuestion, random: () => number = Math.random): QuizQuestion {
+  if (q.kind !== 'multipleChoice') return q;
+  const order = q.choices.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    const kept = order[i] ?? i;
+    order[i] = order[j] ?? j;
+    order[j] = kept;
+  }
+  return {
+    ...q,
+    choices: order.map((i) => q.choices[i] ?? ''),
+    answer: order.indexOf(q.answer),
+  };
+}
+
 /** The ids of a generation's questions, made unique across rounds: `r2-q1`. */
 export function rekey(questions: QuizQuestion[], round: number): QuizQuestion[] {
   return questions.map((q) => ({ ...q, id: `r${String(round)}-${q.id}` }));

@@ -142,12 +142,16 @@ folder and may open more files.
 
 The answer must follow a JSON schema; every question is then checked
 ([ADR 0022](../decisions/0022-grounded-generation-pipeline.md)): a valid answer, distinct
-choices, at least one source that exists in the project, a line range inside the file for text
+choices, a right choice that does not give itself away by its length (half as long again as
+every wrong one and 20 characters longer is rejected), at least one source that exists in the project, a line range inside the file for text
 files (at most 120 lines), never an agent instruction file or a secret (`.env`, keys), the
 scope, no duplicate, a hint that does not give the answer, and a question that names something of
 the project. Rejected questions are sent back with their reasons, at most twice, under the same
 operation; if too few pass after that, the quiz ends on the home with the reasons and subjects
-that may work better. A subject with too little material says so instead of padding.
+that may work better. A subject with too little material says so instead of padding. The prompt
+asks for wrong choices written with the same care, length and tone as the right one, and the app
+shuffles the choices of every multiple choice question when they arrive (the AI tends to put the
+right one first); the record keeps that order, so replays and quiz files show the same.
 
 ## Hoot
 

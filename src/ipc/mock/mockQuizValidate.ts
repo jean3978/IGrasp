@@ -167,6 +167,7 @@ export type Rejection =
   | 'trueFalse'
   | 'allOfTheAbove'
   | 'answerRange'
+  | 'longestAnswer'
   | 'noSource'
   | 'unknownPath'
   | 'agentFile'
@@ -554,7 +555,27 @@ function checkChoices(q: RawQuestion): Verdict<null> {
   if (q.answer >= q.choices.length) {
     return reject('answerRange', `its answer index ${String(q.answer)} is not one of its choices`);
   }
+  if (q.kind === 'multipleChoice') {
+    // Characters as Rust counts them (`chars().count()`): a surrogate pair is one.
+    const len = (c: string) => c.trim().replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '_').length;
+    const right = len(q.choices[q.answer] ?? '');
+    const longestWrong = Math.max(0, ...q.choices.filter((_, i) => i !== q.answer).map(len));
+    if (giveawayLength(right, longestWrong)) {
+      return reject(
+        'longestAnswer',
+        `its right choice is much longer than every wrong one (${String(right)} characters, the wrong ones at most ${String(longestWrong)}): its length gives it away. Write all the choices alike in length, detail and tone`,
+      );
+    }
+  }
   return { ok: true, value: null };
+}
+
+/**
+ * Like `giveaway_length` in Rust: the right choice is half as long again as the longest wrong
+ * one, and at least 20 characters longer (short names of different lengths are fine).
+ */
+export function giveawayLength(right: number, longestWrong: number): boolean {
+  return right * 2 >= longestWrong * 3 && right >= longestWrong + 20;
 }
 
 function checkSources(
@@ -748,6 +769,7 @@ const PLAIN: Record<Rejection, [string, string]> = {
   trueFalse: ['had unusable choices', 'had unusable choices'],
   allOfTheAbove: ['had unusable choices', 'had unusable choices'],
   answerRange: ['had unusable choices', 'had unusable choices'],
+  longestAnswer: ['gave its answer away by its length', 'gave their answers away by their length'],
   noSource: ['cited nothing', 'cited nothing'],
   unknownPath: ['cited a file that does not exist', 'cited files that do not exist'],
   agentFile: ['cited an agent file', 'cited agent files'],

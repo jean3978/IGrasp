@@ -1,5 +1,5 @@
 {
-  "description": "choices: true/false wording, counts, duplicates, 'all of the above', answer index",
+  "description": "choices: true/false wording, counts, duplicates, 'all of the above', answer index, a right choice whose length gives it away",
   "count": 10,
   "output": {
     "insufficientMaterial": false,
@@ -75,6 +75,22 @@
         "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 2, "lastLine": 4 }],
         "difficulty": 2,
         "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q7",
+        "kind": "multipleChoice",
+        "question": "Why does Orbit keep the running AI operation in one place?",
+        "choices": [
+          "Speed",
+          "AiGateway holds a single running Slot, so a second operation cannot start while one runs",
+          "Logging"
+        ],
+        "answer": 1,
+        "hint": "Read the gateway module.",
+        "explanation": "AiGateway in src/ai/gateway.rs holds `running: Slot`.",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 2, "lastLine": 4 }],
+        "difficulty": 3,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
       }
     ]
   },
@@ -85,7 +101,8 @@
       "q2": "choices",
       "q3": "choices",
       "q4": "allOfTheAbove",
-      "q5": "answerRange"
+      "q5": "answerRange",
+      "q7": "longestAnswer"
     }
   }
 }

@@ -6,6 +6,7 @@ import {
   next,
   pickNext,
   rekey,
+  shuffleChoices,
   restoreEngine,
   roundSize,
   roundsOf,
@@ -133,5 +134,27 @@ describe('the quiz engine', () => {
     expect(roundSize(12, 3)).toBe(2);
     expect(roundSize(12, 4)).toBe(0);
     expect(rekey([q('q1', 2)], 2)[0]?.id).toBe('r2-q1');
+  });
+
+  it('shuffles the choices of a multiple choice question, the answer following', () => {
+    const base = {
+      ...q('q1', 2),
+      kind: 'multipleChoice' as const,
+      choices: ['right', 'w1', 'w2', 'w3'],
+      answer: 0,
+    };
+    // Every position is reached, and the answer always points at "right".
+    const positions = new Set<number>();
+    for (let n = 0; n < 200; n++) {
+      const s = shuffleChoices(base);
+      expect(s.choices[s.answer]).toBe('right');
+      expect([...s.choices].sort()).toEqual(['right', 'w1', 'w2', 'w3']);
+      positions.add(s.answer);
+    }
+    expect([...positions].sort()).toEqual([0, 1, 2, 3]);
+    // A fixed random gives a fixed order; true/false keeps True, False.
+    expect(shuffleChoices(base, () => 0).choices).toEqual(['w1', 'w2', 'w3', 'right']);
+    const tf = { ...base, kind: 'trueFalse' as const, choices: ['True', 'False'], answer: 1 };
+    expect(shuffleChoices(tf)).toBe(tf);
   });
 });

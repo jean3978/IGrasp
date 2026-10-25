@@ -41,7 +41,8 @@ retries capped and visible), and the frontend must stay provider-neutral.
   `protocol.rs` and its internal tool call is hidden. A provider without structured output
   falls back to the last text block parsed as JSON.
 - **Typed validation** (`learning/quiz/validate.rs`): every question must parse into the typed
-  struct, have a valid answer index and distinct choices, cite at least one file that exists in
+  struct, have a valid answer index and distinct choices (a right choice half as long again as every wrong
+  one and 20 characters longer gives itself away and is rejected), cite at least one file that exists in
   the corpus (never an agent instruction file, never a secret), with a line range inside the file
   for text files (at most 120 lines, inside the file), respect the scope (Documentation only cites
   markdown only), not be a duplicate of an earlier question, not give the answer away in its

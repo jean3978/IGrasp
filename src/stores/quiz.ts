@@ -41,6 +41,7 @@ import {
   restoreEngine,
   roundSize,
   roundsOf,
+  shuffleChoices,
   takeHint,
   takeLook,
 } from '../features/quiz/quizEngine';
@@ -439,7 +440,7 @@ export const useQuiz = create<QuizState>()((set, get) => {
         scope: r.input.scope,
         origin: { type: 'generated' },
         count: r.input.mode === 'adaptive' ? setup.count : result.questions.length,
-        questions: rekey(result.questions, 1),
+        questions: rekey(result.questions, 1).map((q) => shuffleChoices(q)),
         answers: [],
         startLevel: r.input.startLevel,
         level: r.input.startLevel,
@@ -467,7 +468,10 @@ export const useQuiz = create<QuizState>()((set, get) => {
         kind === 'keepGoing' && current.mode === 'fixed'
           ? current.count + result.questions.length
           : r.count,
-      questions: [...current.questions, ...rekey(result.questions, round)],
+      questions: [
+        ...current.questions,
+        ...rekey(result.questions, round).map((q) => shuffleChoices(q)),
+      ],
       usage: usage(current.usage),
       durationMs: current.durationMs + r.usage.durationMs,
       attempts: current.attempts + r.attempts,

@@ -78,6 +78,8 @@ pub enum Rejection {
     TrueFalse,
     AllOfTheAbove,
     AnswerRange,
+    /// The right choice is much longer than every wrong one: its length gives it away.
+    LongestAnswer,
     NoSource,
     UnknownPath,
     AgentFile,
@@ -102,6 +104,7 @@ impl Rejection {
             Self::TrueFalse => "trueFalse",
             Self::AllOfTheAbove => "allOfTheAbove",
             Self::AnswerRange => "answerRange",
+            Self::LongestAnswer => "longestAnswer",
             Self::NoSource => "noSource",
             Self::UnknownPath => "unknownPath",
             Self::AgentFile => "agentFile",
@@ -133,6 +136,10 @@ impl Rejection {
             Self::Choices | Self::TrueFalse | Self::AllOfTheAbove | Self::AnswerRange => {
                 s("had unusable choices", "had unusable choices")
             }
+            Self::LongestAnswer => s(
+                "gave its answer away by its length",
+                "gave their answers away by their length",
+            ),
             Self::NoSource => s("cited nothing", "cited nothing"),
             Self::UnknownPath => s(
                 "cited a file that does not exist",
@@ -472,7 +479,34 @@ fn check_choices(q: &RawQuestion) -> Result<(), (Rejection, String)> {
             format!("its answer index {answer} is not one of its choices"),
         ));
     }
+    if q.kind == QuestionKind::MultipleChoice {
+        let len = |c: &String| c.trim().chars().count();
+        let right = len(&q.choices[answer]);
+        let longest_wrong = q
+            .choices
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| *i != answer)
+            .map(|(_, c)| len(c))
+            .max()
+            .unwrap_or(0);
+        if giveaway_length(right, longest_wrong) {
+            return Err((
+                Rejection::LongestAnswer,
+                format!(
+                    "its right choice is much longer than every wrong one ({right} characters, the wrong ones at most {longest_wrong}): its length gives it away. Write all the choices alike in length, detail and tone"
+                ),
+            ));
+        }
+    }
     Ok(())
+}
+
+/// Whether the right choice's length gives it away: half as long again as the longest wrong
+/// one, and at least 20 characters longer (short names of different lengths are fine).
+/// Kept identical to `giveawayLength` in the mock.
+pub fn giveaway_length(right: usize, longest_wrong: usize) -> bool {
+    right * 2 >= longest_wrong * 3 && right >= longest_wrong + 20
 }
 
 /// Validates an answer. `Err` is a shape error: the whole answer is rejected, with the reason.
@@ -747,6 +781,18 @@ mod tests {
                 .map(|s| (*s).to_owned())
                 .collect::<Vec<_>>()
         );
+    }
+
+    /// The same thresholds as `giveawayLength` in the mock.
+    #[test]
+    fn a_right_choice_gives_itself_away_only_when_much_longer() {
+        // Short names of different lengths are fine.
+        assert!(!giveaway_length(14, 4));
+        // A sentence against short words is a giveaway; against sentences of its kind it is not.
+        assert!(giveaway_length(60, 20));
+        assert!(!giveaway_length(60, 41));
+        assert!(giveaway_length(60, 40));
+        assert!(!giveaway_length(39, 20));
     }
 
     #[test]

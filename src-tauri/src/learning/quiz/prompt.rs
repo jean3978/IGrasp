@@ -164,6 +164,10 @@ fn exclusions_block(exclude: &[QuizExclusion]) -> Option<String> {
     ))
 }
 
+/// How to write choices that do not give the answer away (players learn the tells fast: the
+/// longest, most detailed or most careful choice, or the one that echoes the question).
+const CHOICES_BLOCK: &str = "Choices that do not give the answer away: write every wrong choice with the same care as the right one, about the same length, detail, tone and grammar, so that only knowing this project tells them apart. Make them tempting: a real name of this project used in the wrong place, a reasonable design reason that is not this project's, what a similar project would do, a common misreading of this code. Never make the right choice the longest, the most precise or the most qualified (\"because\", \"so that\", \"only when\" only in the right one), never echo the question's words only in the right one, and never write a wrong choice that is absurd, a joke or off topic. The app shuffles the choices, so their order does not matter. For true/false, make about half of the statements false, each false one a plausible near-truth about this project.";
+
 /// The prompt of a generation (the first attempt).
 pub fn generation_prompt(input: &PromptInput<'_>) -> String {
     let subject = subject_phrase(input);
@@ -185,6 +189,7 @@ pub fn generation_prompt(input: &PromptInput<'_>) -> String {
     task.extend(round_block(input.round));
     task.extend(exclusions_block(input.exclude));
     task.push("Kinds: multiple choice (3 to 5 distinct choices, exactly one correct, the wrong ones plausible for someone who skimmed this project) and true/false (choices exactly [\"True\", \"False\"]). Mix them, at most one third true/false. Number the questions q1, q2, …".to_owned());
+    task.push(CHOICES_BLOCK.to_owned());
     let agent = if input.agent_files.trim().is_empty() {
         "(none)".to_owned()
     } else {
@@ -215,7 +220,7 @@ Use the project's own vocabulary (what its code and docs call things), not gener
 
 # Self-check (do it for every question before answering)
 Ask: \"Would this question, its answer and its explanation still be true and useful in an unrelated project?\" If yes, rewrite it around something specific to this project, or drop it. Record the verdict in selfCheck (projectSpecific must be true for a kept question; reason says what makes it specific: a path, an identifier, a decision).
-Also check: the question or the explanation names something of this project (a file, an identifier, a module); the hint does not contain the answer; the choices are distinct and none is \"all of the above\" or \"none of the above\"; the line range exists in the file you read.
+Also check: the question or the explanation names something of this project (a file, an identifier, a module); the hint does not contain the answer; the choices are distinct and none is \"all of the above\" or \"none of the above\"; someone who does not know this project could not guess the right choice from its length, detail or wording; the line range exists in the file you read.
 
 # Voice: Hoot
 {HOOT_TONE}
