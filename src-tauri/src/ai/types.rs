@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::learning::quiz::QuizGenerationInput;
+use crate::learning::tutorial::TutorialRequest;
 
 /// Whether a provider can be used right now, and how to fix it when it cannot.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, TS)]
@@ -84,6 +85,8 @@ pub enum AiUserAction {
     QuizGeneration,
     TutorialGeneration,
     TutorialReview,
+    /// "Suggest more subjects" in the Academy.
+    SubjectSuggestion,
 }
 
 /// What the AI may do during the operation.
@@ -195,6 +198,9 @@ pub struct AiStartRequest {
     /// For `QuizGeneration`: what the user chose. The backend composes the prompt and the schema
     /// and ignores `prompt`, `context_paths`, `capture`, `images`, `policy` and `output_schema`.
     pub quiz: Option<QuizGenerationInput>,
+    /// For `TutorialGeneration`, `TutorialReview` and `SubjectSuggestion`: what the user chose;
+    /// the backend composes everything else and ignores the same fields as for a quiz.
+    pub tutorial: Option<TutorialRequest>,
 }
 
 /// The size class of an operation, for the confirmation card.
@@ -246,6 +252,9 @@ pub struct AiEstimateInput {
     /// A quiz generation to measure (the inlined set the backend composes).
     #[ts(optional)]
     pub quiz: Option<QuizGenerationInput>,
+    /// A tutorial operation to measure (outline, chapters, review, suggestions).
+    #[ts(optional)]
+    pub tutorial: Option<TutorialRequest>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TS)]

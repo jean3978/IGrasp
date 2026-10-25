@@ -355,6 +355,7 @@ mod tests {
             domain_gap: Some("I'm new to make".into()),
             length: Length::Quick,
             role: None,
+            ..TutorialInput::default()
         };
         let text = outline_prompt(&PromptInput {
             profile: &p,

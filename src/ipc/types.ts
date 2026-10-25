@@ -160,6 +160,32 @@ export type { QuizFileText } from './generated/QuizFileText';
 export type { LearningSettings } from './generated/LearningSettings';
 export type { LearningSettingsPatch } from './generated/LearningSettingsPatch';
 export type { QuizScopeSetting } from './generated/QuizScopeSetting';
+export type { Familiarity } from './generated/Familiarity';
+export type { Length } from './generated/Length';
+export type { TutorialInput } from './generated/TutorialInput';
+export type { TutorialRef } from './generated/TutorialRef';
+export type { TutorialRequest } from './generated/TutorialRequest';
+export type { Tutorial } from './generated/Tutorial';
+export type { Chapter } from './generated/Chapter';
+export type { Step } from './generated/Step';
+export type { Citation } from './generated/Citation';
+export type { SelfCheck } from './generated/SelfCheck';
+export type { SourceHash } from './generated/SourceHash';
+export type { Verification } from './generated/Verification';
+export type { ExplainStep } from './generated/ExplainStep';
+export type { ConceptBridgeStep } from './generated/ConceptBridgeStep';
+export type { CodeTourStep } from './generated/CodeTourStep';
+export type { TourStop } from './generated/TourStop';
+export type { DiagramStep } from './generated/DiagramStep';
+export type { PutInOrderStep } from './generated/PutInOrderStep';
+export type { MatchStep } from './generated/MatchStep';
+export type { MatchPair } from './generated/MatchPair';
+export type { SpotItStep } from './generated/SpotItStep';
+export type { QuickCheckStep } from './generated/QuickCheckStep';
+export type { TryItStep } from './generated/TryItStep';
+export type { RecapStep } from './generated/RecapStep';
+export type { OutlineResult } from './generated/OutlineResult';
+export type { ChapterResult } from './generated/ChapterResult';
 export type {
   AiCapabilities,
   AiEventEnvelope,

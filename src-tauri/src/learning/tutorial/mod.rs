@@ -16,10 +16,12 @@ pub mod schema;
 pub mod validate;
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 /// How well the reader knows this project (the wizard's first option).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum Familiarity {
     /// New here: an onboarding.
     #[default]
@@ -42,8 +44,9 @@ impl Familiarity {
 }
 
 /// How long the tutorial should take (the wizard's length).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub enum Length {
     /// ~5 minutes.
     Quick,
@@ -99,13 +102,22 @@ impl Length {
     }
 }
 
-/// What the user asks for (the Academy's prompt and options). The frontend would send this; the
+/// Picks of a family card at most (the features of a Deep Dive, the actions of a Trace It).
+pub const MAX_PICKS: usize = 4;
+
+/// What the user asks for (the Academy's prompt and options). The frontend sends this; the
 /// backend writes the prompts and the schemas.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
+#[ts(export)]
 pub struct TutorialInput {
     /// Free text ("how does damage get applied in multiplayer?") or a subject card's title.
     pub subject: String,
+    /// The subject card it came from (`families.rs`), so the prompt gets the card's family focus
+    /// and anchors; `None` for typed text.
+    pub subject_id: Option<String>,
+    /// What the user picked on a card that needs a pick (a feature, an action to trace).
+    pub picks: Vec<String>,
     pub familiarity: Familiarity,
     /// "I'm new to …": the domain the reader lacks, taught through this project's usage of it.
     pub domain_gap: Option<String>,
@@ -118,6 +130,8 @@ impl Default for TutorialInput {
     fn default() -> Self {
         Self {
             subject: "The big picture".to_owned(),
+            subject_id: None,
+            picks: Vec::new(),
             familiarity: Familiarity::NewHere,
             domain_gap: None,
             length: Length::Standard,
@@ -132,6 +146,17 @@ impl TutorialInput {
         if self.subject.is_empty() {
             self.subject = "The big picture".to_owned();
         }
+        self.subject_id = self
+            .subject_id
+            .map(|g| g.trim().chars().take(200).collect::<String>())
+            .filter(|g| !g.is_empty());
+        self.picks = self
+            .picks
+            .into_iter()
+            .map(|p| p.trim().chars().take(200).collect::<String>())
+            .filter(|p| !p.is_empty())
+            .take(MAX_PICKS)
+            .collect();
         self.domain_gap = self
             .domain_gap
             .map(|g| g.trim().chars().take(200).collect::<String>())
@@ -142,4 +167,42 @@ impl TutorialInput {
             .filter(|r| !r.is_empty());
         self
     }
+}
+
+/// A tutorial the user can open: private (app data) or shared (a README in the folder).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "camelCase")]
+#[ts(export)]
+pub enum TutorialRef {
+    Private {
+        id: String,
+    },
+    #[serde(rename_all = "camelCase")]
+    Shared {
+        /// Root-relative path of the tutorial's `README.md`.
+        rel_path: String,
+    },
+}
+
+/// What the frontend sends to start a tutorial operation; the backend composes the prompts, the
+/// schemas and the validators (the frontend never writes a tutorial prompt).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export)]
+pub enum TutorialRequest {
+    /// The outline of a new tutorial.
+    Outline { input: TutorialInput },
+    /// Writes these chapters (0-based indices in the saved outline) of a private tutorial, one
+    /// stage each, in this order: one operation.
+    Chapters { id: String, indices: Vec<u32> },
+    /// Writes one chapter again (one stage), or a new chapter for a missing topic (`goal`).
+    Chapter {
+        id: String,
+        index: u32,
+        goal: Option<String>,
+    },
+    /// The AI review ("Check with <provider>"): the tutorial against the project as it is now.
+    Review { tutorial: TutorialRef },
+    /// "Suggest more subjects".
+    Suggest,
 }

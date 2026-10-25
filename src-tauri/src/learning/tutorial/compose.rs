@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use ts_rs::TS;
 
 use super::TutorialInput;
 use super::prompt::{
@@ -38,8 +39,9 @@ pub struct Composed<V> {
 }
 
 /// The accepted answer of an outline generation (the `structuredOutput` of the operation).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, optional_fields)]
 pub struct OutlineResult {
     pub title: String,
     pub intro: String,
@@ -52,8 +54,9 @@ pub struct OutlineResult {
 }
 
 /// The accepted answer of a chapter generation.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, optional_fields)]
 pub struct ChapterResult {
     pub chapter: Chapter,
     pub docs_note: Option<String>,
@@ -528,6 +531,7 @@ mod tests {
             domain_gap: None,
             length: Length::Quick,
             role: None,
+            ..TutorialInput::default()
         }
     }
 
@@ -1005,6 +1009,7 @@ mod poc {
                 .and_then(|l| Length::parse(&l))
                 .unwrap_or_default(),
             role: var("IGRASP_TUTORIAL_ROLE"),
+            ..TutorialInput::default()
         };
         let model = var("IGRASP_TUTORIAL_MODEL").unwrap_or_else(|| "sonnet".into());
         let chapter_index: usize = var("IGRASP_TUTORIAL_CHAPTER")

@@ -4,4 +4,4 @@
  * The user action that pays for an operation. Every call into a provider names one
  * (rule 1 of the AI integration principles: no token without a user action).
  */
-export type AiUserAction = "chatMessage" | "regionCapture" | "quizGeneration" | "tutorialGeneration" | "tutorialReview";
+export type AiUserAction = "chatMessage" | "regionCapture" | "quizGeneration" | "tutorialGeneration" | "tutorialReview" | "subjectSuggestion";

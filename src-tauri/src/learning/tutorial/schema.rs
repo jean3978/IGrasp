@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use ts_rs::TS;
 
 pub use crate::learning::quiz::schema::MAX_RANGE_LINES;
 use crate::learning::quiz::schema::QuestionKind;
@@ -24,8 +25,9 @@ fn is_empty<T>(v: &[T]) -> bool {
 
 /// A project source a step points at: a text file with the lines that hold the fact, or a
 /// binary asset by name (never alone).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct Citation {
     /// Root-relative with `/`.
     pub path: String,
@@ -60,8 +62,9 @@ impl Citation {
 }
 
 /// The model's own verdict on an item: is it about this project?
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct SelfCheck {
     pub project_specific: bool,
     pub reason: String,
@@ -103,8 +106,9 @@ pub struct OutlineOutput {
 // ---------------------------------------------------------------------------------------------
 // A chapter and its steps (what the model writes, and what the app keeps once validated).
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct ExplainStep {
     pub title: String,
     /// Markdown: how this project does something.
@@ -114,8 +118,9 @@ pub struct ExplainStep {
     pub self_check: Option<SelfCheck>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct ConceptBridgeStep {
     pub title: String,
     /// The concept in one or two sentences.
@@ -130,8 +135,9 @@ pub struct ConceptBridgeStep {
     pub self_check: Option<SelfCheck>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct TourStop {
     pub path: String,
     pub first_line: u32,
@@ -140,8 +146,9 @@ pub struct TourStop {
     pub annotation: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct CodeTourStep {
     pub title: String,
     pub stops: Vec<TourStop>,
@@ -149,8 +156,9 @@ pub struct CodeTourStep {
     pub self_check: Option<SelfCheck>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct DiagramStep {
     pub title: String,
     /// Mermaid source (flowchart, sequence, class, state).
@@ -162,8 +170,9 @@ pub struct DiagramStep {
     pub self_check: Option<SelfCheck>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct PutInOrderStep {
     pub title: String,
     pub prompt: String,
@@ -175,15 +184,17 @@ pub struct PutInOrderStep {
     pub self_check: Option<SelfCheck>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct MatchPair {
     pub left: String,
     pub right: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct MatchStep {
     pub title: String,
     pub prompt: String,
@@ -194,8 +205,9 @@ pub struct MatchStep {
     pub self_check: Option<SelfCheck>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct SpotItStep {
     pub title: String,
     /// "Click the line that …".
@@ -212,8 +224,9 @@ pub struct SpotItStep {
 }
 
 /// A quiz question (the quiz's cards, hint and explanation).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct QuickCheckStep {
     pub kind: QuestionKind,
     pub question: String,
@@ -226,8 +239,9 @@ pub struct QuickCheckStep {
     pub self_check: Option<SelfCheck>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct TryItStep {
     pub title: String,
     /// Markdown: what to do and what to look at.
@@ -245,8 +259,9 @@ pub struct TryItStep {
     pub self_check: Option<SelfCheck>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
 pub struct RecapStep {
     /// Three key takeaways.
     pub takeaways: Vec<String>,
@@ -257,8 +272,9 @@ pub struct RecapStep {
 }
 
 /// Every step type, tagged by `type`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "camelCase")]
+#[ts(export)]
 pub enum Step {
     Explain(ExplainStep),
     ConceptBridge(ConceptBridgeStep),
@@ -406,8 +422,9 @@ pub struct ChapterOutput {
 // ---------------------------------------------------------------------------------------------
 // What the app keeps: a tutorial.
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, optional_fields)]
 pub struct Chapter {
     /// `c1`, `c2`, … (positional).
     pub id: String,
@@ -429,8 +446,9 @@ impl Chapter {
 
 /// A cited range with the SHA-256 of its lines when the tutorial was written (`\n`-joined, `\r`
 /// removed); no hash for a binary asset.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, optional_fields)]
 pub struct SourceHash {
     pub path: String,
     #[serde(default, skip_serializing_if = "is_none")]
@@ -439,8 +457,9 @@ pub struct SourceHash {
     pub sha256: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, optional_fields)]
 pub struct Verification {
     pub date: String,
     #[serde(default, skip_serializing_if = "is_none")]
@@ -449,8 +468,9 @@ pub struct Verification {
     pub by: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, optional_fields)]
 pub struct Tutorial {
     pub id: String,
     pub title: String,
