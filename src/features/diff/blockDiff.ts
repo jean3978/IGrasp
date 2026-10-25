@@ -3,7 +3,7 @@
 // group (a removed block followed by an added one is a `changed` group).
 
 import { diffArrays } from 'diff';
-import { blockLabel, splitBlocks } from './blocks';
+import { blockLabel, splitBlocks, splitBlocksFrom } from './blocks';
 import type { Block, BlockList } from './blocks';
 
 export type GroupKind = 'same' | 'added' | 'removed' | 'changed';
@@ -47,7 +47,8 @@ function describe(kind: GroupKind, oldBlocks: Block[], newBlocks: Block[]): stri
 
 export function blockDiff(oldText: string, newText: string): BlockDiff {
   const oldList = splitBlocks(oldText);
-  const newList = splitBlocks(newText);
+  // Only the changed region of the new text is parsed: parsing is most of the cost.
+  const newList = splitBlocksFrom(oldText, oldList, newText);
   const parts = diffArrays(
     oldList.blocks.map((b) => b.key),
     newList.blocks.map((b) => b.key),

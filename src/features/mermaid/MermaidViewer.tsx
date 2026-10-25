@@ -16,6 +16,7 @@ interface MermaidViewerProps {
 }
 
 const ZOOM_STEP = 0.3;
+const WHEEL_STEP = 0.002;
 const PADDING = 16;
 const MAX_INLINE_HEIGHT = 640;
 
@@ -132,8 +133,10 @@ export function MermaidViewer({
         maxScale={8}
         limitToBounds={false}
         {...(fullscreen ? { fitOnInit: 'contain' as const, centerOnInit: true } : {})}
-        // Inline, the wheel scrolls the document; Ctrl+wheel zooms the diagram.
-        wheel={{ step: 0.1, ...(fullscreen ? {} : { activationKeys: ['Control'] }) }}
+        // Inline, the wheel scrolls the document; Ctrl+wheel zooms the diagram. The library's
+        // smooth wheel multiplies the step by |deltaY| (about 100 per mouse notch): 0.002 makes a
+        // notch zoom by 0.2, and a touchpad's small deltas zoom gradually.
+        wheel={{ step: WHEEL_STEP, ...(fullscreen ? {} : { activationKeys: ['Control'] }) }}
         doubleClick={{ disabled: true }}
       >
         <TransformComponent wrapperClass="mermaid-canvas" contentClass="mermaid-content">

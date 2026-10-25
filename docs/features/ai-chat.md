@@ -321,7 +321,11 @@ measurements in jsdom with a 3x margin and logs its numbers):
 | Block diff of a 5 000-line document, `buildWriteReview` (11 change groups) | 126-162 ms (first call 162 ms, then about 130 ms) | Met (200 ms) |
 | Same, `buildEditReview` (one hunk) | 127-135 ms | Met (200 ms) |
 
-The diff time is dominated by parsing the two versions into blocks (`splitBlocks`). Not budgeted,
+The diff time is dominated by parsing markdown into blocks. The old version is parsed in full
+(`splitBlocks`); the new one only around its changed lines (`splitBlocksFrom`), which brought
+the jsdom numbers from about 225 ms (write) and 180 ms (edit) to 135 ms and 100 ms. Coverage
+instrumentation makes the diff 2-3x slower, so CI runs the performance test apart, without
+coverage. Not budgeted,
 for information: rendering that 5 000-line diff with `RenderedDiff` shows its first change after
 about 0.7 s (the markdown pipeline runs per block); documents over the preview size limit fall
 back to the line diff.

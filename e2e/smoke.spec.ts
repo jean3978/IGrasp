@@ -55,6 +55,41 @@ test('renders Mermaid diagrams as SVG', async ({ page }) => {
   await expect(page.locator('.mermaid-svg svg .node')).toHaveCount(3);
 });
 
+test('keeps the Mermaid toolbar on screen in full screen, and zooms by wheel steps', async ({
+  page,
+}) => {
+  await openFixture(page);
+  const chain = Array.from({ length: 30 }, (_, i) => `  N${String(i)} --> N${String(i + 1)}`);
+  await page.evaluate(
+    (md) => {
+      (window as MockWindow).__igraspMock?.writeFiles({ 'wide.md': md });
+    },
+    `# Wide\n\n\`\`\`mermaid\nflowchart LR\n${chain.join('\n')}\n\`\`\`\n`,
+  );
+  await treeItem(page, 'wide.md').click();
+  const inline = page.locator('.mermaid-viewer').first();
+  await expect(inline.locator('svg .node').first()).toBeVisible({ timeout: 20_000 });
+  await inline.focus();
+  await page.keyboard.press('Enter');
+
+  const viewer = page.locator('.mermaid-viewer-fullscreen');
+  await expect(viewer).toBeInViewport({ ratio: 1 });
+  const exit = viewer.getByRole('button', { name: 'Exit full screen' });
+  await expect(exit).toBeInViewport();
+
+  const content = viewer.locator('.mermaid-content');
+  const scale = () =>
+    content.evaluate((el) => Number(/scale\(([\d.]+)\)/.exec(el.style.transform)?.[1]));
+  const before = await scale();
+  await viewer.hover();
+  await page.mouse.wheel(0, -100);
+  await expect.poll(scale).toBeGreaterThan(before);
+  expect(await scale()).toBeLessThan(before + 0.5);
+
+  await exit.click();
+  await expect(viewer).toHaveCount(0);
+});
+
 test('switches themes', async ({ page }) => {
   await start(page);
   for (const [name, value] of [

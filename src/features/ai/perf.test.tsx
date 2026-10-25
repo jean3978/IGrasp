@@ -1,6 +1,7 @@
 // Budgets of the AI features (plan phase 3, step 22): a 400-item conversation updates in under
 // 50 ms per event, and a 5 000-line document diffs in under 200 ms. The assertions use 3x the
-// budget so a loaded CI machine does not flake; the measured numbers are logged.
+// budget so a loaded CI machine does not flake; the measured numbers are logged. CI runs this file
+// apart, without coverage instrumentation (it makes the diff 2-3x slower).
 
 import { act, render } from '@testing-library/react';
 import { Tooltip } from 'radix-ui';

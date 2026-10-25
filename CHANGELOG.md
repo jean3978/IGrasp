@@ -11,7 +11,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Phase 4 — Quiz Me: Hoot the owl asks you questions about how the open project is made, written by
 the AI from the project's own files, each citing the lines that prove its answer. Built for
-developers on any kind of project (games, web, tools, libraries), with nothing generic.
+developers by default and for every role of a team (artists, designers, producers, QA…), on any
+kind of project (games, web, tools, libraries), with nothing generic.
 
 ### Added
 
@@ -77,6 +78,18 @@ developers on any kind of project (games, web, tools, libraries), with nothing g
 - The app writes inside the opened folder only what you save through a save dialog (results
   and quiz files); it still writes nothing there on its own.
 - The Keyboard Shortcuts tab lists the Learn menu and the quiz keys.
+- **Faster block diff**: the new version of a document is parsed only around its changed lines,
+  the other blocks are reused from the old version. A 5 000-line review diff takes about 135 ms
+  (whole-file write) and 100 ms (edit) instead of 225 ms and 180 ms.
+- **CI**: the performance budgets run in their own step, without coverage instrumentation, which
+  made the 5 000-line diff test fail on CI runners.
+
+### Fixed
+
+- **Mermaid full screen**: a wide diagram no longer stretches the full-screen view past the
+  window, which hid the toolbar and its exit button; the toolbar stays in the top-right corner.
+- **Mermaid wheel zoom**: one wheel notch zooms by a small step instead of jumping straight to the
+  minimum or maximum zoom (full screen, and Ctrl + wheel inline).
 
 ## [0.3.0] - 2026-10-24
 

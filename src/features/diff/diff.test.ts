@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { blockDiff } from './blockDiff';
-import { splitBlocks } from './blocks';
+import { splitBlocks, splitBlocksFrom } from './blocks';
 import {
   acceptedHunks,
   buildEditReview,
@@ -54,6 +54,134 @@ describe('splitBlocks', () => {
         expect(blocks.map((b) => b.gapBefore + b.raw).join('') + trailing).toBe(text);
       }
     }
+  });
+});
+
+describe('splitBlocksFrom', () => {
+  const expectSame = (oldText: string, newText: string) => {
+    expect(splitBlocksFrom(oldText, splitBlocks(oldText), newText)).toEqual(splitBlocks(newText));
+  };
+  const doc = [
+    '---',
+    'title: T',
+    '---',
+    '',
+    '# Title',
+    '',
+    'A paragraph',
+    'on two lines.',
+    '',
+    '- one',
+    '- two',
+    '',
+    '> quote',
+    '',
+    '| a | b |',
+    '| - | - |',
+    '| 1 | 2 |',
+    '',
+    '```ts',
+    'const x = 1;',
+    '```',
+    '',
+    '$$',
+    'x^2',
+    '$$',
+    '',
+    '<div>html</div>',
+    '',
+    'Last paragraph.',
+    '',
+  ].join('\n');
+  const lines = doc.split('\n');
+  const edit = (at: number, remove: number, ...insert: string[]) => {
+    const copy = [...lines];
+    copy.splice(at, remove, ...insert);
+    return copy.join('\n');
+  };
+
+  it('matches a full split for edits that change the blocks around them', () => {
+    const cases = [
+      edit(6, 1, 'A changed paragraph'),
+      edit(8, 0, '==='), // the paragraph becomes a setext heading
+      edit(8, 1, 'lazy continuation'), // no blank line before the list
+      edit(11, 0, '- three'),
+      edit(2, 1), // unclosed front matter: lists and quotes after it are paragraphs
+      edit(11, 1, '  continued item', ''), // indented: stays in the list
+      edit(13, 0, 'lazy quote line'),
+      edit(18, 0, '```'), // opens a fence that swallows the rest
+      edit(22, 0, '$$'), // an unclosed formula
+      edit(0, 0, 'Before the front matter'),
+      edit(0, 3, '---', 'title: U', '---'),
+      edit(4, 0, '---', 'not front matter', '---', ''),
+      edit(28, 1, 'Last paragraph, changed.'),
+      edit(28, 2),
+      edit(4, 25),
+      doc + 'Appended.\n',
+      '',
+      doc.replace(/\n/g, '\r\n'),
+    ];
+    for (const newText of cases) {
+      expectSame(doc, newText);
+      expectSame(newText, doc);
+    }
+  });
+
+  it('matches a full split for random line edits', () => {
+    let seed = 7;
+    const random = (n: number) => {
+      seed = (seed * 48271) % 2147483647;
+      return seed % n;
+    };
+    // Lines that open, close, continue or interrupt blocks (30 000 rounds passed locally).
+    const pool = [
+      '',
+      'text',
+      '#',
+      '===',
+      '---',
+      '- item',
+      '  - nested',
+      '- [ ] task',
+      '1. one',
+      '2. two',
+      '> q',
+      '>',
+      '```',
+      '~~~',
+      '    code',
+      '\tcode',
+      '$$',
+      '| 1 | 2 |',
+      '<div>',
+      '<!--',
+      '[x]: http://e.com',
+      '[^1]: note',
+    ];
+    const mutate = (from: string[], edits: number) => {
+      const copy = [...from];
+      for (; edits > 0; edits--) {
+        copy.splice(
+          random(copy.length + 1),
+          random(3),
+          ...Array.from({ length: random(3) }, () => pool[random(pool.length)] ?? ''),
+        );
+      }
+      return copy;
+    };
+    for (let i = 0; i < 300; i++) {
+      const before = mutate(i % 2 ? lines : [...lines, ...lines, ...lines], random(3));
+      expectSame(before.join('\n'), mutate(before, 1 + random(4)).join('\n'));
+    }
+  });
+
+  it('keeps the blocks around an edit, and the same list for an unchanged text', () => {
+    const newText = edit(6, 1, 'A changed paragraph');
+    const previous = splitBlocks(doc);
+    const next = splitBlocksFrom(doc, previous, newText);
+    expect(next.blocks.map((b) => b.kind)).toEqual(previous.blocks.map((b) => b.kind));
+    expect(next.blocks[2]?.raw).toBe('A changed paragraph\non two lines.');
+    expect(splitBlocksFrom(doc, previous, doc)).toBe(previous);
   });
 });
 

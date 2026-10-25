@@ -65,7 +65,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx vitest run --coverage
+      # Coverage instrumentation slows code down 2-3x: timing budgets are checked without it.
+      - run: npx vitest run --coverage --exclude "**/perf.test.tsx"
+      - name: Performance budgets (without coverage)
+        run: npx vitest run perf.test.tsx
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
