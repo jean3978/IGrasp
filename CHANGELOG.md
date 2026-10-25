@@ -7,6 +7,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Faster block diff**: the new version of a document is parsed only around its changed lines,
+  the other blocks are reused from the old version. A 5 000-line review diff takes about 135 ms
+  (whole-file write) and 100 ms (edit) instead of 225 ms and 180 ms.
+
 ## [0.3.0] - 2026-10-24
 
 Phase 3 — Claude: an AI chat that understands the open folder, edits you review in the rendered
