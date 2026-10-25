@@ -5,6 +5,8 @@
 pub mod languages;
 pub mod manifests;
 pub mod markers;
+pub mod modules;
+pub mod summary;
 pub mod walk;
 
 #[cfg(test)]
@@ -100,6 +102,13 @@ pub struct ProjectProfile {
     pub build: Vec<Detected<String>>,
     pub tests: Vec<Detected<String>>,
     pub ci: Vec<Detected<String>>,
+    /// Main areas: workspace members, source folders, engine modules, plugins.
+    pub modules: Vec<modules::Module>,
+    pub docs: summary::DocsFacts,
+    /// A `.git` folder at the root.
+    pub repository: bool,
+    /// One line: "IGrasp: a Tauri desktop app in Rust and TypeScript (React), tested with …".
+    pub summary: String,
     pub files_seen: u64,
     /// The walk hit its budget: the profile says what it saw.
     pub truncated: bool,
@@ -151,7 +160,7 @@ pub fn from_walk(
             evidence: Vec::new(),
         });
     }
-    ProjectProfile {
+    let mut profile = ProjectProfile {
         name,
         kinds,
         engines: detection.engines,
@@ -161,10 +170,16 @@ pub fn from_walk(
         build: detection.build,
         tests: detection.tests,
         ci: detection.ci,
+        modules: modules::modules(walk, manifests),
+        docs: summary::docs_facts(walk),
+        repository: false,
+        summary: String::new(),
         files_seen: walk.files.len() as u64,
         truncated: walk.truncated,
         built_ms: 0,
-    }
+    };
+    profile.summary = summary::summary(&profile);
+    profile
 }
 
 /// Walks `root` and builds its profile.
@@ -177,6 +192,7 @@ pub fn build(root: &Path, extra_ignores: &[String], cancel: &AtomicBool) -> (Pro
         |n| n.to_string_lossy().into_owned(),
     );
     let mut profile = from_walk(root, &walk, &manifests, &name);
+    profile.repository = root.join(".git").exists();
     profile.built_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
     (profile, walk)
 }

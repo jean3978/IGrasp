@@ -435,3 +435,76 @@ fn markdown_only_is_documentation() {
     let p = profile_of(&[("README.md", "# x\n"), ("guide/a.md", "# a\n")]);
     assert_eq!(kinds(&p), vec![K::Documentation]);
 }
+
+#[test]
+fn summaries_read_right() {
+    let p = profile_of(&[
+        (
+            "project.godot",
+            "config/name=\"Dodge\"\nconfig/features=PackedStringArray(\"4.3\")\n",
+        ),
+        ("player.gd", "extends Area2D\n"),
+    ]);
+    assert_eq!(p.summary, "Dodge: a Godot 4.3 game in GDScript.");
+    let p = profile_of(&[
+        ("Cargo.toml", "[package]\nname = \"slugs\"\n"),
+        (
+            "src/lib.rs",
+            "pub fn slug() {}\n#[cfg(test)]\nmod tests {}\n",
+        ),
+    ]);
+    assert_eq!(
+        p.summary,
+        "slugs: a library in Rust, tested with cargo test."
+    );
+}
+
+/// The profile card of IGrasp opened on itself must be right.
+#[test]
+fn dogfooding_the_repository() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    let (p, _) = build(&root, &[], &AtomicBool::new(false));
+    assert_eq!(p.kinds[0].value, K::Desktop, "{:?}", p.kinds);
+    assert!(!kinds(&p).contains(&K::WebFrontend));
+    assert!(has(&p.frameworks, "Tauri") && has(&p.frameworks, "React"));
+    let l = langs(&p);
+    assert!(l.contains(&"Rust") && l.contains(&"TypeScript"), "{l:?}");
+    for t in ["Vitest", "cargo test", "Playwright"] {
+        assert!(has(&p.tests, t), "{t}: {:?}", values(&p.tests));
+    }
+    assert!(has(&p.ci, "GitHub Actions"));
+    assert_eq!(p.name, "igrasp");
+    assert_eq!(p.docs.architecture.as_deref(), Some("docs/architecture.md"));
+    assert!(p.docs.adrs >= 20);
+    assert!(p.modules.iter().any(|m| m.path == "src-tauri/src/ai"));
+    assert!(p.modules.iter().any(|m| m.path == "src/features"));
+    assert!(
+        p.summary.starts_with("igrasp: a Tauri desktop app in "),
+        "{}",
+        p.summary
+    );
+    println!(
+        "{}\n{:?}",
+        p.summary,
+        p.modules.iter().map(|m| &m.path).collect::<Vec<_>>()
+    );
+}
+
+/// The walk and the profile of the generated 10k-document project stay under 2 s. Run with
+/// `cargo test --release --manifest-path src-tauri/Cargo.toml profile_perf -- --ignored --nocapture`.
+#[test]
+#[ignore = "performance check"]
+fn profile_perf_on_the_large_project() {
+    let dir = tempfile::tempdir().unwrap();
+    crate::perf::generate(dir.path());
+    let started = std::time::Instant::now();
+    let (p, walk) = build(dir.path(), &[], &AtomicBool::new(false));
+    let elapsed = started.elapsed();
+    println!(
+        "profile of {} files in {elapsed:?} ({} ms reported)",
+        walk.files.len(),
+        p.built_ms
+    );
+    assert!(walk.files.len() >= 10_000);
+    assert!(elapsed < std::time::Duration::from_secs(2), "{elapsed:?}");
+}
