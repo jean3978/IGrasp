@@ -1302,50 +1302,10 @@
   outline-offset: 2px;
 }
 
+/* The cited file (components/CodeView.tsx), filling the window. */
 .quiz-look-code {
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  border: var(--border-width) solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--bg-editor);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  user-select: text;
-}
-
-.quiz-look-code:focus-visible {
-  outline: var(--focus-width) solid var(--focus);
-  outline-offset: -1px;
-}
-
-.quiz-look-line {
-  display: flex;
-  min-width: max-content;
-  line-height: 20px;
-}
-
-.quiz-look-ln {
-  position: sticky;
-  left: 0;
-  flex: none;
-  width: calc(var(--gutter-chars, 3) * 1ch + 28px);
-  padding-right: 16px;
-  background: var(--bg-editor);
-  color: var(--fg-muted);
-  text-align: right;
-  user-select: none;
-}
-
-.quiz-look-text {
-  padding-right: 24px;
-  white-space: pre;
-  tab-size: 4;
-}
-
-.quiz-look-status {
-  margin: 12px;
-  color: var(--fg-muted);
 }
 
 .quiz-look-footer {
