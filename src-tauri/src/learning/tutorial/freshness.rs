@@ -161,7 +161,7 @@ pub fn check(root: &Path, t: &Tutorial) -> Report {
         let state = match (&s.sha256, s.lines.as_deref().and_then(range)) {
             (Some(sha), Some((a, b))) => match file {
                 None => {
-                    if root.join(&s.path).exists() {
+                    if crate::learning::corpus::inside(root, &s.path).is_some() {
                         SourceState::Changed
                     } else {
                         SourceState::Missing
@@ -185,7 +185,7 @@ pub fn check(root: &Path, t: &Tutorial) -> Report {
                 }
             },
             _ => {
-                if root.join(&s.path).exists() {
+                if crate::learning::corpus::inside(root, &s.path).is_some() {
                     SourceState::Unchecked
                 } else {
                     SourceState::Missing
