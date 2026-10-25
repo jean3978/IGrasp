@@ -90,6 +90,87 @@ export async function ask(page: Page, prompt: string): Promise<void> {
   await input.press('Enter');
 }
 
+/** The mock backend's quiz state, as far as the quiz tests read and drive it. */
+export interface QuizMock {
+  state: {
+    files: Map<string, string>;
+    saved: { kind: 'results' | 'quiz'; relPath: string; markdown: string }[];
+    ai: {
+      loggedIn: boolean;
+      stepMs: number;
+      starts: string[];
+      quizScript: 'valid' | 'retry' | 'exhaust' | 'thin' | 'textOnly' | 'slow' | 'leak';
+    };
+  };
+}
+
+export const quizMock = <T = void>(page: Page, fn: (mock: QuizMock) => T): Promise<T> =>
+  page.evaluate((body) => {
+    const mock = (window as MockWindow).__igraspMock as unknown as QuizMock;
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval -- runs in the page
+    return (new Function('mock', `return ${body}`) as (m: QuizMock) => T)(mock);
+  }, `(${fn.toString()})(mock)`);
+
+/** Opens the fixture project, then the Quiz tab with its shortcut (free: nothing is sent). */
+export async function openQuiz(page: Page): Promise<void> {
+  await openFixture(page);
+  await quizMock(page, (m) => {
+    m.state.ai.stepMs = 5;
+  });
+  await page.keyboard.press('Control+Alt+q');
+  await expect(page.getByRole('heading', { name: 'Quiz', level: 1 })).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'No specific subject' })).toBeVisible();
+}
+
+/** Sets up a new quiz on the home, then Start and the confirmation card's Start. */
+export async function startQuiz(
+  page: Page,
+  options: { subject?: string; mode?: 'Fixed' | 'Adaptive'; count?: number } = {},
+): Promise<void> {
+  if (options.subject) await page.getByRole('radio', { name: options.subject }).click();
+  if (options.mode) await page.getByRole('radio', { name: options.mode, exact: true }).click();
+  if (options.count !== undefined)
+    await page.getByLabel('Questions', { exact: true }).fill(String(options.count));
+  await page.getByRole('button', { name: /^Start/ }).click();
+  const card = page.getByRole('group', { name: /Confirm/ });
+  await expect(card).toBeVisible();
+  await card.getByRole('button', { name: /Start/ }).click();
+}
+
+export const quizCard = (page: Page) => page.getByRole('article');
+
+/**
+ * Answers every question on screen with the keyboard (the first choice, then Enter), until the
+ * results or a Next round button. Returns the number of questions answered.
+ */
+export async function answerAll(page: Page): Promise<number> {
+  let answered = 0;
+  for (;;) {
+    const done = page.locator('.quiz-results, .quiz-next:has-text("Next round")');
+    if ((await done.count()) > 0) return answered;
+    await expect(quizCard(page)).toBeVisible();
+    await page.keyboard.press('1');
+    answered++;
+    const next = page.locator('.quiz-next');
+    await expect(next).toBeFocused();
+    if ((await next.textContent())?.includes('Next round')) return answered;
+    await page.keyboard.press('Enter');
+    await expect(page.locator('.quiz-results, .quiz-card:not(:has(.quiz-reveal))')).toHaveCount(1);
+  }
+}
+
+/** The markdown files written by Save results… and Save quiz… (the mock dialog). */
+export const savedMarkdown = (page: Page) => quizMock(page, (m) => m.state.saved);
+
+/** Plays a saved quiz from the Saved quizzes list of the quiz home. */
+export async function playSavedQuiz(page: Page, path: string): Promise<void> {
+  await page
+    .getByRole('region', { name: 'Saved quizzes' })
+    .getByRole('button', { name: new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })
+    .click();
+  await expect(quizCard(page)).toBeVisible();
+}
+
 /** A rectangle in pixels, relative to the top left of the document area. */
 export interface Region {
   x: number;
