@@ -14,6 +14,7 @@ use crate::commands::learning::NativeSaveDialog;
 use crate::error::{AppError, AppResult};
 use crate::learning::save::SaveDialog;
 use crate::learning::tutorial::families::{TutorialSubject, TutorialSubjects};
+use crate::learning::tutorial::freshness::FreshnessReport;
 use crate::learning::tutorial::progress::TutorialProgress;
 use crate::learning::tutorial::schema::Tutorial;
 use crate::learning::tutorial::share::{self, WritePlan, WriteTarget, WrittenTutorial};
@@ -46,11 +47,12 @@ pub async fn list_tutorial_subjects(app: AppHandle) -> AppResult<TutorialSubject
 pub fn library(ws: &Workspace, appdata: &AppData) -> AppResult<Vec<TutorialSummary>> {
     let key = root_key(ws);
     let progress = appdata.folder_learning(&key)?.tutorial_progress;
+    let root = ws.guard.root();
     let mut list: Vec<TutorialSummary> = appdata
         .private_tutorials(&key)?
         .into_iter()
         .map(|s| {
-            TutorialSummary::of(
+            let mut summary = TutorialSummary::of(
                 TutorialRef::Private {
                     id: s.tutorial.id.clone(),
                 },
@@ -58,7 +60,9 @@ pub fn library(ws: &Workspace, appdata: &AppData) -> AppResult<Vec<TutorialSumma
                 s.shared_as.clone(),
                 s.updated_ms,
                 progress.get(&s.tutorial.id),
-            )
+            );
+            summary.freshness = Some(freshness::check(root, &s.tutorial).badge);
+            summary
         })
         .collect();
     let readmes: Vec<String> = {
@@ -79,15 +83,19 @@ pub fn library(ws: &Workspace, appdata: &AppData) -> AppResult<Vec<TutorialSumma
     let mut shared = Vec::new();
     for rel in readmes {
         match share::read_shared(&ws.guard, &rel) {
-            Ok(t) => shared.push(TutorialSummary::of(
-                TutorialRef::Shared {
-                    rel_path: rel.clone(),
-                },
-                &t,
-                None,
-                modified(&rel),
-                progress.get(&t.id),
-            )),
+            Ok(t) => {
+                let mut summary = TutorialSummary::of(
+                    TutorialRef::Shared {
+                        rel_path: rel.clone(),
+                    },
+                    &t,
+                    None,
+                    modified(&rel),
+                    progress.get(&t.id),
+                );
+                summary.freshness = Some(freshness::check(root, &t).badge);
+                shared.push(summary);
+            }
             Err(e) => log::warn!("{rel}: {e}"),
         }
     }
@@ -124,6 +132,39 @@ pub fn get_tutorial(
     let t = state.with_workspace(|ws| read_tutorial(ws, &state.appdata, &reference));
     notify_recovered(&app, &state.appdata);
     t
+}
+
+/// The local freshness check of a tutorial (no token): moved citations of a private tutorial
+/// are relocated and saved; for a shared one the relocated version is returned, to write only
+/// after the user confirms.
+pub fn check_freshness(
+    ws: &Workspace,
+    appdata: &AppData,
+    reference: &TutorialRef,
+) -> AppResult<FreshnessReport> {
+    let t = read_tutorial(ws, appdata, reference)?;
+    let mut failed = None;
+    let report = freshness::report(ws.guard.root(), &t, |copy| match reference {
+        TutorialRef::Private { .. } => {
+            if let Err(e) = appdata.save_private_tutorial(&root_key(ws), copy.clone()) {
+                failed = Some(e);
+            }
+            true
+        }
+        TutorialRef::Shared { .. } => false,
+    });
+    match failed {
+        Some(e) => Err(e),
+        None => Ok(report),
+    }
+}
+
+#[tauri::command]
+pub fn check_tutorial_freshness(
+    state: State<'_, AppState>,
+    reference: TutorialRef,
+) -> AppResult<FreshnessReport> {
+    state.with_workspace(|ws| check_freshness(ws, &state.appdata, &reference))
 }
 
 /// What a save of `t` stores: a new tutorial gets its id, date, provider and generation commit;
@@ -412,5 +453,69 @@ mod tests {
                 .iter()
                 .all(|p| p.state == share::PlannedState::Unchanged)
         );
+    }
+
+    #[test]
+    fn freshness_relocates_a_private_tutorial_and_offers_it_for_a_shared_one() {
+        use crate::learning::tutorial::freshness::Badge;
+
+        const WATCHER: &str = "a\npub const DEBOUNCE_MS: u64 = 200;\nb\nc\nd\ne\nf\n";
+        let dir = tree(&[("src/index/watcher.rs", WATCHER)]);
+        let appdata = tempfile::tempdir().unwrap();
+        let appdata = AppData::new(appdata.path().to_path_buf());
+        let guard = RootGuard::new(dir.path()).unwrap();
+        let ws = Workspace::new(guard.clone(), 1, ScanOptions::default());
+        let mut t = sample();
+        // Hashed now (the sample's recorded hash is a fake one).
+        t.sources.clear();
+        let t = prepared(guard.root(), "mock", t);
+        appdata
+            .save_private_tutorial(&root_key(&ws), t.clone())
+            .unwrap();
+        let private = TutorialRef::Private { id: t.id.clone() };
+        let fresh = check_freshness(&ws, &appdata, &private).unwrap();
+        assert_eq!(fresh.badge, Badge::UpToDate);
+        assert!(fresh.affected.is_empty());
+        let folder = share::share_folder(&guard, "docs/tutorials", &t, None).unwrap();
+        let readme = share::write(&guard, &folder, &t).unwrap().readme.unwrap();
+
+        // A line added above: every citation moved.
+        std::fs::write(
+            dir.path().join("src/index/watcher.rs"),
+            format!("// new\n{WATCHER}"),
+        )
+        .unwrap();
+        let moved = check_freshness(&ws, &appdata, &private).unwrap();
+        assert!(moved.relocated_saved > 0);
+        assert!(moved.relocated.is_none());
+        let stored = read_tutorial(&ws, &appdata, &private).unwrap();
+        assert_eq!(
+            check_freshness(&ws, &appdata, &private)
+                .unwrap()
+                .relocated_saved,
+            0
+        );
+        assert_ne!(stored, t);
+        // The shared copy is not written: the relocated version is offered.
+        let shared = TutorialRef::Shared {
+            rel_path: readme.clone(),
+        };
+        let offered = check_freshness(&ws, &appdata, &shared).unwrap();
+        assert_eq!(offered.relocated_saved, 0);
+        assert!(offered.relocated.is_some());
+        assert_eq!(read_tutorial(&ws, &appdata, &shared).unwrap(), t);
+
+        // A cited line changed: maybe outdated, the steps citing it affected.
+        std::fs::write(
+            dir.path().join("src/index/watcher.rs"),
+            format!("// new\n{}", WATCHER.replace("200", "500")),
+        )
+        .unwrap();
+        let changed = check_freshness(&ws, &appdata, &private).unwrap();
+        assert!(
+            matches!(changed.badge, Badge::MaybeOutdated { .. }),
+            "{changed:?}"
+        );
+        assert!(!changed.affected.is_empty());
     }
 }

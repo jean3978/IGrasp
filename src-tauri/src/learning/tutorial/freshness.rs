@@ -9,6 +9,7 @@ use std::path::Path;
 
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use ts_rs::TS;
 
 use super::schema::{Citation, SourceHash, Tutorial};
 use crate::learning::corpus::read_text;
@@ -84,8 +85,9 @@ pub fn merge_source_hashes(root: &Path, t: &Tutorial) -> Vec<SourceHash> {
 }
 
 /// What a cited range looks like now.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(tag = "state", rename_all = "camelCase")]
+#[ts(export)]
 pub enum SourceState {
     UpToDate,
     /// The same lines are elsewhere in the file (relocated locally).
@@ -102,18 +104,21 @@ pub enum SourceState {
     Unchecked,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct SourceCheck {
     pub path: String,
     pub lines: Option<String>,
     #[serde(flatten)]
+    #[ts(flatten)]
     pub state: SourceState,
 }
 
 /// The badge of the Academy library.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
 #[serde(tag = "badge", rename_all = "camelCase")]
+#[ts(export)]
 pub enum Badge {
     UpToDate,
     MaybeOutdated { changed: usize, of: usize },
@@ -263,6 +268,63 @@ pub fn relocate(t: &mut Tutorial, report: &Report) -> usize {
         }
     }
     moved
+}
+
+/// A step of a tutorial: its chapter and its index there.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct StepRef {
+    pub chapter: u32,
+    pub step: u32,
+}
+
+/// What opening a tutorial checked (local, no token): the badge, every cited range, the steps
+/// citing a changed or missing one, and the moved citations: relocated and saved for a private
+/// tutorial, offered as a new version for a shared one (its files change only through a write
+/// the user confirms).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct FreshnessReport {
+    pub badge: Badge,
+    pub checks: Vec<SourceCheck>,
+    pub affected: Vec<StepRef>,
+    /// Citations relocated and saved (a private tutorial).
+    pub relocated_saved: u32,
+    /// The shared tutorial with its moved citations relocated, to write after a confirmation.
+    pub relocated: Option<Tutorial>,
+}
+
+/// The report of `t`; `saved` receives the relocated copy when citations moved and
+/// returns whether it was saved (a private tutorial) or must be offered (a shared one).
+pub fn report(root: &Path, t: &Tutorial, saved: impl FnOnce(&Tutorial) -> bool) -> FreshnessReport {
+    let report = check(root, t);
+    let to_u32 = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+    let affected = affected_steps(t, &report)
+        .into_iter()
+        .map(|(c, s)| StepRef {
+            chapter: to_u32(c),
+            step: to_u32(s),
+        })
+        .collect();
+    let (mut relocated_saved, mut relocated) = (0, None);
+    if report.moved > 0 {
+        let mut copy = t.clone();
+        let n = relocate(&mut copy, &report);
+        if saved(&copy) {
+            relocated_saved = to_u32(n);
+        } else {
+            relocated = Some(copy);
+        }
+    }
+    FreshnessReport {
+        badge: report.badge,
+        checks: report.checks,
+        affected,
+        relocated_saved,
+        relocated,
+    }
 }
 
 /// The steps (chapter index, step index) that cite a changed or missing source: marked in the

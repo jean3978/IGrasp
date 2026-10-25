@@ -13,6 +13,7 @@ use ts_rs::TS;
 use super::{AppData, now_ms, read_json, write_json};
 use crate::error::{AppError, AppResult};
 use crate::learning::tutorial::families::TutorialSubject;
+use crate::learning::tutorial::freshness::Badge;
 use crate::learning::tutorial::progress::{
     MAX_PROGRESS_TUTORIALS, MAX_USAGE, TutorialProgress, TutorialUsage,
 };
@@ -78,6 +79,8 @@ pub struct TutorialSummary {
     /// When it last changed (a private tutorial's save, a shared README's modification).
     pub updated_ms: i64,
     pub progress: Option<ProgressSummary>,
+    /// The local freshness check's badge (set by the library, which reads the files).
+    pub freshness: Option<Badge>,
 }
 
 impl TutorialSummary {
@@ -114,6 +117,7 @@ impl TutorialSummary {
                 step: p.step,
                 updated: crate::learning::tutorial::progress::updated_steps(t, p),
             }),
+            freshness: None,
         }
     }
 }

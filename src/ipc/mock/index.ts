@@ -77,6 +77,7 @@ import {
   tutorialSlug,
 } from './mockTutorialShare';
 import { summaryOf as tutorialSummaryOf } from './mockTutorialStore';
+import { checkFreshness, freshnessReport } from './mockTutorialFreshness';
 import { emptyQuizzes, saveCurrent, summaryOf as quizSummaryOf } from './mockLearning';
 import type { FolderQuizzes } from './mockLearning';
 import { isQuizMarkdown, safeFileName } from './mockSave';
@@ -874,7 +875,14 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         ];
       });
       shared.sort((a, b) => b.updatedMs - a.updatedMs);
-      return [...privateSummaries(folder), ...shared];
+      const read = (p: string) => state.files.get(p);
+      return [...privateSummaries(folder), ...shared].map((s) => {
+        const t =
+          s.reference.type === 'private'
+            ? folder.stored.get(s.reference.id)?.tutorial
+            : state.sharedTutorials.get(s.reference.relPath);
+        return t ? { ...s, freshness: checkFreshness(t, read).badge } : s;
+      });
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     getTutorial: async (reference) => {
@@ -920,6 +928,28 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       const folder = tutorialsOf();
       addSuggested(folder, structuredClone(subjects));
       return structuredClone(folder.suggested);
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    checkTutorialFreshness: async (reference) => {
+      const folder = tutorialsOf();
+      const t =
+        reference.type === 'shared'
+          ? readShared(reference.relPath)
+          : folder.stored.get(reference.id)?.tutorial;
+      if (!t)
+        throw new BackendError(
+          'TutorialNotFound',
+          `This tutorial no longer exists: ${reference.type === 'shared' ? reference.relPath : reference.id}`,
+        );
+      return freshnessReport(
+        t,
+        (p) => state.files.get(p),
+        (copy) => {
+          if (reference.type === 'shared') return false;
+          saveStored(folder, copy, Date.now());
+          return true;
+        },
+      );
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     planTutorialWrite: async (target, tutorial) => {

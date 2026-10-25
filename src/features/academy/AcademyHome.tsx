@@ -24,6 +24,7 @@ import { ProjectProfilePanel } from '../profile/ProjectProfilePanel';
 import { InlineCode } from '../quiz/InlineCode';
 import { formatWhen } from '../quiz/quizFormat';
 import { PickDialog } from './PickDialog';
+import { badgeShort } from './freshnessView';
 import { FAMILIARITY_LABEL, LENGTH_LABEL } from './labels';
 
 export function AcademyHome({ hootLine }: { hootLine: string }) {
@@ -336,6 +337,16 @@ function Library({ tutorials, labelledBy }: { tutorials: TutorialSummary[]; labe
                         : 'private'}
                     </span>
                     {t.sharedAs && <span className="academy-tag">shared as {t.sharedAs}</span>}
+                    {t.freshness && t.freshness.badge !== 'upToDate' && (
+                      <span className="academy-tag academy-tag-warn">
+                        {badgeShort(t.freshness)}
+                      </span>
+                    )}
+                    {p && p.updated > 0 && (
+                      <span className="academy-tag academy-tag-warn">
+                        {p.updated} updated since you read {p.updated === 1 ? 'it' : 'them'}
+                      </span>
+                    )}
                     {t.verified && (
                       <span className="academy-tag academy-tag-done">
                         verified {t.verified.date.slice(0, 10)}

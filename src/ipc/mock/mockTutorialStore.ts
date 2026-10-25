@@ -130,6 +130,7 @@ export function summaryOf(
           ),
         }
       : null,
+    freshness: null,
   };
 }
 

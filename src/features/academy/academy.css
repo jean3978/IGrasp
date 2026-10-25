@@ -560,3 +560,52 @@
   gap: 8px;
   margin: 8px 0;
 }
+
+/* The local freshness check of the open tutorial. */
+.academy-freshness {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: var(--border-width) solid var(--quiz-card-border);
+  border-radius: var(--radius-m);
+  background: var(--quiz-card);
+}
+
+.academy-freshness[data-badge='maybeOutdated'],
+.academy-freshness[data-badge='sourcesMissing'] {
+  border-color: var(--warning);
+}
+
+.academy-freshness-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.academy-freshness-badge svg,
+.academy-inline-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: text-bottom;
+}
+
+.academy-freshness[data-badge='upToDate'] .academy-freshness-badge svg {
+  color: var(--success);
+}
+
+.academy-freshness:not([data-badge='upToDate']) .academy-freshness-badge svg {
+  color: var(--warning);
+}
+
+.academy-freshness-details summary {
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+.academy-freshness-list {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0;
+  padding-left: 20px;
+}

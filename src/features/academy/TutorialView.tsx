@@ -15,6 +15,8 @@ import { playEffect } from '../quiz/effects/effects';
 import { ChapterPlayer } from './ChapterPlayer';
 import { CourseMap } from './CourseMap';
 import { GraduationScreen } from './GraduationScreen';
+import { FreshnessPanel } from './FreshnessPanel';
+import { affectedChapters, sourceStatusMap } from './freshnessView';
 import { FAMILIARITY_LABEL, LENGTH_LABEL } from './labels';
 
 const keyOf = (r: TutorialRef) => (r.type === 'private' ? r.id : r.relPath);
@@ -27,6 +29,7 @@ export function TutorialView({ reference, motion }: { reference: TutorialRef; mo
   const chapter = useTutorialPlayer((s) => s.chapter);
   const step = useTutorialPlayer((s) => s.step);
   const updated = useTutorialPlayer((s) => s.updated);
+  const freshness = useTutorialPlayer((s) => s.freshness);
   const event = useTutorialPlayer((s) => s.event);
   const graduation = useTutorialPlayer((s) => s.graduation);
   const openChapter = useTutorialPlayer((s) => s.openChapter);
@@ -115,7 +118,7 @@ export function TutorialView({ reference, motion }: { reference: TutorialRef; mo
           chapterIndex={chapter}
           stepIndex={step}
           updated={updated}
-          sourceStatus={{}}
+          sourceStatus={sourceStatusMap(freshness)}
           motion={motion}
         />
       ) : (
@@ -160,6 +163,9 @@ export function TutorialView({ reference, motion }: { reference: TutorialRef; mo
                 )}
               </div>
             )}
+            {freshness && (
+              <FreshnessPanel reference={reference} tutorial={tutorial} report={freshness} />
+            )}
             {writing && <p className="quiz-note">Hoot is writing the next chapters…</p>}
             {failure && (
               <p className="quiz-note" role="alert">
@@ -172,7 +178,7 @@ export function TutorialView({ reference, motion }: { reference: TutorialRef; mo
             tutorial={tutorial}
             progress={progress}
             updated={updated}
-            affected={new Map()}
+            affected={affectedChapters(freshness)}
             editable={reference.type === 'private'}
             onOpen={openChapter}
           />

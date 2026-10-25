@@ -9,6 +9,7 @@ import { BackendError } from '../ipc/types';
 import type { Tutorial, WritePlan, WriteTarget, WrittenTutorial } from '../ipc/types';
 import { errorMessage } from './aiProvider';
 import { useAcademy } from './academy';
+import { useTutorialPlayer } from './tutorialPlayer';
 import { useToasts } from './toasts';
 
 export interface PendingWrite {
@@ -65,6 +66,10 @@ export const useTutorialWrite = create<TutorialWriteState>((set, get) => ({
         .getState()
         .notify('info', `${DONE[pending.target.type]}: ${where}`, written.readme ?? undefined);
       void useAcademy.getState().refreshLibrary();
+      // The open tutorial was the one written (a shared one updated): read it again.
+      const open = useTutorialPlayer.getState().reference;
+      if (open?.type === 'shared' && written.readme === open.relPath)
+        void useTutorialPlayer.getState().load(open);
       return written;
     } catch (err) {
       if (err instanceof BackendError && err.code === 'SaveCancelled') {

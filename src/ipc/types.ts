@@ -60,6 +60,7 @@ import type { Tutorial } from './generated/Tutorial';
 import type { TutorialRef } from './generated/TutorialRef';
 import type { StoredTutorial } from './generated/StoredTutorial';
 import type { WritePlan } from './generated/WritePlan';
+import type { FreshnessReport } from './generated/FreshnessReport';
 import type { WriteTarget } from './generated/WriteTarget';
 import type { WrittenTutorial } from './generated/WrittenTutorial';
 import type { TutorialProgress } from './generated/TutorialProgress';
@@ -206,6 +207,11 @@ export type { StoredTutorial } from './generated/StoredTutorial';
 export type { PlannedFile } from './generated/PlannedFile';
 export type { PlannedState } from './generated/PlannedState';
 export type { WritePlan } from './generated/WritePlan';
+export type { Badge } from './generated/Badge';
+export type { FreshnessReport } from './generated/FreshnessReport';
+export type { SourceCheck } from './generated/SourceCheck';
+export type { SourceState } from './generated/SourceState';
+export type { StepRef } from './generated/StepRef';
 export type { WriteTarget } from './generated/WriteTarget';
 export type { WrittenTutorial } from './generated/WrittenTutorial';
 export type { TutorialProgress } from './generated/TutorialProgress';
@@ -464,6 +470,12 @@ export interface Backend {
    * `SaveCancelled` when dismissed). `TutorialFolderTaken` when another tutorial is there.
    */
   writeTutorial(target: WriteTarget, tutorial?: Tutorial): Promise<WrittenTutorial>;
+  /**
+   * The local freshness check of a tutorial (no token): every cited range against the files.
+   * Moved citations of a private tutorial are relocated and saved; for a shared one the
+   * relocated version is returned (`relocated`), to write only after a confirmation.
+   */
+  checkTutorialFreshness(reference: TutorialRef): Promise<FreshnessReport>;
 
   listen<E extends EventName>(
     event: E,

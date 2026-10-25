@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { backend } from '../ipc/client';
-import type { Tutorial, TutorialProgress, TutorialRef } from '../ipc/types';
+import type { FreshnessReport, Tutorial, TutorialProgress, TutorialRef } from '../ipc/types';
 import {
   completeStep,
   emptyProgress,
@@ -35,11 +35,15 @@ interface PlayerState {
   step: number;
   /** Steps completed before they changed ("updated since you read it"). */
   updated: Set<string>;
+  /** The local freshness check of the open tutorial (null until it ran, or when it failed). */
+  freshness: FreshnessReport | null;
   event: PlayerEvent | null;
   /** The graduation screen is shown (once, when the last chapter completes). */
   graduation: boolean;
 
   load: (reference: TutorialRef) => Promise<void>;
+  /** Runs the local freshness check again (after a write, or files changed on disk). */
+  recheck: () => Promise<void>;
   openChapter: (index: number) => void;
   showMap: () => void;
   goto: (step: number) => void;
@@ -75,6 +79,7 @@ export const useTutorialPlayer = create<PlayerState>()((set, get) => {
     chapter: null,
     step: 0,
     updated: new Set(),
+    freshness: null,
     event: null,
     graduation: false,
 
@@ -82,6 +87,8 @@ export const useTutorialPlayer = create<PlayerState>()((set, get) => {
       const same = get().reference && keyOf(get().reference as TutorialRef) === keyOf(reference);
       set({ reference, error: null, ...(same ? {} : { tutorial: null, progress: null }) });
       try {
+        // First: a private tutorial's moved citations are relocated and saved by the check.
+        const freshness = await backend.checkTutorialFreshness(reference).catch(() => null);
         const tutorial = await backend.getTutorial(reference);
         const saved = await backend.getTutorialProgress(tutorial.id);
         const now = Date.now();
@@ -91,6 +98,7 @@ export const useTutorialPlayer = create<PlayerState>()((set, get) => {
         set({
           tutorial,
           progress,
+          freshness,
           updated: updatedSince(tutorial, progress),
           chapter: same ? get().chapter : null,
           step: same ? get().step : 0,
@@ -98,6 +106,18 @@ export const useTutorialPlayer = create<PlayerState>()((set, get) => {
         });
       } catch (err) {
         set({ error: errorMessage(err) });
+      }
+    },
+
+    async recheck() {
+      const reference = get().reference;
+      if (!reference) return;
+      const freshness = await backend.checkTutorialFreshness(reference).catch(() => null);
+      if (get().reference !== reference) return;
+      set({ freshness });
+      if (freshness && freshness.relocatedSaved > 0) {
+        const tutorial = await backend.getTutorial(reference);
+        if (get().reference === reference) set({ tutorial });
       }
     },
 
@@ -182,6 +202,7 @@ export const useTutorialPlayer = create<PlayerState>()((set, get) => {
         chapter: null,
         step: 0,
         updated: new Set(),
+        freshness: null,
         event: null,
         graduation: false,
       });
