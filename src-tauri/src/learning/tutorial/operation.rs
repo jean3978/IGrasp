@@ -6,6 +6,7 @@
 
 use super::compose::{ChapterStages, compose_outline};
 use super::cost;
+use super::suggest::compose_suggest;
 use super::{Length, TutorialRequest};
 use crate::ai::run::RunPlan;
 use crate::ai::types::{AiPolicy, AiRequest, AiUserAction};
@@ -103,7 +104,22 @@ pub fn compose_operation(
                 calls,
             })
         }
-        (AiUserAction::TutorialGeneration, _) => Err(mismatch()),
+        (AiUserAction::SubjectSuggestion, TutorialRequest::Suggest) => {
+            let offered = learning::tutorial_subjects(ws, appdata, names)?.cards;
+            let (profile, walk) = learning::corrected_profile(ws, appdata, false)?;
+            let composed =
+                compose_suggest(ws.guard.root(), &profile, &walk, names, &offered, model)?;
+            Ok(TutorialOperation {
+                kind: cost::SUGGEST,
+                length: Length::Standard,
+                prompt_bytes: composed.prompt_bytes,
+                inlined: composed.inlined,
+                request: composed.request,
+                plan: RunPlan::Validated(Box::new(composed.validator)),
+                calls: 1,
+            })
+        }
+        (AiUserAction::TutorialGeneration | AiUserAction::SubjectSuggestion, _) => Err(mismatch()),
         _ => Err(AppError::Ai(
             "This tutorial operation is not available yet.".to_owned(),
         )),

@@ -10,6 +10,7 @@ import type {
   ChapterResult,
   Length,
   OutlineResult,
+  SuggestResult,
   Tutorial,
   TutorialInput,
   TutorialRequest,
@@ -282,6 +283,41 @@ describe('mock tutorial generation', () => {
         images: [],
         policy: 'readOnly',
       }),
+    ).rejects.toMatchObject({ code: 'Ai' });
+  });
+
+  it('suggests more subjects grounded in the project, new ones only, kept on demand', async () => {
+    mock().state.ai.tutorialScript = 'retry';
+    const events: AiEvent[] = [];
+    const done = new Promise<void>((resolve) => {
+      void backend.listen('ai://event', (e) => {
+        events.push(e.event);
+        if (e.event.type === 'done') resolve();
+      });
+    });
+    await backend.aiStart('subjectSuggestion', start({ kind: 'suggest' }));
+    await done;
+    expect(outcome(events)).toBe('Completed');
+    expect(events.filter((e) => e.type === 'attempt')).toHaveLength(1);
+    const r = outputs(events)[0] as SuggestResult;
+    expect(r.subjects.map((s) => s.id)).toEqual([
+      'suggested:how-igrasp-demo-shouts-a-greeting',
+      'suggested:what-the-ci-of-igrasp-demo-checks',
+      'suggested:how-igrasp-demo-is-packaged-as-the-demo-command',
+    ]);
+    expect(r.rejectedCount).toBe(1);
+    expect(mock().state.ai.starts).toEqual(['subjectSuggestion']);
+    expect(mock().state.ai.lastRequest?.prompt).toContain(
+      'Already offered:\n- How igrasp-demo fits',
+    );
+    // Nothing is kept until the frontend saves them.
+    expect((await backend.listTutorialSubjects()).cards.some((c) => c.kind === 'suggested')).toBe(
+      false,
+    );
+    await backend.saveSuggestedSubjects(r.subjects);
+    expect((await backend.listTutorialSubjects()).cards.at(-1)?.kind).toBe('suggested');
+    await expect(
+      backend.aiStart('subjectSuggestion', start({ kind: 'outline', input: input() })),
     ).rejects.toMatchObject({ code: 'Ai' });
   });
 

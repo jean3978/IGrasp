@@ -20,7 +20,8 @@ import type {
   TutorialUsage,
 } from '../types';
 import { MOCK_MAX_RETRIES } from './mockQuiz';
-import { corpusOfFiles } from './mockQuizValidate';
+import { corpusOfFiles, isAgentFile, isSecret, namesTheProject, words } from './mockQuizValidate';
+import { slug } from '../../lib/tutorial';
 import type { QuizCorpus } from './mockQuizValidate';
 import { GENERIC_STEP, POOL, THIN_SUGGESTIONS } from './mockTutorialPool';
 import type { PoolChapter } from './mockTutorialPool';
@@ -462,6 +463,173 @@ export function scriptedChapter(
 }
 
 export type { Step };
+
+// ---------------------------------------------------------------------------------------------
+// "Suggest more subjects", like Rust's `learning/tutorial/suggest.rs`.
+
+export interface MockSuggestComposed {
+  ctx: TutorialValidationContext;
+  taken: Set<string>;
+  prompt: string;
+  inlined: AiInlinedDocument[];
+}
+
+export function composeMockSuggest(
+  deps: MockTutorialDeps,
+  offered: TutorialSubject[],
+): MockSuggestComposed {
+  const b = base(deps, normalizedInput({ ...EMPTY_INPUT, subject: 'more subjects to learn' }));
+  const list = offered.map((c) => `- ${c.title}`).join('\n') || '(none)';
+  return {
+    ctx: b.ctx,
+    taken: new Set(offered.map((c) => c.title.toLowerCase())),
+    prompt: `You are Hoot, the teacher of IGrasp's Academy. Suggest 5 to 8 more tutorial subjects about ${deps.profile.name}.\nAlready offered:\n${list}`,
+    inlined: inlinedOf(deps, ['README.md', 'docs/architecture.md']),
+  };
+}
+
+const EMPTY_INPUT: TutorialInput = {
+  subject: '',
+  subjectId: null,
+  picks: [],
+  familiarity: 'newHere',
+  domainGap: null,
+  length: 'standard',
+  role: null,
+};
+
+interface RawSuggestion {
+  title: string;
+  blurb: string;
+  anchors: string[];
+  selfCheck: { projectSpecific: boolean; reason: string };
+}
+
+/** Like Rust's `SuggestValidator`. */
+export class MockSuggestValidator {
+  private best: TutorialSubject[] = [];
+  private rejectedTotal = 0;
+  private lastReason = '';
+
+  constructor(private readonly c: MockSuggestComposed) {}
+
+  private validate(raw: RawSuggestion[]): [TutorialSubject[], [string, string][]] {
+    const accepted: TutorialSubject[] = [];
+    const rejected: [string, string][] = [];
+    for (const s of raw.slice(0, 8)) {
+      const title = s.title.split(/\s+/).filter(Boolean).join(' ');
+      const key = title.toLowerCase();
+      const verdict = ((): TutorialSubject | string => {
+        if (this.c.taken.has(key) || accepted.some((a) => a.title.toLowerCase() === key))
+          return 'is already offered';
+        const anchors: string[] = [];
+        const cited = new Set<string>();
+        for (const a of s.anchors) {
+          const path = a
+            .trim()
+            .replace(/^(?:\.\/)+/, '')
+            .replace(/\\/g, '/');
+          const file = this.c.ctx.corpus.files.get(path);
+          if (file) {
+            if (!file.binary) {
+              for (const l of file.lines.slice(0, 3000)) for (const w of words(l)) cited.add(w);
+              anchors.push(path);
+            }
+          } else if (isAgentFile(path, this.c.ctx.agentNames))
+            return `starts from ${path}, an agent instruction file`;
+          else if (isSecret(path)) return `starts from ${path}, a file that may hold secrets`;
+        }
+        if (anchors.length === 0) return 'names no text file of this project as an anchor';
+        if (!s.selfCheck.projectSpecific) return 'your own self-check says it is not specific';
+        if (!namesTheProject(`${s.title} ${s.blurb}`, cited, this.c.ctx))
+          return 'generic: the title and the blurb name nothing of this project';
+        return {
+          id: `suggested:${slug(title)}`,
+          kind: 'suggested',
+          family: 'Suggested',
+          title,
+          blurb: s.blurb.trim(),
+          focus: `${title}: ${s.blurb.trim()}`,
+          anchors,
+          material: 'some',
+          picks: [],
+          domain: null,
+        };
+      })();
+      if (typeof verdict === 'string') rejected.push([title, verdict]);
+      else accepted.push(verdict);
+    }
+    return [accepted, rejected];
+  }
+
+  check(output: unknown): MockVerdict {
+    const subjects =
+      typeof output === 'object' && output !== null && 'subjects' in output
+        ? output.subjects
+        : null;
+    if (!Array.isArray(subjects)) {
+      this.lastReason = 'the answer was not valid JSON';
+      return {
+        type: 'retry',
+        repairPrompt: 'Return the subjects JSON again.',
+        reason: this.lastReason,
+      };
+    }
+    const [accepted, rejected] = this.validate(subjects as RawSuggestion[]);
+    this.rejectedTotal += rejected.length;
+    if (accepted.length > this.best.length) this.best = accepted;
+    if (accepted.length >= 3 && rejected.length === 0)
+      return { type: 'accept', value: { subjects: accepted, rejectedCount: this.rejectedTotal } };
+    this.lastReason = `${String(rejected.length)} subjects rejected`;
+    return {
+      type: 'retry',
+      repairPrompt: rejected.map(([t, why]) => `- ${t}: ${why}`).join('\n'),
+      reason: this.lastReason,
+    };
+  }
+
+  onExhausted(): MockVerdict {
+    if (this.best.length === 0)
+      return {
+        type: 'fail',
+        message: `Hoot could not find a new subject grounded in this project after ${String(1 + MOCK_MAX_RETRIES)} attempts (${this.lastReason}).`,
+      };
+    return { type: 'accept', value: { subjects: this.best, rejectedCount: this.rejectedTotal } };
+  }
+}
+
+const suggestion = (title: string, blurb: string, anchors: string[]): RawSuggestion => ({
+  title,
+  blurb,
+  anchors,
+  selfCheck: { projectSpecific: true, reason: 'names files of igrasp-demo' },
+});
+
+/** What the mock model suggests, attempt `n`. */
+export function scriptedSuggest(script: MockTutorialScript, n: number): unknown {
+  if (script === 'exhaust') return null;
+  const subjects = [
+    suggestion(
+      'How igrasp-demo shouts a greeting',
+      'Follows the loud option of main() in src/main.ts.',
+      ['src/main.ts'],
+    ),
+    suggestion('What the CI of igrasp-demo checks', 'Follows ci.yml down to make test.', [
+      '.github/workflows/ci.yml',
+      'Makefile',
+    ]),
+    suggestion(
+      'How igrasp-demo is packaged as the demo command',
+      'Follows the bin entry of package.json to src/main.ts.',
+      ['package.json', 'src/main.ts'],
+    ),
+  ];
+  if (script === 'retry' && n === 1)
+    return {
+      subjects: [...subjects, suggestion('Learn TypeScript', 'Types in general.', ['README.md'])],
+    };
+  return { subjects };
+}
 
 // ---------------------------------------------------------------------------------------------
 // The cost line, like Rust's `learning/tutorial/cost.rs`.

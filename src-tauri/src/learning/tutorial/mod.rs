@@ -18,6 +18,7 @@ pub mod progress;
 pub mod prompt;
 pub mod repo;
 pub mod schema;
+pub mod suggest;
 pub mod validate;
 
 use serde::{Deserialize, Serialize};

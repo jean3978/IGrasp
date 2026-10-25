@@ -119,7 +119,7 @@ fn reader(input: &TutorialInput) -> String {
 
 /// The preamble shared by the outline prompt and a fresh chapter prompt: who Hoot is, the
 /// audience, the project, the rules, the voice, the corpus.
-fn preamble(input: &PromptInput<'_>, task: &str) -> String {
+pub(crate) fn preamble(input: &PromptInput<'_>, task: &str) -> String {
     let agent = if input.agent_files.trim().is_empty() {
         "(none)".to_owned()
     } else {

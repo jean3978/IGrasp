@@ -203,6 +203,7 @@ export type { StoredTutorial } from './generated/StoredTutorial';
 export type { TutorialProgress } from './generated/TutorialProgress';
 export type { StepAnswer } from './generated/StepAnswer';
 export type { TutorialUsage } from './generated/TutorialUsage';
+export type { SuggestResult } from './generated/SuggestResult';
 export type {
   AiCapabilities,
   AiEventEnvelope,

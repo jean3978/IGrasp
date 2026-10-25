@@ -32,7 +32,10 @@ import {
   MOCK_TUTORIAL_SCHEMA,
   MockChapterValidator,
   MockOutlineValidator,
+  MockSuggestValidator,
   composeMockChapters,
+  composeMockSuggest,
+  scriptedSuggest,
   composeMockOutline,
   costHint,
   scriptedChapter,
@@ -41,6 +44,7 @@ import {
 import type {
   MockChapterStage,
   MockOutlineComposed,
+  MockSuggestComposed,
   MockTutorialScript,
   MockVerdict,
 } from './mockTutorial';
@@ -788,6 +792,7 @@ export function createMockAi({
   /** A composed tutorial operation, like Rust's `compose_operation`. */
   type TutorialOp =
     | { kind: 'outline'; length: Length; calls: 1; outline: MockOutlineComposed }
+    | { kind: 'suggest'; length: Length; calls: 1; suggest: MockSuggestComposed }
     | {
         kind: 'chapters';
         length: Length;
@@ -797,6 +802,16 @@ export function createMockAi({
 
   const composeTutorial = (action: AiUserAction, request: TutorialRequest): TutorialOp => {
     const deps = { files: files(), profile: profile(), agentNames: MOCK_CONTEXT_FILE_NAMES };
+    if (action === 'subjectSuggestion') {
+      if (request.kind !== 'suggest')
+        throw new BackendError('Ai', 'This tutorial request does not match its action.');
+      return {
+        kind: 'suggest',
+        length: 'standard',
+        calls: 1,
+        suggest: composeMockSuggest(deps, tutorialCards()),
+      };
+    }
     if (action !== 'tutorialGeneration')
       throw new BackendError('Ai', 'This tutorial operation is not available yet.');
     switch (request.kind) {
@@ -945,6 +960,21 @@ export function createMockAi({
       });
       end(o, 'Completed', null);
     };
+    if (op.kind === 'suggest') {
+      const composed = op.suggest;
+      return [
+        session,
+        ...validatedSteps(
+          composed.inlined.filter((d) => !d.contextOnly).map((d) => d.path),
+          (n) => scriptedSuggest(script, n),
+          new MockSuggestValidator(composed),
+          (o) => {
+            completed(o);
+          },
+          usageFor,
+        ),
+      ];
+    }
     if (op.kind === 'outline') {
       const composed = op.outline;
       const validator = new MockOutlineValidator(composed);
@@ -1065,7 +1095,12 @@ export function createMockAi({
               ? 'subjectSuggestion'
               : 'tutorialGeneration';
         const op = composeTutorial(action, input.tutorial);
-        const first = op.kind === 'outline' ? op.outline : op.stages([])[0];
+        const first =
+          op.kind === 'outline'
+            ? op.outline
+            : op.kind === 'suggest'
+              ? op.suggest
+              : op.stages([])[0];
         const inlined = first?.inlined ?? [];
         const inlinedBytes = inlined.reduce((n, d) => n + d.bytes, 0);
         const size = estimateSize(
@@ -1124,7 +1159,9 @@ export function createMockAi({
           ? ''
           : tutorialOp.kind === 'outline'
             ? tutorialOp.outline.prompt
-            : (tutorialOp.stages([])[0]?.prompt ?? '');
+            : tutorialOp.kind === 'suggest'
+              ? tutorialOp.suggest.prompt
+              : (tutorialOp.stages([])[0]?.prompt ?? '');
       const request: AiRequest = tutorialOp
         ? {
             prompt: firstPrompt,
