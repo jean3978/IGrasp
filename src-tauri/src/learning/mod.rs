@@ -87,6 +87,27 @@ pub fn subjects(
     Ok(subjects::propose(&profile, &corpus))
 }
 
+/// The Academy's subject cards and domains of `ws` (local: the profile, the corpus, the subject
+/// detection, no AI), followed by the subjects the AI suggested earlier in this folder.
+pub fn tutorial_subjects(
+    ws: &Workspace,
+    appdata: &AppData,
+    agent_names: &[String],
+) -> AppResult<tutorial::families::TutorialSubjects> {
+    let (profile, walk) = corrected_profile(ws, appdata, false)?;
+    let corpus = corpus::Corpus::build(
+        ws.guard.root(),
+        &walk,
+        &corpus::SourceScope::WholeProject,
+        agent_names,
+    );
+    let detected = subjects::propose(&profile, &corpus);
+    let mut out = tutorial::families::build(&profile, &corpus, &detected);
+    out.cards
+        .extend(appdata.folder_learning(&root_key(ws))?.suggested_subjects);
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::atomic::Ordering;

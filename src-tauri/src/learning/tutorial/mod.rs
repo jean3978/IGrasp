@@ -9,6 +9,7 @@
 #![allow(dead_code)]
 
 pub mod compose;
+pub mod families;
 pub mod freshness;
 pub mod markdown;
 pub mod prompt;

@@ -53,6 +53,7 @@ import type { QuizSaveKind } from './generated/QuizSaveKind';
 import type { SavedQuizFile } from './generated/SavedQuizFile';
 import type { QuizFileSummary } from './generated/QuizFileSummary';
 import type { QuizFileText } from './generated/QuizFileText';
+import type { TutorialSubjects } from './generated/TutorialSubjects';
 
 export type {
   AppInfo,
@@ -186,6 +187,10 @@ export type { TryItStep } from './generated/TryItStep';
 export type { RecapStep } from './generated/RecapStep';
 export type { OutlineResult } from './generated/OutlineResult';
 export type { ChapterResult } from './generated/ChapterResult';
+export type { FamilyKind } from './generated/FamilyKind';
+export type { SubjectPick } from './generated/SubjectPick';
+export type { TutorialSubject } from './generated/TutorialSubject';
+export type { TutorialSubjects } from './generated/TutorialSubjects';
 export type {
   AiCapabilities,
   AiEventEnvelope,
@@ -398,6 +403,12 @@ export interface Backend {
    * for a file without the quiz front matter.
    */
   readQuizFile(relPath?: string): Promise<QuizFileText>;
+
+  /**
+   * The Academy's subject cards and the domains for "I'm new to…" of the open folder (local: the
+   * profile and the corpus, no AI), followed by the subjects the AI suggested earlier.
+   */
+  listTutorialSubjects(): Promise<TutorialSubjects>;
 
   listen<E extends EventName>(
     event: E,

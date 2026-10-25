@@ -14,6 +14,7 @@ use crate::error::{AppError, AppResult};
 use crate::learning::corpus::SourceScope;
 use crate::learning::quiz::schema::QuizQuestion;
 use crate::learning::quiz::{QuizCategory, QuizMode};
+use crate::learning::tutorial::families::TutorialSubject;
 use crate::profile::ProfileCorrections;
 
 pub const LEARNING_DIR: &str = "learning";
@@ -129,6 +130,8 @@ pub struct FolderLearning {
     pub current_quiz: Option<QuizRecord>,
     /// Finished quizzes, newest first, at most [`MAX_HISTORY`].
     pub history: Vec<QuizRecord>,
+    /// The Academy's subject cards the AI suggested ("Suggest more subjects"), kept as cards.
+    pub suggested_subjects: Vec<TutorialSubject>,
 }
 
 fn valid_record_id(id: &str) -> bool {

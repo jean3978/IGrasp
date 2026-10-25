@@ -42,6 +42,11 @@ const PROVIDER_NEUTRAL_FILES = [
   '/src/ipc/mock/mockProfile.ts',
   '/src/ipc/mock/mockSubjects.ts',
   '/src/ipc/mock/mockLearning.ts',
+  '/src/ipc/mock/mockFamilies.ts',
+  '/src/ipc/mock/mockTutorial',
+  '/src/features/academy/',
+  '/src/stores/academy.ts',
+  '/src/stores/tutorialPlayer.ts',
 ];
 
 /**

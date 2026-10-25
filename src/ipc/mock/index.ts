@@ -45,6 +45,9 @@ import {
   normalizeCorrections,
 } from './mockProfile';
 import { fixtureSubjects } from './mockSubjects';
+import { fixtureTutorialSubjects } from './mockFamilies';
+import { emptyTutorials } from './mockTutorialStore';
+import type { FolderTutorials } from './mockTutorialStore';
 import { emptyQuizzes, saveCurrent, summaryOf as quizSummaryOf } from './mockLearning';
 import type { FolderQuizzes } from './mockLearning';
 import { isQuizMarkdown, safeFileName } from './mockSave';
@@ -83,6 +86,8 @@ export interface MockState {
   learning: Map<string, ProfileCorrections>;
   /** The quiz in progress and the history by root path (app data). */
   quizzes: Map<string, FolderQuizzes>;
+  /** The Academy's data by root path (app data): suggested subjects, tutorials, progress. */
+  tutorials: Map<string, FolderTutorials>;
   /** What the next save dialog returns (root-relative): null = the suggested name in the folder
    * of the kind, '' = dismissed. */
   saveDialogResult: string | null;
@@ -136,6 +141,7 @@ function initialState(): MockState {
     pickFolderResult: FIXTURE_ROOT,
     learning: new Map(),
     quizzes: new Map(),
+    tutorials: new Map(),
     saveDialogResult: null,
     saved: [],
     openQuizFileResult: null,
@@ -724,6 +730,11 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     listSubjects: () => {
       if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
       return Promise.resolve(fixtureSubjects(state.files));
+    },
+    listTutorialSubjects: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const folder = state.tutorials.get(state.root.path) ?? emptyTutorials();
+      return Promise.resolve(fixtureTutorialSubjects(state.files, folder.suggested));
     },
     saveQuizMarkdown: (kind, markdown, suggestedName) => {
       const root = state.root;

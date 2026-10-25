@@ -120,6 +120,7 @@ export const tauriBackend: Backend = {
   getProjectProfile: (force) => invoke('get_project_profile', { force: force ?? false }),
   setProfileCorrections: (corrections) => invoke('set_profile_corrections', { corrections }),
   listSubjects: () => invoke('list_subjects'),
+  listTutorialSubjects: () => invoke('list_tutorial_subjects'),
   getCurrentQuiz: () => invoke('get_current_quiz'),
   saveCurrentQuiz: (record) => invoke('save_current_quiz', { record }),
   clearCurrentQuiz: () => invoke('clear_current_quiz'),

@@ -92,7 +92,7 @@ const ENTRY_NAMES: &[&str] = &[
     "build.cs",
 ];
 
-fn humanize(stem: &str) -> String {
+pub(crate) fn humanize(stem: &str) -> String {
     let words: Vec<String> = stem
         .split(['-', '_', ' '])
         .filter(|w| !w.is_empty())
@@ -116,12 +116,12 @@ fn stem(path: &str) -> &str {
 
 /// Engine bookkeeping next to the real files (Godot's `.import` and `.uid`, Unity's `.meta`):
 /// never material, never an anchor.
-fn is_metadata(path: &str) -> bool {
+pub(crate) fn is_metadata(path: &str) -> bool {
     let l = path.to_lowercase();
     l.ends_with(".import") || l.ends_with(".uid") || l.ends_with(".meta")
 }
 
-fn is_test_path(path: &str) -> bool {
+pub(crate) fn is_test_path(path: &str) -> bool {
     let l = path.to_lowercase();
     l.contains("/test")
         || l.starts_with("test")
@@ -271,7 +271,7 @@ fn words_of(path: &str) -> Vec<String> {
 }
 
 /// Whether a word of the path is one of `words` (or its plural).
-fn path_has(path: &str, words: &[&str]) -> bool {
+pub(crate) fn path_has(path: &str, words: &[&str]) -> bool {
     words_of(path).iter().any(|t| {
         words.iter().any(|w| {
             t == w
@@ -1433,9 +1433,26 @@ mod tests {
         let (profile, walk) = build(&root, &[], &AtomicBool::new(false));
         let corpus = Corpus::build(&root, &walk, &SourceScope::WholeProject, &[]);
         println!("PROFILE {}", profile.summary);
-        for s in propose(&profile, &corpus) {
+        let subjects = propose(&profile, &corpus);
+        for s in &subjects {
             println!("{:?} | {} | {} | {:?}", s.group, s.id, s.title, s.anchors);
         }
+        // The Academy's cards, built on the same detection.
+        let cards = crate::learning::tutorial::families::build(&profile, &corpus, &subjects);
+        println!("\nACADEMY too_thin={}", cards.too_thin);
+        for c in &cards.cards {
+            println!(
+                "{:?} | {} | {} | {} | {:?} | picks {:?} | gap {:?}",
+                c.kind,
+                c.id,
+                c.title,
+                c.blurb,
+                c.anchors,
+                c.picks.iter().map(|p| &p.title).collect::<Vec<_>>(),
+                c.domain
+            );
+        }
+        println!("DOMAINS {:?}", cards.domains);
     }
 
     #[test]
