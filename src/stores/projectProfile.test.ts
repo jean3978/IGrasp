@@ -21,6 +21,22 @@ describe('project profile store', () => {
     expect(p?.summary).toBe('igrasp-demo: a command-line tool in TypeScript, tested with Vitest.');
   });
 
+  it('lists the subjects of the fixture, about the project', async () => {
+    await useProjectProfile.getState().load(FIXTURE_ROOT);
+    await useProjectProfile.getState().loadSubjects();
+    const subjects = useProjectProfile.getState().subjects ?? [];
+    expect(subjects.map((s) => s.id)).toEqual([
+      'overview',
+      'feature:docs/guide/getting-started.md',
+      'build',
+    ]);
+    for (const s of subjects) {
+      expect(s.title).toContain('igrasp-demo');
+      expect(s.anchors.length).toBeGreaterThan(0);
+    }
+    expect(window.__igraspMock?.state.ai.starts).toEqual([]);
+  });
+
   it('saves corrections that the next load keeps', async () => {
     await useProjectProfile.getState().load(FIXTURE_ROOT);
     await useProjectProfile.getState().saveCorrections({

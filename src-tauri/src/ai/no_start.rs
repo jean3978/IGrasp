@@ -221,10 +221,11 @@ fn no_ai_operation_starts_without_a_user_action() {
                 .update_folder_learning(&crate::learning::root_key(ws), |l| {
                     l.profile_corrections.notes = "also a server".into();
                 })?;
-            crate::learning::corrected_profile(ws, &state.appdata, false)
+            crate::learning::corrected_profile(ws, &state.appdata, false)?;
+            crate::learning::subjects(ws, &state.appdata, &names)
         })
         .unwrap();
-    assert_eq!(starts(&state), 0, "profile and corrections");
+    assert_eq!(starts(&state), 0, "profile, corrections and subjects");
 
     // Closing the folder.
     state.ai.cancel_all();

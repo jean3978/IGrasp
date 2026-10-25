@@ -2,11 +2,11 @@
 //! folder as the generators see it, and later the corpus, the subjects and the quiz. Nothing here
 //! calls a provider: generations go through `ai_start` and the gateway like every AI operation.
 
-#[allow(dead_code)]
 pub mod agent_files;
-// Used by the quiz composer (step 14 of the phase 4 plan).
+// Partly used by the quiz composer (step 14 of the phase 4 plan).
 #[allow(dead_code)]
 pub mod corpus;
+pub mod subjects;
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -66,6 +66,22 @@ pub fn corrected_profile(
     let (mut profile, walk) = detected(ws, force);
     profile::apply_corrections(&mut profile, &corrections);
     Ok((profile, walk))
+}
+
+/// The subject proposals of `ws` (local: the profile, the whole-project corpus, no AI).
+pub fn subjects(
+    ws: &Workspace,
+    appdata: &AppData,
+    agent_names: &[String],
+) -> AppResult<Vec<subjects::Subject>> {
+    let (profile, walk) = corrected_profile(ws, appdata, false)?;
+    let corpus = corpus::Corpus::build(
+        ws.guard.root(),
+        &walk,
+        &corpus::SourceScope::WholeProject,
+        agent_names,
+    );
+    Ok(subjects::propose(&profile, &corpus))
 }
 
 #[cfg(test)]

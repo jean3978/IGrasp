@@ -107,6 +107,7 @@ pub fn run() {
             commands::ai::forget_conversations,
             commands::learning::get_project_profile,
             commands::learning::set_profile_corrections,
+            commands::learning::list_subjects,
         ])
         .build(tauri::generate_context!())
         .expect("error while building IGrasp")

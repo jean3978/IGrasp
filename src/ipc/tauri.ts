@@ -119,6 +119,7 @@ export const tauriBackend: Backend = {
   forgetConversations: () => invoke('forget_conversations'),
   getProjectProfile: (force) => invoke('get_project_profile', { force: force ?? false }),
   setProfileCorrections: (corrections) => invoke('set_profile_corrections', { corrections }),
+  listSubjects: () => invoke('list_subjects'),
 
   listen: (event, handler) =>
     tauriListen<Parameters<typeof handler>[0]>(event, (e) => {

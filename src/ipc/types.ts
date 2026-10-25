@@ -46,6 +46,7 @@ import type { AiUserAction } from './generated/AiUserAction';
 import type { PermissionDecision } from './generated/PermissionDecision';
 import type { ProfileCorrections } from './generated/ProfileCorrections';
 import type { ProjectProfile } from './generated/ProjectProfile';
+import type { Subject } from './generated/Subject';
 
 export type {
   AppInfo,
@@ -126,6 +127,9 @@ export type { Module } from './generated/Module';
 export type { ProfileCorrections } from './generated/ProfileCorrections';
 export type { ProjectKind } from './generated/ProjectKind';
 export type { ProjectProfile } from './generated/ProjectProfile';
+export type { Material } from './generated/Material';
+export type { SourceScope } from './generated/SourceScope';
+export type { Subject } from './generated/Subject';
 export type {
   AiCapabilities,
   AiEventEnvelope,
@@ -307,6 +311,8 @@ export interface Backend {
   getProjectProfile(force?: boolean): Promise<ProjectProfile>;
   /** Saves the corrections of the open folder (app data) and returns the corrected profile. */
   setProfileCorrections(corrections: ProfileCorrections): Promise<ProjectProfile>;
+  /** Subject proposals for the open folder (local: the profile and the corpus, no AI). */
+  listSubjects(): Promise<Subject[]>;
 
   listen<E extends EventName>(
     event: E,

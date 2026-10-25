@@ -215,6 +215,7 @@ describe('no token without a user action', () => {
 
     // The project profile and its corrections (local detection).
     await useProjectProfile.getState().load(FIXTURE_ROOT, true);
+    await useProjectProfile.getState().loadSubjects();
     await useProjectProfile.getState().saveCorrections({
       addKinds: ['service'],
       removeKinds: [],

@@ -5,6 +5,7 @@ use tauri::{AppHandle, Manager, State};
 
 use crate::commands::appdata::notify_recovered;
 use crate::error::{AppError, AppResult};
+use crate::learning::subjects::Subject;
 use crate::learning::{self, root_key};
 use crate::profile::{ProfileCorrections, ProjectProfile};
 use crate::state::AppState;
@@ -25,6 +26,19 @@ pub async fn get_project_profile(app: AppHandle, force: Option<bool>) -> AppResu
     .map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))?;
     notify_recovered(&app, &app.state::<AppState>().appdata);
     profile
+}
+
+/// Subject proposals for the open folder, from the profile and the corpus (local, no AI). "No
+/// specific subject" is added by the UI.
+#[tauri::command]
+pub async fn list_subjects(app: AppHandle) -> AppResult<Vec<Subject>> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let names = state.ai.capabilities().context_file_names;
+        state.with_workspace(|ws| learning::subjects(ws, &state.appdata, &names))
+    })
+    .await
+    .map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))?
 }
 
 /// Saves the corrections of the open folder in app data and returns the corrected profile.

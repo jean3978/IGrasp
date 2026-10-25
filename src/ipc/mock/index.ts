@@ -40,6 +40,7 @@ import {
   fixtureProfile,
   normalizeCorrections,
 } from './mockProfile';
+import { fixtureSubjects } from './mockSubjects';
 
 type Handler = (payload: never) => void;
 
@@ -644,6 +645,10 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       const normalized = normalizeCorrections(corrections);
       state.learning.set(root.path, normalized);
       return Promise.resolve(applyCorrections(fixtureProfile(state.files, root.name), normalized));
+    },
+    listSubjects: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      return Promise.resolve(fixtureSubjects(state.files));
     },
 
     openAppDataDir: () => {
