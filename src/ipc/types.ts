@@ -61,6 +61,7 @@ import type { TutorialRef } from './generated/TutorialRef';
 import type { StoredTutorial } from './generated/StoredTutorial';
 import type { WritePlan } from './generated/WritePlan';
 import type { FreshnessReport } from './generated/FreshnessReport';
+import type { StepQuestion } from './generated/StepQuestion';
 import type { WriteTarget } from './generated/WriteTarget';
 import type { WrittenTutorial } from './generated/WrittenTutorial';
 import type { TutorialProgress } from './generated/TutorialProgress';
@@ -212,6 +213,8 @@ export type { FreshnessReport } from './generated/FreshnessReport';
 export type { SourceCheck } from './generated/SourceCheck';
 export type { SourceState } from './generated/SourceState';
 export type { StepRef } from './generated/StepRef';
+export type { StepQuestion } from './generated/StepQuestion';
+export type { TutorialStepContext } from './generated/TutorialStepContext';
 export type { ChapterReview } from './generated/ChapterReview';
 export type { ChapterVerdict } from './generated/ChapterVerdict';
 export type { MissingTopic } from './generated/MissingTopic';
@@ -487,6 +490,18 @@ export interface Backend {
    * private tutorial is saved; a shared one is returned stamped, to write after a confirmation.
    */
   markTutorialVerified(reference: TutorialRef): Promise<Tutorial>;
+  /**
+   * Saves a reader's question and its answer on a step (no author, no date: anonymous once
+   * shared). A private tutorial is saved; a shared one is returned, to write after a
+   * confirmation. Local.
+   */
+  saveStepQuestion(
+    reference: TutorialRef,
+    chapter: number,
+    question: StepQuestion,
+  ): Promise<Tutorial>;
+  /** Removes the `index`-th saved question of a chapter (same rules as saving). */
+  removeStepQuestion(reference: TutorialRef, chapter: number, index: number): Promise<Tutorial>;
 
   listen<E extends EventName>(
     event: E,

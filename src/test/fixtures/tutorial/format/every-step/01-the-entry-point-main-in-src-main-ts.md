@@ -60,3 +60,27 @@ sources:
 - main() in src/main.ts gets its message from greet(name).
 - Options.loud defaults to false in main().
 - Line 11 of src/main.ts upper-cases the message only when loud.
+
+## Questions from readers
+
+````igrasp-question
+step: 3
+quote: 'return loud ? message.toUpperCase() : message; # the shout'
+question: Why is the shout decided in main() and not in greet()?
+answer: |-
+  Because `greet()` only builds the message: src/main.ts keeps the `loud` option.
+
+  For example:
+
+  ```ts
+  main({ name: "Ada", loud: true });
+  ```
+
+  returns `HELLO, ADA`.
+````
+
+```igrasp-question
+step: 1
+question: 'What does "true" mean here: 0123?'
+answer: 'Nothing special: it is a string.'
+```

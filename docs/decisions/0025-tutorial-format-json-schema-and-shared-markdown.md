@@ -82,6 +82,11 @@ moved citations can be relocated locally.
 
 ## Amendment (Phase 5, 0.5.0)
 
+- **Questions from readers** (0.5.x): a chapter file may end with `## Questions from readers`
+  and one `igrasp-question` YAML block per saved question (`step` counted from 1 as the
+  headings, `quote`, `question`, `answer`); the reader stops the steps at that heading and
+  skips a block that points at a missing step. Both writers emit it identically (the
+  `every-step` format fixture holds questions with a fenced answer and quoted scalars).
 - **Rust owns the format.** `learning/tutorial/markdown.rs` is the only full writer and reader
   (`write`, the tolerant `read`, `normalize`, and `info` for the graph). The backend needs them
   anyway: the freshness check and the review read a shared tutorial from its files, and sharing,

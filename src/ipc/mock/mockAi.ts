@@ -28,6 +28,7 @@ import {
 } from './mockQuiz';
 import type { MockQuizComposed, MockQuizScript } from './mockQuiz';
 import { MockReviewValidator, composeMockReview, scriptedReview } from './mockTutorialReview';
+import { stepContext } from './mockTutorialQuestion';
 import type { MockReviewComposed } from './mockTutorialReview';
 import {
   MOCK_TUTORIAL_RULES_BYTES,
@@ -810,6 +811,23 @@ export function createMockAi({
     return [session, ...attemptSteps()];
   };
 
+  /** A chat message about a step: the step in the prompt, its cited files in the context. */
+  const withStep = (start: AiStartRequest): AiStartRequest => {
+    const { tutorialStep, ...rest } = start;
+    if (!tutorialStep) return start;
+    const ref = tutorialStep.tutorial;
+    const t = ref.type === 'private' ? tutorial(ref.id) : sharedTutorial(ref.relPath);
+    if (!t)
+      throw new BackendError(
+        'TutorialNotFound',
+        `This tutorial no longer exists: ${ref.type === 'private' ? ref.id : ref.relPath}`,
+      );
+    const { prompt, paths } = stepContext(t, tutorialStep, start.prompt);
+    const contextPaths = [...start.contextPaths];
+    for (const p of paths) if (!contextPaths.includes(p) && files().has(p)) contextPaths.push(p);
+    return { ...rest, prompt, contextPaths };
+  };
+
   /** A composed tutorial operation, like Rust's `compose_operation`. */
   type TutorialOp =
     | { kind: 'outline'; length: Length; calls: 1; outline: MockOutlineComposed }
@@ -1239,7 +1257,7 @@ export function createMockAi({
               policy: 'readOnly',
               outputSchema: MOCK_QUIZ_SCHEMA,
             }
-          : requestFrom(file, MOCK_CONTEXT_FILE_NAMES, start);
+          : requestFrom(file, MOCK_CONTEXT_FILE_NAMES, withStep(start));
       if (!ai().installed) throw new BackendError('Ai', MOCK_NOT_INSTALLED);
       if (running) {
         throw new BackendError('Ai', 'An AI operation is still running; stop it first.');

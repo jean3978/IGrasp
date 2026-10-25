@@ -253,7 +253,7 @@ describe('the text mode', () => {
       selectText(paragraph, 0, 5, document.body);
     });
     await waitFor(() => {
-      expect(useAiPanel.getState().attachment?.capture.selection).toBe('First');
+      expect(useAiPanel.getState().attachment?.capture?.selection).toBe('First');
     });
   });
 

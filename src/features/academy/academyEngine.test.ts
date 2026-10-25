@@ -78,6 +78,7 @@ const tutorial = (chapters = 2): Tutorial => ({
     title: `Chapter ${String(i + 1)}`,
     goal: 'g',
     minutes: 3,
+    questions: [],
     steps: i === 0 ? steps : [],
   })),
   sources: [],

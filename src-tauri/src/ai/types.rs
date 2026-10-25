@@ -6,6 +6,7 @@ use ts_rs::TS;
 
 use crate::learning::quiz::QuizGenerationInput;
 use crate::learning::tutorial::TutorialRequest;
+use crate::learning::tutorial::question::TutorialStepContext;
 
 /// Whether a provider can be used right now, and how to fix it when it cannot.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, TS)]
@@ -201,6 +202,9 @@ pub struct AiStartRequest {
     /// For `TutorialGeneration`, `TutorialReview` and `SubjectSuggestion`: what the user chose;
     /// the backend composes everything else and ignores the same fields as for a quiz.
     pub tutorial: Option<TutorialRequest>,
+    /// For a `ChatMessage` about a step of a tutorial (highlighted or framed on its card): the
+    /// backend adds the step to the prompt and its cited files to the context.
+    pub tutorial_step: Option<TutorialStepContext>,
 }
 
 /// The size class of an operation, for the confirmation card.

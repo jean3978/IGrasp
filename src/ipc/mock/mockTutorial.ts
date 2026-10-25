@@ -312,6 +312,7 @@ export function composeMockChapters(
       title: g.slice(0, 80),
       goal: g.slice(0, 300),
       minutes: Math.floor((t.length === 'quick' ? 5 : t.length === 'standard' ? 15 : 30) / 3),
+      questions: [],
       steps: [],
     });
     wanted = [chapters.length - 1];
@@ -383,6 +384,7 @@ export class MockChapterValidator {
         title: v.title === '' ? this.s.chapter.title : v.title,
         goal: this.s.chapter.goal,
         minutes: this.s.chapter.minutes,
+        questions: [],
         ...(intro === '' ? {} : { hootIntro: intro }),
         steps: v.accepted,
       },

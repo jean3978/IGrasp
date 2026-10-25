@@ -11,6 +11,7 @@ export const TUTORIAL_BLOCK_KINDS = [
   'put-in-order',
   'match',
   'try-it',
+  'question',
 ] as const;
 export type TutorialBlockKind = (typeof TUTORIAL_BLOCK_KINDS)[number];
 
@@ -46,6 +47,14 @@ export type TutorialBlock =
       pairs: { left: string; right: string }[];
       explanation: string;
       sources: BlockCitation[];
+    }
+  | {
+      /** A question a reader saved on step `step` (1-based, as the file's headings). */
+      kind: 'question';
+      step: number;
+      quote: string | null;
+      question: string;
+      answer: string;
     }
   | {
       kind: 'try-it';
@@ -143,6 +152,13 @@ export function parseTutorialBlock(kind: TutorialBlockKind, source: string): Tut
         explanation: str(f.explanation) ?? '',
         sources: citations(f.sources),
       };
+    }
+    case 'question': {
+      const step = Number(f.step);
+      const question = str(f.question);
+      const answer = str(f.answer);
+      if (!Number.isInteger(step) || step < 1 || !question || !answer) return null;
+      return { kind, step, quote: str(f.quote), question, answer };
     }
     case 'try-it': {
       const instruction = str(f.instruction);

@@ -362,6 +362,7 @@ mod tests {
             minutes: 5,
             hoot_intro: None,
             steps: Vec::new(),
+            questions: Vec::new(),
         }
     }
 

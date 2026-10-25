@@ -130,6 +130,8 @@ pub fn run() {
             commands::tutorials::write_tutorial,
             commands::tutorials::check_tutorial_freshness,
             commands::tutorials::mark_tutorial_verified,
+            commands::tutorials::save_step_question,
+            commands::tutorials::remove_step_question,
         ])
         .build(tauri::generate_context!())
         .expect("error while building IGrasp")

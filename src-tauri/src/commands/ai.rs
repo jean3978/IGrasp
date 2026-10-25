@@ -23,6 +23,7 @@ use crate::learning::tutorial::TutorialRequest;
 use crate::learning::tutorial::cost;
 use crate::learning::tutorial::operation::compose_operation;
 use crate::learning::tutorial::progress::TutorialUsage;
+use crate::learning::tutorial::question;
 use crate::state::{AppState, Workspace};
 
 pub const EVENT_AI: &str = "ai://event";
@@ -225,7 +226,23 @@ pub fn operation_request(
             let (request, plan, _) = tutorial_request(ws, appdata, names, action, request)?;
             Ok((request, Some(plan)))
         }
-        _ => Ok((context::request_from(&ws.guard, names, request)?, None)),
+        _ => {
+            let mut request = request;
+            if let Some(step) = request.tutorial_step.take() {
+                // A question about a step of a tutorial: the step and its cited files.
+                let t = crate::commands::tutorials::read_tutorial(ws, appdata, &step.tutorial)?;
+                let (prompt, paths) = question::step_context(&t, &step, &request.prompt)?;
+                request.prompt = prompt;
+                for p in paths {
+                    if !request.context_paths.contains(&p)
+                        && crate::learning::corpus::inside(ws.guard.root(), &p).is_some()
+                    {
+                        request.context_paths.push(p);
+                    }
+                }
+            }
+            Ok((context::request_from(&ws.guard, names, request)?, None))
+        }
     }
 }
 
@@ -620,6 +637,7 @@ mod tests {
             minutes: 4,
             hoot_intro: None,
             steps: Vec::new(),
+            questions: Vec::new(),
         };
         let t = Tutorial {
             id: "orbit-watcher".into(),
@@ -736,6 +754,55 @@ mod tests {
             requests[0]
                 .prompt
                 .contains("chapter 2 of 2: \"The context\"")
+        );
+    }
+
+    #[test]
+    fn a_question_about_a_step_carries_the_step_and_its_cited_files() {
+        use crate::learning::tutorial::TutorialRef;
+        use crate::learning::tutorial::question::TutorialStepContext;
+
+        let dir = tree(&[("src/index/watcher.rs", WATCHER)]);
+        let appdata = tempfile::tempdir().unwrap();
+        let appdata = AppData::new(appdata.path().to_path_buf());
+        let ws = Workspace::new(
+            RootGuard::new(dir.path()).unwrap(),
+            1,
+            ScanOptions::default(),
+        );
+        let t = crate::commands::tutorials::prepared(
+            ws.guard.root(),
+            "mock",
+            crate::learning::tutorial::markdown::tests::sample(),
+        );
+        appdata
+            .save_private_tutorial(&crate::learning::root_key(&ws), t.clone())
+            .unwrap();
+        let start = AiStartRequest {
+            prompt: "Why does it wait?".into(),
+            tutorial_step: Some(TutorialStepContext {
+                tutorial: TutorialRef::Private { id: t.id.clone() },
+                chapter: 0,
+                step: 0,
+                quote: Some("waits DEBOUNCE_MS".into()),
+            }),
+            ..AiStartRequest::default()
+        };
+        let (request, plan) =
+            operation_request(&ws, &appdata, &[], AiUserAction::ChatMessage, start).unwrap();
+        assert!(plan.is_none());
+        assert!(request.prompt.contains(&t.title));
+        assert!(request.prompt.contains("> waits DEBOUNCE_MS"));
+        assert!(
+            request
+                .prompt
+                .ends_with("Their question: Why does it wait?")
+        );
+        assert!(
+            request
+                .context
+                .iter()
+                .any(|d| d.path == "src/index/watcher.rs")
         );
     }
 }

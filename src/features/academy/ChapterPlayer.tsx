@@ -16,6 +16,7 @@ import { ConceptBridge, Diagram, Explain, Recap } from './steps/ReadSteps';
 import { Match, PutInOrder } from './steps/OrderSteps';
 import { QuickCheck, TryIt } from './steps/ActionSteps';
 import { citationLabel } from './steps/stepUtils';
+import { StepQuestions } from './StepQuestions';
 import type { SourceStatus } from './steps/stepUtils';
 import type { StepProps } from './steps/types';
 
@@ -79,6 +80,7 @@ export function ChapterPlayer({
   const previous = useTutorialPlayer((s) => s.previous);
   const goto = useTutorialPlayer((s) => s.goto);
   const showMap = useTutorialPlayer((s) => s.showMap);
+  const reference = useTutorialPlayer((s) => s.reference);
   const cardRef = useRef<HTMLElement>(null);
   const chapter = tutorial.chapters[chapterIndex];
   const step = chapter?.steps[stepIndex];
@@ -185,6 +187,8 @@ export function ChapterPlayer({
         key={key}
         className="quiz-panel academy-step"
         data-type={step.type}
+        data-chapter={chapterIndex}
+        data-step={stepIndex}
         tabIndex={-1}
         aria-label={`${TYPE_LABEL[step.type]}: ${stepTitle(step)}`}
         onKeyDown={(e) => {
@@ -203,6 +207,14 @@ export function ChapterPlayer({
           </h2>
         )}
         <StepBody step={step} props={props} />
+        {reference && (
+          <StepQuestions
+            reference={reference}
+            chapter={chapterIndex}
+            step={stepIndex}
+            questions={chapter.questions}
+          />
+        )}
       </article>
     </div>
   );

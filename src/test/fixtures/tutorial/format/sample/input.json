@@ -177,14 +177,16 @@
             ],
             "sources": []
           }
-        ]
+        ],
+        "questions": []
       },
       {
         "id": "c2",
         "title": "The graph",
         "goal": "Explain how the graph applies a batch.",
         "minutes": 6,
-        "steps": []
+        "steps": [],
+        "questions": []
       }
     ],
     "sources": [

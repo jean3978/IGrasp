@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use super::schema::{
     Chapter, Citation, CodeTourStep, ConceptBridgeStep, DiagramStep, ExplainStep, MatchPair,
-    MatchStep, PutInOrderStep, QuickCheckStep, RecapStep, SourceHash, SpotItStep, Step, TourStop,
-    TryItStep, Tutorial, Verification,
+    MatchStep, PutInOrderStep, QuickCheckStep, RecapStep, SourceHash, SpotItStep, Step,
+    StepQuestion, TourStop, TryItStep, Tutorial, Verification,
 };
 use super::{Familiarity, Length};
 use crate::learning::quiz::schema::QuestionKind;
@@ -23,6 +23,9 @@ const SOURCES: &str = "Sources: ";
 const HOOT: &str = "> **Hoot:** ";
 const CONCEPT: &str = "> **Concept:** ";
 const DOCS: &str = "> Official docs: ";
+/// The section of a chapter file that holds the questions readers saved, after the steps.
+const QUESTIONS: &str = "## Questions from readers";
+const QUESTION_BLOCK: &str = "igrasp-question";
 
 /// A file of the shared format: its name in the tutorial's folder and its text.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,6 +85,17 @@ struct ChapterFrontMatter {
     igrasp: String,
     tutorial: String,
     chapter: String,
+}
+
+/// A saved question inside its YAML block. `step` counts from 1, as the `## n.` headings do.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct QuestionYaml {
+    step: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    quote: Option<String>,
+    question: String,
+    answer: String,
 }
 
 /// A citation inside a YAML block: `lines: "12-30"`.
@@ -268,6 +282,15 @@ fn sources_line(sources: &[Citation], up: &str) -> String {
     format!("{SOURCES}{}", items.join(" · "))
 }
 
+/// One step as its section of a chapter file reads (links relative to the root), for a prompt.
+pub fn step_text(step: &Step) -> String {
+    format!(
+        "## {}\n\n{}",
+        one_line(&step.title()),
+        step_markdown(step, "")
+    )
+}
+
 fn step_markdown(step: &Step, up: &str) -> String {
     match step {
         Step::Explain(s) => format!("{}\n\n{}", s.body.trim(), sources_line(&s.sources, up)),
@@ -396,6 +419,18 @@ fn chapter_markdown(t: &Tutorial, index: usize, c: &Chapter, up: &str) -> String
             one_line(&step.title()),
             step_markdown(step, up)
         ));
+    }
+    if !c.questions.is_empty() {
+        out.push_str(&format!("\n{QUESTIONS}\n"));
+        for q in &c.questions {
+            let block = QuestionYaml {
+                step: q.step + 1,
+                quote: q.quote.clone(),
+                question: q.question.clone(),
+                answer: q.answer.clone(),
+            };
+            out.push_str(&format!("\n{}\n", yaml_block(QUESTION_BLOCK, &block)));
+        }
     }
     out
 }
@@ -796,7 +831,66 @@ pub struct ReadChapter {
     pub title: String,
     pub hoot_intro: Option<String>,
     pub steps: Vec<Step>,
+    pub questions: Vec<StepQuestion>,
     pub skipped: Vec<(String, String)>,
+}
+
+/// Where the questions section starts in `lines` (outside fences), if there is one.
+fn questions_start(lines: &[&str]) -> Option<usize> {
+    let mut fence: Option<String> = None;
+    for (i, line) in lines.iter().enumerate() {
+        if let Some(m) = &fence {
+            if fence_closes(line, m) {
+                fence = None;
+            }
+        } else if let Some((m, _)) = fence_open(line) {
+            fence = Some(m.to_owned());
+        } else if line.trim_end() == QUESTIONS {
+            return Some(i);
+        }
+    }
+    None
+}
+
+/// The `igrasp-question` blocks of the questions section; one that does not parse, or points
+/// at a step the chapter does not have, is skipped.
+fn read_questions(
+    lines: &[&str],
+    steps: usize,
+    skipped: &mut Vec<(String, String)>,
+) -> Vec<StepQuestion> {
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < lines.len() {
+        let Some((marker, info)) = fence_open(lines[i]) else {
+            i += 1;
+            continue;
+        };
+        let marker = marker.to_owned();
+        let is_question = info.trim() == QUESTION_BLOCK;
+        let mut inner = Vec::new();
+        i += 1;
+        while i < lines.len() && !fence_closes(lines[i], &marker) {
+            inner.push(lines[i]);
+            i += 1;
+        }
+        i += 1;
+        if !is_question {
+            continue;
+        }
+        let at = format!("question {}", out.len() + 1);
+        match serde_yaml::from_str::<QuestionYaml>(&inner.join("\n")) {
+            Ok(q) if q.step >= 1 && (q.step as usize) <= steps => out.push(StepQuestion {
+                step: q.step - 1,
+                quote: q.quote,
+                question: q.question,
+                answer: q.answer,
+            }),
+            Ok(q) => skipped.push((at, format!("no step {} in this chapter", q.step))),
+            Err(e) => skipped.push((at, e.to_string())),
+        }
+    }
+    out
 }
 
 /// Reads a chapter file.
@@ -834,16 +928,19 @@ pub fn read_chapter(text: &str) -> Result<ReadChapter, String> {
     }
     let mut steps = Vec::new();
     let mut skipped = Vec::new();
-    for (heading, body) in split_steps(&lines[start..]) {
+    let end = start + questions_start(&lines[start..]).unwrap_or(lines.len() - start);
+    for (heading, body) in split_steps(&lines[start..end]) {
         match parse_step(&heading, &body) {
             Ok(s) => steps.push(s),
             Err(e) => skipped.push((heading, e)),
         }
     }
+    let questions = read_questions(&lines[end..], steps.len(), &mut skipped);
     Ok(ReadChapter {
         title,
         hoot_intro,
         steps,
+        questions,
         skipped,
     })
 }
@@ -872,6 +969,7 @@ pub fn read(files: &[TutorialFile]) -> Result<(Tutorial, Vec<(String, String)>),
             minutes: m.minutes,
             hoot_intro: None,
             steps: Vec::new(),
+            questions: Vec::new(),
         };
         if let Some(name) = &m.file
             && let Some(f) = files.iter().find(|f| &f.name == name)
@@ -882,6 +980,7 @@ pub fn read(files: &[TutorialFile]) -> Result<(Tutorial, Vec<(String, String)>),
             }
             chapter.hoot_intro = r.hoot_intro;
             chapter.steps = r.steps;
+            chapter.questions = r.questions;
             skipped.extend(
                 r.skipped
                     .into_iter()
@@ -1087,6 +1186,11 @@ pub fn normalize(t: &mut Tutorial) {
                 }
             }
         }
+        for q in &mut c.questions {
+            trim_opt(&mut q.quote);
+            trim(&mut q.question);
+            trim(&mut q.answer);
+        }
     }
 }
 
@@ -1121,6 +1225,7 @@ pub(crate) mod tests {
                     minutes: 5,
                     hoot_intro: Some("Let us follow a change.".into()),
                     steps: every_step(),
+                    questions: Vec::new(),
                 },
                 Chapter {
                     id: "c2".into(),
@@ -1129,6 +1234,7 @@ pub(crate) mod tests {
                     minutes: 6,
                     hoot_intro: None,
                     steps: Vec::new(),
+                    questions: Vec::new(),
                 },
             ],
             sources: vec![SourceHash {

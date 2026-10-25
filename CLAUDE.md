@@ -66,7 +66,8 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   Learning is `projectProfile.ts`, `quiz.ts` (its `start` is the only quiz call to `aiStart`),
   `academy.ts` (home, cards, library, options, confirmation, generations, review; its `start` is
   the only tutorial call to `aiStart`), `tutorialPlayer.ts` (the open tutorial and the progress)
-  and `tutorialWrite.ts` (write plan, confirmation, write).
+  and `tutorialWrite.ts` (write plan, confirmation, write), `stepQuestions.ts` (questions saved
+  on a step: asked in the chat about a step card, anonymous).
 - `src/features/<area>/`: UI by feature, with its CSS next to it. Sidebar views and right-panel
   sections build on `src/components/VirtualRows.tsx` (virtualized rows, keyboard focus).
   `features/ai` is the chat, the AI tools toolbar over the view, the quick actions and the
@@ -79,7 +80,7 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   `features/profile` the profile card and dialog. `features/academy` is the Academy tab
   (`AcademyTab`, `AcademyHome`, `TutorialOptions`, `AcademyConfirm`, `AcademyGeneration`,
   `OutlineReview`, `TutorialView`, `CourseMap`, `ChapterPlayer`, `steps/` the ten step types,
-  `FreshnessPanel`, `ReviewScreen`, `WriteConfirmDialog`, `GraduationScreen`; `academyEngine.ts`
+  `FreshnessPanel`, `ReviewScreen`, `WriteConfirmDialog`, `GraduationScreen`, `StepQuestions`; `academyEngine.ts`
   the XP rules; `tutorialBlocks.ts` the preview's block parser). `src/components/CodeView.tsx`
   is the read-only code view of Look it up, code tours and Spot it.
 - `src/features/titlebar/menuActions.ts`: every user action. Menus, toolbar buttons and

@@ -508,6 +508,7 @@ export function validateOutline(
           goal: raw.goal.trim(),
           minutes: Math.min(15, Math.max(2, raw.minutes)),
           steps: [],
+          questions: [],
         },
       };
     })();

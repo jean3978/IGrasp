@@ -16,7 +16,8 @@ use crate::learning::save::SaveDialog;
 use crate::learning::tutorial::families::{TutorialSubject, TutorialSubjects};
 use crate::learning::tutorial::freshness::FreshnessReport;
 use crate::learning::tutorial::progress::TutorialProgress;
-use crate::learning::tutorial::schema::{Tutorial, Verification};
+use crate::learning::tutorial::question;
+use crate::learning::tutorial::schema::{StepQuestion, Tutorial, Verification};
 use crate::learning::tutorial::share::{self, WritePlan, WriteTarget, WrittenTutorial};
 use crate::learning::tutorial::{TutorialRef, compose, freshness, markdown, new_tutorial_id, repo};
 use crate::learning::{self, root_key};
@@ -192,6 +193,53 @@ pub fn mark_tutorial_verified(
     reference: TutorialRef,
 ) -> AppResult<Tutorial> {
     state.with_workspace(|ws| verified(ws, &state.appdata, &reference))
+}
+
+/// A private tutorial is saved; a shared one is returned, written only by `write_tutorial`
+/// after the confirmation.
+fn saved_or_returned(
+    ws: &Workspace,
+    appdata: &AppData,
+    reference: &TutorialRef,
+    t: Tutorial,
+) -> AppResult<Tutorial> {
+    match reference {
+        TutorialRef::Private { .. } => {
+            Ok(appdata.save_private_tutorial(&root_key(ws), t)?.tutorial)
+        }
+        TutorialRef::Shared { .. } => Ok(t),
+    }
+}
+
+/// Saves a reader's question and the answer on a step (no author, no date: anonymous once
+/// shared). The user's action after the answer; the AI never calls this.
+#[tauri::command]
+pub fn save_step_question(
+    state: State<'_, AppState>,
+    reference: TutorialRef,
+    chapter: u32,
+    question: StepQuestion,
+) -> AppResult<Tutorial> {
+    state.with_workspace(|ws| {
+        let t = read_tutorial(ws, &state.appdata, &reference)?;
+        let t = question::with_question(&t, chapter, question)?;
+        saved_or_returned(ws, &state.appdata, &reference, t)
+    })
+}
+
+/// Removes a saved question (the `index`-th of the chapter).
+#[tauri::command]
+pub fn remove_step_question(
+    state: State<'_, AppState>,
+    reference: TutorialRef,
+    chapter: u32,
+    index: u32,
+) -> AppResult<Tutorial> {
+    state.with_workspace(|ws| {
+        let t = read_tutorial(ws, &state.appdata, &reference)?;
+        let t = question::without_question(&t, chapter, index)?;
+        saved_or_returned(ws, &state.appdata, &reference, t)
+    })
 }
 
 /// What a save of `t` stores: a new tutorial gets its id, date, provider and generation commit;

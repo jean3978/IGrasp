@@ -16,7 +16,9 @@ import { MarkdownPreview } from '../preview/MarkdownPreview';
 import { useMarkdown } from '../preview/useMarkdown';
 import { ConfirmCard } from './ConfirmCard';
 import { PermissionCard } from './PermissionCard';
-import { captureLabel, decisionText } from './timeline';
+import { answerAfter, captureLabel, decisionText } from './timeline';
+import { useStepQuestions } from '../../stores/stepQuestions';
+import { BookmarkPlus, Check } from 'lucide-react';
 import type { ChatItem } from './timeline';
 import { UsageLine } from './UsageLine';
 
@@ -78,6 +80,49 @@ export function CaptureItem(item: Extract<ChatItem, { kind: 'capture' }>) {
         <p className="ai-capture-empty">No text in the region.</p>
       )}
     </details>
+  );
+}
+
+/**
+ * The step of a tutorial a message is about, with what was pointed at; once answered, "Save to
+ * this step" keeps the question and the answer on the step (without the reader's name).
+ */
+export function StepItem(item: Extract<ChatItem, { kind: 'step' }>) {
+  const answer = useAiConversation((s) => answerAfter(s.items, item.id));
+  const busy = useAiConversation(selectBusy);
+  const markStepSaved = useAiConversation((s) => s.markStepSaved);
+  const save = useStepQuestions((s) => s.save);
+  const canSave = !item.saved && !busy && answer !== '';
+  return (
+    <div className="ai-capture ai-step-item" role="group" aria-label={`About ${item.label}`}>
+      <p className="ai-step-label">About {item.label}</p>
+      {item.quote && <pre className="ai-capture-text">{item.quote}</pre>}
+      {item.saved ? (
+        <p className="ai-step-saved" role="status">
+          <Check aria-hidden /> Saved on the step
+        </p>
+      ) : (
+        answer !== '' && (
+          <Button
+            variant="ghost"
+            disabled={!canSave}
+            title="Keep this question and the answer on the step, without your name"
+            onClick={() =>
+              void save(item.tutorial, item.chapter, {
+                step: item.step,
+                ...(item.quote ? { quote: item.quote } : {}),
+                question: item.question,
+                answer,
+              }).then((ok) => {
+                if (ok) markStepSaved(item.id);
+              })
+            }
+          >
+            <BookmarkPlus aria-hidden /> Save to this step
+          </Button>
+        )
+      )}
+    </div>
   );
 }
 
@@ -179,6 +224,8 @@ export function Message({
       return <ResumeFailed prompt={item.prompt} />;
     case 'capture':
       return <CaptureItem {...item} />;
+    case 'step':
+      return <StepItem {...item} />;
     case 'notice':
       return (
         <div

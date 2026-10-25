@@ -228,7 +228,9 @@ export function tutorialFromOutline(
 export function withChapter(t: Tutorial, result: ChapterResult): Tutorial {
   const chapters = [...t.chapters];
   const at = chapters.findIndex((c) => c.id === result.chapter.id);
-  if (at >= 0) chapters[at] = result.chapter;
+  // A rewritten chapter keeps the questions readers saved on steps it still has.
+  const kept = (chapters[at]?.questions ?? []).filter((q) => q.step < result.chapter.steps.length);
+  if (at >= 0) chapters[at] = { ...result.chapter, questions: kept };
   else chapters.push(result.chapter);
   const docsNote = t.docsNote ?? result.docsNote ?? undefined;
   return { ...t, chapters, ...(docsNote === undefined ? {} : { docsNote }) };

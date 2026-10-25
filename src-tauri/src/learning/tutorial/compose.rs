@@ -436,6 +436,7 @@ impl ChapterValidator {
                 minutes: self.chapter.minutes,
                 hoot_intro: Some(v.hoot_intro.clone()).filter(|h| !h.is_empty()),
                 steps: v.accepted.clone(),
+                questions: Vec::new(),
             },
             docs_note: v.docs_note.clone(),
             rejected_count: self.rejected_total,
@@ -594,6 +595,7 @@ impl ChapterStages {
                     minutes: tutorial.length.minutes() / 3,
                     hoot_intro: None,
                     steps: Vec::new(),
+                    questions: Vec::new(),
                 });
                 vec![n - 1]
             }
@@ -867,6 +869,7 @@ mod tests {
             minutes: 4,
             hoot_intro: None,
             steps: Vec::new(),
+            questions: Vec::new(),
         }];
         let c = compose_chapter(
             dir.path(),

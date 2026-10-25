@@ -4,6 +4,7 @@ import type { AiImage } from "./AiImage";
 import type { AiPolicy } from "./AiPolicy";
 import type { QuizGenerationInput } from "./QuizGenerationInput";
 import type { TutorialRequest } from "./TutorialRequest";
+import type { TutorialStepContext } from "./TutorialStepContext";
 import type { JsonValue } from "./serde_json/JsonValue";
 
 /**
@@ -24,4 +25,9 @@ quiz?: QuizGenerationInput,
  * For `TutorialGeneration`, `TutorialReview` and `SubjectSuggestion`: what the user chose;
  * the backend composes everything else and ignores the same fields as for a quiz.
  */
-tutorial?: TutorialRequest, };
+tutorial?: TutorialRequest, 
+/**
+ * For a `ChatMessage` about a step of a tutorial (highlighted or framed on its card): the
+ * backend adds the step to the prompt and its cited files to the context.
+ */
+tutorialStep?: TutorialStepContext, };

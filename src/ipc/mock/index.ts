@@ -16,6 +16,7 @@ import {
 import { BackendError } from '../types';
 import type {
   Tutorial,
+  TutorialRef,
   WriteTarget,
   AppInfo,
   AppWindow,
@@ -79,6 +80,7 @@ import {
 import { MOCK_HEAD, MOCK_USER, summaryOf as tutorialSummaryOf } from './mockTutorialStore';
 import { mergeSourceHashes } from '../../lib/tutorial';
 import { checkFreshness, freshnessReport } from './mockTutorialFreshness';
+import { withQuestion, withoutQuestion } from './mockTutorialQuestion';
 import { emptyQuizzes, saveCurrent, summaryOf as quizSummaryOf } from './mockLearning';
 import type { FolderQuizzes } from './mockLearning';
 import { isQuizMarkdown, safeFileName } from './mockSave';
@@ -221,6 +223,19 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       throw new BackendError('NotATutorialFile', `Not a tutorial: ${readme}`);
     return t;
   };
+
+  /** A tutorial to change (Rust `read_tutorial`). */
+  const tutorialOf = (reference: TutorialRef): Tutorial => {
+    if (reference.type === 'shared') return readShared(reference.relPath);
+    const found = tutorialsOf().stored.get(reference.id)?.tutorial;
+    if (!found)
+      throw new BackendError('TutorialNotFound', `This tutorial no longer exists: ${reference.id}`);
+    return found;
+  };
+
+  /** A private tutorial is saved, a shared one returned (Rust `saved_or_returned`). */
+  const savedOrReturned = (reference: TutorialRef, t: Tutorial): Tutorial =>
+    reference.type === 'private' ? saveStored(tutorialsOf(), t, Date.now()).tutorial : t;
 
   /** The folder and the tutorial of a write (Rust `write_input`). */
   const writeInput = (target: WriteTarget, tutorial: Tutorial | undefined): [string, Tutorial] => {
@@ -982,6 +997,12 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       if (reference.type === 'private') return saveStored(folder, t, Date.now()).tutorial;
       return t;
     },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    saveStepQuestion: async (reference, chapter, question) =>
+      savedOrReturned(reference, withQuestion(tutorialOf(reference), chapter, question)),
+    // eslint-disable-next-line @typescript-eslint/require-await
+    removeStepQuestion: async (reference, chapter, index) =>
+      savedOrReturned(reference, withoutQuestion(tutorialOf(reference), chapter, index)),
     // eslint-disable-next-line @typescript-eslint/require-await
     planTutorialWrite: async (target, tutorial) => {
       const [folder, t] = writeInput(target, tutorial);

@@ -144,6 +144,25 @@ A tutorial is private (in the app's data) until you share it
   Academy** instead of the front matter card, and the interactive blocks render as cards with the
   answers folded; nothing in them runs (see [markdown-preview.md](markdown-preview.md)).
 
+### Asking about a step
+
+Every step card ends with **Ask about this step** and the questions readers saved on it.
+
+- **Ask**: highlight text of the step with the text tool (**Ctrl+Alt+S**, or the button), or frame
+  part of it with the region tool (**Ctrl+Alt+R**). The chat opens next to it, about that step
+  ("Step · Chapter 2, step 3: …"); write the question and press Send. That Send is the only thing
+  that spends tokens. The backend adds the step as the reader sees it, what was pointed at, and
+  the files the step cites to the message.
+- **Save to this step**: once answered, the step's line in the chat offers to keep the question
+  and the answer on the step. A private tutorial keeps it at once; for a shared tutorial the
+  write confirmation lists the chapter file that changes, and nothing is written before it.
+- **Anonymous**: a saved question holds the step, the text pointed at, the question and the
+  answer; no name, no date. Shared, it sits at the end of the chapter's file under "Questions
+  from readers" (`igrasp-question` blocks), so teammates see it on the same card, and GitHub
+  shows it as text. The preview folds its answer.
+- **Remove** (the bin beside a question) works the same way: at once for a private tutorial,
+  through the confirmation for a shared one. A chapter keeps at most 50 questions.
+
 ### Freshness, the AI review and verification
 
 - **Freshness on open** (local, no token): every cited range is hashed and compared with the

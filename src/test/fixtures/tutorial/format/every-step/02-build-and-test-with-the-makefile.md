@@ -67,3 +67,12 @@ sources:
 - The Makefile has build and test targets.
 - package.json maps them to tsc and vitest run.
 - ci.yml runs make test on every push.
+
+## Questions from readers
+
+```igrasp-question
+step: 4
+quote: make test
+question: Can I run it without make?
+answer: 'Yes: `npm test` runs the same `vitest run` (package.json).'
+```

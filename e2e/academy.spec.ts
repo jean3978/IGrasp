@@ -1,10 +1,11 @@
 // Hoot's Academy end to end, on the mock backend: a tutorial written (nothing is spent before
 // each Start), read with the keyboard, shared with the project and opened from the preview; a
 // shared tutorial whose cited line changed, checked locally then with the AI, its proposals
-// accepted and written after the confirmation; and the names of every control.
+// accepted and written after the confirmation; the names of every control; and a question about
+// a framed part of a step, saved on the step.
 
 import { expect, test } from '@playwright/test';
-import { academyMock, docBody, openAcademy, writeTutorial } from './helpers';
+import { academyMock, ask, chatPanel, docBody, openAcademy, writeTutorial } from './helpers';
 
 test('a tutorial written from its cards, read with the keyboard, spending only at each Start', async ({
   page,
@@ -146,4 +147,37 @@ test('every control of the Academy has a name; icon-only ones a tooltip', async 
   await page.getByRole('list', { name: 'Chapters' }).getByRole('button').first().click();
   await expect(page.getByRole('article', { name: /^Explain:/ })).toBeVisible();
   expect(await scan()).toEqual([]);
+});
+
+test('a question about a framed part of a step, saved on the step', async ({ page }) => {
+  await openAcademy(page);
+  await writeTutorial(page);
+  await page
+    .getByRole('list', { name: 'Chapters' })
+    .getByRole('button', { name: /Chapter 1:/ })
+    .click();
+  const card = page.getByRole('article', { name: /^Explain:/ });
+  await expect(card.locator('.academy-step-body p').first()).toBeVisible();
+  const body = await card.locator('.academy-step-body').boundingBox();
+  if (!body) throw new Error('no step body');
+  // Frame the first lines of the step with the region tool.
+  await page.keyboard.press('Control+Alt+r');
+  const overlay = page.getByRole('application', { name: /Select a region/ });
+  await expect(overlay).toBeVisible();
+  await page.mouse.move(body.x + 4, body.y + 4);
+  await page.mouse.down();
+  await page.mouse.move(body.x + body.width - 4, body.y + 40, { steps: 4 });
+  await page.mouse.up();
+  const chat = chatPanel(page);
+  await expect(chat.getByRole('group', { name: /^About Chapter 1, step 1:/ })).toBeVisible();
+  const starts = await academyMock(page, (m) => m.state.ai.starts.length);
+  await ask(page, 'Why does main() call greet()?');
+  await expect(chat.getByRole('button', { name: /Save to this step/ })).toBeVisible();
+  expect(await academyMock(page, (m) => m.state.ai.starts.length)).toBe(starts + 1);
+  await chat.getByRole('button', { name: /Save to this step/ }).click();
+  await expect(chat.getByText('Saved on the step')).toBeVisible();
+  await expect(card.getByRole('region', { name: 'Questions from readers' })).toContainText(
+    'Why does main() call greet()?',
+  );
+  expect(await academyMock(page, (m) => m.state.ai.starts.length)).toBe(starts + 1);
 });

@@ -16,6 +16,7 @@ const LABEL: Record<TutorialBlockKind, string> = {
   'put-in-order': 'Put in order',
   match: 'Match',
   'try-it': 'Try it yourself',
+  question: 'Question from a reader',
 };
 
 function Source({ c, note }: { c: BlockCitation; note?: string | null | undefined }) {
@@ -151,6 +152,24 @@ export function TutorialBlock({
               </p>
             )}
             <Sources sources={block.sources} />
+          </Folded>
+        </>
+      );
+      break;
+    case 'question':
+      body = (
+        <>
+          <p className="quiz-muted">About step {block.step}</p>
+          {block.quote && <blockquote>{block.quote}</blockquote>}
+          <p>
+            <InlineCode text={block.question} />
+          </p>
+          <Folded label="Show the answer">
+            {block.answer.split(/\n{2,}/).map((para, i) => (
+              <p key={i}>
+                <InlineCode text={para} />
+              </p>
+            ))}
           </Folded>
         </>
       );

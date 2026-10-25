@@ -7,6 +7,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Ask about a step of a tutorial: highlight its text or frame part of it with the AI tools, ask
+  in the chat (the step and its cited files go with the message), then **Save to this step**.
+  Saved questions show on the step card and travel with a shared tutorial, anonymously (no name,
+  no date), at the end of the chapter's file; a shared tutorial changes only after the write
+  confirmation.
+
 ### Fixed
 
 - The app went blank at the end of every chapter of a tutorial written by the AI: the backend

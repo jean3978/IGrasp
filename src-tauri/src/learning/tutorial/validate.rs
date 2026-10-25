@@ -339,6 +339,7 @@ pub fn validate_outline(output: &Value, ctx: &mut Context<'_>) -> Result<Validat
                 minutes: raw.minutes.clamp(2, 15),
                 hoot_intro: None,
                 steps: Vec::new(),
+                questions: Vec::new(),
             })
         })();
         match verdict {

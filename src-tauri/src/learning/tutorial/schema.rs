@@ -433,12 +433,32 @@ pub struct Chapter {
     /// Empty until the chapter is generated.
     #[serde(default)]
     pub steps: Vec<Step>,
+    /// Questions readers asked about its steps, with the AI's answer, saved by them. Always
+    /// serialized (missing reads as empty).
+    #[serde(default)]
+    pub questions: Vec<StepQuestion>,
 }
 
 impl Chapter {
     pub fn is_written(&self) -> bool {
         !self.steps.is_empty()
     }
+}
+
+/// A question a reader asked about a step, with the answer they saved. Anonymous by design: no
+/// author and no date, so a shared tutorial carries the question and never who asked it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, optional_fields)]
+pub struct StepQuestion {
+    /// The step's index in its chapter.
+    pub step: u32,
+    /// The text of the step the reader highlighted or framed, when they did.
+    #[serde(default, skip_serializing_if = "is_none")]
+    pub quote: Option<String>,
+    pub question: String,
+    /// Markdown.
+    pub answer: String,
 }
 
 /// A cited range with the SHA-256 of its lines when the tutorial was written (`\n`-joined, `\r`

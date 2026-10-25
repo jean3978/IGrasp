@@ -1,7 +1,7 @@
 // Turns the provider-neutral event stream of an operation into the items the chat shows.
 // Pure: the same array comes back when an event changes nothing visible.
 
-import type { AiEvent, AiPermissionKind, JsonValue } from '../../ipc/types';
+import type { AiEvent, AiPermissionKind, JsonValue, TutorialRef } from '../../ipc/types';
 
 export type ChatItem =
   | { kind: 'user'; id: string; text: string }
@@ -43,6 +43,22 @@ export type ChatItem =
       text: string;
       /** The highlighted text, for a text selection. */
       selection?: string;
+    }
+  | {
+      /**
+       * The step of a tutorial the message is about (highlighted or framed on its card), with
+       * the question, so the answer can be saved on the step.
+       */
+      kind: 'step';
+      id: string;
+      tutorial: TutorialRef;
+      chapter: number;
+      step: number;
+      label: string;
+      quote: string | null;
+      question: string;
+      /** Saved on the step (or its write offered, for a shared tutorial). */
+      saved: boolean;
     }
   | {
       /** What the provider reported for an operation, shown under its answer. */
@@ -91,6 +107,35 @@ export function captureItem(capture: {
   const { selection, ...rest } = capture;
   return { kind: 'capture', id: nextId('capture'), ...rest, ...(selection ? { selection } : {}) };
 }
+
+export function stepItem(s: {
+  tutorial: TutorialRef;
+  chapter: number;
+  step: number;
+  label: string;
+  quote: string | null;
+  question: string;
+}): ChatItem {
+  return { kind: 'step', id: nextId('step'), ...s, saved: false };
+}
+
+/** The answer to the message a step item belongs to: the answers after it, until the next one. */
+export function answerAfter(items: readonly ChatItem[], id: string): string {
+  const at = items.findIndex((i) => i.id === id);
+  if (at < 0) return '';
+  const parts: string[] = [];
+  for (const item of items.slice(at + 1)) {
+    if (item.kind === 'user' || item.kind === 'step') break;
+    if (item.kind === 'assistant' && !item.streaming) parts.push(item.text.trim());
+  }
+  return parts.filter((p) => p !== '').join('\n\n');
+}
+
+const isTutorialRef = (v: JsonValue | undefined): v is TutorialRef =>
+  v !== undefined &&
+  isRecord(v) &&
+  ((v.type === 'private' && typeof v.id === 'string') ||
+    (v.type === 'shared' && typeof v.relPath === 'string'));
 
 /** "docs/a.md lines 40–58" (or "line 40"). */
 export function captureLabel(c: { sourcePath: string; firstLine: number; lastLine: number }) {
@@ -313,6 +358,24 @@ function fromStored(v: JsonRecord): ChatItem | null {
             lastLine: v.lastLine,
             text: v.text,
             ...(str(v.selection) ? { selection: v.selection } : {}),
+          }
+        : null;
+    case 'step':
+      return isTutorialRef(v.tutorial) &&
+        num(v.chapter) &&
+        num(v.step) &&
+        str(v.label) &&
+        str(v.question)
+        ? {
+            kind,
+            id: nextId(kind),
+            tutorial: v.tutorial,
+            chapter: v.chapter,
+            step: v.step,
+            label: v.label,
+            quote: str(v.quote) ? v.quote : null,
+            question: v.question,
+            saved: v.saved === true,
           }
         : null;
     case 'usage':

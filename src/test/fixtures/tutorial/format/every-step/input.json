@@ -94,6 +94,19 @@
             ],
             "sources": []
           }
+        ],
+        "questions": [
+          {
+            "step": 2,
+            "quote": "return loud ? message.toUpperCase() : message; # the shout",
+            "question": "Why is the shout decided in main() and not in greet()?",
+            "answer": "Because `greet()` only builds the message: src/main.ts keeps the `loud` option.\n\nFor example:\n\n```ts\nmain({ name: \"Ada\", loud: true });\n```\n\nreturns `HELLO, ADA`."
+          },
+          {
+            "step": 0,
+            "question": "What does \"true\" mean here: 0123?",
+            "answer": "Nothing special: it is a string."
+          }
         ]
       },
       {
@@ -195,6 +208,14 @@
             ],
             "sources": []
           }
+        ],
+        "questions": [
+          {
+            "step": 3,
+            "quote": "make test",
+            "question": "Can I run it without make?",
+            "answer": "Yes: `npm test` runs the same `vitest run` (package.json)."
+          }
         ]
       },
       {
@@ -268,7 +289,8 @@
             ],
             "sources": []
           }
-        ]
+        ],
+        "questions": []
       },
       {
         "id": "c4",
@@ -338,7 +360,8 @@
             ],
             "sources": []
           }
-        ]
+        ],
+        "questions": []
       }
     ],
     "sources": [

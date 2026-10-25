@@ -774,3 +774,52 @@
 [data-motion='off'] .academy-match-wrong {
   animation: none;
 }
+
+/* Questions readers saved on the step, and the way to ask one. */
+.academy-questions {
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: var(--border-width) solid var(--quiz-card-border);
+}
+
+.academy-questions summary {
+  cursor: pointer;
+  color: var(--fg-muted);
+}
+
+.academy-questions-list {
+  display: grid;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.academy-questions-list li {
+  position: relative;
+  padding: 8px 40px 8px 12px;
+  border-left: 3px solid var(--ai-accent);
+  background: var(--bg);
+}
+
+.academy-questions-list li > .button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.academy-question-quote {
+  margin: 0 0 6px;
+  padding-left: 8px;
+  border-left: var(--border-width) solid var(--border);
+  color: var(--fg-muted);
+  white-space: pre-wrap;
+}
+
+.academy-question-text {
+  margin: 0 0 4px;
+}
+
+.academy-questions-ask {
+  margin: 4px 0 0;
+}

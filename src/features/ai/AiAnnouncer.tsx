@@ -36,7 +36,9 @@ export function AiAnnouncer() {
     const offPanel = useAiPanel.subscribe((s, prev) => {
       if (s.attachment && s.attachment !== prev.attachment) {
         announce([
-          `${s.attachment.capture.selection === undefined ? 'Region' : 'Selection'} attached: ${captureLabel(s.attachment.capture)}. Nothing is sent until you press Send.`,
+          s.attachment.capture
+            ? `${s.attachment.capture.selection === undefined ? 'Region' : 'Selection'} attached: ${captureLabel(s.attachment.capture)}. Nothing is sent until you press Send.`
+            : `${s.attachment.step.label} attached. Nothing is sent until you press Send.`,
         ]);
       }
     });

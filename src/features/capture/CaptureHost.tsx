@@ -1,6 +1,8 @@
 // Selections for the AI chat, wired to the app. Two ways to point at part of the active tab:
 // - the region overlay: drag a rectangle; the text of the blocks it covers is attached;
 // - the text mode: highlight text like in an editor; releasing the mouse attaches it.
+// In the Academy, the selection is on a step card: the step is attached (with the text pointed
+// at), so the question about it can be saved on the step afterwards.
 // Either way the chat opens next to the selection with a pre-filled draft, and the selection
 // stays highlighted while the chat is open. Nothing is sent: the user presses Send (or a quick
 // action).
@@ -9,6 +11,9 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { AiCapture } from '../../ipc/types';
 import { useAiPanel } from '../../stores/aiPanel';
+import type { StepAttachment } from '../../stores/aiPanel';
+import { useTutorialPlayer } from '../../stores/tutorialPlayer';
+import { stepTitle } from '../../lib/tutorial';
 import { useCapture } from '../../stores/capture';
 import type { ContentRect, SelectionHighlight } from '../../stores/capture';
 import { useDocuments } from '../../stores/documents';
@@ -33,17 +38,33 @@ import './capture.css';
 export const DRAFT_PREFIX = 'About this region:';
 export const TEXT_DRAFT_PREFIX = 'About this selection:';
 
-interface Target {
+interface FileTarget {
   tabId: string;
   container: HTMLElement;
   kind: 'document' | 'code';
   path: string;
 }
 
-/** The scroll container and source of the active tab, when it is a document or a code tab. */
+/** The Academy showing a step: its scroll container. */
+interface StepTarget {
+  tabId: string;
+  container: HTMLElement;
+  kind: 'academy';
+}
+
+type Target = FileTarget | StepTarget;
+
+/** The scroll container (and source) of the active tab: a document, a code file, a step. */
 function activeTarget(): Target | null {
   const tab = selectActiveTab(useTabs.getState());
-  if (!tab || tab.relPath === null) return null;
+  if (!tab) return null;
+  if (tab.kind === 'academy') {
+    const container = document.querySelector<HTMLElement>('.tab-content .academy-tab');
+    return container && useTutorialPlayer.getState().chapter !== null
+      ? { tabId: tab.id, container, kind: 'academy' }
+      : null;
+  }
+  if (tab.relPath === null) return null;
   const selector =
     tab.kind === 'document'
       ? '.tab-content .document-scroll'
@@ -57,7 +78,85 @@ function activeTarget(): Target | null {
     : null;
 }
 
-function sourceOf(target: Target): string | undefined {
+/** The step a card shows (`data-chapter` and `data-step` on `article.academy-step`). */
+function stepOf(card: Element): StepAttachment | null {
+  const { reference, tutorial } = useTutorialPlayer.getState();
+  const chapter = Number(card.getAttribute('data-chapter'));
+  const step = Number(card.getAttribute('data-step'));
+  const s = tutorial?.chapters[chapter]?.steps[step];
+  if (!reference || !s) return null;
+  return {
+    tutorial: reference,
+    chapter,
+    step,
+    label: `Chapter ${String(chapter + 1)}, step ${String(step + 1)}: ${stepTitle(s)}`,
+    quote: null,
+    kind: 'text',
+  };
+}
+
+/** The text of `card` inside `rect` (client coordinates), in reading order. */
+function textInRect(card: Element, rect: CaptureRect): string {
+  const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+  const parts: string[] = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const text = (n.textContent ?? '').trim();
+    if (text === '') continue;
+    const range = document.createRange();
+    range.selectNodeContents(n);
+    const hit = Array.from(range.getClientRects()).some(
+      (b) =>
+        b.width > 0 &&
+        rect.x < b.right &&
+        rect.x + rect.width > b.left &&
+        rect.y < b.bottom &&
+        rect.y + rect.height > b.top,
+    );
+    if (hit) parts.push(text);
+  }
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+/** Attaches a step of a tutorial to the chat (what the user pointed at) and opens the chat. */
+function attachStep(
+  target: StepTarget,
+  card: Element,
+  kind: StepAttachment['kind'],
+  quote: string,
+  anchor: CaptureRect,
+  paint: readonly CaptureRect[],
+  region: CaptureRect | null,
+): boolean {
+  const step = stepOf(card);
+  if (!step) return false;
+  const toContent = (r: CaptureRect): ContentRect => toContentRect(target.container, r);
+  useCapture.getState().setHighlight({
+    tabId: target.tabId,
+    kind,
+    capture: null,
+    rects: paint.map(toContent),
+    region: region ? toContent(region) : null,
+  });
+  const panel = useAiPanel.getState();
+  panel.setAttachment({ step: { ...step, kind, quote: quote === '' ? null : quote } });
+  const prefixes = [DRAFT_PREFIX, TEXT_DRAFT_PREFIX];
+  if (panel.draft.trim() === '' || prefixes.includes(panel.draft.trim())) panel.setDraft('');
+  panel.openNear(anchor);
+  focusInput();
+  return true;
+}
+
+function focusInput() {
+  requestAnimationFrame(() => {
+    const input = document.querySelector<HTMLTextAreaElement>('.ai-panel .ai-input');
+    if (input && !input.disabled) {
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  });
+}
+
+function sourceOf(target: FileTarget): string | undefined {
   return target.kind === 'document'
     ? useDocuments.getState().byPath[target.path]?.content
     : useTextFiles.getState().byPath[target.path]?.content;
@@ -82,7 +181,7 @@ function textBefore(container: HTMLElement, line: number, range: Range): string 
  * that pick the lines; `paint` the line boxes kept highlighted.
  */
 function attach(
-  target: Target,
+  target: FileTarget,
   kind: SelectionHighlight['kind'],
   boxes: readonly CaptureRect[],
   paint: readonly CaptureRect[],
@@ -130,13 +229,7 @@ function attach(
     panel.setDraft(kind === 'text' ? TEXT_DRAFT_PREFIX : DRAFT_PREFIX);
   }
   panel.openNear(anchor);
-  requestAnimationFrame(() => {
-    const input = document.querySelector<HTMLTextAreaElement>('.ai-panel .ai-input');
-    if (input && !input.disabled) {
-      input.focus();
-      input.setSelectionRange(input.value.length, input.value.length);
-    }
-  });
+  focusInput();
   return true;
 }
 
@@ -144,6 +237,13 @@ function captureRegion(rect: CaptureRect): void {
   const target = activeTarget();
   useCapture.getState().stop();
   if (!target) return;
+  if (target.kind === 'academy') {
+    const card = target.container.querySelector('article.academy-step');
+    const box = card?.getBoundingClientRect();
+    if (!card || !box || box.bottom < rect.y || box.top > rect.y + rect.height) return;
+    attachStep(target, card, 'region', textInRect(card, rect), rect, [], rect);
+    return;
+  }
   const range = rangeOver(elementsInRect(target.container, rect));
   attach(target, 'region', [rect], range ? textRects(range) : [], { region: rect });
 }
@@ -156,6 +256,18 @@ function captureTextSelection(target: Target): void {
   if (!target.container.contains(range.commonAncestorContainer)) return;
   const text = selection.toString().trim();
   if (text === '') return;
+  if (target.kind === 'academy') {
+    const start =
+      range.commonAncestorContainer instanceof Element
+        ? range.commonAncestorContainer
+        : range.commonAncestorContainer.parentElement;
+    const card = start?.closest('article.academy-step');
+    if (!card) return;
+    const paint = textRects(range);
+    const anchor = boundingRect(paint) ?? toCaptureRect(card.getBoundingClientRect());
+    if (attachStep(target, card, 'text', text, anchor, paint, null)) selection.removeAllRanges();
+    return;
+  }
   const boxes = textRects(range);
   // No line boxes (no layout): the elements where the selection starts and ends pick the lines.
   const pick = boxes.length > 0 ? boxes : endpointBoxes(range);
@@ -250,10 +362,10 @@ export function CaptureHost() {
   const panelOpen = useAiPanel((s) => s.open);
   // The source of the highlighted file: an edit (or any change on disk) moves its lines.
   const highlightedSource = useDocuments((s) =>
-    highlight ? s.byPath[highlight.capture.sourcePath]?.content : undefined,
+    highlight?.capture ? s.byPath[highlight.capture.sourcePath]?.content : undefined,
   );
   const highlightedCode = useTextFiles((s) =>
-    highlight ? s.byPath[highlight.capture.sourcePath]?.content : undefined,
+    highlight?.capture ? s.byPath[highlight.capture.sourcePath]?.content : undefined,
   );
 
   // Switching tabs or closing the folder ends the selection modes and the highlight.
@@ -274,7 +386,7 @@ export function CaptureHost() {
   const seen = useRef<{ path: string; content: string | undefined } | null>(null);
   useEffect(() => {
     const before = seen.current;
-    const path = highlight?.capture.sourcePath ?? null;
+    const path = highlight?.capture?.sourcePath ?? null;
     const content = highlightedSource ?? highlightedCode;
     seen.current = path === null ? null : { path, content };
     if (!highlight || before?.path !== path || before.content === content) return;

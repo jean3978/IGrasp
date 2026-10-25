@@ -4,7 +4,7 @@
 // it: the mock stands in for the backend in the browser and in every test.
 
 import { sha256Hex } from './sha256';
-import type { Citation, SourceHash, Step, Tutorial } from '../ipc/types';
+import type { Citation, SourceHash, Step, StepQuestion, Tutorial } from '../ipc/types';
 
 const cite = (path: string, firstLine: number, lastLine: number): Citation => ({
   path,
@@ -241,6 +241,13 @@ export function normalizeTutorial(input: Tutorial): Tutorial {
           why(s.sources);
           break;
       }
+    }
+    // Saved questions (older tutorials have none).
+    (c as { questions?: StepQuestion[] }).questions ??= [];
+    for (const q of c.questions) {
+      setOpt(q, 'quote', trimmedOpt(q.quote));
+      q.question = trimmed(q.question);
+      q.answer = trimmed(q.answer);
     }
   }
   return t;

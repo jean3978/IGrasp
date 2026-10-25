@@ -134,6 +134,10 @@ export const tauriBackend: Backend = {
     invoke('write_tutorial', { target, tutorial: tutorial ?? null }),
   checkTutorialFreshness: (reference) => invoke('check_tutorial_freshness', { reference }),
   markTutorialVerified: (reference) => invoke('mark_tutorial_verified', { reference }),
+  saveStepQuestion: (reference, chapter, question) =>
+    invoke('save_step_question', { reference, chapter, question }),
+  removeStepQuestion: (reference, chapter, index) =>
+    invoke('remove_step_question', { reference, chapter, index }),
   saveSuggestedSubjects: (subjects) => invoke('save_suggested_subjects', { subjects }),
   getCurrentQuiz: () => invoke('get_current_quiz'),
   saveCurrentQuiz: (record) => invoke('save_current_quiz', { record }),

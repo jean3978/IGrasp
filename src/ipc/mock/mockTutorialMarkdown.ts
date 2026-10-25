@@ -657,6 +657,20 @@ function chapterMarkdown(t: Tutorial, index: number, c: Chapter, up: string): st
   c.steps.forEach((step, i) => {
     out += `\n## ${i + 1}. ${oneLine(stepTitle(step))}\n\n${stepMarkdown(step, up)}\n`;
   });
+  // The questions readers saved, anonymous; `step` counts from 1 as the headings do.
+  const questions = c.questions;
+  if (questions.length > 0) {
+    out += '\n## Questions from readers\n';
+    for (const q of questions) {
+      const block = map([
+        ['step', num(q.step + 1)],
+        ['quote', optStr(q.quote)],
+        ['question', str(q.question)],
+        ['answer', str(q.answer)],
+      ]);
+      out += `\n${yamlBlock('igrasp-question', block)}\n`;
+    }
+  }
   return out;
 }
 

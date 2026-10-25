@@ -28,8 +28,9 @@ const draft = (): Tutorial => ({
           sources: [{ path: 'src/main.ts', firstLine: 9, lastLine: 12 }],
         },
       ],
+      questions: [],
     },
-    { id: 'c2', title: 'greet()', goal: 'Explain greet().', minutes: 3, steps: [] },
+    { id: 'c2', title: 'greet()', goal: 'Explain greet().', minutes: 3, steps: [], questions: [] },
   ],
   sources: [],
 });

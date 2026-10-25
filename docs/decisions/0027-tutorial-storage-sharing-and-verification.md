@@ -100,6 +100,23 @@ the AI never changes a tutorial or vouches for it on its own.
 - **Question 9** (XP rules fixed in a shared fixture rather than tuned by the model): answered
   as recommended, fixed (`src/test/fixtures/tutorial/xp.json`); the model never sees XP.
 
+## Amendment: questions readers save on a step (0.5.x)
+
+- A reader asks about a step in the chat, pointing at it with the text or region tool; the
+  message carries `tutorialStep` (tutorial, chapter, step, the text pointed at), and `ai_start`
+  adds the step and its cited files to the prompt. It is an ordinary chat message: its Send is
+  the user action, and saving the answer never calls the AI.
+- Saved questions live on the chapter (`Chapter::questions`: step index, the text pointed at,
+  question, answer), not on the step: the step's hash, which marks "updated since you read it",
+  does not change when someone asks, and a review that rewrites a step keeps them. A rewritten
+  chapter keeps the questions whose step still exists.
+- **Anonymous by construction**: the record has no author and no date, so sharing cannot leak
+  who asked. A private tutorial saves at once (`save_step_question`); a shared one is returned
+  and written only through `write_tutorial` after the confirmation, like every other change to a
+  shared tutorial.
+- Caps: 1,000 characters for a question and for the text pointed at, 20,000 for an answer, 50
+  questions per chapter.
+
 ## Consequences
 
 - The Academy's only writes in the opened folder are `write_tutorial` calls after the

@@ -48,7 +48,7 @@ const tutorial = (steps: Step[]): Tutorial => ({
   generated: '2026-10-25T10:00:00Z',
   provider: 'mock',
   model: 'm',
-  chapters: [{ id: 'c1', title: 'One', goal: 'g', minutes: 3, steps }],
+  chapters: [{ id: 'c1', title: 'One', goal: 'g', minutes: 3, steps, questions: [] }],
   sources: [],
 });
 
