@@ -16,6 +16,8 @@ import { useTutorialWrite } from '../../stores/tutorialWrite';
 import { backend } from '../../ipc/client';
 import { useToasts } from '../../stores/toasts';
 import { errorMessage } from '../../stores/aiProvider';
+import { Hoot } from '../hoot/Hoot';
+import { pickLine } from '../hoot/hootLines';
 import { badgeLabel } from './freshnessView';
 
 const STATE_LABEL = { changed: 'changed', missing: 'missing', moved: 'moved' } as const;
@@ -50,6 +52,9 @@ export function FreshnessPanel({
     (c) => c.state === 'changed' || c.state === 'missing' || c.state === 'moved',
   );
   const relocated = report.relocated;
+  const [hootLine] = useState(() =>
+    !fine ? pickLine('outdated') : tutorial.verified ? pickLine('verified') : null,
+  );
   return (
     <section
       className="academy-freshness"
@@ -61,6 +66,9 @@ export function FreshnessPanel({
         <strong>{badgeLabel(report.badge)}</strong>
         <span className="quiz-muted"> · checked against the files now, without the AI</span>
       </p>
+      {hootLine && (
+        <Hoot state={fine ? 'cheering' : 'encouraging'} size={40} line={hootLine} motion={false} />
+      )}
       {report.relocatedSaved > 0 && (
         <p className="quiz-muted" role="status">
           <MoveVertical aria-hidden className="academy-inline-icon" /> {report.relocatedSaved}{' '}

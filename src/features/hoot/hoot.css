@@ -391,3 +391,9 @@
 .hoot-still .hoot-gaze {
   transition: none;
 }
+
+.hoot-gallery-moment {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 16px;
+}

@@ -104,6 +104,24 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
     ],
   },
   {
+    title: 'Academy (a tutorial step on screen)',
+    rows: [
+      ...fromActions(['learn.academy']),
+      { keys: 'Arrows', label: 'Course map: move between chapters' },
+      { keys: 'Enter / →', label: 'Next step (a read step), or check the answer' },
+      { keys: '←', label: 'Previous step' },
+      { keys: 'R', label: 'Read more: open the first cited file' },
+      { keys: '→ / ← or N / P', label: 'Code tour: next / previous stop' },
+      { keys: '↑ / ↓ , Enter', label: 'Spot it: move to a line, pick it' },
+      { keys: 'Space , ↑ / ↓', label: 'Put in order: pick up an item, move it' },
+      { keys: 'Backspace', label: 'Match: undo a pair' },
+      { keys: '1 … 4', label: 'Quick check: choose an answer' },
+      { keys: 'C / O / S', label: 'Try it yourself: copy the command, open the file, skip' },
+      { keys: 'A / R', label: 'Review: accept / reject the focused proposal' },
+      { keys: 'Esc / M', label: 'Back to the course map' },
+    ],
+  },
+  {
     title: 'Mermaid diagrams (diagram focused)',
     rows: [
       { keys: '+ / -', label: 'Zoom in / out' },

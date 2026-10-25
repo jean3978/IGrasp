@@ -6,6 +6,7 @@ import { X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import type { PlannedState } from '../../ipc/types';
 import { useTutorialWrite } from '../../stores/tutorialWrite';
+import { pickLine } from '../hoot/hootLines';
 
 const STATE_LABEL: Record<PlannedState, string> = {
   new: 'new',
@@ -93,7 +94,7 @@ export function WriteConfirmDialog() {
               </Button>
               <Button
                 variant="primary"
-                onClick={() => void confirm()}
+                onClick={() => void confirm(kind === 'share' ? pickLine('shared') : undefined)}
                 disabled={busy || (unchanged && kind !== 'export')}
               >
                 {kind === 'share' ? 'Share' : kind === 'export' ? 'Choose a folder…' : 'Write'}

@@ -28,7 +28,8 @@ interface TutorialWriteState {
   /** Asks for the plan and opens the confirmation (writes nothing). */
   prepare: (target: WriteTarget, title: string, tutorial?: Tutorial) => Promise<void>;
   /** Writes what the confirmation listed; resolves to where it went (null when cancelled). */
-  confirm: () => Promise<WrittenTutorial | null>;
+  /** `note` ends the toast (Hoot's line). */
+  confirm: (note?: string) => Promise<WrittenTutorial | null>;
   cancel: () => void;
 }
 
@@ -54,7 +55,7 @@ export const useTutorialWrite = create<TutorialWriteState>((set, get) => ({
     }
   },
 
-  async confirm() {
+  async confirm(note) {
     const pending = get().pending;
     if (!pending || get().busy) return null;
     set({ busy: true, error: null });
@@ -64,7 +65,11 @@ export const useTutorialWrite = create<TutorialWriteState>((set, get) => ({
       const where = written.readme ?? written.folder;
       useToasts
         .getState()
-        .notify('info', `${DONE[pending.target.type]}: ${where}`, written.readme ?? undefined);
+        .notify(
+          'info',
+          `${DONE[pending.target.type]}: ${where}${note ? ` ${note}` : ''}`,
+          written.readme ?? undefined,
+        );
       void useAcademy.getState().refreshLibrary();
       // The open tutorial was the one written (a shared one updated): read it again.
       const open = useTutorialPlayer.getState().reference;
