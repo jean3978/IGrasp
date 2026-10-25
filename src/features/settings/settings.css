@@ -195,3 +195,7 @@
   padding: 8px;
   border-radius: var(--radius-m);
 }
+
+.settings-learning-profile {
+  margin: 8px 0 16px;
+}

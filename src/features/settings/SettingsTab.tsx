@@ -9,6 +9,7 @@ import { useTree } from '../../stores/tree';
 import { useWorkspace } from '../../stores/workspace';
 import { THEME_OPTIONS } from '../titlebar/menuActions';
 import { AiSettingsSection } from './AiSettingsSection';
+import { LearningSettingsSection } from './LearningSettingsSection';
 import { Field, Segmented, Toggle } from './fields';
 import { save } from './saveSetting';
 import './settings.css';
@@ -199,6 +200,8 @@ export function SettingsTab() {
         </section>
 
         <AiSettingsSection />
+
+        <LearningSettingsSection />
 
         <section aria-labelledby="settings-data">
           <h2 id="settings-data">Data</h2>

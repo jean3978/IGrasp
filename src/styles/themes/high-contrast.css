@@ -77,6 +77,36 @@
   --ai-highlight-border: #ffb27a;
   --ai-selection-bg: #ffb27a;
   --ai-selection-fg: #000000;
+
+  /* Learning: flat fills and thick outlines. */
+  --profile-bar-0: #6fc3ff;
+  --profile-bar-1: #ffb27a;
+  --profile-bar-2: #3ff23f;
+  --profile-bar-3: #e599f7;
+  --profile-bar-4: #ff8787;
+  --profile-bar-5: #ffffff;
+  --quiz-good: #3ff23f;
+  --quiz-good-bg: #000000;
+  --quiz-bad: #ff6b6b;
+  --quiz-bad-bg: #000000;
+  --quiz-flame: #ffb27a;
+  --quiz-flame-core: #ffff00;
+  --quiz-flame-off: #6b6b6b;
+  --quiz-card: #000000;
+  --quiz-card-border: #ffffff;
+  --quiz-card-shadow: none;
+  --hoot-feather: #c08a54;
+  --hoot-feather-dark: #8a5a2e;
+  --hoot-belly: #ffe9c2;
+  --hoot-beak: #ffb000;
+  --hoot-frame: #ffffff;
+  --hoot-eye: #000000;
+  --hoot-eye-white: #ffffff;
+  --hoot-blush: #ff8787;
+  --hoot-outline: #ffffff;
+  --hoot-branch: #ffffff;
+  --hoot-bubble: #000000;
+  --hoot-bubble-border: #ffffff;
 }
 
 [data-theme='high-contrast'] a {
