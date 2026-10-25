@@ -1,9 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { backend } from '../../ipc/client';
 import { DEFAULT_SETTINGS } from '../../ipc/defaults';
-import { FIXTURE_ROOT } from '../../ipc/mock/fixture';
+import { FIXTURE_ROOT, FIXTURE_SHARED_TUTORIAL } from '../../ipc/mock/fixture';
+import { useAcademy } from '../../stores/academy';
 import { useProjectProfile } from '../../stores/projectProfile';
 import { useQuiz } from '../../stores/quiz';
 import { useSettings } from '../../stores/settings';
@@ -69,5 +70,36 @@ describe('Settings → Learning', () => {
       expect(screen.getByRole('status')).toHaveTextContent('Forgotten.');
     });
     expect(mock.state.quizzes.has(FIXTURE_ROOT)).toBe(false);
+  });
+
+  it('saves the tutorial defaults and folder, and forgets the private tutorials only', async () => {
+    await useWorkspace.getState().openRoot(FIXTURE_ROOT);
+    useAcademy.getState().leaveFolder();
+    const t = structuredClone(FIXTURE_SHARED_TUTORIAL.tutorial);
+    t.id = '';
+    await backend.saveTutorial(t);
+    window.__igraspMock?.addSharedTutorial();
+    render(<LearningSettingsSection />);
+    const group = screen.getByRole('group', { name: 'Tutorials' });
+    await userEvent.click(within(group).getByRole('radio', { name: 'Already contributing' }));
+    await userEvent.click(within(group).getByRole('radio', { name: 'Deep' }));
+    const folder = within(group).getByRole('textbox', { name: 'Tutorials folder' });
+    await userEvent.clear(folder);
+    await userEvent.type(folder, '/abs{Enter}');
+    expect(within(group).getByRole('alert')).toHaveTextContent(/inside the open folder/);
+    await userEvent.clear(folder);
+    await userEvent.type(folder, 'docs/learn{Enter}');
+    await waitFor(async () => {
+      expect(await learning()).toMatchObject({
+        tutorialFamiliarity: 'contributing',
+        tutorialLength: 'deep',
+        tutorialsFolder: 'docs/learn',
+      });
+    });
+    await userEvent.click(within(group).getByRole('button', { name: 'Forget tutorials…' }));
+    await userEvent.click(within(group).getByRole('button', { name: 'Forget them' }));
+    expect(await within(group).findByRole('status')).toHaveTextContent('Forgotten.');
+    const left = await backend.listTutorials();
+    expect(left.map((x) => x.reference.type)).toEqual(['shared']);
   });
 });

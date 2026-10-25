@@ -169,6 +169,8 @@ interface AcademyState {
   /** Opens the outline review of a private tutorial that has unwritten chapters. */
   reviewOutline: (id: string) => Promise<void>;
   deleteTutorial: (id: string) => Promise<void>;
+  /** Settings → "Forget tutorials": private tutorials, progress and suggestions of the folder. */
+  forgetTutorials: () => Promise<boolean>;
   /** Called when a tutorial was saved elsewhere (the reader, a review): refreshes the library. */
   onSaved: (t: Tutorial) => void;
   leaveFolder: () => void;
@@ -729,6 +731,18 @@ export const useAcademy = create<AcademyState>()((set, get) => {
         set({ tutorial: t, screen: 'outline', open: null });
       } catch (err) {
         notifyError('Cannot open the outline', err);
+      }
+    },
+
+    async forgetTutorials() {
+      try {
+        await backend.forgetTutorials();
+        set({ tutorial: null, review: null, open: null, screen: 'home' });
+        await Promise.all([get().refreshLibrary(), get().refreshSubjects()]);
+        return true;
+      } catch (err) {
+        notifyError('Cannot forget the tutorials', err);
+        return false;
       }
     },
 

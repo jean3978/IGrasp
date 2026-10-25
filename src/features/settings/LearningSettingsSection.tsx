@@ -10,11 +10,19 @@ import {
   MIN_QUIZ_QUESTIONS,
   relativeFolder,
 } from '../../ipc/defaults';
-import type { LearningSettingsPatch, QuizMode, QuizScopeSetting } from '../../ipc/types';
+import type {
+  Familiarity,
+  LearningSettingsPatch,
+  Length,
+  QuizMode,
+  QuizScopeSetting,
+} from '../../ipc/types';
+import { useAcademy } from '../../stores/academy';
 import { useProjectProfile } from '../../stores/projectProfile';
 import { useQuiz } from '../../stores/quiz';
 import { useSettings } from '../../stores/settings';
 import { useWorkspace } from '../../stores/workspace';
+import { FAMILIARITIES, FAMILIARITY_LABEL, LENGTHS, LENGTH_LABEL } from '../academy/labels';
 import { EMPTY_CORRECTIONS } from '../profile/labels';
 import { ProjectProfilePanel } from '../profile/ProjectProfilePanel';
 import { Field, Segmented, Toggle } from './fields';
@@ -169,6 +177,61 @@ function ForgetQuizzes() {
   );
 }
 
+function ForgetTutorials() {
+  const root = useWorkspace((s) => s.root);
+  const forget = useAcademy((s) => s.forgetTutorials);
+  const [confirming, setConfirming] = useState(false);
+  const [done, setDone] = useState(false);
+  return (
+    <Field
+      label="Forget this folder's tutorials"
+      description={
+        root
+          ? `Deletes the private tutorials of ${root.name}, your progress in every tutorial and the suggested subjects, from the app data folder. Tutorials shared in the folder stay.`
+          : 'Open a folder to forget its tutorials.'
+      }
+    >
+      {confirming ? (
+        <>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setConfirming(false);
+              void forget().then((ok) => {
+                setDone(ok);
+              });
+            }}
+          >
+            Forget them
+          </Button>
+          <Button
+            onClick={() => {
+              setConfirming(false);
+            }}
+          >
+            Keep them
+          </Button>
+        </>
+      ) : (
+        <Button
+          disabled={!root}
+          onClick={() => {
+            setDone(false);
+            setConfirming(true);
+          }}
+        >
+          Forget tutorials…
+        </Button>
+      )}
+      {done && (
+        <span className="settings-value" role="status">
+          Forgotten.
+        </span>
+      )}
+    </Field>
+  );
+}
+
 function ResetProfile() {
   const root = useWorkspace((s) => s.root);
   const corrections = useProjectProfile((s) => s.profile?.corrections ?? null);
@@ -268,6 +331,46 @@ export function LearningSettingsSection() {
         }}
       />
       <ForgetQuizzes />
+      <div
+        className="settings-subsection"
+        role="group"
+        aria-labelledby="settings-learning-tutorials"
+      >
+        <h3 id="settings-learning-tutorials">Tutorials</h3>
+        <Field
+          label="Default familiarity"
+          description="Who a new tutorial is written for; each tutorial's options can change it."
+        >
+          <Segmented<Familiarity>
+            label="Default familiarity"
+            value={learning.tutorialFamiliarity}
+            options={FAMILIARITIES.map((value) => ({ value, label: FAMILIARITY_LABEL[value] }))}
+            onChange={(tutorialFamiliarity) => {
+              saveLearning({ tutorialFamiliarity });
+            }}
+          />
+        </Field>
+        <Field label="Default length" description="How long a new tutorial is.">
+          <Segmented<Length>
+            label="Default length"
+            value={learning.tutorialLength}
+            options={LENGTHS.map((value) => ({ value, label: LENGTH_LABEL[value].name }))}
+            onChange={(tutorialLength) => {
+              saveLearning({ tutorialLength });
+            }}
+          />
+        </Field>
+        <FolderField
+          label="Tutorials folder"
+          description="Where “Share with the project” writes a tutorial (one folder per tutorial), inside the open folder. Created only when you share."
+          value={learning.tutorialsFolder}
+          fallback={DEFAULT_LEARNING_SETTINGS.tutorialsFolder}
+          onSave={(tutorialsFolder) => {
+            saveLearning({ tutorialsFolder });
+          }}
+        />
+        <ForgetTutorials />
+      </div>
       {root && <ResetProfile />}
       <div className="settings-learning-profile">
         <ProjectProfilePanel />
