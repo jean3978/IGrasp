@@ -63,6 +63,8 @@ pub struct QuizExclusion {
 pub struct QuizGenerationInput {
     /// From `list_subjects`; `None` is "No specific subject".
     pub subject_id: Option<String>,
+    /// A subject the developer typed ("How saving works"), when no proposed subject is chosen.
+    pub custom_subject: Option<String>,
     /// Questions to write in this operation (a whole fixed quiz, or one adaptive round).
     pub count: u32,
     pub mode: QuizMode,
@@ -80,6 +82,7 @@ impl Default for QuizGenerationInput {
     fn default() -> Self {
         Self {
             subject_id: None,
+            custom_subject: None,
             count: 10,
             mode: QuizMode::Fixed,
             round: None,
@@ -112,6 +115,22 @@ impl QuizGenerationInput {
             .domain_gap
             .map(|g| g.trim().chars().take(200).collect::<String>())
             .filter(|g| !g.is_empty());
+        // A proposed subject wins over a typed one.
+        let has_subject = self.subject_id.is_some();
+        self.custom_subject = self
+            .custom_subject
+            .filter(|_| !has_subject)
+            .map(|s| s.trim().chars().take(200).collect::<String>())
+            .filter(|s| !s.is_empty());
+        // "Check specific code": root-relative files or folders, `/` separators.
+        if let SourceScope::Paths { paths } = &mut self.scope {
+            for p in paths.iter_mut() {
+                *p = p.trim().replace('\\', "/").trim_matches('/').to_owned();
+            }
+            paths.retain(|p| !p.is_empty());
+            paths.dedup();
+            paths.truncate(50);
+        }
         self
     }
 }
@@ -142,5 +161,25 @@ mod tests {
         let round = input.round.unwrap();
         assert_eq!((round.number, round.right, round.level), (1, 3, 1));
         assert_eq!(input.domain_gap, None);
+    }
+
+    #[test]
+    fn a_typed_subject_and_paths_are_normalized() {
+        let input: QuizGenerationInput = serde_json::from_str(
+            r#"{ "customSubject": "  How saving works ", "scope": { "type": "paths", "paths": ["src\\save\\", " /src/save/", "", "README.md"] } }"#,
+        )
+        .unwrap();
+        let input = input.normalized();
+        assert_eq!(input.custom_subject.as_deref(), Some("How saving works"));
+        assert_eq!(
+            input.scope,
+            SourceScope::Paths {
+                paths: vec!["src/save".into(), "README.md".into()]
+            }
+        );
+        let both: QuizGenerationInput =
+            serde_json::from_str(r#"{ "subjectId": "concept:security", "customSubject": "x" }"#)
+                .unwrap();
+        assert_eq!(both.normalized().custom_subject, None);
     }
 }

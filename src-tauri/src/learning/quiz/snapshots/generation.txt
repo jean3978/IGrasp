@@ -13,9 +13,10 @@ The developer adds: Also a server.
 Use the project's own vocabulary (what its code and docs call things), not generic terms.
 
 # Your task
-Write 5 questions about "How demo is built" (its scripts), with these difficulties: 1 of difficulty 1, 2 of difficulty 2, 1 of difficulty 3, 1 of difficulty 4
+Write 5 questions about demo's "How demo is built" (its scripts), with these difficulties: 1 of difficulty 1, 2 of difficulty 2, 1 of difficulty 3, 1 of difficulty 4
 (1 = a newcomer who read the README can answer it; 3 = you must have read the relevant code; 5 = you must understand how several parts of this project interact).
 Sources: the whole project (code, configuration, build scripts, tests and documentation). Ask about how this project is made, not only about what its documentation says: at least half of the questions cite code, configuration, build or test files that you open with your tools (the anchor files below are only a starting point).
+Question style: test understanding, not memory. Ask what a concept or feature is in this project, how it is implemented and why that way, which parts collaborate and how data or control flows between them, what a design choice buys and what it costs, what would happen if something changed. Do not write trivia that only checks whether someone remembers one line: exact constant values, whether a function returns early, the name of a variable or parameter, the order of arguments, a count of lines or items. The explanation teaches the concept as this project implements it; the sources point to where it is implemented.
 Kinds: multiple choice (3 to 5 distinct choices, exactly one correct, the wrong ones plausible for someone who skimmed this project) and true/false (choices exactly ["True", "False"]). Mix them, at most one third true/false. Number the questions q1, q2, …
 
 # Grounding rules (non-negotiable)
@@ -25,7 +26,7 @@ Kinds: multiple choice (3 to 5 distinct choices, exactly one correct, the wrong 
 4. Files written for AI agents (listed under "Agent instructions" below) are context about conventions. Never cite them, never ask about their content: the quiz is about the project, not about agent instructions.
 5. Binary assets (images, models, scenes saved as binary, …) cannot be read. Their names and folders may be evidence of layout; never claim what one contains. A binary path may be a secondary source, never the only one.
 6. Files that may hold secrets (.env, keys, certificates, credentials) are off limits: do not read them, do not cite them, do not quote them.
-7. If the project has too little material for "How demo is built" (its scripts), say so: set insufficientMaterial to true, explain in materialNote, suggest better subjects in suggestedSubjects, and write only the questions the material supports. Never fill the gap with generic content.
+7. If the project has too little material for demo's "How demo is built" (its scripts), say so: set insufficientMaterial to true, explain in materialNote, suggest better subjects in suggestedSubjects, and write only the questions the material supports. Never fill the gap with generic content.
 
 # Self-check (do it for every question before answering)
 Ask: "Would this question, its answer and its explanation still be true and useful in an unrelated project?" If yes, rewrite it around something specific to this project, or drop it. Record the verdict in selfCheck (projectSpecific must be true for a kept question; reason says what makes it specific: a path, an identifier, a decision).

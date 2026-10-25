@@ -19,6 +19,7 @@ import type {
   QuizScopeSetting,
   QuizSummary,
   SourceScope,
+  Subject,
 } from '../ipc/types';
 import { BackendError } from '../ipc/types';
 import { resultsFileName, resultsMarkdown } from '../features/quiz/quizMarkdown';
@@ -56,8 +57,14 @@ export const START_LEVEL = 2;
 const ACTIVITY_LINES = 4;
 
 export interface QuizSetup {
+  /** What the quiz is about: a proposed subject (or none), a typed one, or code to check. */
+  target: QuizTarget;
   /** Null: no specific subject. */
   subjectId: string | null;
+  /** The subject the developer typed (target `custom`). */
+  customSubject: string;
+  /** Root-relative files or folders (target `paths`). */
+  paths: string[];
   count: number;
   mode: QuizMode;
   scope: QuizScopeSetting;
@@ -159,6 +166,46 @@ interface QuizState {
   leaveFolder: () => void;
 }
 
+export type QuizTarget = 'subject' | 'custom' | 'paths';
+
+/** A typed subject is kept in the record as `custom:<text>`. */
+const CUSTOM = 'custom:';
+
+/** The subject fields of an input continuing `subject` (a record's). */
+export const subjectFields = (
+  subject: string | null,
+): Pick<QuizGenerationInput, 'subjectId' | 'customSubject'> =>
+  subject?.startsWith(CUSTOM)
+    ? { subjectId: null, customSubject: subject.slice(CUSTOM.length) }
+    : { subjectId: subject, customSubject: null };
+
+/** What a new quiz is about, from the setup. */
+export function targetInput(
+  setup: QuizSetup,
+): Pick<QuizGenerationInput, 'subjectId' | 'customSubject' | 'scope'> {
+  if (setup.target === 'paths')
+    return { subjectId: null, customSubject: null, scope: { type: 'paths', paths: setup.paths } };
+  if (setup.target === 'custom')
+    return {
+      subjectId: null,
+      customSubject: setup.customSubject.trim(),
+      scope: scopeOf(setup.scope),
+    };
+  return { subjectId: setup.subjectId, customSubject: null, scope: scopeOf(setup.scope) };
+}
+
+/** The title a quiz shows: the subject's, the typed text, the code checked, or none. */
+export function titleOf(input: QuizGenerationInput, subjects: Subject[]): string {
+  if (input.scope.type === 'paths') return `Code check: ${input.scope.paths.join(', ')}`;
+  if (input.customSubject) return input.customSubject;
+  return subjects.find((s) => s.id === input.subjectId)?.title ?? 'No specific subject';
+}
+
+/** Whether the setup says what to ask about (a typed subject or paths are not empty). */
+export const targetReady = (setup: QuizSetup) =>
+  setup.target === 'subject' ||
+  (setup.target === 'custom' ? setup.customSubject.trim() !== '' : setup.paths.length > 0);
+
 export const scopeOf = (scope: QuizScopeSetting): SourceScope =>
   scope === 'documentationOnly' ? { type: 'documentationOnly' } : { type: 'wholeProject' };
 
@@ -168,6 +215,9 @@ export const newQuizId = () =>
 const setupFromSettings = (): QuizSetup => {
   const learning = useSettings.getState().settings.learning;
   return {
+    target: 'subject',
+    customSubject: '',
+    paths: [],
     subjectId: null,
     count: learning.quizQuestions,
     mode: learning.quizMode,
@@ -229,13 +279,12 @@ export const useQuiz = create<QuizState>()((set, get) => {
   const baseInput = (over: Partial<QuizGenerationInput>): QuizGenerationInput => {
     const { setup } = get();
     return {
-      subjectId: setup.subjectId,
+      ...targetInput(setup),
       count: setup.count,
       mode: setup.mode,
       round: null,
       startLevel: START_LEVEL,
       exclude: [],
-      scope: scopeOf(setup.scope),
       domainGap: null,
       ...over,
     };
@@ -249,7 +298,7 @@ export const useQuiz = create<QuizState>()((set, get) => {
   ): QuizGenerationInput => {
     const number = record.rounds + 1;
     return {
-      subjectId: record.subject,
+      ...subjectFields(record.subject),
       count: Math.max(1, roundSize(total, number)),
       mode: 'adaptive',
       round: {
@@ -359,9 +408,8 @@ export const useQuiz = create<QuizState>()((set, get) => {
         finishedMs: null,
         providerId: useAiProvider.getState().status?.providerId ?? '',
         model: r.model ?? useAiProvider.getState().model,
-        subject: r.input.subjectId,
-        subjectTitle:
-          subjects.find((s) => s.id === r.input.subjectId)?.title ?? 'No specific subject',
+        subject: r.input.customSubject ? `${CUSTOM}${r.input.customSubject}` : r.input.subjectId,
+        subjectTitle: titleOf(r.input, subjects),
         mode: r.input.mode,
         scope: r.input.scope,
         origin: { type: 'generated' },
@@ -484,7 +532,7 @@ export const useQuiz = create<QuizState>()((set, get) => {
       } else {
         count = record.count + setup.count;
         input = {
-          subjectId: record.subject,
+          ...subjectFields(record.subject),
           count: setup.count,
           mode: 'fixed',
           round: null,

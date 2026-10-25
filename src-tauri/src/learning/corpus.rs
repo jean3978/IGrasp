@@ -27,7 +27,7 @@ pub enum SourceScope {
     WholeProject,
     /// The project's markdown files only ("did I read the docs").
     DocumentationOnly,
-    /// Only these files (a tutorial's sources, Phase 5).
+    /// Only these files and folders ("Check specific code"; a tutorial's sources in Phase 5).
     Paths { paths: Vec<String> },
 }
 
@@ -343,9 +343,13 @@ impl Corpus {
                         || !file.path.contains('/')
                             && file.path.to_lowercase().starts_with("readme")
                 }
-                SourceScope::Paths { .. } => wanted
-                    .as_ref()
-                    .is_some_and(|w| w.contains(file.path.as_str())),
+                // A file, or every file under a folder.
+                SourceScope::Paths { .. } => wanted.as_ref().is_some_and(|w| {
+                    w.contains(file.path.as_str())
+                        || w.iter().any(|p| {
+                            file.path.starts_with(p) && file.path[p.len()..].starts_with('/')
+                        })
+                }),
             };
             if in_scope {
                 corpus.files.insert(file.path.clone(), file);
@@ -698,6 +702,21 @@ mod tests {
             },
         );
         assert_eq!(c.files.keys().collect::<Vec<_>>(), vec!["src/main.rs"]);
+        // A folder brings its files, not a sibling sharing its prefix.
+        let (_d, c) = corpus(
+            &[
+                ("src/save/load.rs", "fn a() {}\n"),
+                ("src/save/store.rs", "fn b() {}\n"),
+                ("src/saved.rs", "fn c() {}\n"),
+            ],
+            SourceScope::Paths {
+                paths: vec!["src/save".into()],
+            },
+        );
+        assert_eq!(
+            c.files.keys().collect::<Vec<_>>(),
+            vec!["src/save/load.rs", "src/save/store.rs"]
+        );
     }
 
     #[test]

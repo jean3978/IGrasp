@@ -319,7 +319,7 @@ describe('no token without a user action', () => {
     useUi.setState({ profileEditorOpen: false });
     const quiz = () => useQuiz.getState();
     quiz().setSetup({
-      subjectId: 'build',
+      subjectId: 'concept:build',
       mode: 'adaptive',
       count: 10,
       scope: 'documentationOnly',

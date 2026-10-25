@@ -28,6 +28,14 @@ developers on any kind of project (games, web, tools, libraries), with nothing g
   file at its lines. **Look it up** (`L`) opens the cited files before you answer, in a glowing
   window with Hoot perched on top, its eyes following the pointer. Five flames show your level;
   the order follows it.
+- **What to ask about**: subjects grouped as **Global** concepts (architecture, tech stack,
+  security, data and storage, state, design patterns, error handling, concurrency, UI,
+  networking, configuration, the engine's model, decisions, build, testing) and **Features**
+  (feature pages and folders, a game's own systems such as player, enemies or NPCs, common
+  features found by name), each detected locally and named as a concept, never a folder path;
+  **your own subject** typed freely; and **Check specific code**: files or folders you pick (or
+  open in tabs) for detailed, line-level questions, e.g. before submitting a change. Other
+  subjects ask about understanding a concept and its implementation, not one-line trivia.
 - **Grounded generation**: the prompt and JSON schema belong to the app; every question is
   checked (a real file of the project, a line range inside it, never an agent instruction file
   or a secret, the scope, no duplicate, a hint that does not give the answer, and a question

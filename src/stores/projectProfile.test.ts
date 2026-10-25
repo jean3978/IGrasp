@@ -26,12 +26,14 @@ describe('project profile store', () => {
     await useProjectProfile.getState().loadSubjects();
     const subjects = useProjectProfile.getState().subjects ?? [];
     expect(subjects.map((s) => s.id)).toEqual([
-      'overview',
+      'concept:architecture',
+      'concept:stack',
+      'concept:build',
+      'feature:greeting',
       'feature:docs/guide/getting-started.md',
-      'build',
     ]);
     for (const s of subjects) {
-      expect(s.title).toContain('igrasp-demo');
+      expect(s.title).not.toContain('/');
       expect(s.anchors.length).toBeGreaterThan(0);
     }
     expect(window.__igraspMock?.state.ai.starts).toEqual([]);

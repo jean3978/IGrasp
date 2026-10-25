@@ -2,15 +2,13 @@
 // mode, sources, model) and Start (the AI marker: the card that follows leads to the one call),
 // the quiz to continue, the last results with Play again (no AI) and the provider's problems.
 
-import { clsx } from 'clsx';
 import { FolderOpen, Play, RotateCcw } from 'lucide-react';
 import { useId } from 'react';
 import { AiMark } from '../../components/AiMark';
 import { Button } from '../../components/ui/Button';
-import type { QuizMode, QuizScopeSetting, Subject } from '../../ipc/types';
+import type { QuizMode, QuizScopeSetting } from '../../ipc/types';
 import { selectUsable, useAiProvider } from '../../stores/aiProvider';
-import { useProjectProfile } from '../../stores/projectProfile';
-import { selectQuizBusy, useQuiz } from '../../stores/quiz';
+import { selectQuizBusy, targetReady, useQuiz } from '../../stores/quiz';
 import { ModelPicker } from '../ai/ModelPicker';
 import { StatusLine } from '../ai/StatusLine';
 import { Hoot } from '../hoot/Hoot';
@@ -18,6 +16,7 @@ import { ProjectProfilePanel } from '../profile/ProjectProfilePanel';
 import { Segmented } from '../settings/fields';
 import { roundsOf } from './quizEngine';
 import { formatWhen } from './quizFormat';
+import { SubjectPicker } from './SubjectPicker';
 
 const MODES: { value: QuizMode; label: string }[] = [
   { value: 'fixed', label: 'Fixed' },
@@ -32,37 +31,6 @@ const SCOPES: { value: QuizScopeSetting; label: string }[] = [
 export const MIN_COUNT = 5;
 export const MAX_COUNT = 30;
 
-function SubjectChip({
-  subject,
-  selected,
-  onSelect,
-}: {
-  subject: Subject | null;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const title = subject
-    ? `${subject.title}\nStarts from: ${subject.anchors.join(', ')}`
-    : 'Questions about the whole project';
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      className={clsx('quiz-subject', { 'quiz-subject-selected': selected })}
-      title={title}
-      onClick={onSelect}
-    >
-      {subject ? subject.title : 'No specific subject'}
-      {subject?.material === 'rich' && (
-        <span className="quiz-subject-badge" aria-label="plenty of material">
-          ●●
-        </span>
-      )}
-    </button>
-  );
-}
-
 export function QuizHome({ hootLine }: { hootLine: string }) {
   const setup = useQuiz((s) => s.setup);
   const setSetup = useQuiz((s) => s.setSetup);
@@ -75,11 +43,9 @@ export function QuizHome({ hootLine }: { hootLine: string }) {
   const playFile = useQuiz((s) => s.playFile);
   const quizFiles = useQuiz((s) => s.quizFiles);
   const busy = useQuiz(selectQuizBusy);
-  const subjects = useProjectProfile((s) => s.subjects);
   const usable = useAiProvider(selectUsable);
-  const ids = { count: useId(), subjects: useId(), files: useId() };
-  const shown = (subjects ?? []).filter((s) => setup.scope === 'wholeProject' || s.hasDocs);
-  const selected = shown.find((s) => s.id === setup.subjectId) ?? null;
+  const ids = { count: useId(), files: useId() };
+  const checkingCode = setup.target === 'paths';
   const last = history[0];
 
   return (
@@ -123,35 +89,7 @@ export function QuizHome({ hootLine }: { hootLine: string }) {
       )}
 
       <section className="quiz-panel quiz-setup" aria-label="New quiz">
-        <h2 className="quiz-panel-title" id={ids.subjects}>
-          What should Hoot ask about?
-        </h2>
-        <div className="quiz-subjects" role="radiogroup" aria-labelledby={ids.subjects}>
-          <SubjectChip
-            subject={null}
-            selected={selected === null}
-            onSelect={() => {
-              setSetup({ subjectId: null });
-            }}
-          />
-          {shown.map((s) => (
-            <SubjectChip
-              key={s.id}
-              subject={s}
-              selected={selected?.id === s.id}
-              onSelect={() => {
-                setSetup({ subjectId: s.id });
-              }}
-            />
-          ))}
-        </div>
-        {subjects !== null && (
-          <p className="quiz-muted">
-            {subjects.length === 0
-              ? 'This project is small: Hoot will ask about it as a whole.'
-              : `Hoot found enough material for ${String(subjects.length)} subjects.`}
-          </p>
-        )}
+        <SubjectPicker />
 
         <div className="quiz-options">
           <label className="quiz-option" htmlFor={ids.count}>
@@ -189,6 +127,7 @@ export function QuizHome({ hootLine }: { hootLine: string }) {
               label="Sources"
               value={setup.scope}
               options={SCOPES}
+              disabled={checkingCode}
               onChange={(scope) => {
                 setSetup({ scope });
               }}
@@ -203,9 +142,11 @@ export function QuizHome({ hootLine }: { hootLine: string }) {
           {setup.mode === 'fixed'
             ? 'Fixed: all questions are written now, in one AI call; your level changes their order.'
             : `Adaptive: written in rounds of 5 as you play, at the level you reach. It calls the AI between rounds while you play: about ${String(roundsOf(setup.count))} calls for this quiz, each started by your click on Next round, with a short wait each time.`}{' '}
-          {setup.scope === 'wholeProject'
-            ? 'Whole project: code, configuration, build, tests and docs.'
-            : "Documentation only: what the project's markdown files say."}
+          {checkingCode
+            ? 'Code check: only the files and folders you picked, in detail.'
+            : setup.scope === 'wholeProject'
+              ? 'Whole project: code, configuration, build, tests and docs.'
+              : "Documentation only: what the project's markdown files say."}
         </p>
 
         <StatusLine part="problem" showSession={false} />
@@ -213,7 +154,7 @@ export function QuizHome({ hootLine }: { hootLine: string }) {
           <Button
             variant="primary"
             className="quiz-start-button"
-            disabled={busy || !usable}
+            disabled={busy || !usable || !targetReady(setup)}
             onClick={() => void prepare()}
           >
             Start <AiMark />

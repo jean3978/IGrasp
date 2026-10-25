@@ -60,6 +60,21 @@ test('Look it up opens the cited file, Escape closes it and the quiz goes on', a
   await expect(page.getByText('· looked it up')).toBeVisible();
 });
 
+test('Check specific code writes questions on the picked files only', async ({ page }) => {
+  await openQuiz(page);
+  await page.getByLabel('A file or folder to check').fill('src');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('list', { name: 'Code to check' })).toContainText('src');
+  await expect(page.getByRole('radio', { name: 'Documentation only' })).toBeDisabled();
+  await startQuiz(page, { count: 5 });
+  await expect(quizCard(page)).toBeVisible();
+  await expect(page.locator('.quiz-subject-name')).toHaveText('Code check: src');
+  const answered = await answerAll(page);
+  expect(answered).toBeGreaterThan(0);
+  const sources = await page.locator('.quiz-review .quiz-source-path').allTextContents();
+  expect(sources.every((s) => s.startsWith('src/'))).toBe(true);
+});
+
 test('a retry is shown, then the quiz plays', async ({ page }) => {
   await openQuiz(page);
   await quizMock(page, (m) => {

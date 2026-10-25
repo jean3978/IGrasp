@@ -294,7 +294,8 @@ export function buildQuizCorpus(
         : scope.type === 'documentationOnly'
           ? file.markdown ||
             (!file.path.includes('/') && file.path.toLowerCase().startsWith('readme'))
-          : (wanted?.has(file.path) ?? false);
+          : (wanted?.has(file.path) ?? false) ||
+            [...(wanted ?? [])].some((p) => file.path.startsWith(`${p}/`));
     if (inScope) corpus.files.set(file.path, file);
     else corpus.outsideScope.add(file.path);
   }

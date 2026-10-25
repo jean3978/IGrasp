@@ -14,6 +14,10 @@ export type QuizGenerationInput = {
  */
 subjectId: string | null, 
 /**
+ * A subject the developer typed ("How saving works"), when no proposed subject is chosen.
+ */
+customSubject: string | null, 
+/**
  * Questions to write in this operation (a whole fixed quiz, or one adaptive round).
  */
 count: number, mode: QuizMode, 

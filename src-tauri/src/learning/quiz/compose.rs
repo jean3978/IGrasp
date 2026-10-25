@@ -18,7 +18,7 @@ use crate::ai::run::{MAX_RETRIES, OutputValidator, Verdict};
 use crate::ai::types::{AiPolicy, AiRequest};
 use crate::error::{AppError, AppResult};
 use crate::learning::corpus::{Corpus, Inlined, SourceScope, read_text};
-use crate::learning::subjects::{Subject, propose};
+use crate::learning::subjects::{Subject, custom_anchors, pick_anchors, propose};
 use crate::profile::ProjectProfile;
 use crate::profile::walk::Walk;
 
@@ -34,7 +34,7 @@ pub struct Composed {
 /// The anchors of "No specific subject": the README, the architecture page, the main manifest
 /// and the largest module's entry (the overview subject's anchors when proposed).
 fn default_anchors(profile: &ProjectProfile, subjects: &[Subject], corpus: &Corpus) -> Vec<String> {
-    if let Some(overview) = subjects.iter().find(|s| s.id == "overview") {
+    if let Some(overview) = subjects.iter().find(|s| s.id == "concept:architecture") {
         return overview.anchors.clone();
     }
     let mut out: Vec<String> = Vec::new();
@@ -76,14 +76,30 @@ pub fn compose(
         })?),
         None => None,
     };
+    let typed = input
+        .custom_subject
+        .as_deref()
+        .map(|t| custom_anchors(&whole, t))
+        .unwrap_or_default();
     let corpus = if input.scope == SourceScope::WholeProject {
         whole
     } else {
         Corpus::build(root, walk, &input.scope, agent_names)
     };
-    let mut anchors: Vec<String> = match &subject {
-        Some(s) => s.anchors.clone(),
-        None => default_anchors(profile, &subjects, &corpus),
+    if let SourceScope::Paths { paths } = &input.scope
+        && corpus.files.values().all(|f| f.binary)
+    {
+        return Err(AppError::Ai(format!(
+            "None of these paths holds text files of the project: {}. Check the paths (root-relative, like src/main.rs or src/save).",
+            paths.join(", ")
+        )));
+    }
+    let mut anchors: Vec<String> = match (&subject, &input.scope) {
+        (Some(s), _) => s.anchors.clone(),
+        // The code to check: its entry files and largest files.
+        (None, SourceScope::Paths { .. }) => pick_anchors(corpus.files.values()),
+        (None, _) if !typed.is_empty() => typed,
+        (None, _) => default_anchors(profile, &subjects, &corpus),
     };
     if input.scope == SourceScope::DocumentationOnly {
         // The subject's documentation, then the README and the architecture page.
@@ -100,6 +116,7 @@ pub fn compose(
     let prompt_input = PromptInput {
         profile,
         subject: subject.as_ref(),
+        custom_subject: input.custom_subject.as_deref(),
         count: input.count,
         plan: difficulty_plan,
         scope: &input.scope,
@@ -507,7 +524,8 @@ mod tests {
     /// A real generation with the user's installed provider (it spends tokens): the folder of
     /// `IGRASP_QUIZ_ROOT` (default: this repository), `IGRASP_QUIZ_COUNT` questions (5),
     /// `IGRASP_QUIZ_MODEL` (sonnet), `IGRASP_QUIZ_SUBJECT` (a subject id; none by default),
-    /// `IGRASP_QUIZ_SCOPE=docs` for documentation only. Prints the subjects, the activity and
+    /// `IGRASP_QUIZ_SCOPE=docs` for documentation only, `IGRASP_QUIZ_CUSTOM` (a typed subject),
+    /// `IGRASP_QUIZ_PATHS` (comma-separated files or folders: a code check). Prints the subjects, the activity and
     /// the accepted questions. Run with
     /// `cargo test --manifest-path src-tauri/Cargo.toml real_quiz -- --ignored --nocapture`.
     #[test]
@@ -536,7 +554,12 @@ mod tests {
                 .and_then(|c| c.parse().ok())
                 .unwrap_or(5),
             subject_id: var("IGRASP_QUIZ_SUBJECT"),
-            scope: if var("IGRASP_QUIZ_SCOPE").as_deref() == Some("docs") {
+            custom_subject: var("IGRASP_QUIZ_CUSTOM"),
+            scope: if let Some(paths) = var("IGRASP_QUIZ_PATHS") {
+                SourceScope::Paths {
+                    paths: paths.split(',').map(str::to_owned).collect(),
+                }
+            } else if var("IGRASP_QUIZ_SCOPE").as_deref() == Some("docs") {
                 SourceScope::DocumentationOnly
             } else {
                 SourceScope::WholeProject

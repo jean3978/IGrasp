@@ -113,14 +113,35 @@ interface ComposeDeps {
   agentNames: string[];
 }
 
+/** A root-relative path with `/` separators and no leading or trailing slash. */
+const normalizePath = (p: string) =>
+  p
+    .trim()
+    .split(/[\\/]+/)
+    .filter(Boolean)
+    .join('/');
+
 /** Like `QuizGenerationInput::normalized`. */
 function normalizedInput(input: QuizGenerationInput): QuizGenerationInput {
   let count = Math.min(30, Math.max(3, input.count));
   if (input.mode === 'adaptive') count = Math.min(count, MOCK_ROUND_SIZE);
+  const custom = input.subjectId === null ? (input.customSubject ?? '').trim().slice(0, 200) : '';
+  const scope: QuizGenerationInput['scope'] =
+    input.scope.type === 'paths'
+      ? {
+          type: 'paths',
+          paths: [...new Set(input.scope.paths.map((p) => normalizePath(p)).filter(Boolean))].slice(
+            0,
+            50,
+          ),
+        }
+      : input.scope;
   return {
     ...input,
     count,
     startLevel: Math.min(5, Math.max(1, input.startLevel)),
+    customSubject: custom === '' ? null : custom,
+    scope,
   };
 }
 
@@ -139,8 +160,27 @@ export function composeMockQuiz(
     );
   }
   const corpus = corpusOfFiles(deps.files, input.scope, deps.agentNames);
-  const overview = deps.subjects.find((s) => s.id === 'overview');
-  let anchors = subject?.anchors ?? overview?.anchors ?? [];
+  const paths = input.scope.type === 'paths' ? input.scope.paths : null;
+  if (paths && [...corpus.files.values()].every((f) => f.binary)) {
+    throw new Error(
+      `None of these paths holds text files of the project: ${paths.join(', ')}. Check the paths (root-relative, like src/main.rs or src/save).`,
+    );
+  }
+  const overview = deps.subjects.find((s) => s.id === 'concept:architecture');
+  // A typed subject starts from the files its words name (like Rust `custom_anchors`).
+  const typedWords = (input.customSubject ?? '')
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length >= 3);
+  const typed = [...corpus.files.keys()].filter((p) =>
+    typedWords.some((w) => p.toLowerCase().includes(w)),
+  );
+  let anchors =
+    subject?.anchors ??
+    (paths ? [...corpus.files.keys()].slice(0, 5) : null) ??
+    (typed.length > 0 ? typed.slice(0, 5) : null) ??
+    overview?.anchors ??
+    [];
   if (input.scope.type === 'documentationOnly') {
     anchors = [...anchors, deps.profile.docs.readme ?? '', deps.profile.docs.architecture ?? ''];
   }
@@ -152,8 +192,12 @@ export function composeMockQuiz(
     .filter(Boolean)
     .join(', ');
   const about = subject
-    ? `"${subject.title}" (${subject.focus})`
-    : `${deps.profile.name} as a whole`;
+    ? `${deps.profile.name}'s "${subject.title}" (${subject.focus})`
+    : paths
+      ? `the code of ${deps.profile.name} in ${paths.join(', ')}`
+      : input.customSubject
+        ? `"${input.customSubject}" in ${deps.profile.name} (a subject the developer typed)`
+        : `${deps.profile.name} as a whole`;
   const lines = [
     resumeId === undefined
       ? `You are Hoot, the quiz master of IGrasp, writing a quiz about ONE specific software project.`
@@ -276,11 +320,11 @@ export class MockQuizValidator {
  * only", anything citing code. */
 function pick(composed: MockQuizComposed, count: number): PoolQuestion[] {
   const excluded = new Set(composed.input.exclude.map((e) => normalized(e.question)));
-  const docsOnly = composed.input.scope.type === 'documentationOnly';
+  // Only questions whose sources are all in scope (the docs, or the code to check).
   const available = POOL.filter(
     (q) =>
       !excluded.has(normalized(q.question)) &&
-      (!docsOnly || q.sources.every((s) => /\.(?:md|markdown)$/i.test(s.path))),
+      q.sources.every((s) => composed.corpus.files.has(s.path)),
   );
   const out: PoolQuestion[] = [];
   composed.plan.forEach((n, i) => {
@@ -339,7 +383,7 @@ export function scriptedAnswer(
           insufficientMaterial: true,
           materialNote:
             'igrasp-demo has little material on this subject: Hoot wrote two questions.',
-          suggestedSubjects: ['How igrasp-demo is built, tested and shipped'],
+          suggestedSubjects: ['Build, CI and release'],
         },
       );
     case 'leak': {

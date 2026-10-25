@@ -187,4 +187,42 @@ export const POOL: PoolQuestion[] = [
     sources: [{ path: 'src/main.ts', firstLine: 9, lastLine: 14 }],
     difficulty: 5,
   },
+  // Line-level questions on src/main.ts, for a code check of that file or of src/.
+  {
+    kind: 'multipleChoice',
+    question: 'In src/main.ts, what does main() return when loud is omitted?',
+    choices: [
+      'The greeting from greet(name), unchanged',
+      'The greeting in upper case',
+      'undefined',
+    ],
+    answer: 0,
+    hint: 'Look at the default value in the parameter list of main().',
+    explanation:
+      'main() destructures loud with a default of false, so the ternary returns message as greet(name) built it.',
+    sources: [{ path: 'src/main.ts', firstLine: 9, lastLine: 12 }],
+    difficulty: 2,
+  },
+  {
+    kind: 'multipleChoice',
+    question: 'Where does src/main.ts get the greet function it calls in main()?',
+    choices: ["An import from './greet'", 'A function declared in the same file', 'A global'],
+    answer: 0,
+    hint: 'The second line of the file.',
+    explanation:
+      "src/main.ts imports greet from './greet' on line 2; main() only adds the loud option on top of it.",
+    sources: [{ path: 'src/main.ts', firstLine: 2, lastLine: 2 }],
+    difficulty: 1,
+  },
+  {
+    kind: 'trueFalse',
+    question: 'In src/main.ts, the Options interface makes the name field optional.',
+    choices: ['True', 'False'],
+    answer: 1,
+    hint: 'Compare the two fields of Options.',
+    explanation:
+      'Not quite: in src/main.ts only loud is optional (loud?: boolean); name is a required string.',
+    sources: [{ path: 'src/main.ts', firstLine: 4, lastLine: 7 }],
+    difficulty: 3,
+  },
 ];

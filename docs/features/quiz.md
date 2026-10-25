@@ -15,9 +15,8 @@ today).
 - **Open**: **Learn → Quiz Me…** (`Ctrl+Alt+Q`), or the owl button of the AI tools over the
   view. The Quiz tab opens; opening it is free (the profile, the subjects, the history and a quiz
   to continue are local).
-- **Home**: Hoot, the **subjects** (chips built from the project profile and the files, without
-  AI; "No specific subject" lets the AI roam), the number of questions (5 to 30), the mode, the
-  sources, the model, and **Start**. Start shows the confirmation card with the expected size;
+- **Home**: Hoot, **what to ask about** (below), the number of questions (5 to 30), the mode,
+  the sources, the model, and **Start**. Start shows the confirmation card with the expected size;
   nothing is sent before its own Start. Below: **Continue your quiz** (a quiz in progress
   survives a restart), **Last results** with **Play again**, **Saved quizzes** with **Open quiz
   file…**, and the project profile.
@@ -45,6 +44,40 @@ today).
   "Replayed: no AI call."), every question with your answer and its sources, and **Save
   results…**, **Save quiz…**, **Play again** (the same questions, no AI), **Keep going** (more
   questions at your level, through the confirmation card) and **New quiz**.
+
+## What Hoot asks about
+
+Proposed locally from the project profile and the files, without AI, and only when the project
+has enough material (`learning/subjects.rs`). Titles are concepts and features, never folder
+paths.
+
+- **Global**: concepts across the project. *Architecture* and *Tech stack* (its engines,
+  frameworks and languages), the engine's or framework's own model (*Godot scenes, nodes and
+  signals*, *Unity components…*, *UI and backend boundary* for Tauri or Electron, *API design* for
+  services), and the concepts the code shows it implements, recognised by the words of its paths
+  (camelCase and plurals included): *Security*, *Data and storage*, *State management*, *Design
+  patterns*, *Error handling*, *Concurrency and background work*, *User interface*, *Networking
+  and communication*, *Configuration and settings*, *Logging and diagnostics*, then *Design
+  decisions*, *Build, CI and release* and *Testing strategy*.
+- **Features**: the docs' feature pages, the subfolders of feature folders (`features/`,
+  `systems/`, `gameplay/`, `scenes/`, `plugins/`, …), a game's own top-level folders (`player/`,
+  `enemy/`), and common features found by name (*NPCs*, *Enemies*, *Combat*, *Inventory and
+  items*, *Saving and loading*, *Dialogue*, *Multiplayer*, *Search*, *Notifications*, …). A
+  feature made mostly of the files of another one is not proposed twice; at most 12.
+- **Your own**: type any subject ("how the save system works"). The generation starts from the
+  files whose names match its words; if the project has nothing about it, Hoot says so.
+- **Check specific code**: pick files or folders (type them, with suggestions, or add a file
+  open in a tab). The quiz cites only that code and asks **detailed, line-level questions**:
+  control flow, edge cases, early returns, error paths, what a change would break. Use it to make
+  sure you understand code before you submit it. Sources do not apply.
+
+Every other subject asks for **understanding, not memory**: what a concept or feature is here,
+how it is implemented and why, which parts collaborate and how data flows, what a choice costs.
+Trivia that only checks one line (a constant's value, whether a function returns early, a
+parameter's name) is reserved for *Check specific code*.
+
+`IGRASP_SUBJECTS_ROOT=<folder> cargo test --manifest-path src-tauri/Cargo.toml print_subjects
+-- --ignored --nocapture` prints the subjects of any folder without AI.
 
 ## Modes and sources
 

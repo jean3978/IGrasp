@@ -18,6 +18,11 @@ retries capped and visible), and the frontend must stay provider-neutral.
   the grounding rules) and `learning/quiz/schema.rs` a JSON schema of the answer. The frontend
   sends only a `QuizGenerationInput` (subject, count, mode, scope, exclusions); it never sends a
   prompt for a quiz. The request is composed in Rust in `ai_start` (`learning/quiz/compose.rs`).
+- **Two question styles.** Proposed subjects (global concepts and features) and typed subjects
+  ask for understanding: concepts, implementation, collaboration between parts, trade-offs, and
+  explicitly not one-line trivia. A code check (`SourceScope::Paths`, files or folders) asks for
+  precise, line-level questions on that code only. The style is a block of the app's prompt,
+  chosen by the scope, never by the frontend.
 - **Structured output is a neutral event.** A provider maps its structured answer to
   `AiEvent::StructuredOutput(Value)`; the Claude CLI's `result.structured_output` is mapped in
   `protocol.rs` and its internal tool call is hidden. A provider without structured output

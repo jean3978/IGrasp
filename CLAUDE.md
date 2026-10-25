@@ -21,7 +21,8 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 | End-to-end smoke tests | `npm run test:e2e` (Playwright, production build, mock backend) |
 | Rust tests | `npm run rust:test` (also regenerates `src/ipc/generated`) |
 | Performance tests (10k documents) | `cargo test --release --manifest-path src-tauri/Cargo.toml -- --ignored --nocapture` |
-| A real quiz (spends tokens) | `IGRASP_QUIZ_ROOT=<folder> cargo test --manifest-path src-tauri/Cargo.toml real_quiz -- --ignored --nocapture` |
+| A real quiz (spends tokens) | `IGRASP_QUIZ_ROOT=<folder> cargo test --manifest-path src-tauri/Cargo.toml real_quiz -- --ignored --nocapture` (also `IGRASP_QUIZ_SUBJECT`, `IGRASP_QUIZ_CUSTOM`, `IGRASP_QUIZ_PATHS`) |
+| The quiz subjects of a folder (no AI) | `IGRASP_SUBJECTS_ROOT=<folder> cargo test --manifest-path src-tauri/Cargo.toml print_subjects -- --ignored --nocapture` |
 | Large project to open in the app | `node scripts/gen-large-project.mjs [folder]` |
 | Lint / format | `npm run lint`, `npm run format`, `npm run rust:fmt`, `npm run rust:clippy` |
 

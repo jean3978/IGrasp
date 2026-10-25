@@ -325,6 +325,48 @@ describe('the quiz store', () => {
     expect(last?.type === 'message' && last.text).toMatch(/Cannot play that quiz: Not a quiz/);
   });
 
+  it('asks about a typed subject, and keeps it for more questions', async () => {
+    setUp();
+    quiz().setSetup({ target: 'custom', customSubject: '  greeting ', count: 5 });
+    await startQuiz();
+    expect(mock().state.ai.lastRequest?.prompt).toContain(
+      '"greeting" in igrasp-demo (a subject the developer typed)',
+    );
+    expect(quiz().record?.subject).toBe('custom:greeting');
+    expect(quiz().record?.subjectTitle).toBe('greeting');
+    for (let i = 0; i < 5; i++) {
+      play(true);
+      quiz().next();
+    }
+    await vi.waitFor(() => {
+      expect(quiz().screen).toBe('results');
+    });
+    await quiz().keepGoing();
+    expect(quiz().pending?.input).toMatchObject({ subjectId: null, customSubject: 'greeting' });
+  });
+
+  it('checks specific code with questions on those files only', async () => {
+    setUp();
+    quiz().setSetup({ target: 'paths', paths: ['src'], count: 5 });
+    await startQuiz();
+    expect(mock().state.ai.lastRequest?.prompt).toContain('the code of igrasp-demo in src');
+    const record = quiz().record;
+    expect(record?.scope).toEqual({ type: 'paths', paths: ['src'] });
+    expect(record?.subjectTitle).toBe('Code check: src');
+    expect(record?.questions.length).toBeGreaterThan(0);
+    for (const q of record?.questions ?? [])
+      expect(q.sources.every((s) => s.path.startsWith('src/'))).toBe(true);
+  });
+
+  it('says so when the code to check is not in the project', async () => {
+    setUp();
+    quiz().setSetup({ target: 'paths', paths: ['nowhere/at-all.ts'] });
+    await quiz().prepare();
+    expect(quiz().screen).toBe('home');
+    expect(quiz().failure?.message).toMatch(/None of these paths holds text files/);
+    expect(starts()).toEqual([]);
+  });
+
   it('restores a quiz in progress from app data', async () => {
     setUp();
     await startQuiz();

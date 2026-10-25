@@ -13,6 +13,7 @@ use crate::profile::ProjectProfile;
 pub struct PromptInput<'a> {
     pub profile: &'a ProjectProfile,
     pub subject: Option<&'a Subject>,
+    pub custom_subject: Option<&'a str>,
     pub count: u32,
     pub plan: [u32; 5],
     pub scope: &'a SourceScope,
@@ -25,13 +26,31 @@ pub struct PromptInput<'a> {
 }
 
 /// What the quiz is about, as the prompt names it.
-pub fn subject_phrase(profile: &ProjectProfile, subject: Option<&Subject>) -> String {
-    match subject {
-        Some(s) => format!("\"{}\" ({})", s.title, s.focus),
-        None => format!(
-            "{} as a whole (no specific subject): what it does, its architecture and main modules, how its parts interact, how it is built and tested, and the decisions behind it",
-            profile.name
+pub fn subject_phrase(input: &PromptInput<'_>) -> String {
+    let name = &input.profile.name;
+    match (input.subject, input.custom_subject, input.scope) {
+        (Some(s), _, _) => format!("{name}'s \"{}\" ({})", s.title, s.focus),
+        (None, _, SourceScope::Paths { paths }) => {
+            format!("the code of {name} in {}", paths.join(", "))
+        }
+        (None, Some(t), _) => format!(
+            "\"{t}\" in {name} (a subject the developer typed: interpret it in this project's terms; if the project has nothing about it, say so)"
         ),
+        (None, None, _) => format!(
+            "{name} as a whole (no specific subject): what it does, its architecture and main modules, how its parts interact, how it is built and tested, and the decisions behind it"
+        ),
+    }
+}
+
+/// What kind of questions to write: understanding by default, a precise code check for paths.
+fn style_block(scope: &SourceScope) -> &'static str {
+    match scope {
+        SourceScope::Paths { .. } => {
+            "Question style: a code check. The developer wants to be sure they understand this code precisely, for example before submitting it for review. Ask detailed questions about the code in these files: control flow and edge cases, early returns and error paths, invariants and assumptions, what a function returns or does in a given situation, what a change would break, how the code interacts with its callers. Precise line-level questions are welcome here."
+        }
+        _ => {
+            "Question style: test understanding, not memory. Ask what a concept or feature is in this project, how it is implemented and why that way, which parts collaborate and how data or control flows between them, what a design choice buys and what it costs, what would happen if something changed. Do not write trivia that only checks whether someone remembers one line: exact constant values, whether a function returns early, the name of a variable or parameter, the order of arguments, a count of lines or items. The explanation teaches the concept as this project implements it; the sources point to where it is implemented."
+        }
     }
 }
 
@@ -73,7 +92,7 @@ fn exclusions_block(exclude: &[QuizExclusion]) -> Option<String> {
 
 /// The prompt of a generation (the first attempt).
 pub fn generation_prompt(input: &PromptInput<'_>) -> String {
-    let subject = subject_phrase(input.profile, input.subject);
+    let subject = subject_phrase(input);
     let gap = input.domain_gap.map_or_else(
         || "none stated".to_owned(),
         |g| format!("they say: \"{g}\""),
@@ -86,6 +105,7 @@ pub fn generation_prompt(input: &PromptInput<'_>) -> String {
         ),
         "(1 = a newcomer who read the README can answer it; 3 = you must have read the relevant code; 5 = you must understand how several parts of this project interact).".to_owned(),
         scope_block(input.scope),
+        style_block(input.scope).to_owned(),
     ];
     task.extend(round_block(input.round));
     task.extend(exclusions_block(input.exclude));
@@ -146,7 +166,7 @@ Answer with JSON only, following the schema you were given. No prose outside the
 /// The prompt of a generation that continues a conversation (an adaptive round, or more
 /// questions): the project, the corpus and the rules are already in it.
 pub fn continuation_prompt(input: &PromptInput<'_>) -> String {
-    let subject = subject_phrase(input.profile, input.subject);
+    let subject = subject_phrase(input);
     let mut lines = Vec::new();
     lines.extend(round_block(input.round));
     lines.push(format!(
@@ -155,6 +175,7 @@ pub fn continuation_prompt(input: &PromptInput<'_>) -> String {
         plan_text(&input.plan)
     ));
     lines.push(scope_block(input.scope));
+    lines.push(style_block(input.scope).to_owned());
     lines.extend(exclusions_block(input.exclude));
     lines.push("Do not repeat any question of this conversation. The grounding rules, the self-check, Hoot's voice and the schema are the same as before: every question cites lines you actually read in this project. Number the questions q1, q2, … Answer with JSON only.".to_owned());
     lines.join("\n")
@@ -240,6 +261,7 @@ mod tests {
     fn subject() -> Subject {
         Subject {
             id: "build".into(),
+            group: crate::learning::subjects::SubjectGroup::Global,
             title: "How demo is built".into(),
             focus: "its scripts".into(),
             anchors: vec!["Makefile".into()],
@@ -256,6 +278,7 @@ mod tests {
         generation_prompt(&PromptInput {
             profile: &p,
             subject: Some(&s),
+            custom_subject: None,
             count: 5,
             plan: [1, 2, 1, 1, 0],
             scope,
@@ -282,6 +305,38 @@ mod tests {
             .unwrap()
             .replace("\r\n", "\n");
         assert_eq!(text, expected);
+    }
+
+    #[test]
+    fn a_typed_subject_and_a_code_check() {
+        let p = profile();
+        let base = |custom: Option<&'static str>, scope: &'static SourceScope| PromptInput {
+            profile: &p,
+            subject: None,
+            custom_subject: custom,
+            count: 5,
+            plan: [1, 2, 1, 1, 0],
+            scope,
+            round: None,
+            exclude: &[],
+            domain_gap: None,
+            corpus_map: "",
+            anchor_files: "",
+            agent_files: "",
+        };
+        static WHOLE: SourceScope = SourceScope::WholeProject;
+        let typed = generation_prompt(&base(Some("How saving works"), &WHOLE));
+        assert!(typed.contains("\"How saving works\" in demo (a subject the developer typed"));
+        assert!(typed.contains("test understanding, not memory"));
+        assert!(typed.contains("whether a function returns early"));
+        static PATHS: std::sync::LazyLock<SourceScope> =
+            std::sync::LazyLock::new(|| SourceScope::Paths {
+                paths: vec!["src/save".into(), "src/main.ts".into()],
+            });
+        let check = generation_prompt(&base(None, &PATHS));
+        assert!(check.contains("the code of demo in src/save, src/main.ts"));
+        assert!(check.contains("Question style: a code check"));
+        assert!(!check.contains("test understanding, not memory"));
     }
 
     #[test]
