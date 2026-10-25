@@ -3,6 +3,7 @@
 
 use tauri::{AppHandle, Manager, State};
 
+use crate::appdata::learning::{QuizRecord, QuizSummary};
 use crate::commands::appdata::notify_recovered;
 use crate::error::{AppError, AppResult};
 use crate::learning::subjects::Subject;
@@ -61,4 +62,56 @@ pub async fn set_profile_corrections(
     })
     .await
     .map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))?
+}
+
+/// The key of the open folder in app data.
+fn folder_key(state: &AppState) -> AppResult<String> {
+    state.with_workspace(|ws| Ok(root_key(ws)))
+}
+
+/// The quiz being played in the open folder (app data), if any.
+#[tauri::command]
+pub fn get_current_quiz(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> AppResult<Option<QuizRecord>> {
+    let quiz = state.appdata.current_quiz(&folder_key(&state)?);
+    notify_recovered(&app, &state.appdata);
+    quiz
+}
+
+/// Saves the quiz being played (after each answer); a finished one moves to the history.
+#[tauri::command]
+pub fn save_current_quiz(state: State<'_, AppState>, record: QuizRecord) -> AppResult<()> {
+    state
+        .appdata
+        .save_current_quiz(&folder_key(&state)?, record)
+}
+
+#[tauri::command]
+pub fn clear_current_quiz(state: State<'_, AppState>) -> AppResult<()> {
+    state.appdata.clear_current_quiz(&folder_key(&state)?)
+}
+
+/// The finished quizzes of the open folder, newest first.
+#[tauri::command]
+pub fn list_quiz_history(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> AppResult<Vec<QuizSummary>> {
+    let history = state.appdata.quiz_history(&folder_key(&state)?);
+    notify_recovered(&app, &state.appdata);
+    history
+}
+
+/// A finished quiz of the open folder (for Play again).
+#[tauri::command]
+pub fn get_quiz_record(state: State<'_, AppState>, id: String) -> AppResult<QuizRecord> {
+    state.appdata.quiz_record(&folder_key(&state)?, &id)
+}
+
+/// Forgets the open folder's quiz history and current quiz (saved quiz files stay).
+#[tauri::command]
+pub fn forget_quizzes(state: State<'_, AppState>) -> AppResult<()> {
+    state.appdata.forget_quizzes(&folder_key(&state)?)
 }

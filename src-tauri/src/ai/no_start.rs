@@ -42,6 +42,11 @@ use crate::search::symbols::{Candidates, SymbolQuery, search};
 use crate::search::text::{TextSearch, TextSearchRequest, build_matcher};
 use crate::state::{AppState, Workspace};
 
+/// The app-data key of a folder (any stable string: the commands use the canonical path).
+fn key_of(root: &Path) -> String {
+    root.display().to_string()
+}
+
 fn write(root: &Path, rel: &str, content: &str) {
     let path = root.join(rel);
     std::fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -240,6 +245,35 @@ fn no_ai_operation_starts_without_a_user_action() {
             .map(|_| ())
         })
         .unwrap();
+    // The quiz in progress and the history (app data).
+    let record = crate::appdata::learning::QuizRecord {
+        id: "quiz-1".into(),
+        ..crate::appdata::learning::QuizRecord::default()
+    };
+    state
+        .appdata
+        .save_current_quiz(&key_of(root), record.clone())
+        .unwrap();
+    state.appdata.current_quiz(&key_of(root)).unwrap();
+    state
+        .appdata
+        .save_current_quiz(
+            &key_of(root),
+            crate::appdata::learning::QuizRecord {
+                finished_ms: Some(1),
+                ..record
+            },
+        )
+        .unwrap();
+    state.appdata.quiz_history(&key_of(root)).unwrap();
+    state.appdata.quiz_record(&key_of(root), "quiz-1").unwrap();
+    state.appdata.clear_current_quiz(&key_of(root)).unwrap();
+    state.appdata.forget_quizzes(&key_of(root)).unwrap();
+    let patch: SettingsPatch = serde_json::from_value(serde_json::json!({
+        "learning": { "quizQuestions": 12, "quizMode": "adaptive", "effects": false }
+    }))
+    .unwrap();
+    state.appdata.update_settings(|s| patch.apply(s)).unwrap();
     assert_eq!(
         starts(&state),
         0,

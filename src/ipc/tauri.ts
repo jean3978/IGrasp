@@ -120,6 +120,12 @@ export const tauriBackend: Backend = {
   getProjectProfile: (force) => invoke('get_project_profile', { force: force ?? false }),
   setProfileCorrections: (corrections) => invoke('set_profile_corrections', { corrections }),
   listSubjects: () => invoke('list_subjects'),
+  getCurrentQuiz: () => invoke('get_current_quiz'),
+  saveCurrentQuiz: (record) => invoke('save_current_quiz', { record }),
+  clearCurrentQuiz: () => invoke('clear_current_quiz'),
+  listQuizHistory: () => invoke('list_quiz_history'),
+  getQuizRecord: (id) => invoke('get_quiz_record', { id }),
+  forgetQuizzes: () => invoke('forget_quizzes'),
 
   listen: (event, handler) =>
     tauriListen<Parameters<typeof handler>[0]>(event, (e) => {

@@ -47,6 +47,8 @@ import type { PermissionDecision } from './generated/PermissionDecision';
 import type { ProfileCorrections } from './generated/ProfileCorrections';
 import type { ProjectProfile } from './generated/ProjectProfile';
 import type { Subject } from './generated/Subject';
+import type { QuizRecord } from './generated/QuizRecord';
+import type { QuizSummary } from './generated/QuizSummary';
 
 export type {
   AppInfo,
@@ -140,6 +142,13 @@ export type { QuizResult } from './generated/QuizResult';
 export type { QuizRound } from './generated/QuizRound';
 export type { QuizSource } from './generated/QuizSource';
 export type { QuizSourceKind } from './generated/QuizSourceKind';
+export type { QuizAnswer } from './generated/QuizAnswer';
+export type { QuizOrigin } from './generated/QuizOrigin';
+export type { QuizRecord } from './generated/QuizRecord';
+export type { QuizSummary } from './generated/QuizSummary';
+export type { LearningSettings } from './generated/LearningSettings';
+export type { LearningSettingsPatch } from './generated/LearningSettingsPatch';
+export type { QuizScopeSetting } from './generated/QuizScopeSetting';
 export type {
   AiCapabilities,
   AiEventEnvelope,
@@ -323,6 +332,17 @@ export interface Backend {
   setProfileCorrections(corrections: ProfileCorrections): Promise<ProjectProfile>;
   /** Subject proposals for the open folder (local: the profile and the corpus, no AI). */
   listSubjects(): Promise<Subject[]>;
+  /** The quiz being played in the open folder (app data), or null. */
+  getCurrentQuiz(): Promise<QuizRecord | null>;
+  /** Saves the quiz being played; a finished one (`finishedMs` set) moves to the history. */
+  saveCurrentQuiz(record: QuizRecord): Promise<void>;
+  clearCurrentQuiz(): Promise<void>;
+  /** The finished quizzes of the open folder, newest first. */
+  listQuizHistory(): Promise<QuizSummary[]>;
+  /** A finished quiz (for Play again, which calls no AI). */
+  getQuizRecord(id: string): Promise<QuizRecord>;
+  /** Forgets the history and the current quiz of the open folder (quiz files stay). */
+  forgetQuizzes(): Promise<void>;
 
   listen<E extends EventName>(
     event: E,

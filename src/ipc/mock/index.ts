@@ -8,6 +8,10 @@ import {
   MIN_FONT_SIZE,
   MIN_HISTORY_LIMIT,
   applySettingsPatch,
+  DEFAULT_LEARNING_SETTINGS,
+  MAX_QUIZ_QUESTIONS,
+  MIN_QUIZ_QUESTIONS,
+  relativeFolder,
 } from '../defaults';
 import { BackendError } from '../types';
 import type {
@@ -41,6 +45,8 @@ import {
   normalizeCorrections,
 } from './mockProfile';
 import { fixtureSubjects } from './mockSubjects';
+import { emptyQuizzes, saveCurrent, summaryOf as quizSummaryOf } from './mockLearning';
+import type { FolderQuizzes } from './mockLearning';
 
 type Handler = (payload: never) => void;
 
@@ -73,6 +79,8 @@ export interface MockState {
   opened: string[];
   /** Profile corrections by root path (app data of the learning features). */
   learning: Map<string, ProfileCorrections>;
+  /** The quiz in progress and the history by root path (app data). */
+  quizzes: Map<string, FolderQuizzes>;
   /** The mock AI provider: installed, logged in, speed, operations started. */
   ai: MockAiState;
 }
@@ -118,6 +126,7 @@ function initialState(): MockState {
     graphDelayMs: 0,
     pickFolderResult: FIXTURE_ROOT,
     learning: new Map(),
+    quizzes: new Map(),
     ai: { ...DEFAULT_MOCK_AI, starts: [], conversations: new Map() },
   };
 }
@@ -606,6 +615,19 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         MAX_HISTORY_LIMIT,
         Math.max(MIN_HISTORY_LIMIT, next.ai.historyLimit),
       );
+      // Like `Settings::normalize` for the learning section.
+      next.learning.quizQuestions = Math.min(
+        MAX_QUIZ_QUESTIONS,
+        Math.max(MIN_QUIZ_QUESTIONS, next.learning.quizQuestions),
+      );
+      next.learning.quizResultsFolder = relativeFolder(
+        next.learning.quizResultsFolder,
+        DEFAULT_LEARNING_SETTINGS.quizResultsFolder,
+      );
+      next.learning.quizzesFolder = relativeFolder(
+        next.learning.quizzesFolder,
+        DEFAULT_LEARNING_SETTINGS.quizzesFolder,
+      );
       state.settings = next;
       return Promise.resolve(structuredClone(next));
     },
@@ -652,6 +674,40 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       const normalized = normalizeCorrections(corrections);
       state.learning.set(root.path, normalized);
       return Promise.resolve(applyCorrections(fixtureProfile(state.files, root.name), normalized));
+    },
+    getCurrentQuiz: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      return Promise.resolve(structuredClone(state.quizzes.get(state.root.path)?.current ?? null));
+    },
+    // Async so the errors thrown by the helpers become rejections.
+    // eslint-disable-next-line @typescript-eslint/require-await
+    saveCurrentQuiz: async (record) => {
+      if (!state.root) throw new BackendError('NoRootOpen', 'No folder is open.');
+      const folder = state.quizzes.get(state.root.path) ?? emptyQuizzes();
+      state.quizzes.set(state.root.path, saveCurrent(folder, record));
+    },
+    clearCurrentQuiz: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const folder = state.quizzes.get(state.root.path);
+      if (folder) state.quizzes.set(state.root.path, { ...folder, current: null });
+      return Promise.resolve();
+    },
+    listQuizHistory: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      return Promise.resolve(
+        (state.quizzes.get(state.root.path)?.history ?? []).map(quizSummaryOf),
+      );
+    },
+    getQuizRecord: (id) => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const found = state.quizzes.get(state.root.path)?.history.find((r) => r.id === id);
+      if (!found) return Promise.reject(new BackendError('NotFound', `Not found: quiz ${id}`));
+      return Promise.resolve(structuredClone(found));
+    },
+    forgetQuizzes: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      state.quizzes.delete(state.root.path);
+      return Promise.resolve();
     },
     listSubjects: () => {
       if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
