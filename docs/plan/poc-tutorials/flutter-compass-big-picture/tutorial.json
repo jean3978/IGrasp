@@ -1,0 +1,240 @@
+{
+  "id": "compass-app-the-big-picture-how-the-app-is-layered-and-how-a-screen-gets-its-data-2026-10-25",
+  "title": "compass_app: layers, wiring and how the Home screen gets its data",
+  "intro": "You will be able to place any file of compass_app in its layer (ui, domain, data), explain how the development and staging entry points swap Local and Remote repositories, and trace the Home screen from the go_router route to ApiClient and back into a ListenableBuilder. You will also know how the tests substitute fakes at the same seams.",
+  "project": "compass_app",
+  "subject": "The big picture: how the app is layered and how a screen gets its data",
+  "familiarity": "newHere",
+  "length": "standard",
+  "generated": "2026-10-25T16:01:28Z",
+  "provider": "claude-cli",
+  "model": "sonnet",
+  "generationCommit": "21c7190",
+  "docsNote": "The README only mentions architecture in passing and never describes the ui/domain/data folders. A short architecture page mapping each folder to its role would help newcomers.",
+  "chapters": [
+    {
+      "id": "c1",
+      "title": "The layer map: ui, domain, data",
+      "goal": "Place files of app/lib in the ui, domain or data layer, and say what each layer owns: screens and view models, models and use cases, repositories and services (ApiClient, LocalDataService).",
+      "minutes": 4,
+      "hootIntro": "Under app/lib, Compass splits into ui, domain and data folders, and each file's imports tell you which layer it belongs to.",
+      "steps": [
+        {
+          "type": "explain",
+          "title": "Three folders, three jobs",
+          "body": "The README says this app exists to explain Flutter architecture. `app/lib` reflects that with `ui/`, `domain/` and `data/` folders, plus `config/` (dependencies.dart, assets.dart), `routing/` (router.dart, routes.dart), `utils/` (Result, Command) and the entry points `main*.dart`. The ui layer holds screens (`widgets/`) and view models (`view_models/`) per feature. The domain layer holds models and use cases. The data layer holds repositories and services.",
+          "sources": [
+            {
+              "path": "README.md",
+              "firstLine": 3,
+              "lastLine": 8,
+              "why": "States the app is used to explain architecture"
+            },
+            {
+              "path": "app/lib/ui/home/view_models/home_viewmodel.dart",
+              "firstLine": 10,
+              "lastLine": 15,
+              "why": "Imports show ui depending on data repositories and domain models"
+            }
+          ]
+        },
+        {
+          "type": "match",
+          "title": "Place the files",
+          "prompt": "Match each file to the layer folder it lives in.",
+          "pairs": [
+            {
+              "left": "ui/home/widgets/home_screen.dart",
+              "right": "ui layer: a screen widget"
+            },
+            {
+              "left": "ui/home/view_models/home_viewmodel.dart",
+              "right": "ui layer: a view model (ChangeNotifier)"
+            },
+            {
+              "left": "domain/models/booking/booking_summary.dart",
+              "right": "domain layer: a model"
+            },
+            {
+              "left": "domain/use_cases/booking/booking_create_use_case.dart",
+              "right": "domain layer: a use case"
+            },
+            {
+              "left": "data/repositories/booking/booking_repository.dart",
+              "right": "data layer: repository interface"
+            },
+            {
+              "left": "data/services/api/api_client.dart",
+              "right": "data layer: a service talking HTTP"
+            }
+          ],
+          "explanation": "The folder tells the layer, and the sub-folder tells the role: widgets and view_models in ui, models and use_cases in domain, repositories and services in data.",
+          "sources": [
+            {
+              "path": "app/lib/ui/home/widgets/home_screen.dart",
+              "firstLine": 19,
+              "lastLine": 33,
+              "why": "HomeScreen takes a HomeViewModel"
+            }
+          ]
+        },
+        {
+          "type": "codeTour",
+          "title": "Reading the layers through imports",
+          "stops": [
+            {
+              "path": "app/lib/ui/home/view_models/home_viewmodel.dart",
+              "firstLine": 17,
+              "lastLine": 34,
+              "annotation": "A ui class. HomeViewModel is a `ChangeNotifier` that receives `BookingRepository` and `UserRepository` and exposes `load` and `deleteBooking` commands. It holds screen state, not fetching code."
+            },
+            {
+              "path": "app/lib/domain/models/booking/booking_summary.dart",
+              "firstLine": 10,
+              "lastLine": 34,
+              "annotation": "A domain model: a freezed class with id, name, startDate, endDate. Its doc says it carries just what the home screen needs; the full `Booking` comes from the repository."
+            },
+            {
+              "path": "app/lib/data/repositories/booking/booking_repository.dart",
+              "firstLine": 9,
+              "lastLine": 21,
+              "annotation": "A data-layer contract. The abstract `BookingRepository` returns domain types wrapped in `Result`, never API or JSON types."
+            },
+            {
+              "path": "app/lib/data/services/local/local_data_service.dart",
+              "firstLine": 49,
+              "lastLine": 62,
+              "annotation": "A service: LocalDataService loads JSON assets via `rootBundle` and decodes them into domain models like Activity and Destination."
+            }
+          ]
+        },
+        {
+          "type": "explain",
+          "title": "What the domain layer owns",
+          "body": "Domain holds the app's vocabulary: freezed models such as `BookingSummary`, `Booking`, `Destination`, `Activity` and `User`, with generated `.freezed.dart` and `.g.dart` files you never edit. It also holds use cases. `BookingCreateUseCase` takes `DestinationRepository`, `ActivityRepository` and `BookingRepository`, checks the `ItineraryConfig` for destination, activities and dates, then builds and saves a `Booking`. This is logic that spans several repositories, so it fits neither one repository nor a view model.",
+          "sources": [
+            {
+              "path": "app/lib/domain/use_cases/booking/booking_create_use_case.dart",
+              "firstLine": 16,
+              "lastLine": 95,
+              "why": "Use case combining three repositories"
+            }
+          ]
+        },
+        {
+          "type": "spotIt",
+          "title": "Where the data layer touches the network",
+          "prompt": "Click the line that makes ApiClient return a failure result instead of throwing when a request errors.",
+          "path": "app/lib/data/services/api/api_client.dart",
+          "firstLine": 112,
+          "lastLine": 133,
+          "answerLine": 129,
+          "explanation": "Each ApiClient method wraps its work in try/catch and returns `Result.error(error)`. Callers in repositories and view models then switch on Ok/Error instead of handling exceptions."
+        },
+        {
+          "type": "quickCheck",
+          "kind": "multipleChoice",
+          "question": "BookingRepositoryRemote converts a BookingApiModel into domain types. Which layer does BookingApiModel belong to?",
+          "choices": [
+            "Data, under services/api/model, next to ApiClient",
+            "Domain, under models/booking, next to Booking",
+            "Ui, under home/view_models, next to HomeViewModel",
+            "Config, under config, next to dependencies.dart"
+          ],
+          "answer": 0,
+          "hint": "Look at the folder path of booking_api_model.freezed.dart.",
+          "explanation": "BookingApiModel lives in `data/services/api/model/booking`. It is the wire shape; the repository maps it to domain models so the layers above never see it.",
+          "sources": [
+            {
+              "path": "app/lib/data/repositories/booking/booking_repository_remote.dart",
+              "firstLine": 14,
+              "lastLine": 38,
+              "why": "Repository builds a BookingApiModel from a domain Booking"
+            }
+          ]
+        },
+        {
+          "type": "recap",
+          "takeaways": [
+            "ui owns screens (widgets/) and view models like HomeViewModel; it depends on repository interfaces and domain models.",
+            "domain owns models such as BookingSummary and use cases such as BookingCreateUseCase.",
+            "data owns repositories (BookingRepository) and services (ApiClient, LocalDataService), including API models such as BookingApiModel."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "One interface, two implementations: Local vs Remote",
+      "goal": "Explain how BookingRepository is implemented by BookingRepositoryLocal (LocalDataService, JSON assets) and BookingRepositoryRemote (ApiClient plus BookingApiModel mapping to BookingSummary), and why the ui never sees the difference.",
+      "minutes": 4,
+      "steps": []
+    },
+    {
+      "id": "c3",
+      "title": "Wiring it up: entry points and dependencies.dart",
+      "goal": "Show how main_development.dart and main_staging.dart choose providersLocal or providersRemote in config/dependencies.dart, and how context.read() resolves a repository by its abstract type for the router and use cases.",
+      "minutes": 4,
+      "steps": []
+    },
+    {
+      "id": "c4",
+      "title": "Following the Home screen: route, ViewModel, Command, widget",
+      "goal": "Trace /home from the GoRoute in router.dart through HomeScreenContainer and HomeViewModel.load (Command0, Result) to the ListenableBuilder in HomeScreen, and explain how the same screen is tested with FakeBookingRepository in home_screen_test.dart.",
+      "minutes": 5,
+      "steps": []
+    }
+  ],
+  "sources": [
+    {
+      "path": "README.md",
+      "lines": "3-8",
+      "sha256": "3eb9556c9a0feb46333db25619fd11fe1e19a901b7699234d1f571d0e5111f6e"
+    },
+    {
+      "path": "app/lib/ui/home/view_models/home_viewmodel.dart",
+      "lines": "10-15",
+      "sha256": "da2a5be4235954be52a8b11f2e2722773b4553806238ed9db5e500c4fedb71a3"
+    },
+    {
+      "path": "app/lib/ui/home/widgets/home_screen.dart",
+      "lines": "19-33",
+      "sha256": "802ac29367c13c2f2befbb3a127e4c9001eadf7f18ff364324936d98b864280a"
+    },
+    {
+      "path": "app/lib/ui/home/view_models/home_viewmodel.dart",
+      "lines": "17-34",
+      "sha256": "35c1ca5a8358b96f2a9f48bc93e724f37a1e4d7511720d8b51bb4b1a48863c9a"
+    },
+    {
+      "path": "app/lib/domain/models/booking/booking_summary.dart",
+      "lines": "10-34",
+      "sha256": "6d0501fc8def6671620c6a85db744067b0a8c751fe2a6c5d805086b56829e799"
+    },
+    {
+      "path": "app/lib/data/repositories/booking/booking_repository.dart",
+      "lines": "9-21",
+      "sha256": "ae747797f1cda073e99f4eacf637d41f7994a06b1a6cbe90fd31794961c0f2d5"
+    },
+    {
+      "path": "app/lib/data/services/local/local_data_service.dart",
+      "lines": "49-62",
+      "sha256": "6ef60047733404768dbd2ba3977ecab9aec4363c3472a93f9eeaeddf1463e3f1"
+    },
+    {
+      "path": "app/lib/domain/use_cases/booking/booking_create_use_case.dart",
+      "lines": "16-95",
+      "sha256": "bf0a15f13f377245c5c5c51b051b7351b91e7adb6e643eb9937b3fe0007cbcdb"
+    },
+    {
+      "path": "app/lib/data/services/api/api_client.dart",
+      "lines": "112-133",
+      "sha256": "7a273036aa5318d09c82b21032d67d9f501ce51e5f72e419b2e653caacb7f9d2"
+    },
+    {
+      "path": "app/lib/data/repositories/booking/booking_repository_remote.dart",
+      "lines": "14-38",
+      "sha256": "4a8010185b65947e4cfdc6c18f5af6d08e2c0a79043c04ce0adaca23d7eea223"
+    }
+  ]
+}

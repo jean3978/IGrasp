@@ -1,0 +1,64 @@
+{
+  "chapter": {
+    "attemptReasons": [],
+    "attempts": 1,
+    "costUsd": 0.1915231,
+    "error": null,
+    "inputTokens": 78473,
+    "outcome": "Completed",
+    "outputTokens": 2986,
+    "promptBytes": 2928,
+    "providerDurationMs": 27062,
+    "rejectedCount": 0,
+    "toolUses": 1,
+    "tools": {
+      "Read": 1
+    },
+    "wallMs": 28274,
+    "sessionCostUsd": 0.3563653
+  },
+  "chapterIndex": 1,
+  "chapterSteps": [
+    "explain",
+    "conceptBridge",
+    "diagram",
+    "codeTour",
+    "spotIt",
+    "recap"
+  ],
+  "freshPrompt": false,
+  "input": {
+    "domainGap": "I know Unity but not Godot",
+    "familiarity": "newHere",
+    "length": "quick",
+    "role": null,
+    "subject": "How this platformer is structured: scenes, nodes and signals"
+  },
+  "insufficientMaterial": false,
+  "model": "sonnet",
+  "outline": {
+    "attemptReasons": [],
+    "attempts": 1,
+    "costUsd": 0.1648422,
+    "error": null,
+    "inputTokens": 80227,
+    "outcome": "Completed",
+    "outputTokens": 3365,
+    "promptBytes": 26791,
+    "providerDurationMs": 25298,
+    "rejectedCount": 0,
+    "toolUses": 11,
+    "tools": {
+      "Grep": 1,
+      "Read": 10
+    },
+    "wallMs": 26114,
+    "sessionCostUsd": 0.1648422
+  },
+  "outlineChapters": 3,
+  "profile": "Platformer 2D: a Godot 4.7 game in GDScript.",
+  "root": "<samples>/godot/2d/platformer",
+  "roundTripLossless": true,
+  "suggestedSubjects": [],
+  "costNote": "costUsd fields corrected after the run: the provider reports a cumulative session cost, the chapter is charged by difference"
+}

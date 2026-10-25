@@ -1,0 +1,103 @@
+{
+  "affectedSteps": [
+    [
+      0,
+      0
+    ]
+  ],
+  "afterRelocation": {
+    "badge": "maybeOutdated",
+    "changed": 1,
+    "of": 12
+  },
+  "modified": {
+    "changed": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.h",
+    "missing": null,
+    "moved": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.cpp"
+  },
+  "relocatedCitations": 8,
+  "report": {
+    "badge": {
+      "badge": "maybeOutdated",
+      "changed": 1,
+      "of": 12
+    },
+    "checks": [
+      {
+        "lines": "21-45",
+        "path": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.h",
+        "state": "changed"
+      },
+      {
+        "firstLine": 277,
+        "lastLine": 280,
+        "lines": "272-275",
+        "path": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.cpp",
+        "state": "moved"
+      },
+      {
+        "lines": "26-38",
+        "path": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.h",
+        "state": "upToDate"
+      },
+      {
+        "lines": "95-100",
+        "path": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.h",
+        "state": "upToDate"
+      },
+      {
+        "lines": "123-132",
+        "path": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.h",
+        "state": "upToDate"
+      },
+      {
+        "firstLine": 510,
+        "lastLine": 522,
+        "lines": "505-517",
+        "path": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.cpp",
+        "state": "moved"
+      },
+      {
+        "lines": "127-132",
+        "path": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.h",
+        "state": "upToDate"
+      },
+      {
+        "firstLine": 33,
+        "lastLine": 51,
+        "lines": "28-46",
+        "path": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.cpp",
+        "state": "moved"
+      },
+      {
+        "firstLine": 267,
+        "lastLine": 274,
+        "lines": "262-269",
+        "path": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.cpp",
+        "state": "moved"
+      },
+      {
+        "firstLine": 53,
+        "lastLine": 65,
+        "lines": "48-60",
+        "path": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.cpp",
+        "state": "moved"
+      },
+      {
+        "firstLine": 403,
+        "lastLine": 445,
+        "lines": "398-440",
+        "path": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.cpp",
+        "state": "moved"
+      },
+      {
+        "firstLine": 335,
+        "lastLine": 357,
+        "lines": "330-352",
+        "path": "Source/ActionRoguelike/ActionSystem/RogueActionComponent.cpp",
+        "state": "moved"
+      }
+    ],
+    "moved": 7
+  }
+}

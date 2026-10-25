@@ -1,0 +1,313 @@
+{
+  "id": "poc-tutorials-trace-it-what-happens-when-a-file-changes-on-disk-2026-10-25",
+  "title": "Tracing a disk change through IGrasp: from notify event to tab, tree and toast",
+  "intro": "You will be able to follow one edited, replaced, renamed or deleted markdown file from the Rust watcher (`index/watcher.rs`) through the `fs://changes` and `graph://changed` events to the zustand stores that update the tree, tabs, toasts and link flags. You will also know where a fix to this flow goes and which tests, Rust or Vitest, cover it.",
+  "project": "igrasp",
+  "subject": "Trace it: what happens when a file changes on disk",
+  "familiarity": "contributing",
+  "length": "standard",
+  "generated": "2026-10-25T15:55:56Z",
+  "provider": "claude-cli",
+  "model": "sonnet",
+  "generationCommit": "d353601",
+  "chapters": [
+    {
+      "id": "c1",
+      "title": "The watcher: debounce, classify, plan",
+      "goal": "Explain how `WatchContext::handle` in `src-tauri/src/index/watcher.rs` turns a debounced `notify` batch into a `Plan` via `classify`: which events are ignored (Access, `.git`, `node_modules`, non-markdown creations), when an ignore file forces `full_rescan`, and what the poll fallback is.",
+      "minutes": 4,
+      "hootIntro": "Before a tab reloads or a toast pops, `index/watcher.rs` has already decided what a burst of raw file events means, so let's watch that decision being made.",
+      "steps": [
+        {
+          "type": "explain",
+          "title": "One debounced batch enters WatchContext::handle",
+          "body": "`start_watcher` hands `notify_debouncer_full` a closure that calls `WatchContext::handle` once per `DEBOUNCE` window (200 ms). `handle` first bumps `disk_revision`, even for a batch that ends up ignored, because anything computed from the whole folder (the learning profile cache, for example) is now stale. It then reduces each event to a `SimpleEvent`: its `EventKind` plus root-relative paths, with `None` for paths outside the root or non-UTF-8. Only then does it take the index write lock, call `classify` and run `apply_plan`. Events that arrive before the first scan finishes are dropped, since that scan covers them.",
+          "sources": [
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 329,
+              "lastLine": 358,
+              "why": "handle: disk_revision, SimpleEvent, classify, apply_plan"
+            },
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 76,
+              "lastLine": 89,
+              "why": "SimpleEvent and Plan"
+            }
+          ]
+        },
+        {
+          "type": "codeTour",
+          "title": "Walking through classify",
+          "stops": [
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 100,
+              "lastLine": 123,
+              "annotation": "`classify` is a pure function: events, the current `Index`, and a `kind_on_disk` callback (file, folder or gone). The first three rules: skip `Access` events, send any ignore file to `full_rescan`, and pair a `RenameMode::Both` event into `plan.renamed` only when the source is a known file and the target is markdown."
+            },
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 124,
+              "lastLine": 142,
+              "annotation": "Per path: the root itself and anything under `.git` or `node_modules` (`is_skipped`) is dropped. Known markdown files that were modified go to `plan.modified`, and removals go to `removed_files` or `removed_dirs`. A remove of something the index never knew is ignored."
+            },
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 143,
+              "lastLine": 166,
+              "annotation": "Everything else (creates, renames, unknown paths) asks the disk. A non-markdown file is skipped, a vanished path is forgotten, and anything else lands in `rewalk`. The final `retain` drops re-walk paths already covered by an outer one, so a new folder is walked once."
+            },
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 559,
+              "lastLine": 579,
+              "annotation": "The test that pins the ignore rules: a modified `docs/.gitignore` or `.git/info/exclude` sets `full_rescan`, while creations under `.git/objects` and `node_modules` produce `Plan::default()`."
+            }
+          ]
+        },
+        {
+          "type": "spotIt",
+          "title": "Where build churn is cut off",
+          "prompt": "Click the line that makes `classify` ignore a newly created file that is not markdown.",
+          "path": "src-tauri/src/index/watcher.rs",
+          "firstLine": 143,
+          "lastLine": 157,
+          "answerLine": 145,
+          "explanation": "The `Some(false) if !markdown => {}` arm means the path is a file on disk and not markdown, so it is dropped before it can reach `rewalk`. That is why compiler output or `target/` churn never costs a directory walk. The test `creations_and_new_folders_are_rewalked_but_other_files_skipped` checks it with `src/main.rs`."
+        },
+        {
+          "type": "quickCheck",
+          "kind": "multipleChoice",
+          "question": "A Modify event arrives for `.git/info/exclude`. What does `classify` do with it?",
+          "choices": [
+            "It sets `full_rescan` for the whole folder",
+            "It drops the path as part of `.git`",
+            "It adds the path to `rewalk` only",
+            "It adds the path to `modified` only"
+          ],
+          "answer": 0,
+          "hint": "Compare the order of `is_ignore_file` and `is_skipped` inside the loop, and look at the ignore-rules test.",
+          "explanation": "`is_ignore_file` matches `.git/info/exclude` explicitly and is tested at the top of the loop, before `is_skipped` would discard `.git` paths. Ignore rules can change which markdown is visible anywhere, so only a full re-index is safe.",
+          "sources": [
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 91,
+              "lastLine": 98,
+              "why": "is_ignore_file and is_skipped"
+            },
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 109,
+              "lastLine": 127,
+              "why": "order of the checks"
+            }
+          ]
+        },
+        {
+          "type": "match",
+          "title": "What each Plan field asks apply_plan to do",
+          "prompt": "Match each `Plan` field to the work `apply_plan` does for it.",
+          "pairs": [
+            {
+              "left": "full_rescan",
+              "right": "Re-index the whole folder with `index_scope` and diff it against the index"
+            },
+            {
+              "left": "modified",
+              "right": "Re-stat the known file and keep it only if its size or mtime changed"
+            },
+            {
+              "left": "removed_files",
+              "right": "Drop the file from the index and report it as removed"
+            },
+            {
+              "left": "removed_dirs",
+              "right": "Remove the folder and every markdown file under it"
+            },
+            {
+              "left": "rewalk",
+              "right": "Run the ignore-aware walker on that path and diff the result with `diff_within`"
+            }
+          ],
+          "explanation": "`classify` only decides; `apply_plan` touches the disk and the index. A `modified` entry whose mtime and size are unchanged produces no change, and a `rewalk` goes through the same walker as the full scan, so `.gitignore` still applies to files that appear later.",
+          "sources": [
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 205,
+              "lastLine": 252,
+              "why": "apply_plan handles each Plan field"
+            },
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 80,
+              "lastLine": 89,
+              "why": "Plan definition"
+            }
+          ]
+        },
+        {
+          "type": "explain",
+          "title": "The poll fallback",
+          "body": "`start_watcher` tries `new_debouncer` with the native watcher first. If creating it or `watch(&root, Recursive)` fails, for example when the Linux inotify limit is reached, it logs a warning and builds a `PollWatcher` debouncer with `POLL_INTERVAL` of 2 s. The handler is the same `WatchContext::handle`, so classification and everything after it are identical. Only the `fs://watch-status` event differs: `WatchMode::Native`, `Poll` with the reason, or `Off` if even polling fails. The status bar's \"Polling for changes\" text comes from that event.",
+          "sources": [
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 400,
+              "lastLine": 468,
+              "why": "start_watcher with native and poll paths"
+            },
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 58,
+              "lastLine": 74,
+              "why": "WatchMode and WatchStatusEvent"
+            }
+          ]
+        },
+        {
+          "type": "tryIt",
+          "title": "Run the classifier tests",
+          "instruction": "Run the watcher's unit tests and read their names against the rules in `classify`. Then add `--ignored` to see `real_notifications_reach_the_handler`, which uses real file-system notifications. A name filter skips the ts-rs export tests, so run the full `npm run rust:test` before you commit.",
+          "command": "cargo test --manifest-path src-tauri/Cargo.toml index::watcher",
+          "where": "terminal",
+          "expected": "The `index::watcher::tests` cases pass, including `renames_are_paired` and `access_events_are_ignored`; the real-notification test is listed as ignored.",
+          "sources": [
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 507,
+              "lastLine": 606,
+              "why": "classify unit tests"
+            },
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 733,
+              "lastLine": 748,
+              "why": "ignored real-notification test"
+            }
+          ]
+        },
+        {
+          "type": "recap",
+          "takeaways": [
+            "`WatchContext::handle` bumps `disk_revision` for every debounced batch, then runs `classify` and `apply_plan` under the index write lock.",
+            "`classify` is pure: it skips Access events, `.git`, `node_modules` and non-markdown creations, and an ignore file (`.gitignore`, `.ignore`, `.git/info/exclude`) forces `full_rescan`.",
+            "If native watching fails, `start_watcher` falls back to a 2 s `PollWatcher` that feeds the same handler and reports `WatchMode::Poll`."
+          ],
+          "sources": [
+            {
+              "path": "src-tauri/src/index/watcher.rs",
+              "firstLine": 1,
+              "lastLine": 8,
+              "why": "module overview"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "From plan to `fs://changes`: index diff and the replaced-in-place rule",
+      "goal": "Trace `apply_plan` and `Index::diff_within` into `to_event`. Explain why a file removed and added in one batch is reported as `modified`, how `renamed` and `dirsChanged` are derived, and what `generation` guards.",
+      "minutes": 4,
+      "steps": []
+    },
+    {
+      "id": "c3",
+      "title": "The frontend fan-out: bridge, tabs, tree and toasts",
+      "goal": "Follow `fs://changes` through `eventBridge.ts` into `applyDiskChanges` (`diskChanges.ts`): its ordering, `useTree.applyChanges`, `useDocuments.reload` and `revision`, `keepScrollTop`, and the 1.5 s quiet window and grouping in `toasts.ts`.",
+      "minutes": 5,
+      "steps": []
+    },
+    {
+      "id": "c4",
+      "title": "The graph follow-up and how the flow is tested",
+      "goal": "Explain how the batch reaches `graph::apply` and `graph://changed`, how `useGraph.onChanged` refreshes links and backlinks, and how `diskChanges.test.ts` drives the flow with the mock backend (`writeFiles`, `deleteFiles`, `renameFile`, `emit`).",
+      "minutes": 4,
+      "steps": []
+    }
+  ],
+  "sources": [
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "329-358",
+      "sha256": "03cc965f727a3719b6aada1e12957bc2e87c28b46220ba1f561e05375618f12d"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "76-89",
+      "sha256": "345f58685a90d7e3276262265d8d7095290dfa5c013de50aeeda000a28215e0f"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "100-123",
+      "sha256": "acbf3705fe5ba3e8dd5fdab688f4c093294a0923aa29e638f996e101dfe45fff"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "124-142",
+      "sha256": "990fb8f1cffd71386c7d35db0c7a364ff9b120b5ecf60ddd208d0f8bcedf7e06"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "143-166",
+      "sha256": "3056baa8595cd273d23d18c2d2b6daac54a9b37492838d72634597557142074f"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "559-579",
+      "sha256": "aea643371400c27b89e6ff34dcf77eb213799e3fc12b1f5f12f4b007008ee579"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "143-157",
+      "sha256": "d9e6921a72dc387db0f145aa57853041970284e7fc32b3e85e0409e64e93fd7e"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "91-98",
+      "sha256": "412a35dde85ba6b71d4fa44c54b3cad00325e4eaddd6d399e49bbf22d274823b"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "109-127",
+      "sha256": "d180cafe07bb0e52aafa43a4b78b03bed185a12ff40df8b9178cd9294e6ff9c2"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "205-252",
+      "sha256": "ff0510ad336e25008037cdd4c08fb2cd8a78ca2350fd8c9cef3aef7aea8f1c66"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "80-89",
+      "sha256": "b0a8fffbff5b4a7c716cf5a7e0d5a45017cbedfa953b9a7bfe2be5093c6c8809"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "400-468",
+      "sha256": "2db74e565ffc8be483198e1a07e66b1b1c59a7385df6e83b51a7d1baaf1c9ce8"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "58-74",
+      "sha256": "aad4dd688cafe8870e12fc0869c7f2d3285021396ee10686e5766f526b97449e"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "507-606",
+      "sha256": "44ff801c0e8b75d22d0bfd15e39eb5b835fa1827dd2715ef287b5b5ecf3ace54"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "733-748",
+      "sha256": "1049d01b59715094c0f7b12b58521dd82dad5bd038a6a097c9aff0f9a07aab9d"
+    },
+    {
+      "path": "src-tauri/src/index/watcher.rs",
+      "lines": "1-8",
+      "sha256": "cde42b2d511e66173f36006e3a4272546b58212995b4700ba7727858cff7bc29"
+    }
+  ]
+}

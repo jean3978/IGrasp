@@ -1,0 +1,185 @@
+{
+  "id": "platformer-how-this-platformer-is-structured-scenes-nodes-and-signals-2026-10-25",
+  "title": "Platformer 2D: scenes, nodes and signals",
+  "intro": "You will be able to trace how Platformer 2D is assembled from instanced scenes (Game, Level, Player, PauseMenu), follow a coin pickup from Coin to the HUD counter through signals, and explain how the same Player and Level scenes are reused for singleplayer and splitscreen.",
+  "project": "Platformer 2D",
+  "subject": "How this platformer is structured: scenes, nodes and signals",
+  "familiarity": "newHere",
+  "domainGap": "I know Unity but not Godot",
+  "length": "quick",
+  "generated": "2026-10-25T15:55:10Z",
+  "provider": "claude-cli",
+  "model": "sonnet",
+  "generationCommit": "b761b4c",
+  "materialNote": "Docs gap: README.md mentions a default game.tscn and a src/level/ folder, but the project runs game_singleplayer.tscn (project.godot) and level/ is at the root. It also never mentions splitscreen mode or the signal wiring.",
+  "docsNote": "The README refers to a default game.tscn and a src/level/ folder that do not exist here (the main scene is game_singleplayer.tscn and level/ is at the root), and it does not explain the Game/Level/Player/PauseMenu composition.",
+  "chapters": [
+    {
+      "id": "c1",
+      "title": "Game scenes: Level, Player and the interface layer",
+      "goal": "Explain how game_singleplayer.tscn composes Level, Player and PauseMenu by instancing, what game.gd (class Game) does as the root script, and why the project autoloads Music from music.tscn.",
+      "minutes": 5,
+      "hootIntro": "Platformer 2D is a handful of scenes stacked like blocks: game_singleplayer.tscn instances Level, Player and a PauseMenu, and game.gd keeps watch over them.",
+      "steps": [
+        {
+          "type": "explain",
+          "title": "The entry point: game_singleplayer.tscn",
+          "body": "`project.godot` sets `run/main_scene` to `res://game_singleplayer.tscn`, so that scene is what runs on Play. Its root is a plain `Node` named `Game` with `game.gd` attached. Everything else is a child, and most children are **instances of other scenes** (`level/level.tscn`, `player/player.tscn`, `gui/pause_menu_singleplayer.tscn`), not nodes defined inline. The folders mirror that: `player/`, `level/`, `enemy/`, `gui/` each own a scene plus its script and assets.",
+          "sources": [
+            {
+              "path": "project.godot",
+              "firstLine": 22,
+              "lastLine": 22,
+              "why": "main_scene points at game_singleplayer.tscn"
+            },
+            {
+              "path": "game_singleplayer.tscn",
+              "firstLine": 1,
+              "lastLine": 24,
+              "why": "the whole scene file"
+            }
+          ]
+        },
+        {
+          "type": "conceptBridge",
+          "title": "Scene instancing, Unity-prefab style",
+          "concept": "In Godot a scene is a reusable tree of nodes saved to a .tscn file; instancing it inside another scene is close to nesting a prefab in Unity, and the instance can override properties locally.",
+          "applied": "In `game_singleplayer.tscn`, `Level` is an instance of `level.tscn` (line 12) and `Player` is an instance of `player.tscn` parented under `Level` (line 14). The instance then overrides `z_index`, `position` and `scale` (lines 15-17), much like a prefab instance override, without touching `player.tscn` itself.",
+          "docsUrl": "https://docs.godotengine.org/en/stable/tutorials/scripting/instancing_with_signals.html",
+          "sources": [
+            {
+              "path": "game_singleplayer.tscn",
+              "firstLine": 3,
+              "lastLine": 22,
+              "why": "ext_resource PackedScenes and instance= nodes"
+            }
+          ]
+        },
+        {
+          "type": "diagram",
+          "title": "The singleplayer node tree",
+          "mermaid": "flowchart TD\n  Game[\"Game (Node, game.gd)\"]\n  Level[\"Level (instance of level/level.tscn)\"]\n  Player[\"Player (instance of player/player.tscn)\"]\n  IL[\"InterfaceLayer (CanvasLayer, layer 100)\"]\n  PM[\"PauseMenu (instance of gui/pause_menu_singleplayer.tscn)\"]\n  Game --> Level\n  Level --> Player\n  Game --> IL\n  IL --> PM",
+          "caption": "Game owns the world (Level, with Player inside) and a CanvasLayer at layer 100 for the UI. Boxes marked (instance) come from separate .tscn files.",
+          "sources": [
+            {
+              "path": "game_singleplayer.tscn",
+              "firstLine": 8,
+              "lastLine": 22,
+              "why": "the node declarations drawn"
+            }
+          ]
+        },
+        {
+          "type": "codeTour",
+          "title": "Game as the root script",
+          "stops": [
+            {
+              "path": "game.gd",
+              "firstLine": 1,
+              "lastLine": 6,
+              "annotation": "`class_name Game` registers a global type; `@onready` fetches the PauseMenu by path `InterfaceLayer/PauseMenu` once the tree is ready. The splitscreen script later does `extends Game`."
+            },
+            {
+              "path": "game.gd",
+              "firstLine": 8,
+              "lastLine": 16,
+              "annotation": "Fullscreen toggle runs in `_unhandled_input`, so it only fires if no UI consumed the event. `set_input_as_handled()` stops it propagating."
+            },
+            {
+              "path": "game.gd",
+              "firstLine": 18,
+              "lastLine": 25,
+              "annotation": "Pause flips `tree.paused` and calls `PauseMenu.open()` or `close()`. This works while paused only because the scene sets `process_mode = 3` (Always) on the Game root, see `game_singleplayer.tscn:9`."
+            }
+          ]
+        },
+        {
+          "type": "spotIt",
+          "title": "Why Game keeps running while paused",
+          "prompt": "Click the line that lets the Game root keep receiving input while the tree is paused.",
+          "path": "game_singleplayer.tscn",
+          "firstLine": 8,
+          "lastLine": 17,
+          "answerLine": 9,
+          "explanation": "`process_mode = 3` is PROCESS_MODE_ALWAYS. Without it, `Game._unhandled_input` would stop firing once `tree.paused` is true, and `toggle_pause` could never unpause. The Level and Player inherit the default and freeze."
+        },
+        {
+          "type": "recap",
+          "takeaways": [
+            "`game_singleplayer.tscn` is the main scene: a `Game` root (game.gd) that instances `Level`, `Player` (inside Level) and a `PauseMenu` under a CanvasLayer at layer 100.",
+            "`Game._unhandled_input` handles fullscreen and pause, and relies on `process_mode = 3` on the root so it still runs while the tree is paused.",
+            "`Music` (music.tscn) is an autoload in project.godot, so it outlives the scene swaps done by PauseMenu."
+          ],
+          "sources": [
+            {
+              "path": "project.godot",
+              "firstLine": 26,
+              "lastLine": 28
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Signals in practice: from Coin to the pause menu counter",
+      "goal": "Trace coin_collected from Coin._on_body_entered through Player's signal and the connection in game_singleplayer.tscn to PauseMenu._on_coin_collected and CoinsCounter.collect_coin, and tell editor-wired connections from code calls.",
+      "minutes": 5,
+      "steps": []
+    },
+    {
+      "id": "c3",
+      "title": "One Player scene, two modes: splitscreen reuse",
+      "goal": "Explain how game_splitscreen.tscn and game_splitscreen.gd extend Game, reuse player.tscn with action_suffix _p1/_p2, share one world_2d between two SubViewports, and how both players feed the same PauseMenu signal.",
+      "minutes": 5,
+      "steps": []
+    }
+  ],
+  "sources": [
+    {
+      "path": "project.godot",
+      "lines": "22",
+      "sha256": "b90e4503bb8067ad312ba8eaa36dc50153ac2d7d5b09e2332cc0416e2c317013"
+    },
+    {
+      "path": "game_singleplayer.tscn",
+      "lines": "1-24",
+      "sha256": "0c203df13e14602e11398c5f7375650a169e668a3c39d3bdeba482983702dd15"
+    },
+    {
+      "path": "game_singleplayer.tscn",
+      "lines": "3-22",
+      "sha256": "e29fde3728b57f508b98cd8d67822cefd12f15165089608482c869337a18fb86"
+    },
+    {
+      "path": "game_singleplayer.tscn",
+      "lines": "8-22",
+      "sha256": "a0c554b421335987547f92da4b8662e5e0285109ca7f97e93d647c9db7eb40aa"
+    },
+    {
+      "path": "game.gd",
+      "lines": "1-6",
+      "sha256": "7c3dec9eb8c8106ef50c86c395fb9ae91786862e6e9f7d89f7682897f809f0c1"
+    },
+    {
+      "path": "game.gd",
+      "lines": "8-16",
+      "sha256": "227a378fbed66a37af0b671f0dd02ffa9cedb8b6b534611e13b693e8a5aba9a2"
+    },
+    {
+      "path": "game.gd",
+      "lines": "18-25",
+      "sha256": "e3b0de680a41b46323a01ab403d7ad20b628a421417ab66dddefac75dc245ead"
+    },
+    {
+      "path": "game_singleplayer.tscn",
+      "lines": "8-17",
+      "sha256": "4360c59c10e0054ea52b859791644f24a9f2cc7ef144cf5b0e8c3e2ed46117c5"
+    },
+    {
+      "path": "project.godot",
+      "lines": "26-28",
+      "sha256": "47cad002ee791cc8bbe26e91c85a42def21d107e68430dbeb6f58177c485c9dc"
+    }
+  ]
+}

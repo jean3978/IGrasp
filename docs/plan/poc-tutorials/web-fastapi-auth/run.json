@@ -1,0 +1,64 @@
+{
+  "chapter": {
+    "attemptReasons": [],
+    "attempts": 1,
+    "costUsd": 0.1968850999999999,
+    "error": null,
+    "inputTokens": 48879,
+    "outcome": "Completed",
+    "outputTokens": 3831,
+    "promptBytes": 2964,
+    "providerDurationMs": 27672,
+    "rejectedCount": 0,
+    "sessionCostUsd": 0.4122751999999999,
+    "toolUses": 0,
+    "tools": {},
+    "wallMs": 28793
+  },
+  "chapterIndex": 1,
+  "chapterSteps": [
+    "explain",
+    "codeTour",
+    "spotIt",
+    "conceptBridge",
+    "explain",
+    "quickCheck",
+    "putInOrder",
+    "recap"
+  ],
+  "freshPrompt": false,
+  "input": {
+    "domainGap": null,
+    "familiarity": "newHere",
+    "length": "standard",
+    "role": null,
+    "subject": "Authentication and authorization, end to end: from the login form to a protected API route"
+  },
+  "insufficientMaterial": false,
+  "model": "sonnet",
+  "outline": {
+    "attemptReasons": [],
+    "attempts": 1,
+    "costUsd": 0.2153901,
+    "error": null,
+    "inputTokens": 152904,
+    "outcome": "Completed",
+    "outputTokens": 4130,
+    "promptBytes": 31000,
+    "providerDurationMs": 30925,
+    "rejectedCount": 0,
+    "sessionCostUsd": 0.2153901,
+    "toolUses": 20,
+    "tools": {
+      "Glob": 4,
+      "Grep": 2,
+      "Read": 14
+    },
+    "wallMs": 31711
+  },
+  "outlineChapters": 5,
+  "profile": "fastapi-full-stack-template: a web front end in TypeScript and Python (FastAPI, React), also a web back end and monorepo, tested with Playwright and pytest.",
+  "root": "<samples>/web",
+  "roundTripLossless": true,
+  "suggestedSubjects": []
+}

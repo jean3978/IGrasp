@@ -1,0 +1,67 @@
+{
+  "chapter": {
+    "attemptReasons": [
+      "1 rejected: 1 had an unusable quiz question"
+    ],
+    "attempts": 2,
+    "costUsd": 0.4236472,
+    "error": null,
+    "inputTokens": 177648,
+    "outcome": "Completed",
+    "outputTokens": 8595,
+    "promptBytes": 2968,
+    "providerDurationMs": 53904,
+    "rejectedCount": 1,
+    "toolUses": 0,
+    "tools": {},
+    "wallMs": 56417,
+    "sessionCostUsd": 0.8376346
+  },
+  "chapterIndex": 1,
+  "chapterSteps": [
+    "explain",
+    "codeTour",
+    "spotIt",
+    "quickCheck",
+    "match",
+    "explain",
+    "tryIt",
+    "recap"
+  ],
+  "freshPrompt": false,
+  "input": {
+    "domainGap": null,
+    "familiarity": "contributing",
+    "length": "standard",
+    "role": null,
+    "subject": "Trace it: what happens when a file changes on disk"
+  },
+  "insufficientMaterial": false,
+  "model": "sonnet",
+  "outline": {
+    "attemptReasons": [],
+    "attempts": 1,
+    "costUsd": 0.4139874,
+    "error": null,
+    "inputTokens": 467089,
+    "outcome": "Completed",
+    "outputTokens": 6024,
+    "promptBytes": 71564,
+    "providerDurationMs": 45394,
+    "rejectedCount": 0,
+    "toolUses": 17,
+    "tools": {
+      "Glob": 1,
+      "Grep": 5,
+      "Read": 11
+    },
+    "wallMs": 46195,
+    "sessionCostUsd": 0.4139874
+  },
+  "outlineChapters": 4,
+  "profile": "igrasp: a Tauri desktop app in TypeScript and Rust (React), tested with Playwright, Vitest and cargo test.",
+  "root": "<repo>",
+  "roundTripLossless": true,
+  "suggestedSubjects": [],
+  "costNote": "costUsd fields corrected after the run: the provider reports a cumulative session cost, the chapter is charged by difference"
+}

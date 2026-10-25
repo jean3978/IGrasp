@@ -1,0 +1,84 @@
+{
+  "affectedSteps": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      5
+    ]
+  ],
+  "afterRelocation": {
+    "badge": "sourcesMissing",
+    "missing": 2,
+    "of": 9
+  },
+  "modified": {
+    "changed": "game_singleplayer.tscn",
+    "missing": "project.godot",
+    "moved": "game.gd"
+  },
+  "relocatedCitations": 3,
+  "report": {
+    "badge": {
+      "badge": "sourcesMissing",
+      "missing": 2,
+      "of": 9
+    },
+    "checks": [
+      {
+        "lines": "22",
+        "path": "project.godot",
+        "state": "missing"
+      },
+      {
+        "lines": "1-24",
+        "path": "game_singleplayer.tscn",
+        "state": "changed"
+      },
+      {
+        "lines": "3-22",
+        "path": "game_singleplayer.tscn",
+        "state": "upToDate"
+      },
+      {
+        "lines": "8-22",
+        "path": "game_singleplayer.tscn",
+        "state": "upToDate"
+      },
+      {
+        "firstLine": 6,
+        "lastLine": 11,
+        "lines": "1-6",
+        "path": "game.gd",
+        "state": "moved"
+      },
+      {
+        "firstLine": 13,
+        "lastLine": 21,
+        "lines": "8-16",
+        "path": "game.gd",
+        "state": "moved"
+      },
+      {
+        "firstLine": 23,
+        "lastLine": 30,
+        "lines": "18-25",
+        "path": "game.gd",
+        "state": "moved"
+      },
+      {
+        "lines": "8-17",
+        "path": "game_singleplayer.tscn",
+        "state": "upToDate"
+      },
+      {
+        "lines": "26-28",
+        "path": "project.godot",
+        "state": "missing"
+      }
+    ],
+    "moved": 3
+  }
+}

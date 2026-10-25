@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Proof of concept of Phase 5 (tutorials), backend only, not wired to the UI: the tutorial schema
+  (outline, chapters, ten step types, citations with a file and a line range), the shared
+  markdown format (`README.md` with a front matter plus one file per chapter, `igrasp-*` YAML
+  blocks) with a lossless round trip, the generation prompts with the grounding rules, the
+  validator, the local freshness check that relocates moved citations, and real tutorials
+  generated on five projects ([report](docs/plan/poc-tutorials.md), [ADR 0025](docs/decisions/0025-tutorial-format-json-schema-and-shared-markdown.md)).
+
 ## [0.4.0] - 2026-10-25
 
 Phase 4 — Quiz Me: Hoot the owl asks you questions about how the open project is made, written by
