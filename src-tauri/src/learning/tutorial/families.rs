@@ -1544,11 +1544,6 @@ fn capitalize(s: &str) -> String {
     })
 }
 
-/// The card `id` among `cards` and the suggested ones.
-pub fn find<'a>(cards: &'a [TutorialSubject], id: &str) -> Option<&'a TutorialSubject> {
-    cards.iter().find(|c| c.id == id)
-}
-
 #[cfg(test)]
 mod tests {
     use std::sync::atomic::AtomicBool;

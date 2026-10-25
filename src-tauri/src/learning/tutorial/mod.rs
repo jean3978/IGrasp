@@ -1,12 +1,11 @@
-//! Tutorials (Hoot's Academy), **proof of concept before Phase 5**: the tutorial schema (outline,
-//! chapters, every step type, citations with a file and a line range), the shared markdown
-//! format (a `README.md` with a front matter plus one file per chapter, `igrasp-*` fenced blocks
-//! with YAML), the generation prompts with the grounding rules, the validator, the freshness
-//! check of the cited lines, and the composition of the two read-only requests (the outline,
-//! then one chapter) that run through the gateway's validated runs like a quiz. Provider-neutral:
-//! no provider name, flag or wire format here. Nothing is wired to IPC yet.
-// Proof of concept: nothing reaches this module through IPC yet, so its items are unused.
-#![allow(dead_code)]
+//! Tutorials (Hoot's Academy, ADR 0025): the tutorial schema (outline, chapters, every step
+//! type, citations with a file and a line range), the subject cards (`families`), the shared
+//! markdown format (a `README.md` with a front matter plus one file per chapter, `igrasp-*`
+//! fenced blocks with YAML) and sharing (`share`), the generation prompts with the grounding
+//! rules, the validators, the freshness check of the cited lines, the review, the reader's
+//! progress, and the composition of the read-only operations (outline, chapters as a staged run,
+//! review, suggestions) that run through the gateway. Provider-neutral: no provider name, flag or
+//! wire format here.
 
 pub mod compose;
 pub mod cost;
@@ -41,6 +40,8 @@ pub enum Familiarity {
 }
 
 impl Familiarity {
+    /// From an environment variable of the real-run tests.
+    #[cfg(test)]
     pub fn parse(s: &str) -> Option<Self> {
         match s.trim().to_lowercase().as_str() {
             "new" | "newhere" | "new-here" | "new_here" => Some(Self::NewHere),
@@ -66,6 +67,8 @@ pub enum Length {
 }
 
 impl Length {
+    /// From an environment variable of the real-run tests.
+    #[cfg(test)]
     pub fn parse(s: &str) -> Option<Self> {
         match s.trim().to_lowercase().as_str() {
             "quick" => Some(Self::Quick),

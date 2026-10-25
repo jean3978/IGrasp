@@ -64,6 +64,7 @@ pub struct WritePlan {
 
 impl WritePlan {
     /// Nothing would change on disk.
+    #[cfg(test)]
     pub fn is_noop(&self) -> bool {
         self.removed.is_empty()
             && self
