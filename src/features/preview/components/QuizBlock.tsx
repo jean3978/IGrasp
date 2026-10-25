@@ -5,6 +5,7 @@
 import { ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { parseQuestionBlock } from '../../quiz/quizFile';
+import { InlineCode } from '../../quiz/InlineCode';
 import { openSource, sourceLabel } from '../../quiz/quizSources';
 
 export function QuizBlock({ source, fallback }: { source: string; fallback: ReactNode }) {
@@ -19,7 +20,7 @@ export function QuizBlock({ source, fallback }: { source: string; fallback: Reac
             <span className="quiz-block-letter" aria-hidden>
               {letters[i] ?? String(i + 1)}
             </span>
-            {c}
+            <InlineCode text={c} />
           </li>
         ))}
       </ol>
@@ -34,8 +35,16 @@ export function QuizBlock({ source, fallback }: { source: string; fallback: Reac
             {question.choices[question.answer]}
           </strong>
         </p>
-        {question.hint && <p className="quiz-block-hint">Hint: {question.hint}</p>}
-        {question.explanation && <p>{question.explanation}</p>}
+        {question.hint && (
+          <p className="quiz-block-hint">
+            Hint: <InlineCode text={question.hint} />
+          </p>
+        )}
+        {question.explanation && (
+          <p>
+            <InlineCode text={question.explanation} />
+          </p>
+        )}
         {question.sources.length > 0 && (
           <ul className="quiz-block-sources" aria-label="Sources">
             {question.sources.map((s, i) => (

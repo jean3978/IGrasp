@@ -864,6 +864,15 @@
   font-size: var(--font-size-ui);
 }
 
+/* Code quoted with backticks in a question, a choice, a hint or an explanation. */
+.quiz-code {
+  padding: 0 4px;
+  border-radius: var(--radius-s);
+  background: var(--bg-code);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
 /* The particle effects, over the tab, never in the way of the pointer. */
 .quiz-effects {
   position: absolute;

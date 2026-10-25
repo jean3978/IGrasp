@@ -12,6 +12,7 @@ import { selectQuizBusy, useQuiz } from '../../stores/quiz';
 import { UsageLine } from '../ai/UsageLine';
 import { Hoot } from '../hoot/Hoot';
 import { pickLine } from '../hoot/hootLines';
+import { InlineCode } from './InlineCode';
 import { LevelFlames } from './LevelFlames';
 import { openSource, sourceLabel } from './quizSources';
 import { formatElapsed } from './quizFormat';
@@ -182,7 +183,9 @@ export function ResultsScreen({
                 <summary>
                   <ChevronRight aria-hidden className="quiz-review-chevron" />
                   <span className="quiz-review-mark">{a.correct ? 'Right' : 'Missed'}</span>
-                  <span className="quiz-review-question">{q.question}</span>
+                  <span className="quiz-review-question">
+                    <InlineCode text={q.question} />
+                  </span>
                 </summary>
                 <p>
                   Your answer: <strong>{q.choices[a.chosen] ?? '?'}</strong>
@@ -194,7 +197,9 @@ export function ResultsScreen({
                   )}
                   {a.usedHint && <span className="quiz-muted"> · with hint</span>}
                 </p>
-                <p className="quiz-explanation">{q.explanation}</p>
+                <p className="quiz-explanation">
+                  <InlineCode text={q.explanation} />
+                </p>
                 <ul className="quiz-sources">
                   {q.sources.map((s, i) => (
                     <li key={`${s.path}-${String(i)}`}>

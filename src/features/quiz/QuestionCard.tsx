@@ -11,6 +11,7 @@ import type { KeyboardEvent, ReactNode } from 'react';
 import type { QuizQuestion } from '../../ipc/types';
 import type { SourceNote } from './quizFile';
 import { openSource, sourceLabel } from './quizSources';
+import { InlineCode } from './InlineCode';
 import { LevelFlames } from './LevelFlames';
 
 export interface QuestionCardProps {
@@ -99,11 +100,11 @@ export function QuestionCard(props: QuestionCardProps) {
         <LevelFlames level={question.difficulty} label="Difficulty" small />
       </header>
       <h2 className="quiz-question" id={`quiz-q-${question.id}`}>
-        {question.question}
+        <InlineCode text={question.question} />
       </h2>
       {usedHint && (
         <p className="quiz-hint" role="note">
-          <Lightbulb aria-hidden /> {question.hint}
+          <Lightbulb aria-hidden /> <InlineCode text={question.hint} />
         </p>
       )}
       <div
@@ -133,7 +134,9 @@ export function QuestionCard(props: QuestionCardProps) {
               }}
             >
               <kbd className="quiz-choice-key">{key}</kbd>
-              <span className="quiz-choice-text">{choice}</span>
+              <span className="quiz-choice-text">
+                <InlineCode text={choice} />
+              </span>
               {revealed && isAnswer && <Check aria-label="correct answer" />}
               {revealed && picked && !isAnswer && <X aria-label="your answer" />}
             </button>
@@ -161,7 +164,9 @@ export function QuestionCard(props: QuestionCardProps) {
             {correct ? <Check aria-hidden /> : <ArrowRight aria-hidden />}
             {props.verdictLine ?? (correct ? 'Correct.' : 'Not this time.')}
           </p>
-          <p className="quiz-explanation">{question.explanation}</p>
+          <p className="quiz-explanation">
+            <InlineCode text={question.explanation} />
+          </p>
           {question.sources.length > 0 && (
             <ul className="quiz-sources" aria-label="Sources">
               {question.sources.map((s, i) => {
