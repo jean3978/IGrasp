@@ -7,6 +7,9 @@ pub mod agent_files;
 #[allow(dead_code)]
 pub mod corpus;
 pub mod subjects;
+// Used by the quiz composer (step 14 of the phase 4 plan).
+#[allow(dead_code)]
+pub mod quiz;
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
