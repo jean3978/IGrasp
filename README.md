@@ -178,12 +178,11 @@ type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
 - [x] **Phase 2 — Navigation** (0.2.0): search everything (Ctrl+T), search in files
       (Ctrl+Shift+F), recent changes, back/forward history, outline, internal links, code viewer,
       broken links, backlinks.
-- [x] **Phase 3 — Claude** (0.3.0, reworked after review, unreleased): a provider-neutral AI layer
-      (Claude first) that spends tokens only on a user action, chat through the Claude CLI with
-      context, the CLI's own models, permissions and per-folder history, inline diff review, and
-      AI tools over the document: highlight text or drag a region, the chat opens beside it, with
-      quick actions (Rewrite, Shorten, Expand, Fix grammar, Make a table, Make a diagram,
-      Explain).
+- [x] **Phase 3 — Claude** (0.3.0): a provider-neutral AI layer (Claude first) that spends tokens
+      only on a user action, chat through the Claude CLI with context, the CLI's own models,
+      permissions and per-folder history, inline diff review, and AI tools over the document:
+      highlight text or drag a region, the chat opens beside it, with quick actions (Rewrite,
+      Shorten, Expand, Fix grammar, Make a table, Make a diagram, Explain).
 - [ ] **Phase 4 — Quiz**: a fun quiz about the project with Hoot the owl, grounded in the whole
       project (code, config, docs), for developers new to it.
 - [ ] **Phase 5 — Tutorials**: Hoot's Academy, interactive tutorials generated about the project

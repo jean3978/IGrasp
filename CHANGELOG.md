@@ -7,75 +7,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-The AI chat reworked after the maintainer's review of the 0.3.0 UI
-([ADR 0020](docs/decisions/0020-viewport-ai-tools-and-text-selections.md)).
-
-### Added
-
-- **AI tools over the document**: a small toolbar in the top-right corner of the view (every tab,
-  and the empty area) with AI Chat, **Ask About Selected Text** and **Ask About a Region** (the
-  last two in markdown and code tabs).
-- **Text mode** (`Ctrl+Alt+S`, View menu): highlight text like in an editor; releasing the mouse
-  (anywhere, even over the chat or the sidebar) opens the chat next to it with the text and its
-  source lines attached. Opening another file turns it off.
-- **Quick actions** on the selection: Rewrite, Shorten, Expand, Fix grammar, Make a table, Make a
-  diagram, Explain (one message each; edits go through the usual review).
-- A **selection line** at the top of the chat ("Selection · lines 3–7 · Start of the text…") with
-  ✕ to drop it.
-
-### Changed
-
-- The AI buttons left the window toolbar for the toolbar over the document.
-- The chat opens **next to the selection** (beside, above or below, narrower if needed) and the
-  selection stays **highlighted** while the chat is open, after Send too.
-- A region is sent **as text** (the source of the blocks it covers), never as a screenshot;
-  `modern-screenshot` is removed. The provider is told the highlighted text exactly
-  (`AiCapture.selection`).
-- The chat looks like a chat in the provider's colours: orange accent and warm surfaces
-  (`--ai-*` tokens in every theme), a bloom behind the panel, bubbles with an avatar, a rounded
-  message box that grows with its text, the model picker and a one-line status in the header.
-- Answers appear **in one piece**, rendered like a document (tables, code, Mermaid; with a render
-  cache of their own, so they never push the open documents out of theirs), with an animated
-  "…" while the provider writes. While a permission or confirmation card waits, the answer
-  written so far is shown: it explains what is asked.
-- The model picker lists exactly the models the installed Claude CLI offers to the account
-  (read from its `initialize` answer, once per CLI version and account, no token spent), with
-  their descriptions as tooltips; the custom model id is gone. The remembered model comes back
-  as soon as the CLI lists it.
-
-### Fixed
-
-- Tooltips (and menus) of the chat were drawn behind it.
-- Picking a custom model squeezed the chat's title to one letter.
-- A quick action on a few highlighted lines could rewrite the whole paragraph or list around
-  them: the selection was sent as its whole markdown block. Highlighted text is now narrowed to
-  the source lines that hold it (the occurrence that was highlighted, when a phrase repeats), and
-  the editing actions state their scope strictly (exactly the highlighted text, every other
-  character unchanged).
-- Accepting an AI edit (Accept all, Apply) sent the document back to the top: the preview was
-  briefly empty while the edited file reloaded. It now stays where the reader was; scrolling,
-  a click or a key takes over at once.
-- A file edited by the AI (an accepted edit) showed "deleted on disk" with its old content
-  until it was opened again: the CLI saves through a temporary file renamed over the original,
-  which the watcher reported as removed and added in one batch. That is now a modification,
-  and the open tab reloads in place.
-- The sidebar and the right panel could not be resized: a drag stopped after its first step,
-  because each width it reported came back to the panel as its default size and reset the drag
-  (present in 0.3.0). Only the user's own resizing (drag, or arrow keys on the sash) is now saved;
-  after the window shrinks and grows back, both panels return to that width.
-
 ## [0.3.0] - 2026-10-24
 
 Phase 3 — Claude: an AI chat that understands the open folder, edits you review in the rendered
-document, and questions about a region of the screen. The AI layer is provider-neutral (Claude
-through your installed `claude` CLI is the first provider) and spends tokens only when you ask.
+document, and questions about the text you highlight or a region you drag. The AI layer is
+provider-neutral (Claude through your installed `claude` CLI is the first provider) and spends
+tokens only when you ask.
 
 ### Added
 
 - **AI chat**: a floating, movable and resizable panel (`Ctrl+Alt+C`) that talks to the AI
-  provider in the open folder, streams the answer, resumes the conversation between messages,
-  shows the usage of each answer (tokens, cost, duration) and explains a missing or logged-out
-  provider ([ADR 0014](docs/decisions/0014-claude-cli-integration.md)). `Escape` stops a running
+  provider in the open folder, resumes the conversation between messages, shows the usage of
+  each answer (tokens, cost, duration) and explains a missing or logged-out provider
+  ([ADR 0014](docs/decisions/0014-claude-cli-integration.md)). It looks like a chat, in the
+  provider's colours (`--ai-*` tokens in every theme, a soft bloom behind the panel): bubbles
+  with an avatar, a rounded message box that grows with its text, the model picker and a
+  one-line status in the header. Each answer appears in one piece, rendered like a document
+  (tables, code, Mermaid), with an animated "…" while the provider writes; while a permission
+  or confirmation card waits, the answer written so far is shown. `Escape` stops a running
   answer, then closes the panel; with the chat closed the status bar shows the running operation
   with Stop and a badge when a permission waits. The panel's place and size are remembered per
   folder in the session.
@@ -83,9 +32,27 @@ through your installed `claude` CLI is the first provider) and spends tokens onl
   `AiProvider` trait with the Claude CLI and a mock implementation, and a single gateway that
   only starts an operation for a user action and stops it when the folder, the window or the
   app closes ([ADR 0015](docs/decisions/0015-ai-provider-abstraction-and-gateway.md)). The
-  provider is chosen by `settings.ai.provider` (`ai_providers`, `ai_set_provider`); the model
-  picked in the chat is remembered in `settings.ai.model`; the provider status is cached for
-  60 s (**Check again** bypasses it).
+  provider is chosen by `settings.ai.provider` (`ai_providers`, `ai_set_provider`); the provider
+  status is cached for 60 s (**Check again** bypasses it).
+- **Models from the CLI**: the model picker lists exactly the models the installed Claude CLI
+  offers to the account, read from its `initialize` answer (once per CLI version and account, no
+  message, no token), with their descriptions as tooltips. The choice is remembered in
+  `settings.ai.model`.
+- **AI tools over the document**: a small toolbar in the top-right corner of the view (every
+  tab, and the empty area) with **AI Chat**, **Ask About Selected Text** and **Ask About a
+  Region** ([ADR 0020](docs/decisions/0020-viewport-ai-tools-and-text-selections.md)).
+- **Text mode** (`Ctrl+Alt+S`, View menu): highlight text like in an editor; releasing the mouse
+  (anywhere, even over the chat) attaches it with the source lines that hold it, narrowed from
+  the block to the highlighted text. Opening another file turns it off.
+- **Region** (`Ctrl+Alt+R`, View menu): drag a rectangle over a markdown or code tab (mouse, or
+  arrows + Enter); the source of the blocks it covers is attached as text.
+- For both, the chat opens **next to the selection** without covering it, with the draft "About
+  this selection:" or "About this region:"; the selection stays **highlighted** while the chat
+  is open, and one **selection line** at the top of the chat recalls it ("Selection · lines 3–7 ·
+  Start of the text…", ✕ to drop it). Nothing is sent until Send.
+- **Quick actions** on the selection: Rewrite, Shorten, Expand, Fix grammar, Make a table, Make a
+  diagram, Explain. Each sends one message; the editing ones ask for one edit of exactly the
+  highlighted text, which goes through the permission settings and the inline review.
 - **"Uses AI" marker**: a small sparkle (with the provider's name in its tooltip) on every
   control that can start an AI operation.
 - **Confirmation card**: a message whose estimated size (`ai_estimate`, from metadata only:
@@ -113,14 +80,10 @@ through your installed `claude` CLI is the first provider) and spends tokens onl
   review bar with Accept all (`Alt+Shift+A`), Reject all (`Alt+Shift+R`), Open in chat and
   Apply. Only the accepted changes are written, by the provider: the app sends a neutral edit
   (the accepted hunks, or the composed content of a `Write`) and the provider maps it to its own
-  tool input. The chat shows an Edit card with **Review in preview**, the status bar leads to the
-  review when the chat is closed, and other edits keep the line-diff card
+  tool input. The document stays where the reader was when the review closes and the written
+  file reloads. The chat shows an Edit card with **Review in preview**, the status bar leads to
+  the review when the chat is closed, and other edits keep the line-diff card
   ([ADR 0017](docs/decisions/0017-rendered-markdown-diff-at-block-level.md)).
-- **Region capture**: **Ask about a region** (toolbar button, View menu, `Ctrl+Alt+R`) draws a
-  rectangle over a markdown or code tab (mouse, or arrows + Enter), maps it to the source lines
-  and attaches them, with a screenshot of the region (selection outlined) when the model reads
-  images, to the chat with the draft "About this region:". Nothing is sent until Send
-  ([ADR 0018](docs/decisions/0018-region-capture-by-dom-rendering.md)).
 - **Conversation history per folder** (app data, `conversations/`): each conversation is saved
   when an operation ends and on New conversation (`Ctrl+Alt+N`), trimmed to
   `settings.ai.historyLimit` conversations and 400 items each, and recovered like the other
@@ -129,11 +92,12 @@ through your installed `claude` CLI is the first provider) and spends tokens onl
   here**. Commands `list_conversations`, `get_conversation`, `save_conversation`,
   `delete_conversation`, `forget_conversations`.
 - **Mock AI provider** for the browser dev mode and the tests, scripting every case the UI
-  handles (one or two hunks, rewrite, new file, code edit, command, web, image, slow, crash, lost
+  handles (one or two hunks, rewrite, new file, code edit, command, web, slow, crash, lost
   conversation) and applying the same permission policy as the gateway.
 - Tests: the "no token without a user action" checks (Rust over the whole backend, Vitest over
   the UI), the provider-neutrality scan of the frontend, Playwright smoke tests for the chat,
-  the inline review and region capture, and ignored tests against the real CLI.
+  the inline review, the selections and the quick actions, and ignored tests against the real
+  CLI.
 
 ### Changed
 
@@ -144,12 +108,24 @@ through your installed `claude` CLI is the first provider) and spends tokens onl
 - Accessibility of the AI features: events reach screen readers through one polite live region
   (streamed text is not read as it arrives); the chat panel follows the toolbar in the Tab
   order; focus moves to the first undecided change when a review opens, to the document when it
-  is answered, to the message box when a card is answered, and back where it was when a capture
-  is cancelled; the keyboard capture announces the selection size; the review toolbar sits on
-  its own row above each change and decided changes show the version not kept dashed and muted.
+  is answered, to the message box when a card is answered, back to the AI Chat button when the
+  chat closes, and back where it was when a region selection is cancelled; the keyboard region
+  selection announces its size; the review toolbar sits on its own row above each change and
+  decided changes show the version not kept dashed and muted.
 - Sessions also remember the AI panel (open, position, size); sessions saved by 0.2.0 load
-  unchanged.
-- The preview keeps source line markers (`data-line`) on lists and GitHub alert blocks.
+  unchanged. The sidebar and right panel widths saved are the ones the user set; a panel the
+  layout squeezes in a small window returns to it.
+- The preview keeps source line markers (`data-line`) on lists and GitHub alert blocks, and keeps
+  the previous render on screen while a new version renders (a reload never blanks a document).
+- Tooltips and menus are drawn above every floating panel.
+
+### Fixed
+
+- A file saved through a temporary file renamed over it (as editors and the AI CLI save) showed
+  "deleted on disk" with its old content until it was opened again: the watcher reported it as
+  removed and added in one batch. That is now a modification, and the open tab reloads in place.
+- The sidebar and the right panel could not be resized: a drag stopped after its first step,
+  because each width it reported came back to the panel as its default size.
 
 ### Performance
 
@@ -158,9 +134,12 @@ through your installed `claude` CLI is the first provider) and spends tokens onl
 
 ### Known limitations
 
-- The Claude CLI integration and the capture of asset images were verified on Windows only; the
-  Linux run is pending ([ADR 0014](docs/decisions/0014-claude-cli-integration.md),
-  [ADR 0018](docs/decisions/0018-region-capture-by-dom-rendering.md)).
+- The Claude CLI integration was verified on Windows only, and the text mode and the selection
+  highlight in Chromium; the Linux run is pending
+  ([ADR 0014](docs/decisions/0014-claude-cli-integration.md),
+  [ADR 0020](docs/decisions/0020-viewport-ai-tools-and-text-selections.md)).
+- Quick actions ask the model to change only the selection; they cannot force it. The review
+  shows any change outside the selection, to reject.
 - Allow rules in the user's own Claude CLI settings let the CLI run those tools without asking;
   every call still appears in the chat.
 
