@@ -9,6 +9,9 @@ mod index;
 mod paths;
 #[cfg(test)]
 mod perf;
+// Reached by the profile commands from step 5 of the phase 4 plan on.
+#[allow(dead_code)]
+mod profile;
 mod search;
 mod state;
 

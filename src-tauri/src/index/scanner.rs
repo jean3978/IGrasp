@@ -73,6 +73,31 @@ pub fn walk_builder(
     respect_ignore: bool,
     scope: Option<&str>,
 ) -> WalkBuilder {
+    let mut b = base_walk_builder(root, opts, respect_ignore);
+    let root_buf = root.to_path_buf();
+    let scope = scope.map(str::to_owned);
+    b.filter_entry(move |e| {
+        if let Some(scope) = &scope {
+            match rel_path(&root_buf, e.path()) {
+                // Keep the scope, what is inside it, and the folders leading to it.
+                Some(rel) if is_within(&rel, scope) || is_within(scope, &rel) => {}
+                _ => return false,
+            }
+        }
+        let name = e.file_name().to_string_lossy();
+        if e.file_type().is_some_and(|t| t.is_dir()) {
+            !ALWAYS_SKIPPED.contains(&name.as_ref())
+        } else {
+            is_markdown(&name)
+        }
+    });
+    b
+}
+
+/// The walker's ignore configuration (ignore files, the user's patterns, dotfiles, threads)
+/// without any entry filter: the scan adds its markdown filter, the project profile walks every
+/// file (`profile::walk`).
+pub fn base_walk_builder(root: &Path, opts: &ScanOptions, respect_ignore: bool) -> WalkBuilder {
     let mut b = WalkBuilder::new(root);
     b.hidden(!opts.show_dotfiles)
         .git_ignore(respect_ignore)
@@ -100,24 +125,6 @@ pub fn walk_builder(
             Err(e) => log::warn!("cannot build ignore patterns: {e}"),
         }
     }
-
-    let root_buf = root.to_path_buf();
-    let scope = scope.map(str::to_owned);
-    b.filter_entry(move |e| {
-        if let Some(scope) = &scope {
-            match rel_path(&root_buf, e.path()) {
-                // Keep the scope, what is inside it, and the folders leading to it.
-                Some(rel) if is_within(&rel, scope) || is_within(scope, &rel) => {}
-                _ => return false,
-            }
-        }
-        let name = e.file_name().to_string_lossy();
-        if e.file_type().is_some_and(|t| t.is_dir()) {
-            !ALWAYS_SKIPPED.contains(&name.as_ref())
-        } else {
-            is_markdown(&name)
-        }
-    });
     b
 }
 
