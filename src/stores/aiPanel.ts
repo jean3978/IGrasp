@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { backend } from '../ipc/client';
-import type { AiCapture, AiContextDocument, AiImage, AiPanelState, PanelRect } from '../ipc/types';
+import type { AiCapture, AiContextDocument, AiPanelState, PanelRect } from '../ipc/types';
 
 export const PANEL_MIN_WIDTH = 360;
 export const PANEL_MIN_HEIGHT = 320;
@@ -91,13 +91,54 @@ export function resizeRect(
   return clampRect({ x, y, width, height }, viewport);
 }
 
-/** What the user attached to the next message (region capture). */
+/** Space between a selection and the panel opened next to it. */
+export const NEAR_GAP = 12;
+
+/**
+ * Where the panel opens for a selection (`anchor`, client coordinates), without covering it:
+ * beside it on the right, else on the left, else below, else above, at its size; then narrower
+ * (down to the minimum) on the roomier side, or shorter above or below; else the default corner.
+ * Always inside the window.
+ */
+export function rectNear(
+  anchor: PanelRect,
+  size: { width: number; height: number },
+  viewport: Viewport,
+): PanelRect {
+  const width = Math.min(size.width, viewport.width);
+  const height = Math.min(size.height, viewport.height);
+  const right = anchor.x + anchor.width;
+  const bottom = anchor.y + anchor.height;
+  const spaceRight = viewport.width - right - NEAR_GAP - PANEL_MARGIN;
+  const spaceLeft = anchor.x - NEAR_GAP - PANEL_MARGIN;
+  const spaceBelow = viewport.height - bottom - NEAR_GAP - PANEL_MARGIN;
+  const spaceAbove = anchor.y - NEAR_GAP - PANEL_MARGIN;
+  const onRight = (w: number) =>
+    clampRect({ x: right + NEAR_GAP, y: anchor.y - 8, width: w, height }, viewport);
+  const onLeft = (w: number) =>
+    clampRect({ x: anchor.x - NEAR_GAP - w, y: anchor.y - 8, width: w, height }, viewport);
+  const centredX = anchor.x + anchor.width / 2 - width / 2;
+  const below = (h: number) =>
+    clampRect({ x: centredX, y: bottom + NEAR_GAP, width, height: h }, viewport);
+  const above = (h: number) =>
+    clampRect({ x: centredX, y: anchor.y - NEAR_GAP - h, width, height: h }, viewport);
+
+  if (spaceRight >= width) return onRight(width);
+  if (spaceLeft >= width) return onLeft(width);
+  if (spaceBelow >= height) return below(height);
+  if (spaceAbove >= height) return above(height);
+  if (Math.max(spaceRight, spaceLeft) >= Math.min(PANEL_MIN_WIDTH, viewport.width)) {
+    return spaceRight >= spaceLeft ? onRight(spaceRight) : onLeft(spaceLeft);
+  }
+  if (Math.max(spaceBelow, spaceAbove) >= Math.min(PANEL_MIN_HEIGHT, viewport.height)) {
+    return spaceBelow >= spaceAbove ? below(spaceBelow) : above(spaceAbove);
+  }
+  return defaultRect(viewport);
+}
+
+/** What the user attached to the next message: a text selection or a region, as text. */
 export interface PanelAttachment {
   capture: AiCapture;
-  /** The rendered region, when the screenshot could be taken. */
-  image: AiImage | null;
-  /** Small data URL of the screenshot for the chip and the transcript. */
-  thumbnail?: string;
 }
 
 /** The documents the next message carries, as `ai_context` listed them for `currentPath`. */
@@ -130,6 +171,8 @@ interface AiPanelStore {
   moveBy: (dx: number, dy: number) => void;
   /** Grows or shrinks the panel by (dw, dh) pixels from its bottom-right corner. */
   resizeBy: (dw: number, dh: number) => void;
+  /** Opens the panel next to a selection (client coordinates), at its current size. */
+  openNear: (anchor: PanelRect) => void;
   /** Back to the default corner and size. */
   resetRect: () => void;
   /** Keeps the panel inside the window after the window changed size. */
@@ -198,6 +241,11 @@ export const useAiPanel = create<AiPanelStore>()((set, get) => ({
   resizeBy(dw, dh) {
     const rect = selectPanelRect(get());
     get().setRect(resizeRect(rect, 'se', dw, dh, windowViewport()));
+  },
+  openNear(anchor) {
+    const viewport = windowViewport();
+    const { width, height } = selectPanelRect(get(), viewport);
+    set({ rect: rectNear(anchor, { width, height }, viewport), open: true });
   },
   resetRect() {
     set({ rect: null });

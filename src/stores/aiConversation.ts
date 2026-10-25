@@ -43,12 +43,7 @@ import type {
 import { BackendError } from '../ipc/types';
 import { useAiPanel } from './aiPanel';
 import { useDocuments } from './documents';
-import {
-  errorMessage,
-  selectModelAcceptsImages,
-  selectProviderName,
-  useAiProvider,
-} from './aiProvider';
+import { errorMessage, selectProviderName, useAiProvider } from './aiProvider';
 import { useSettings } from './settings';
 import { selectActiveTab, useTabs } from './tabs';
 import { useToasts } from './toasts';
@@ -149,7 +144,8 @@ export interface AiConversationState {
   history: ConversationSummary[] | null;
   pendingReview: PendingReview | null;
 
-  send: (text: string) => Promise<void>;
+  /** Sends a message; the transcript shows `label` in its place when given (a quick action). */
+  send: (text: string, label?: string) => Promise<void>;
   /** Adds a line to the transcript (nothing is sent). */
   addNotice: (level: 'info' | 'error', text: string) => void;
   /** Start of the confirmation card: the only way a confirmed operation begins. */
@@ -309,35 +305,20 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
   };
 
   /** Estimates, then starts or shows the confirmation card. */
-  const startMessage = async (prompt: string, showUserItem: boolean) => {
+  const startMessage = async (prompt: string, showUserItem: boolean, label?: string) => {
     set((s) => ({
       id: s.id ?? newConversationId(),
       createdMs: s.id === null ? Date.now() : s.createdMs,
-      items: showUserItem ? [...s.items, userItem(prompt)] : s.items,
+      items: showUserItem ? [...s.items, userItem(label ?? prompt)] : s.items,
       starting: true,
       buffered: [],
     }));
     const { resumeId } = get();
     const { model } = useAiProvider.getState();
-    // The region the message is about shows in the transcript right after the message.
+    // The selection the message is about shows in the transcript right after the message.
     const attached = useAiPanel.getState().attachment;
-    // A model that cannot read images gets the text of the region only, and the user is told.
-    const image = attached?.image && selectModelAcceptsImages(useAiProvider.getState());
     if (attached && showUserItem) {
-      set((s) => ({
-        items: [
-          ...s.items,
-          ...(attached.image && !image
-            ? [
-                noticeItem(
-                  'info',
-                  `${model || 'The selected model'} cannot read images: the screenshot was left out and the text of the region was sent.`,
-                ),
-              ]
-            : []),
-          captureItem({ ...attached.capture, thumbnail: image ? attached.thumbnail : undefined }),
-        ],
-      }));
+      set((s) => ({ items: [...s.items, captureItem(attached.capture)] }));
     }
     try {
       // What the context bar lists for the current file, minus what the user dropped (listed
@@ -355,7 +336,7 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
       const request: AiStartRequest = {
         prompt,
         contextPaths,
-        images: attachment?.image && image ? [attachment.image] : [],
+        images: [],
         ...(attachment ? { capture: attachment.capture } : {}),
         policy: 'interactive',
         ...(model ? { model } : {}),
@@ -464,10 +445,10 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
     ...EMPTY,
     history: null,
 
-    async send(text) {
+    async send(text, label) {
       const prompt = text.trim();
       if (!prompt || selectBusy(get()) || get().pendingConfirm) return;
-      await startMessage(prompt, true);
+      await startMessage(prompt, true, label);
     },
 
     addNotice(level, text) {

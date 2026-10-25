@@ -16,8 +16,8 @@ No Confluence, no editor plugin, no note-taking vault — just the project's own
 |---|---|
 | ![A Mermaid diagram in the light theme](docs/screenshots/mermaid-light.png) | ![A grouped notification after an agent changed 15 files](docs/screenshots/live-changes-light.png) |
 | ![Search in files with highlighted matches, the outline and backlinks, in the dark theme](docs/screenshots/search-dark.png) | ![Search everything (Ctrl+T) over file names and headings](docs/screenshots/quick-open-light.png) |
-| ![The Broken links view next to a document with flagged links](docs/screenshots/broken-links-light.png) | ![The AI chat panel with its context bar, over a document](docs/screenshots/ai-chat-light.png) |
-| ![An AI edit reviewed in the rendered document, with Accept and Reject per change](docs/screenshots/ai-review-light.png) | ![A region of the document selected and attached to the chat as a chip](docs/screenshots/ai-capture-dark.png) |
+| ![The Broken links view next to a document with flagged links](docs/screenshots/broken-links-light.png) | ![The AI chat opened next to highlighted text, with the selection line, an answer and the quick actions](docs/screenshots/ai-chat-light.png) |
+| ![An AI edit reviewed in the rendered document, with Accept and Reject per change](docs/screenshots/ai-review-light.png) | ![A region dragged over a table: it stays highlighted and the chat opens beside it](docs/screenshots/ai-capture-dark.png) |
 
 ## Features
 
@@ -44,14 +44,17 @@ No Confluence, no editor plugin, no note-taking vault — just the project's own
   `Alt+→`) through what you read, and a **Recent changes** view that marks what an agent just
   touched.
 - **AI chat.** A floating panel (`Ctrl+Alt+C`) that talks to Claude through your own Claude Code
-  CLI in the open folder: streamed answers, a **context bar** that shows which instruction files
-  (`CLAUDE.md`) and which document go with your message, a model picker, usage per answer, and
+  CLI in the open folder: chat-style answers, a **context bar** that shows which instruction files
+  (`CLAUDE.md`) and which document go with your message, a model picker listing the models your
+  CLI offers, usage per answer, and
   a confirmation before a large message.
 - **Review an edit where you read it.** When the AI proposes a change to a markdown file, the
   document opens in **review mode**: removed and added blocks in the rendered text, **Accept**
   or **Reject** each change, and only what you accepted is written.
-- **Ask about a region.** `Ctrl+Alt+R` draws a rectangle over the document or a source file; the
-  chat gets its source lines and a screenshot of it.
+- **Ask about a selection.** The AI tools over the document: highlight text with the cursor tool
+  (`Ctrl+Alt+S`) or drag a region (`Ctrl+Alt+R`), and the chat opens next to it with its source
+  lines, the selection stays highlighted, and quick actions (Rewrite, Shorten, Expand, Fix
+  grammar, Make a table, Make a diagram, Explain) work on it.
 - **Permissions you control.** Ask, Allow or Deny per kind of action (markdown edits, other file
   edits, commands, web, anything else); every automatic answer is shown in the conversation.
 - **History.** Conversations are kept per folder (in the app's data folder, never in your
@@ -148,6 +151,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the details, and
 | `Ctrl+Shift+E` / `R` / `L` | Explorer / Recent changes / Broken links |
 | `Ctrl+Shift+O` | Focus the outline |
 | `Ctrl+Alt+C` | Show or hide the AI chat |
+| `Ctrl+Alt+S` | Ask about selected text (text mode) |
 | `Ctrl+Alt+R` | Ask about a region |
 | `Ctrl+Alt+N` / `Ctrl+Alt+H` | New AI conversation / history |
 | `Alt+Shift+A` / `Alt+Shift+R` | Accept all / reject all changes of an AI edit under review |
@@ -174,9 +178,12 @@ type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
 - [x] **Phase 2 — Navigation** (0.2.0): search everything (Ctrl+T), search in files
       (Ctrl+Shift+F), recent changes, back/forward history, outline, internal links, code viewer,
       broken links, backlinks.
-- [x] **Phase 3 — Claude** (0.3.0): a provider-neutral AI layer (Claude first) that spends tokens
-      only on a user action, chat through the Claude CLI with context, permissions and per-folder
-      history, inline diff review, region capture.
+- [x] **Phase 3 — Claude** (0.3.0, reworked after review, unreleased): a provider-neutral AI layer
+      (Claude first) that spends tokens only on a user action, chat through the Claude CLI with
+      context, the CLI's own models, permissions and per-folder history, inline diff review, and
+      AI tools over the document: highlight text or drag a region, the chat opens beside it, with
+      quick actions (Rewrite, Shorten, Expand, Fix grammar, Make a table, Make a diagram,
+      Explain).
 - [ ] **Phase 4 — Quiz**: a fun quiz about the project with Hoot the owl, grounded in the whole
       project (code, config, docs), for developers new to it.
 - [ ] **Phase 5 — Tutorials**: Hoot's Academy, interactive tutorials generated about the project

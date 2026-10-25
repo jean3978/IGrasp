@@ -1,0 +1,61 @@
+/* The AI tools floating in the top-right corner of a markdown or code tab. */
+.viewport-toolbar {
+  position: absolute;
+  top: 10px;
+  right: 22px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: var(--border-width) solid var(--ai-border);
+  border-radius: 999px;
+  background: var(--ai-surface-raised);
+  box-shadow:
+    0 6px 18px -6px var(--ai-bloom),
+    var(--shadow-menu);
+}
+
+/* A code tab has its header row first. */
+.tab-content:has(.code-header) .viewport-toolbar {
+  top: 42px;
+}
+
+.viewport-tool {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--ai-accent);
+}
+
+.viewport-tool:disabled {
+  color: var(--fg-disabled);
+}
+
+.viewport-tool[aria-pressed='true'] {
+  background: linear-gradient(135deg, var(--ai-bubble-user), var(--ai-bubble-user-end));
+  color: var(--ai-bubble-user-fg);
+}
+
+[data-theme='high-contrast'] .viewport-tool[aria-pressed='true'] {
+  background: var(--ai-send-bg);
+  color: var(--ai-send-fg);
+}
+
+.viewport-tool > .ai-mark {
+  background: var(--ai-surface-raised);
+  color: var(--ai-accent);
+}
+
+.viewport-toolbar-separator {
+  width: var(--border-width);
+  height: 16px;
+  margin: 0 2px;
+  background: var(--ai-border);
+}
+
+/* Review mode: the review bar holds the top edge (its Apply sits on the right). */
+.tab-content:has(.review-bar) .viewport-toolbar {
+  top: auto;
+  bottom: 16px;
+}

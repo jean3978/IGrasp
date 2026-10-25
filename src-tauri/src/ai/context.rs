@@ -342,6 +342,7 @@ mod tests {
             first_line: 1,
             last_line: 1,
             text: "# Start".into(),
+            selection: None,
         };
         let request = request_from(
             &guard,

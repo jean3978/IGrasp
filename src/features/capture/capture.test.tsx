@@ -1,7 +1,16 @@
 import { fireEvent, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CaptureOverlay } from './CaptureOverlay';
-import { captureCodeRegion, captureMarkdownRegion, clampRect, rectFromPoints } from './capture';
+import {
+  boundingRect,
+  captureCodeRegion,
+  captureMarkdownRegion,
+  clampRect,
+  elementsInRect,
+  mergeLineRects,
+  narrowToSelection,
+  rectFromPoints,
+} from './capture';
 
 const SOURCE = [
   '# Title', // 1
@@ -110,6 +119,101 @@ describe('captureCodeRegion', () => {
       lastLine: 6,
       text: '',
     });
+  });
+});
+
+describe('narrowToSelection', () => {
+  const doc = [
+    '# Services', // 1
+    '', // 2
+    '- **Auth**: signs users in.', // 3
+    '- **Billing**: charges the [card](https://pay.example).', // 4
+    '- **Mail**: sends `welcome` emails.', // 5
+    '- **Search**: indexes documents.', // 6
+    '- **Export**: writes CSV files.', // 7
+    '', // 8
+    'A long paragraph written on', // 9
+    'several source lines, with _emphasis_', // 10
+    'and more words at the end.', // 11
+    '', // 12
+  ].join('\n');
+  const block = (firstLine: number, lastLine: number) => ({ firstLine, lastLine, text: 'x' });
+
+  it('keeps only the list items the highlighted text is in', () => {
+    // As the preview renders it: no marks, the link as its text.
+    const picked = narrowToSelection(
+      doc,
+      block(3, 7),
+      'Billing: charges the card.\nMail: sends welcome emails.',
+    );
+    expect(picked).toEqual({
+      firstLine: 4,
+      lastLine: 5,
+      text: '- **Billing**: charges the [card](https://pay.example).\n- **Mail**: sends `welcome` emails.',
+    });
+  });
+
+  it('keeps only the source lines of part of a paragraph', () => {
+    expect(narrowToSelection(doc, block(9, 11), 'with emphasis and more')).toMatchObject({
+      firstLine: 10,
+      lastLine: 11,
+    });
+    expect(narrowToSelection(doc, block(9, 11), 'several source')).toMatchObject({
+      firstLine: 10,
+      lastLine: 10,
+    });
+  });
+
+  it('picks the occurrence the user highlighted when the phrase repeats', () => {
+    const repeated = ['The user signs in.', 'Then', 'the user signs in.', 'Again.'].join('\n');
+    const whole = { firstLine: 1, lastLine: 4, text: 'x' };
+    // Highlighted in the third line: the rendered text before it is the first two lines.
+    expect(
+      narrowToSelection(repeated, whole, 'user signs in', 'The user signs in. Then the '),
+    ).toMatchObject({ firstLine: 3, lastLine: 3 });
+    // Without a position, the first one.
+    expect(narrowToSelection(repeated, whole, 'user signs in')).toMatchObject({
+      firstLine: 1,
+      lastLine: 1,
+    });
+  });
+
+  it('matches both ends when the middle renders differently, else keeps the block', () => {
+    expect(
+      narrowToSelection(doc, block(3, 7), 'Mail: sends welcome emails. [1] Search: indexes'),
+    ).toMatchObject({ firstLine: 5, lastLine: 6 });
+    expect(narrowToSelection(doc, block(3, 7), 'nothing like this')).toEqual(block(3, 7));
+  });
+});
+
+describe('selection helpers', () => {
+  it('picks the lines of every box of a text selection', () => {
+    const c = markdownContainer();
+    // One box on the title, one on the last paragraph: everything between is covered.
+    expect(captureMarkdownRegion(c, [rect(10, 10), rect(132, 10)], SOURCE)).toMatchObject({
+      firstLine: 1,
+      lastLine: 8,
+    });
+  });
+
+  it('keeps the outermost blocks a region touches, in document order', () => {
+    const c = markdownContainer();
+    const hit = elementsInRect(c, rect(85, 30));
+    expect(hit.map((el) => el.tagName)).toEqual(['UL']);
+  });
+
+  it('merges the boxes of one line and bounds them all', () => {
+    const merged = mergeLineRects([
+      { x: 50, y: 10, width: 20, height: 16 },
+      { x: 0, y: 10, width: 51, height: 16 },
+      { x: 0, y: 30, width: 40, height: 16 },
+    ]);
+    expect(merged).toEqual([
+      { x: 0, y: 10, width: 70, height: 16 },
+      { x: 0, y: 30, width: 40, height: 16 },
+    ]);
+    expect(boundingRect(merged)).toEqual({ x: 0, y: 10, width: 70, height: 36 });
+    expect(boundingRect([])).toBeNull();
   });
 });
 

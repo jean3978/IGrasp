@@ -116,23 +116,30 @@ describe('applyEvent', () => {
 });
 
 describe('capture items', () => {
-  it('keep the text and the line range in the history, never the screenshot', () => {
+  it('keep the text, the line range and the highlighted text in the history', () => {
     const item = captureItem({
       sourcePath: 'docs/a.md',
       firstLine: 40,
       lastLine: 58,
-      text: 'Some text',
-      thumbnail: 'data:image/png;base64,AAAA',
+      text: 'Some **text**',
+      selection: 'Some text',
     });
     if (item.kind !== 'capture') throw new Error('not a capture item');
     expect(captureLabel(item)).toBe('docs/a.md lines 40–58');
     const stored = toStoredItems([item]);
-    expect(stored[0]).toMatchObject({ kind: 'capture', firstLine: 40, text: 'Some text' });
-    expect(JSON.stringify(stored)).not.toContain('thumbnail');
+    expect(stored[0]).toMatchObject({ kind: 'capture', firstLine: 40, text: 'Some **text**' });
     expect(fromStoredItems(stored)[0]).toMatchObject({
       kind: 'capture',
       sourcePath: 'docs/a.md',
       lastLine: 58,
+      selection: 'Some text',
     });
+  });
+
+  it('keep a region without a highlighted text', () => {
+    const item = captureItem({ sourcePath: 'a.md', firstLine: 1, lastLine: 1, text: '# A' });
+    const restored = fromStoredItems(toStoredItems([item]))[0];
+    expect(restored).toMatchObject({ kind: 'capture', text: '# A' });
+    expect(restored && 'selection' in restored).toBe(false);
   });
 });

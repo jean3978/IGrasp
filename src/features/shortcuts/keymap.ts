@@ -23,6 +23,7 @@ export const KEYMAP: KeyBinding[] = [
   { key: 'f1', action: 'help.shortcuts' },
   { key: 'c', ctrl: true, alt: true, action: 'ai.chat' },
   { key: 'r', ctrl: true, alt: true, action: 'ai.capture' },
+  { key: 's', ctrl: true, alt: true, action: 'ai.selectText' },
   { key: 'n', ctrl: true, alt: true, action: 'ai.newConversation' },
   { key: 'h', ctrl: true, alt: true, action: 'ai.history' },
   { key: 'a', alt: true, shift: true, action: 'ai.acceptAllChanges' },

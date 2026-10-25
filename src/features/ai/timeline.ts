@@ -34,15 +34,15 @@ export type ChatItem =
     }
   | { kind: 'notice'; id: string; level: 'info' | 'error'; text: string }
   | {
-      /** The region of a document the message is about (region capture). */
+      /** The part of a document the message is about (a text selection or a region). */
       kind: 'capture';
       id: string;
       sourcePath: string;
       firstLine: number;
       lastLine: number;
       text: string;
-      /** Small preview of the screenshot; live only, never stored in the history. */
-      thumbnail?: string;
+      /** The highlighted text, for a text selection. */
+      selection?: string;
     }
   | {
       /** What the provider reported for an operation, shown under its answer. */
@@ -80,16 +80,16 @@ export function noticeItem(level: 'info' | 'error', text: string): ChatItem {
   return { kind: 'notice', id: nextId('notice'), level, text };
 }
 
-/** The region the message is about, shown after the user's message. */
+/** The selection the message is about, shown after the user's message. */
 export function captureItem(capture: {
   sourcePath: string;
   firstLine: number;
   lastLine: number;
   text: string;
-  thumbnail?: string | undefined;
+  selection?: string | undefined;
 }): ChatItem {
-  const { thumbnail, ...rest } = capture;
-  return { kind: 'capture', id: nextId('capture'), ...rest, ...(thumbnail ? { thumbnail } : {}) };
+  const { selection, ...rest } = capture;
+  return { kind: 'capture', id: nextId('capture'), ...rest, ...(selection ? { selection } : {}) };
 }
 
 /** "docs/a.md lines 40–58" (or "line 40"). */
@@ -233,11 +233,6 @@ export function toStoredItems(items: ChatItem[]): JsonValue[] {
         if (isError !== undefined) stored.isError = isError;
         return stored;
       }
-      case 'capture': {
-        // The screenshot stays in memory for the operation; the history keeps the text.
-        const { thumbnail: _thumbnail, ...rest } = item;
-        return rest;
-      }
       case 'resumeFailed':
         return {
           kind: 'notice',
@@ -313,6 +308,7 @@ function fromStored(v: JsonRecord): ChatItem | null {
             firstLine: v.firstLine,
             lastLine: v.lastLine,
             text: v.text,
+            ...(str(v.selection) ? { selection: v.selection } : {}),
           }
         : null;
     case 'usage':

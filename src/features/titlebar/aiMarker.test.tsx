@@ -15,6 +15,7 @@ import { MenuBar } from './MenuBar';
 import { actions } from './menuActions';
 import type { ActionId } from './menuActions';
 import { ToolbarActions } from './ToolbarActions';
+import { ViewportToolbar } from '../ai/ViewportToolbar';
 
 const flagged = (Object.keys(actions) as ActionId[]).filter(
   (id) => actions[id].usesAi || actions[id].aiFeature,
@@ -33,6 +34,7 @@ function renderBars() {
     <Tooltip.Provider>
       <MenuBar />
       <ToolbarActions />
+      <ViewportToolbar />
     </Tooltip.Provider>,
   );
 }
@@ -42,22 +44,28 @@ describe('the "uses AI" marker', () => {
     expect(flagged).toContain('ai.chat');
   });
 
-  it('is on exactly the flagged controls of the toolbar', () => {
+  it('is on exactly the flagged controls of the toolbars', () => {
     renderBars();
-    const toolbar = screen.getByRole('toolbar');
-    for (const button of within(toolbar).getAllByRole('button')) {
+    for (const button of screen
+      .getAllByRole('toolbar')
+      .flatMap((t) => within(t).getAllByRole('button'))) {
       const marked = button.querySelector('[data-ai-mark]') !== null;
       const label = button.getAttribute('aria-label') ?? '';
       const action = (Object.keys(actions) as ActionId[]).find((id) => actions[id].label === label);
       const expected = action !== undefined && flagged.includes(action);
       expect(marked, label).toBe(expected);
     }
-    for (const id of flagged) {
-      if (id === 'ai.chat') {
-        const button = within(toolbar).getByRole('button', { name: actions[id].label });
-        expect(button.querySelector('[data-ai-mark]')).not.toBeNull();
-      }
+    const tools = screen.getByRole('toolbar', { name: 'AI tools' });
+    for (const id of ['ai.chat', 'ai.selectText', 'ai.capture'] as const) {
+      const button = within(tools).getByRole('button', { name: actions[id].label });
+      expect(button.querySelector('[data-ai-mark]')).not.toBeNull();
     }
+  });
+
+  it('keeps the AI tools off the window toolbar', () => {
+    renderBars();
+    const windowBar = screen.getByRole('toolbar', { name: 'Window toolbar' });
+    expect(windowBar.querySelector('[data-ai-mark]')).toBeNull();
   });
 
   it('is on exactly the flagged items of every menu', async () => {
@@ -79,7 +87,7 @@ describe('the "uses AI" marker', () => {
 
   it('names the provider from its status, never from code', async () => {
     renderBars();
-    const toolbar = screen.getByRole('toolbar');
+    const toolbar = screen.getByRole('toolbar', { name: 'AI tools' });
     const mark = () =>
       within(toolbar)
         .getByRole('button', { name: actions['ai.chat'].label })

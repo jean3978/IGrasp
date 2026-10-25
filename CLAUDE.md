@@ -42,13 +42,14 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 - `src/stores/`: zustand stores; `eventBridge.ts` routes backend events to them; `session.ts`
   saves and restores per-folder state. The AI is three stores: `aiProvider.ts` (status,
   capabilities, model), `aiConversation.ts` (items, operation, permissions, history) and
-  `aiPanel.ts` (floating panel, draft, context bar, attachment); `capture.ts` is the region
-  overlay.
+  `aiPanel.ts` (floating panel, draft, context bar, attachment, placement next to a
+  selection); `capture.ts` holds the region overlay, the text mode and the selection highlight.
 - `src/features/<area>/`: UI by feature, with its CSS next to it. Sidebar views and right-panel
   sections build on `src/components/VirtualRows.tsx` (virtualized rows, keyboard focus).
-  `features/ai` is the chat and the inline review, `features/diff` the rendered block diff
-  (two markdown strings in, reused by later phases), `features/capture` region selection and
-  screenshot.
+  `features/ai` is the chat, the AI tools toolbar over the view, the quick actions and the
+  inline review; `features/diff` the rendered block diff (two markdown strings in, reused by
+  later phases); `features/capture` the text and region selections (source lines, narrowing to
+  the highlighted text, highlight). Selections go to the AI as text, never as images.
 - `src/features/titlebar/menuActions.ts`: every user action. Menus, toolbar buttons and
   shortcuts (`features/shortcuts/keymap.ts`) dispatch through it.
 - `e2e/`: Playwright smoke tests. `scripts/`: the large-project generator. `docs/`:
@@ -79,7 +80,8 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   without an `eslint-disable-next-line` comment explaining why.
 - Store actions are function-typed properties (not methods), and IPC calls live in stores, not
   components.
-- Colors only through the CSS tokens in `src/styles`; check all three themes.
+- Colors only through the CSS tokens in `src/styles`; check all three themes. The AI chat and
+  its tools use the `--ai-*` tokens (the provider's warm accent), the rest of the app its own.
 - Rust edition 2024, `unsafe_code` denied, clippy clean with `-D warnings`, errors through
   `AppError`.
 - Untrusted markdown: anything new in the preview must keep sanitization before trusted

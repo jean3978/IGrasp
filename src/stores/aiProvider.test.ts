@@ -97,4 +97,44 @@ describe('AI provider store', () => {
     expect(caps.models.find((m) => m.id === 'mock-text')?.imageInput).toBe(false);
     expect(caps.models.find((m) => m.id === 'mock-fast')?.imageInput).toBe(true);
   });
+
+  it('brings the remembered model back once the real list arrives', async () => {
+    useSettings.setState((s) => ({
+      settings: { ...s.settings, ai: { ...s.settings.ai, model: 'mock-smart' } },
+    }));
+    const real = await backend.aiCapabilities();
+    // First check: the provider has not listed its models yet (only its default).
+    const placeholder = {
+      ...real,
+      models: [{ id: 'default', label: 'Default', description: null, imageInput: true }],
+    };
+    const spy = vi.spyOn(backend, 'aiCapabilities').mockResolvedValueOnce(placeholder);
+    await useAiProvider.getState().checkStatus();
+    expect(useAiProvider.getState().model).toBe('default');
+
+    await useAiProvider.getState().checkStatus(true);
+    expect(useAiProvider.getState().model).toBe('mock-smart');
+    expect(useAiProvider.getState().defaultModel).toBe('mock-smart');
+
+    // A model the user picks stays, check after check.
+    useAiProvider.getState().setModel('mock-fast');
+    await useAiProvider.getState().checkStatus(true);
+    expect(useAiProvider.getState().model).toBe('mock-fast');
+    spy.mockRestore();
+  });
+
+  it('only picks a model the provider offers', async () => {
+    useSettings.setState((s) => ({
+      settings: { ...s.settings, ai: { ...s.settings.ai, model: 'no-longer-offered' } },
+    }));
+    await useAiProvider.getState().checkStatus();
+    expect(useAiProvider.getState().model).toBe('mock-fast');
+
+    useSettings.setState((s) => ({
+      settings: { ...s.settings, ai: { ...s.settings.ai, model: 'mock-smart' } },
+    }));
+    useAiProvider.setState({ model: '', defaultModel: '' });
+    await useAiProvider.getState().checkStatus(true);
+    expect(useAiProvider.getState().model).toBe('mock-smart');
+  });
 });

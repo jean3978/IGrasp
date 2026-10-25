@@ -54,7 +54,7 @@ describe('AI accessibility', () => {
   it('announces an answer, a permission and its outcome in one polite live region', async () => {
     const user = userEvent.setup();
     renderAll();
-    await screen.findByText(new RegExp(`${MOCK_PROVIDER_NAME} ${MOCK_PROVIDER_VERSION}`));
+    await screen.findByText(new RegExp(`^${MOCK_PROVIDER_VERSION} · `));
     const region = live();
     expect(region).toHaveAttribute('role', 'status');
     expect(region).toHaveAttribute('aria-live', 'polite');
@@ -77,23 +77,28 @@ describe('AI accessibility', () => {
     });
   });
 
-  it('announces the region attached by a capture', async () => {
+  it('announces a region or a text selection attached to the chat', async () => {
     renderAll();
     useAiPanel.getState().setAttachment({
       capture: { sourcePath: 'docs/a.md', firstLine: 3, lastLine: 5, text: 'x' },
-      image: null,
     });
     await waitFor(() => {
       expect(live()).toHaveTextContent(
         'Region attached: docs/a.md lines 3–5. Nothing is sent until you press Send.',
       );
     });
+    useAiPanel.getState().setAttachment({
+      capture: { sourcePath: 'docs/a.md', firstLine: 7, lastLine: 7, text: 'y', selection: 'y' },
+    });
+    await waitFor(() => {
+      expect(live()).toHaveTextContent('Selection attached: docs/a.md line 7.');
+    });
   });
 
   it('names the waiting permission in the status bar button', async () => {
     const user = userEvent.setup();
     renderAll();
-    await screen.findByText(new RegExp(`${MOCK_PROVIDER_NAME} ${MOCK_PROVIDER_VERSION}`));
+    await screen.findByText(new RegExp(`^${MOCK_PROVIDER_VERSION} · `));
     await user.type(composer(), 'Run a command to list recent commits{Enter}');
     await screen.findByRole('region', { name: 'Permission for Bash' });
     useAiPanel.getState().setOpen(false);

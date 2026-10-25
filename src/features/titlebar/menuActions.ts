@@ -44,6 +44,7 @@ export type ActionId =
   | 'help.shortcuts'
   | 'ai.chat'
   | 'ai.capture'
+  | 'ai.selectText'
   | 'ai.newConversation'
   | 'ai.history'
   | 'ai.acceptAllChanges'
@@ -203,6 +204,17 @@ export const actions: Record<ActionId, ActionDef> = {
       // Only draws the selection and attaches it; the message is sent by the user.
       if (!canCapture()) return;
       useCapture.getState().start();
+    },
+  },
+  'ai.selectText': {
+    label: 'Ask About Selected Text',
+    shortcut: 'Ctrl+Alt+S',
+    usesAi: true,
+    run: () => {
+      // A mode: releasing the mouse over highlighted text attaches it; nothing is sent.
+      const capture = useCapture.getState();
+      if (capture.textMode) capture.setTextMode(false);
+      else if (canCapture()) capture.setTextMode(true);
     },
   },
   'ai.newConversation': {

@@ -33,7 +33,9 @@ pub struct AiModel {
     /// What the provider accepts, e.g. an alias or a full model id.
     pub id: String,
     pub label: String,
-    /// This model accepts images (region captures).
+    /// One line the provider gives about it (shown as a tooltip), if any.
+    pub description: Option<String>,
+    /// This model accepts images.
     pub image_input: bool,
 }
 
@@ -134,7 +136,8 @@ pub struct AiContextDocument {
     pub truncated: bool,
 }
 
-/// A region of a document the user selected on screen (region capture).
+/// A part of a document the user selected on screen: highlighted text, or a region dragged over
+/// the view.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -146,6 +149,10 @@ pub struct AiCapture {
     pub last_line: u32,
     /// The markdown (or code) source of those lines.
     pub text: String,
+    /// The text exactly as the user highlighted it in the rendered view; a region has none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub selection: Option<String>,
 }
 
 /// One bounded operation started by a user action, as the provider receives it.

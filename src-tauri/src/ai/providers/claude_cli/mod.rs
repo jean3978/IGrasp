@@ -7,6 +7,7 @@ mod protocol;
 mod turn;
 
 use std::path::Path;
+use std::sync::Mutex;
 
 use crate::ai::process::ProcessGuard;
 use crate::ai::types::{
@@ -22,13 +23,37 @@ pub const DISPLAY_NAME: &str = "Claude";
 
 pub struct ClaudeCliProvider {
     guard: ProcessGuard,
+    /// The models the CLI listed (empty until then), and for which CLI version and account: the
+    /// list only changes with them, and listing starts a whole CLI session.
+    models: Mutex<Vec<AiModel>>,
+    models_for: Mutex<Option<ModelsKey>>,
+}
+
+/// What the model list depends on: the CLI version and the logged-in account.
+type ModelsKey = (Option<String>, Option<String>);
+
+/// The CLI is asked for its models when logged in and not yet asked for this version and account.
+fn should_list_models(listed_for: Option<&ModelsKey>, key: &ModelsKey, logged_in: bool) -> bool {
+    logged_in && listed_for != Some(key)
 }
 
 impl ClaudeCliProvider {
     pub fn new() -> Self {
         Self {
             guard: ProcessGuard::new(),
+            models: Mutex::new(Vec::new()),
+            models_for: Mutex::new(None),
         }
+    }
+}
+
+/// The CLI's default model: what the picker offers until the CLI has listed its models.
+fn default_model() -> AiModel {
+    AiModel {
+        id: "default".into(),
+        label: "Default".into(),
+        description: None,
+        image_input: true,
     }
 }
 
@@ -105,13 +130,21 @@ fn prompt_with_context(request: &AiRequest) -> String {
         } else {
             "; the image shows how it is rendered"
         };
-        parts.push(format!(
-            "The user selected this region of `{}` (lines {}–{}){image}:\n{}",
-            capture.source_path,
-            capture.first_line,
-            capture.last_line,
-            fenced(&capture.source_path, &capture.text)
-        ));
+        let source = fenced(&capture.source_path, &capture.text);
+        parts.push(match &capture.selection {
+            Some(selection) => format!(
+                "The user highlighted this text in `{}` (the selection is exactly this text):\n{}\n\
+                 It sits in lines {}–{}, whose source is given as context{image}:\n{source}",
+                capture.source_path,
+                fenced("", selection),
+                capture.first_line,
+                capture.last_line,
+            ),
+            None => format!(
+                "The user selected this region of `{}` (lines {}–{}){image}:\n{source}",
+                capture.source_path, capture.first_line, capture.last_line,
+            ),
+        });
     }
     parts.push(format!("The user's message:\n\n{}", request.prompt));
     parts.join("\n\n")
@@ -127,12 +160,12 @@ impl AiProvider for ClaudeCliProvider {
     }
 
     fn capabilities(&self) -> AiCapabilities {
-        let model = |id: &str, label: &str| AiModel {
-            id: id.into(),
-            label: label.into(),
-            // Every model the CLI offers reads images; a custom id is assumed to, and an image
-            // refused by the model surfaces as the CLI's error result.
-            image_input: true,
+        // Exactly the models the CLI lists for this account (`status` asks it).
+        let listed = self.models.lock().map(|m| m.clone()).unwrap_or_default();
+        let models = if listed.is_empty() {
+            vec![default_model()]
+        } else {
+            listed
         };
         AiCapabilities {
             streaming: true,
@@ -143,11 +176,7 @@ impl AiProvider for ClaudeCliProvider {
             read_only_mode: true,
             usage_reporting: true,
             cost_reporting: true,
-            models: vec![
-                model("sonnet", "Sonnet (default)"),
-                model("opus", "Opus"),
-                model("haiku", "Haiku"),
-            ],
+            models,
             context_file_names: vec!["CLAUDE.md".into(), "CLAUDE.local.md".into()],
         }
     }
@@ -155,6 +184,34 @@ impl AiProvider for ClaudeCliProvider {
     fn status(&self) -> AiProviderStatus {
         let s = cli::status();
         log::info!("claude CLI: {:?} version {:?}", s.path, s.version);
+        let key: ModelsKey = (s.version.clone(), s.email.clone());
+        let listed_for = self.models_for.lock().ok().and_then(|k| k.clone());
+        if should_list_models(listed_for.as_ref(), &key, s.logged_in)
+            && let Some(path) = s.path.as_deref()
+        {
+            match cli::models(Path::new(path)) {
+                Ok(listed) if !listed.is_empty() => {
+                    let models = listed
+                        .into_iter()
+                        .map(|m| AiModel {
+                            id: m.id,
+                            label: m.label,
+                            description: m.description,
+                            // An image a model refuses surfaces as the CLI's error result.
+                            image_input: true,
+                        })
+                        .collect();
+                    if let Ok(mut cached) = self.models.lock() {
+                        *cached = models;
+                    }
+                    if let Ok(mut listed_for) = self.models_for.lock() {
+                        *listed_for = Some(key);
+                    }
+                }
+                Ok(_) => log::warn!("claude CLI listed no models"),
+                Err(e) => log::warn!("claude CLI models: {e}"),
+            }
+        }
         let help = if !s.installed {
             Some("Install Claude Code (https://claude.com/claude-code) and make sure `claude` runs in a terminal.".to_owned())
         } else if !s.logged_in {
@@ -363,6 +420,7 @@ mod tests {
                 first_line: 40,
                 last_line: 58,
                 text: "| a | b |\n".into(),
+                selection: None,
             }),
             images: vec![AiImage {
                 media_type: "image/png".into(),
@@ -381,12 +439,56 @@ mod tests {
     }
 
     #[test]
+    fn a_text_selection_is_inlined_with_its_source_lines() {
+        let request = AiRequest {
+            prompt: "Shorten it".into(),
+            capture: Some(AiCapture {
+                source_path: "docs/a.md".into(),
+                first_line: 3,
+                last_line: 4,
+                text: "Some **bold** words\nand more.\n".into(),
+                selection: Some("bold words".into()),
+            }),
+            ..AiRequest::default()
+        };
+        let prompt = prompt_with_context(&request);
+        assert!(prompt.starts_with(
+            "The user highlighted this text in `docs/a.md` (the selection is exactly this \
+             text):\n```\nbold words\n```\nIt sits in lines 3–4, whose source is given as \
+             context:\n```markdown\nSome **bold** words\nand more.\n```"
+        ));
+        assert!(prompt.ends_with("The user's message:\n\nShorten it"));
+    }
+
+    #[test]
+    fn lists_the_models_once_per_cli_version_and_account() {
+        let key: ModelsKey = (Some("2.1.310".into()), Some("a@b.c".into()));
+        assert!(should_list_models(None, &key, true));
+        assert!(!should_list_models(None, &key, false));
+        assert!(!should_list_models(Some(&key), &key, true));
+        let updated: ModelsKey = (Some("2.1.311".into()), Some("a@b.c".into()));
+        assert!(should_list_models(Some(&key), &updated, true));
+        let other_account: ModelsKey = (Some("2.1.310".into()), Some("x@y.z".into()));
+        assert!(should_list_models(Some(&key), &other_account, true));
+    }
+
+    #[test]
     fn declares_what_the_cli_supports() {
         let p = ClaudeCliProvider::new();
         assert_eq!(p.id(), "claude-cli");
         assert_eq!(p.display_name(), "Claude");
         let caps = p.capabilities();
         assert!(caps.permission_prompts && caps.resume && caps.streaming);
-        assert_eq!(caps.models[0].id, "sonnet");
+        // Before the CLI has listed its models: only its default.
+        assert_eq!(caps.models, vec![default_model()]);
+        // After: exactly what it listed.
+        let listed = AiModel {
+            id: "opus".into(),
+            label: "Opus 5.5".into(),
+            description: Some("For complex work".into()),
+            image_input: true,
+        };
+        *p.models.lock().unwrap() = vec![listed.clone()];
+        assert_eq!(p.capabilities().models, vec![listed]);
     }
 }

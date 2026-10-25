@@ -40,7 +40,13 @@ export interface AiMock {
         resumeId?: string;
         context: { path: string }[];
         images: { mediaType: string; dataBase64: string }[];
-        capture?: { sourcePath: string; firstLine: number; lastLine: number; text: string };
+        capture?: {
+          sourcePath: string;
+          firstLine: number;
+          lastLine: number;
+          text: string;
+          selection?: string;
+        };
       } | null;
     };
   };
@@ -73,7 +79,8 @@ export async function openChat(page: Page): Promise<void> {
   await openFixture(page);
   await page.keyboard.press('Control+Alt+c');
   await expect(chatPanel(page)).toBeVisible();
-  await expect(chatPanel(page).getByText(/Mock AI 1\.0-mock/)).toBeVisible();
+  // The subtitle under the title: version · account · session.
+  await expect(chatPanel(page).getByText(/^1\.0-mock · /)).toBeVisible();
 }
 
 /** Sends `prompt` from the chat box. */

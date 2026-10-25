@@ -6,6 +6,10 @@ export type AiModel = {
  */
 id: string, label: string, 
 /**
- * This model accepts images (region captures).
+ * One line the provider gives about it (shown as a tooltip), if any.
+ */
+description: string | null, 
+/**
+ * This model accepts images.
  */
 imageInput: boolean, };

@@ -136,7 +136,8 @@ pub fn build_args(request: &TurnRequest) -> AppResult<Vec<String>> {
         .model
         .as_deref()
         .map(str::trim)
-        .filter(|m| !m.is_empty())
+        // `default` is the CLI's own choice: it needs no flag.
+        .filter(|m| !m.is_empty() && *m != "default")
     {
         if !valid_model(model) {
             return Err(AppError::Ai(format!("Invalid model name: {model}")));

@@ -1,6 +1,7 @@
-// The AI chat as a floating panel over the window (ADR 0019): moved by its header (mouse or
-// Alt+arrows), resized from its edges and corners (Alt+Shift+arrows), kept inside the window,
-// remembered per folder. Not modal: the document behind it stays usable.
+// The AI chat as a floating panel over the window (ADR 0019, ADR 0020): moved by its header
+// (mouse or Alt+arrows), resized from its edges and corners (Alt+Shift+arrows), kept inside the
+// window, remembered per folder, and opened next to a selection made with the viewport tools.
+// Not modal: the document behind it stays usable, and the selection stays highlighted.
 
 import { History, Plus, Sparkles, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
@@ -22,15 +23,23 @@ import { useTabs } from '../../stores/tabs';
 import { Composer } from './Composer';
 import { ContextBar } from './ContextBar';
 import { HistoryList } from './HistoryList';
+import { ModelPicker } from './ModelPicker';
+import { QuickActions } from './QuickActions';
 import { RulesButton } from './RulesButton';
+import { SelectionLine } from './SelectionLine';
 import { StatusLine } from './StatusLine';
 import { Transcript } from './Transcript';
 import './ai.css';
 
 const EDGES: ResizeEdge[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 
-/** The toolbar button that opens the chat: focus goes back there when the panel closes. */
-const opener = () => document.querySelector<HTMLElement>('[data-action="ai.chat"]');
+/**
+ * Where the focus goes when the panel closes: the AI Chat button over the view, else the
+ * document (never nowhere).
+ */
+const opener = () =>
+  document.querySelector<HTMLElement>('[data-action="ai.chat"]') ??
+  document.querySelector<HTMLElement>('#main-content [tabindex="0"]');
 
 /** Starts a pointer gesture on `e.currentTarget` that reports the move since its start. */
 function track(e: ReactPointerEvent<HTMLElement>, onMove: (dx: number, dy: number) => void): void {
@@ -60,7 +69,6 @@ function track(e: ReactPointerEvent<HTMLElement>, onMove: (dx: number, dy: numbe
 function PanelHeader({ titleId, onClose }: { titleId: string; onClose: () => void }) {
   const providerName = useAiProvider(selectProviderName);
   const newConversation = useAiConversation((s) => s.newConversation);
-  const sessionModel = useAiConversation((s) => s.sessionModel);
   const historyOpen = useAiPanel((s) => s.historyOpen);
   const toggleHistory = useAiPanel((s) => s.toggleHistory);
   const setHistoryOpen = useAiPanel((s) => s.setHistoryOpen);
@@ -95,20 +103,22 @@ function PanelHeader({ titleId, onClose }: { titleId: string; onClose: () => voi
 
   return (
     <header className="ai-header" onPointerDown={onPointerDown}>
-      <h2
-        id={titleId}
-        className="ai-title ai-drag-handle"
-        tabIndex={0}
-        title="Drag to move · Alt+arrows to move · Alt+Shift+arrows to resize"
-        onKeyDown={onKeyDown}
-      >
-        <Sparkles aria-hidden /> {providerName}
-      </h2>
-      {sessionModel && (
-        <span className="ai-session-model" title="The model this conversation runs with">
-          {sessionModel}
-        </span>
-      )}
+      <span className="ai-avatar" aria-hidden>
+        <Sparkles />
+      </span>
+      <div className="ai-heading">
+        <h2
+          id={titleId}
+          className="ai-title ai-drag-handle"
+          tabIndex={0}
+          title="Drag to move · Alt+arrows to move · Alt+Shift+arrows to resize"
+          onKeyDown={onKeyDown}
+        >
+          {providerName}
+        </h2>
+        <StatusLine part="summary" />
+      </div>
+      <ModelPicker />
       <RulesButton />
       <IconButton
         label="History"
@@ -271,8 +281,10 @@ export function AiPanel() {
       }}
     >
       <PanelHeader titleId={titleId} onClose={close} />
-      <StatusLine />
+      <StatusLine part="problem" />
+      <SelectionLine />
       {historyOpen ? <HistoryList /> : <Transcript />}
+      {!historyOpen && <QuickActions />}
       <ContextBar />
       <Composer ref={inputRef} />
       {EDGES.map((edge) => (

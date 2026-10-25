@@ -6,15 +6,11 @@ import {
   FolderOpen,
   PanelLeft,
   PanelRight,
-  ScanSearch,
   Search,
-  Sparkles,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AiMark } from '../../components/AiMark';
 import { IconButton } from '../../components/ui/IconButton';
-import { useAiPanel } from '../../stores/aiPanel';
-import { useCanCapture } from '../../stores/capture';
 import { selectCanGoBack, selectCanGoForward, useHistory } from '../../stores/history';
 import { useSettings } from '../../stores/settings';
 import { fileName } from '../../stores/tabs';
@@ -23,22 +19,26 @@ import { actions, runAction } from './menuActions';
 import type { ActionId } from './menuActions';
 import { ThemeMenu } from './ThemeMenu';
 
-function ActionButton({
+/** A toolbar button for an action: its label, shortcut and AI mark come from the action. */
+export function ActionButton({
   id,
   label,
   pressed,
   disabled,
+  className,
   children,
 }: {
   id: ActionId;
   label?: string;
   pressed?: boolean;
   disabled?: boolean;
+  className?: string;
   children: ReactNode;
 }) {
   const action = actions[id];
   return (
     <IconButton
+      {...(className ? { className } : {})}
       label={label ?? action.label}
       {...(action.shortcut ? { shortcut: action.shortcut } : {})}
       {...(pressed === undefined ? {} : { pressed })}
@@ -87,8 +87,6 @@ export function ToolbarActions() {
   const rightPanelVisible = useWorkspace((s) => s.rightPanel.visible);
   const hasRoot = useWorkspace((s) => s.root !== null);
   const muted = useSettings((s) => s.settings.toastsMuted);
-  const aiOpen = useAiPanel((s) => s.open);
-  const canCapture = useCanCapture();
 
   return (
     <div className="toolbar" role="toolbar" aria-label="Window toolbar">
@@ -107,16 +105,6 @@ export function ToolbarActions() {
       {hasRoot && (
         <ActionButton id="view.toggleRightPanel" pressed={rightPanelVisible}>
           <PanelRight aria-hidden />
-        </ActionButton>
-      )}
-      {hasRoot && (
-        <ActionButton id="ai.chat" pressed={aiOpen}>
-          <Sparkles aria-hidden />
-        </ActionButton>
-      )}
-      {hasRoot && (
-        <ActionButton id="ai.capture" disabled={!canCapture}>
-          <ScanSearch aria-hidden />
         </ActionButton>
       )}
       <ActionButton

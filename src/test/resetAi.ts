@@ -12,6 +12,8 @@ export function resetAiStores(): void {
     providers: null,
     model: '',
     defaultModel: '',
+    modelIsFallback: false,
+    defaultIsFallback: false,
   });
   useAiConversation.setState({
     id: null,

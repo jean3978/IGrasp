@@ -58,6 +58,25 @@
   --shadow-dialog: none;
   --titlebar-inactive-opacity: 1;
   --window-close-hover: #ff0000;
+
+  /* AI chat: orange on black, outlines instead of tints and glow. */
+  --ai-accent: #ffb27a;
+  --ai-accent-soft: #000000;
+  --ai-surface: #000000;
+  --ai-surface-raised: #000000;
+  --ai-border: #ffb27a;
+  --ai-bubble-user: #000000;
+  --ai-bubble-user-end: #000000;
+  --ai-bubble-user-fg: #ffffff;
+  --ai-bubble-assistant: #000000;
+  --ai-send-bg: #ffb27a;
+  --ai-send-fg: #000000;
+  --ai-bloom: transparent;
+  --ai-bloom-far: transparent;
+  --ai-highlight-bg: transparent;
+  --ai-highlight-border: #ffb27a;
+  --ai-selection-bg: #ffb27a;
+  --ai-selection-fg: #000000;
 }
 
 [data-theme='high-contrast'] a {

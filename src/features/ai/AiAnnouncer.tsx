@@ -1,6 +1,6 @@
 // The AI features' live region (plan §6.12), always mounted so screen readers hear what happens
 // even when the chat is closed: an answer starting and finishing, a permission or an edit waiting,
-// automatic decisions and notices, and a region attached by the capture. Streaming text is not
+// automatic decisions and notices, and a selection attached to the chat. Streaming text is not
 // announced word by word (the transcript has no live region of its own).
 
 import { useEffect, useRef, useState } from 'react';
@@ -36,7 +36,7 @@ export function AiAnnouncer() {
     const offPanel = useAiPanel.subscribe((s, prev) => {
       if (s.attachment && s.attachment !== prev.attachment) {
         announce([
-          `Region attached: ${captureLabel(s.attachment.capture)}. Nothing is sent until you press Send.`,
+          `${s.attachment.capture.selection === undefined ? 'Region' : 'Selection'} attached: ${captureLabel(s.attachment.capture)}. Nothing is sent until you press Send.`,
         ]);
       }
     });

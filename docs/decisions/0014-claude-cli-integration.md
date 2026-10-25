@@ -1,6 +1,6 @@
 # 0014 — Claude integration through the `claude` CLI and its `stream-json` protocol
 
-- Status: Accepted, Linux verification pending (the Linux run was deferred in Phase 3, 0.3.0; Windows 11 is verified). Lives behind the provider abstraction of [ADR 0015](0015-ai-provider-abstraction-and-gateway.md).
+- Status: Accepted, Linux verification pending (the Linux run was deferred in Phase 3, 0.3.0; Windows 11 is verified). Lives behind the provider abstraction of [ADR 0015](0015-ai-provider-abstraction-and-gateway.md). The model list comes from the CLI's `initialize` control request ([ADR 0020](0020-viewport-ai-tools-and-text-selections.md)).
 - Date: 2026-10-24
 
 ## Context

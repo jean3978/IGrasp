@@ -110,6 +110,7 @@ impl AiProvider for MockProvider {
             models: vec![AiModel {
                 id: "mock".into(),
                 label: "Mock".into(),
+                description: None,
                 image_input: false,
             }],
             context_file_names: vec!["AGENTS.md".into()],

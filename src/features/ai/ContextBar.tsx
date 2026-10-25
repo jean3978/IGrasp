@@ -1,7 +1,7 @@
 // What the next message carries: the provider's instruction files from the root down to the
 // current file's folder, then the current file, with their sizes (from `ai_context`, metadata
-// only), and the region capture attached to it. ✕ drops a document for the messages sent from
-// this file; a click opens it.
+// only). ✕ drops a document for the messages sent from this file; a click opens it. The
+// selection attached to the next message is recalled at the top of the chat (`SelectionLine`).
 
 import { clsx } from 'clsx';
 import { Plus, X } from 'lucide-react';
@@ -10,7 +10,6 @@ import type { AiContextDocument } from '../../ipc/types';
 import { useAiPanel } from '../../stores/aiPanel';
 import { selectProviderName, useAiProvider } from '../../stores/aiProvider';
 import { useTabs } from '../../stores/tabs';
-import { captureLabel } from './timeline';
 
 const baseName = (path: string) => path.split('/').pop() ?? path;
 const isMarkdown = (path: string) => /\.(md|markdown)$/i.test(path);
@@ -77,46 +76,10 @@ function DocumentChip({ doc, removed }: { doc: AiContextDocument; removed: boole
   );
 }
 
-/** The capture chip: the source lines of the selected region (and its thumbnail when taken). */
-function AttachmentChip() {
-  const attachment = useAiPanel((s) => s.attachment);
-  const setAttachment = useAiPanel((s) => s.setAttachment);
-  if (!attachment) return null;
-  const { capture, image } = attachment;
-  const label = captureLabel(capture);
-  return (
-    <li className="ai-context-chip ai-context-attachment">
-      {image && (
-        <img
-          className="ai-context-thumb"
-          src={attachment.thumbnail ?? `data:${image.mediaType};base64,${image.dataBase64}`}
-          alt=""
-        />
-      )}
-      <span className="ai-context-name" title={label}>
-        {label}
-      </span>
-      <button
-        type="button"
-        className="ai-context-toggle"
-        aria-label="Remove the selected region"
-        title="Remove the selected region"
-        onClick={() => {
-          setAttachment(null);
-        }}
-      >
-        <X aria-hidden />
-      </button>
-    </li>
-  );
-}
-
 export function ContextBar() {
   const context = useAiPanel((s) => s.context);
-  const hasAttachment = useAiPanel((s) => s.attachment !== null);
-  if (!context && !hasAttachment) return null;
-  const documents = context?.documents ?? [];
-  const removed = context?.removed ?? [];
+  if (!context) return null;
+  const { documents, removed } = context;
   const kept = documents.filter((d) => !removed.includes(d.path));
   const bytes = kept.reduce((n, d) => n + d.bytes, 0);
   return (
@@ -128,10 +91,9 @@ export function ContextBar() {
         {documents.map((doc) => (
           <DocumentChip key={doc.path} doc={doc} removed={removed.includes(doc.path)} />
         ))}
-        <AttachmentChip />
-        {documents.length === 0 && !hasAttachment && (
+        {documents.length === 0 && (
           <li className="ai-context-empty">
-            {context?.error ?? 'Only your message (no file open).'}
+            {context.error ?? 'Only your message (no file open).'}
           </li>
         )}
       </ul>

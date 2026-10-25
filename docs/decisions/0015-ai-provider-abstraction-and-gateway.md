@@ -1,6 +1,9 @@
 # 0015 — AI provider abstraction and the "no token without a user action" gateway
 
-- Status: Accepted (proof of concept on the `poc-claude-cli` branch; completed in Phase 3, 0.3.0)
+- Status: Accepted (proof of concept on the `poc-claude-cli` branch; completed in Phase 3, 0.3.0).
+  Amended by [0020](0020-viewport-ai-tools-and-text-selections.md): the models are the ones the
+  provider lists at run time (`AiModel.description` added), and a capture carries the
+  highlighted text (`AiCapture.selection`) and no image from the frontend
 - Date: 2026-10-24
 
 ## Context

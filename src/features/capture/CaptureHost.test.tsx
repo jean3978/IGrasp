@@ -1,26 +1,9 @@
-﻿// Region capture wired to the app: the action needs a document or code tab, the overlay covers
-// the tab's scroll container, and a selection attaches the lines to the chat without sending.
+// Selections wired to the app: the region overlay and the text mode need a document or code tab,
+// a selection attaches its lines (as text) to the chat without sending, opens the chat next to
+// it, and stays highlighted while the chat is open.
 
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
-import { CAPTURE_SOURCE as SOURCE } from '../../test/captureDom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useAiProvider } from '../../stores/aiProvider';
-import { ScreenshotError, captureRegionImage } from './screenshot';
-import type * as ScreenshotModule from './screenshot';
-
-// jsdom cannot render a DOM to a canvas: the screenshot is faked, the rest is real.
-vi.mock('./screenshot', async (importOriginal) => ({
-  ...(await importOriginal<typeof ScreenshotModule>()),
-  captureRegionImage: vi.fn(),
-}));
-const takeScreenshot = vi.mocked(captureRegionImage);
-const FAKE_SHOT = {
-  mediaType: 'image/png',
-  dataBase64: 'QUJD',
-  width: 300,
-  height: 100,
-  thumbnailDataUrl: 'data:image/png;base64,VEhVTUI=',
-};
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FIXTURE_ROOT } from '../../ipc/mock/fixture';
 import { useAiConversation } from '../../stores/aiConversation';
 import { useAiPanel } from '../../stores/aiPanel';
@@ -29,10 +12,10 @@ import { useDocuments } from '../../stores/documents';
 import { useTabs } from '../../stores/tabs';
 import { useTextFiles } from '../../stores/textFiles';
 import { useWorkspace } from '../../stores/workspace';
+import { CAPTURE_SOURCE as SOURCE, box, drag, mountDocument } from '../../test/captureDom';
 import { resetAiStores } from '../../test/resetAi';
 import { runAction } from '../titlebar/menuActions';
-import { box, drag, mountDocument } from '../../test/captureDom';
-import { CaptureHost } from './CaptureHost';
+import { CaptureHost, TEXT_DRAFT_PREFIX } from './CaptureHost';
 
 function mountCode() {
   const panel = document.createElement('div');
@@ -55,7 +38,7 @@ beforeEach(async () => {
   window.__igraspMock?.reset();
   useTabs.setState({ tabs: [], activeId: null });
   resetAiStores();
-  useCapture.setState({ active: false });
+  useCapture.setState({ active: false, textMode: false, highlight: null });
   await useWorkspace.getState().openRoot(FIXTURE_ROOT);
   useDocuments.setState({
     byPath: {
@@ -173,7 +156,7 @@ describe('ai.capture', () => {
   });
 });
 
-describe('the screenshot of a region', () => {
+describe('a region in the chat', () => {
   async function select() {
     useTabs.getState().openDocument('README.md');
     mounted = mountDocument();
@@ -187,84 +170,184 @@ describe('the screenshot of a region', () => {
     act(() => {
       drag([20, 52], [300, 76]);
     });
+    await waitFor(() => {
+      expect(useAiPanel.getState().attachment).not.toBeNull();
+    });
   }
 
-  beforeEach(() => {
-    takeScreenshot.mockReset();
-  });
-
-  it('is taken after the overlay is gone and attached with its thumbnail', async () => {
-    let overlayDuringShot: Element | null = document.body;
-    takeScreenshot.mockImplementation(() => {
-      overlayDuringShot = document.querySelector('.capture-overlay');
-      return Promise.resolve(FAKE_SHOT);
-    });
+  it('goes as text, never as an image, and shows in the transcript', async () => {
     await select();
-    await waitFor(() => {
-      expect(useAiPanel.getState().attachment?.image).toBeTruthy();
-    });
-    expect(overlayDuringShot).toBeNull();
-    expect(useAiPanel.getState().attachment).toMatchObject({
-      image: { mediaType: 'image/png', dataBase64: 'QUJD' },
-      thumbnail: FAKE_SHOT.thumbnailDataUrl,
-    });
     expect(window.__igraspMock?.state.ai.starts).toEqual([]);
-
-    // Send passes the image and the lines; the transcript shows the thumbnail.
-    await useAiConversation.getState().send('Explain this');
-    const request = window.__igraspMock?.state.ai.lastRequest;
-    expect(request?.images).toHaveLength(1);
-    expect(request?.capture?.text).toBe('First paragraph.');
-    const item = useAiConversation.getState().items.find((i) => i.kind === 'capture');
-    expect(item).toMatchObject({ thumbnail: FAKE_SHOT.thumbnailDataUrl, firstLine: 3 });
-    expect(useAiPanel.getState().attachment).toBeNull();
-  });
-
-  it('falls back to the text with a notice when it cannot be taken', async () => {
-    takeScreenshot.mockRejectedValue(new ScreenshotError('render', 'boom'));
-    await select();
-    await waitFor(() => {
-      expect(useAiPanel.getState().attachment).not.toBeNull();
-    });
-    expect(useAiPanel.getState().attachment?.image).toBeNull();
-    expect(useAiPanel.getState().attachment?.capture.text).toBe('First paragraph.');
-    expect(useAiConversation.getState().items).toContainEqual(
-      expect.objectContaining({
-        kind: 'notice',
-        text: 'The screenshot could not be taken; the text was attached.',
-      }),
-    );
-  });
-
-  it('is not taken for a model that cannot read images', async () => {
-    await useAiProvider.getState().checkStatus();
-    useAiProvider.setState({ model: 'mock-text' });
-    takeScreenshot.mockResolvedValue(FAKE_SHOT);
-    await select();
-    await waitFor(() => {
-      expect(useAiPanel.getState().attachment).not.toBeNull();
-    });
-    expect(takeScreenshot).not.toHaveBeenCalled();
-    expect(useAiPanel.getState().attachment?.image).toBeNull();
-    expect(useAiConversation.getState().items).toContainEqual(
-      expect.objectContaining({
-        kind: 'notice',
-        text: expect.stringMatching(/cannot read images/) as string,
-      }),
-    );
-  });
-
-  it('is left out at Send when the model was switched to one that cannot read images', async () => {
-    takeScreenshot.mockResolvedValue(FAKE_SHOT);
-    await useAiProvider.getState().checkStatus();
-    await select();
-    await waitFor(() => {
-      expect(useAiPanel.getState().attachment?.image).toBeTruthy();
-    });
-    useAiProvider.setState({ model: 'mock-text' });
     await useAiConversation.getState().send('Explain this');
     const request = window.__igraspMock?.state.ai.lastRequest;
     expect(request?.images).toEqual([]);
-    expect(request?.capture?.text).toBe('First paragraph.');
+    expect(request?.capture).toMatchObject({ text: 'First paragraph.', firstLine: 3 });
+    expect(request?.capture?.selection).toBeUndefined();
+    const item = useAiConversation.getState().items.find((i) => i.kind === 'capture');
+    expect(item).toMatchObject({ firstLine: 3, text: 'First paragraph.' });
+    expect(useAiPanel.getState().attachment).toBeNull();
+  });
+
+  it('stays highlighted while the chat is open, after Send too', async () => {
+    await select();
+    const layer = () => mounted?.querySelector('.document-scroll .ai-highlight-layer');
+    await waitFor(() => {
+      expect(layer()).not.toBeNull();
+    });
+    expect(layer()?.querySelector('.ai-highlight-region')).not.toBeNull();
+    await act(() => useAiConversation.getState().send('Explain this'));
+    expect(layer()).not.toBeNull();
+    act(() => {
+      useAiPanel.getState().setOpen(false);
+    });
+    await waitFor(() => {
+      expect(layer()).toBeNull();
+    });
+    expect(useCapture.getState().highlight).toBeNull();
+  });
+
+  it('is dropped with its highlight when the file changes', async () => {
+    await select();
+    act(() => {
+      const doc = useDocuments.getState().byPath['README.md'];
+      if (!doc) throw new Error('no document');
+      useDocuments.setState({
+        byPath: { 'README.md': { ...doc, content: `${SOURCE}More.\n`, revision: 2 } },
+      });
+    });
+    await waitFor(() => {
+      expect(useCapture.getState().highlight).toBeNull();
+    });
+    expect(useAiPanel.getState().attachment).toBeNull();
+  });
+});
+
+describe('the text mode', () => {
+  /**
+   * Presses the mouse on the element, selects characters `from`..`to` of its text, then releases
+   * the mouse on `releaseOn` (the element itself by default).
+   */
+  function selectText(el: Element, from: number, to: number, releaseOn: Element = el) {
+    fireEvent.mouseDown(el, { button: 0 });
+    const text = el.firstChild;
+    if (!text) throw new Error('no text');
+    const range = document.createRange();
+    range.setStart(text, from);
+    range.setEnd(text, to);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    fireEvent.mouseUp(releaseOn, { button: 0 });
+  }
+
+  it('counts a selection released outside the document', async () => {
+    useTabs.getState().openDocument('README.md');
+    mounted = mountDocument();
+    render(<CaptureHost />);
+    act(() => {
+      runAction('ai.selectText');
+    });
+    const paragraph = mounted.querySelector('p[data-line="3"]');
+    if (!paragraph) throw new Error('no paragraph');
+    act(() => {
+      selectText(paragraph, 0, 5, document.body);
+    });
+    await waitFor(() => {
+      expect(useAiPanel.getState().attachment?.capture.selection).toBe('First');
+    });
+  });
+
+  it('ignores a release when the press was not in the document', async () => {
+    useTabs.getState().openDocument('README.md');
+    mounted = mountDocument();
+    render(<CaptureHost />);
+    act(() => {
+      runAction('ai.selectText');
+    });
+    const paragraph = mounted.querySelector('p[data-line="3"]');
+    if (!paragraph) throw new Error('no paragraph');
+    const range = document.createRange();
+    range.selectNodeContents(paragraph);
+    window.getSelection()?.addRange(range);
+    fireEvent.mouseDown(document.body, { button: 0 });
+    fireEvent.mouseUp(paragraph, { button: 0 });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(useAiPanel.getState().attachment).toBeNull();
+  });
+
+  it('is a mode of document and code tabs', () => {
+    render(<CaptureHost />);
+    runAction('ai.selectText');
+    expect(useCapture.getState().textMode).toBe(false);
+    useTabs.getState().openDocument('README.md');
+    runAction('ai.selectText');
+    expect(useCapture.getState().textMode).toBe(true);
+    runAction('ai.selectText');
+    expect(useCapture.getState().textMode).toBe(false);
+  });
+
+  it('attaches the highlighted text and its lines when the mouse is released', async () => {
+    useTabs.getState().openDocument('README.md');
+    mounted = mountDocument();
+    render(<CaptureHost />);
+    act(() => {
+      runAction('ai.selectText');
+    });
+    expect(document.body.dataset['aiSelect']).toBe('text');
+    const paragraph = mounted.querySelector('p[data-line="3"]');
+    if (!paragraph) throw new Error('no paragraph');
+    act(() => {
+      selectText(paragraph, 6, 15);
+    });
+    await waitFor(() => {
+      expect(useAiPanel.getState().attachment?.capture).toEqual({
+        sourcePath: 'README.md',
+        firstLine: 3,
+        lastLine: 3,
+        text: 'First paragraph.',
+        selection: 'paragraph',
+      });
+    });
+    expect(useAiPanel.getState().open).toBe(true);
+    expect(useAiPanel.getState().draft).toBe(TEXT_DRAFT_PREFIX);
+    expect(useCapture.getState().highlight).toMatchObject({ kind: 'text' });
+    // The mode stays on, and nothing was sent.
+    expect(useCapture.getState().textMode).toBe(true);
+    expect(window.getSelection()?.isCollapsed).toBe(true);
+    expect(window.__igraspMock?.state.ai.starts).toEqual([]);
+  });
+
+  it('is turned off by opening another file', () => {
+    useTabs.getState().openDocument('README.md');
+    render(<CaptureHost />);
+    act(() => {
+      runAction('ai.selectText');
+    });
+    expect(useCapture.getState().textMode).toBe(true);
+    act(() => {
+      useTabs.getState().openCode('src/main.ts');
+    });
+    expect(useCapture.getState().textMode).toBe(false);
+  });
+
+  it('ignores a click without a selection, and Escape leaves it', async () => {
+    useTabs.getState().openDocument('README.md');
+    mounted = mountDocument();
+    render(<CaptureHost />);
+    act(() => {
+      runAction('ai.selectText');
+    });
+    window.getSelection()?.removeAllRanges();
+    const paragraph = mounted.querySelector('p');
+    if (!paragraph) throw new Error('no paragraph');
+    fireEvent.mouseDown(paragraph, { button: 0 });
+    fireEvent.mouseUp(paragraph, { button: 0 });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(useAiPanel.getState().attachment).toBeNull();
+    act(() => {
+      fireEvent.keyDown(document.body, { key: 'Escape' });
+    });
+    expect(useCapture.getState().textMode).toBe(false);
+    expect(document.body.dataset['aiSelect']).toBeUndefined();
   });
 });

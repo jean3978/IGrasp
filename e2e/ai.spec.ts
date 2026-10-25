@@ -57,7 +57,7 @@ test('the chat panel moves, resizes, stays in the window and is remembered for t
   await expect(panel).toBeVisible();
   expect(await panel.boundingBox()).toEqual(kept);
 
-  // Escape closes it (nothing runs) and the focus goes back to the toolbar button.
+  // Escape closes it (nothing runs) and the focus goes back to its button over the view.
   await panel.getByLabel('Message', { exact: true }).focus();
   await page.keyboard.press('Escape');
   await expect(panel).toHaveCount(0);
@@ -178,7 +178,9 @@ test('browsing the project starts no AI operation; a logged-out provider is expl
   await expect(dialog(page).getByLabel('Message', { exact: true })).toBeEnabled();
   // A region selection, the history list and the settings are not messages either.
   await capture(page, { x: 20, y: 20, width: 300, height: 100 });
-  await expect(dialog(page).getByText(/^README\.md lines? \d+/)).toBeVisible();
+  await expect(
+    dialog(page).getByRole('group', { name: /^Region: README\.md lines? \d+/ }),
+  ).toBeVisible();
   await page.keyboard.press('Control+Alt+h');
   await expect(dialog(page).getByLabel('Conversation history')).toBeVisible();
   await page.keyboard.press('Control+,');

@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { PanelRect } from '../ipc/types';
 import {
   PANEL_DEFAULT_HEIGHT,
   PANEL_DEFAULT_WIDTH,
   PANEL_MIN_HEIGHT,
   PANEL_MIN_WIDTH,
   clampRect,
+  NEAR_GAP,
   defaultRect,
+  rectNear,
   resizeRect,
   selectPanelRect,
   useAiPanel,
@@ -86,5 +89,50 @@ describe('panel geometry', () => {
     expect(useAiPanel.getState()).toMatchObject({ open: true, rect: { x: 1, y: 2 } });
     useAiPanel.getState().restore(null);
     expect(useAiPanel.getState()).toMatchObject({ open: false, rect: null });
+  });
+});
+
+describe('opening next to a selection', () => {
+  const size = { width: PANEL_DEFAULT_WIDTH, height: PANEL_DEFAULT_HEIGHT };
+  const overlaps = (a: PanelRect, b: PanelRect) =>
+    a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+  it('sits on the right of the selection when there is room', () => {
+    const anchor = { x: 100, y: 200, width: 300, height: 40 };
+    const rect = rectNear(anchor, size, big);
+    expect(rect.x).toBe(anchor.x + anchor.width + NEAR_GAP);
+    expect(rect.width).toBe(PANEL_DEFAULT_WIDTH);
+    expect(overlaps(rect, anchor)).toBe(false);
+  });
+
+  it('sits on the left when the right is too narrow', () => {
+    const anchor = { x: 900, y: 200, width: 600, height: 40 };
+    const rect = rectNear(anchor, size, big);
+    expect(rect.x + rect.width).toBe(anchor.x - NEAR_GAP);
+    expect(overlaps(rect, anchor)).toBe(false);
+  });
+
+  it('narrows (to the minimum at most) rather than covering the selection', () => {
+    const viewport = { width: 1280, height: 720 };
+    const anchor = { x: 410, y: 170, width: 440, height: 24 };
+    const rect = rectNear(anchor, size, viewport);
+    expect(rect.width).toBeGreaterThanOrEqual(PANEL_MIN_WIDTH);
+    expect(rect.width).toBeLessThan(PANEL_DEFAULT_WIDTH);
+    expect(overlaps(rect, anchor)).toBe(false);
+  });
+
+  it('goes below a selection that spans the window, and to the corner when nothing fits', () => {
+    const wide = { x: 0, y: 40, width: big.width, height: 30 };
+    const below = rectNear(wide, size, big);
+    expect(below.y).toBe(wide.y + wide.height + NEAR_GAP);
+    const everywhere = { x: 0, y: 0, width: big.width, height: big.height };
+    expect(rectNear(everywhere, size, big)).toEqual(defaultRect(big));
+  });
+
+  it('opens the panel there at its current size', () => {
+    useAiPanel.getState().openNear({ x: 100, y: 200, width: 300, height: 40 });
+    const { open, rect } = useAiPanel.getState();
+    expect(open).toBe(true);
+    expect(rect?.x).toBe(400 + NEAR_GAP);
   });
 });

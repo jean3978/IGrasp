@@ -22,6 +22,9 @@ document tabs, is part of the back / forward history, and is restored with the s
 
 - `#L12` or `#L12-L20` in a link selects and centers those lines. Clicking a line number selects
   it, shift-click extends the selection.
+- The **AI tools** toolbar sits under the header, on the right: highlighting code with the text
+  tool or dragging a region attaches exactly the rows it covers to the AI chat
+  ([ai-chat.md](ai-chat.md#asking-about-a-selection)).
 
 ## Limits
 

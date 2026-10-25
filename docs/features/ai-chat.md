@@ -20,32 +20,52 @@ provider, with the input the app sends back.
 
 ## Using it
 
-- **Open**: the sparkles button in the toolbar, **View → AI Chat**, or `Ctrl+Alt+C` (a folder must
-  be open). The chat is a floating panel (default: bottom-right corner, 420 × 560); the document
-  behind it stays readable and clickable (`role="dialog"`, `aria-modal="false"`).
+- **Open**: the sparkles button of the **AI tools** toolbar in the top-right corner of the view
+  (over every tab, and over the empty area when no tab is open; its selection tools work in
+  markdown and code tabs), **View → AI Chat**, or `Ctrl+Alt+C` (a folder must be open). The
+  window toolbar has no AI control. The chat is a floating panel (default: bottom-right corner, 420 × 560;
+  next to the selection when a selection opens it); the document behind it stays readable and
+  clickable (`role="dialog"`, `aria-modal="false"`).
+- **Look**: the chat wears the provider's warm accent (`--ai-*` tokens, orange) with a soft
+  bloom behind the panel, chat bubbles (yours on the right, the provider's on the left with its
+  avatar) and a rounded message box that grows with its text. High Contrast keeps black
+  surfaces with orange outlines and no glow.
 - **Move and resize**: drag the header, or focus the title and press `Alt+arrows`; resize from
   any edge or corner (minimum 360 × 320, at most the window), or `Alt+Shift+arrows`. The panel
   stays inside the window when it shrinks. Its place, size and open state are saved per folder in
   the session (app data).
-- **Status line**: the provider's name, version and account, or what is missing (not installed,
-  not logged in) with the provider's own instructions and a **Check again** button. The status
-  is cached for 60 s.
-- **Model**: the provider's suggested models (`sonnet`, `opus`, `haiku` for Claude) or a custom
-  id. The choice is remembered (`settings.ai.model`) and is the default of new conversations; a
-  conversation reopened from the history continues with the model it ran with (shown in the
-  header).
+- **Header**: the provider's name with one status line under it (version, account, session,
+  tokens, and the model the conversation runs with), the model picker, the conversation rules,
+  History, New conversation and Close. What is missing (not installed, not logged in) shows
+  under the header with the provider's own instructions and a **Check again** button. The
+  status is cached for 60 s.
+- **Model**: the picker in the header lists exactly the models the provider offers, nothing
+  else. For Claude they come from the installed CLI itself, once per CLI version and logged-in
+  account (a status check finding a new version or account lists them again): the app starts
+  it in stream-json mode from the temporary folder (never the opened folder), sends only the
+  `initialize` control request and reads the `models` of its answer (`default`, `opus`,
+  `sonnet`, `haiku` and the full ids the account can use, with their names and descriptions as
+  tooltips). No message is sent, so no token is spent. Until the CLI has answered, the picker
+  offers its default only. `default` is passed to the CLI as no `--model` flag. The choice is
+  remembered (`settings.ai.model`) and is the default of new conversations; a remembered model
+  the provider no longer offers falls back to its first one. A conversation reopened from the
+  history continues with the model it ran with (shown in the status line).
 - **Send** with Enter (Shift+Enter for a new line). Every message is one user action that spends
   tokens, and the Send button says so. A message whose estimated size reaches the confirmation
   threshold (Settings → AI, default "large", about 80k tokens) first shows a **confirmation
   card** (provider, model, documents, size class) and starts only on **Start**.
-- **Stop** kills the running operation. **Escape** stops a running answer; pressed again (or with
-  nothing running) it closes the panel and the focus returns to the AI Chat button. Closing the
-  panel never stops an answer: the status bar shows it with **Stop**, and a badge when a
-  permission waits.
+- **Answers** appear in one piece when they are complete, rendered like a document (the
+  preview's sanitized pipeline: tables, code, Mermaid diagrams, links); while the provider
+  works, three animated dots stand in for it (still under `prefers-reduced-motion`).
+- **Stop** kills the running operation and keeps what was received. **Escape** stops a running
+  answer; pressed again (or with nothing running) it closes the panel and the focus returns to
+  the AI Chat button over the document. Closing the panel never stops an answer: the status bar
+  shows it with **Stop**, and a badge when a permission waits.
 - **Screen readers**: events of an operation (a tool call, a permission request, the end of an
-  answer) reach assistive technology through one polite live region; streamed text is not read
-  as it arrives, and the usage line is not a live region of its own. The panel comes right after
-  the toolbar in the Tab order. When a card is answered, the focus goes to the message box.
+  answer, a selection attached) reach assistive technology through one polite live region; the
+  typing indicator is an image named "… is writing", and the usage line is not a live region of
+  its own. The panel comes right after the toolbar in the Tab order. When a card is answered,
+  the focus goes to the message box.
 - **New conversation** (+, `Ctrl+Alt+N`) saves the conversation in the history and starts an
   empty one; otherwise every message continues the same conversation (the provider's resume id),
   even after a stop or a crash.
@@ -60,8 +80,10 @@ The **context bar** above the message box shows what the next message carries, f
 
 - the provider's **instruction files** (`CLAUDE.md` and `CLAUDE.local.md` for Claude; `AGENTS.md`
   for the mock provider) from the root down to the current file's folder;
-- the **current file** (a document or a code tab; a settings tab adds none), with the total size;
-- a **region capture**, when there is one, as a chip ([below](#region-capture)).
+- the **current file** (a document or a code tab; a settings tab adds none), with the total size.
+
+The selection the message is about, when there is one, is recalled at the top of the chat
+([below](#asking-about-a-selection)).
 
 Hover shows the path, a click opens the file, and ✕ leaves a document out of the messages sent
 from this file (+ adds it back; another active tab brings it back). The list is computed when the
@@ -107,31 +129,52 @@ chat shows an Edit card with **Review in preview**; with the chat closed, the st
 files outside the folder, of documents too large to render, or whose text is no longer in the
 file keep the line-diff card in the chat.
 
-## Region capture
+## Asking about a selection
 
-- **Start**: the region button in the toolbar, **View → Ask About a Region**, or `Ctrl+Alt+R`.
-  It needs a markdown or code tab and is disabled otherwise. The action only shows the overlay;
-  it never calls the provider.
-- **Select**: a crosshair covers the tab's scroll area. Drag a rectangle (at least 24 × 24 px),
-  or use the keyboard: arrows move a rectangle from the centre, `Shift+arrows` resize it, `Enter`
-  captures, `Escape` cancels (the focus returns where it was). The size of the selection is
-  announced as it changes.
-- **Lines**: in a markdown tab every block with a `data-line` marker that the rectangle touches
-  gives the range, from the first block's start line to the line before the next block (blank
-  separator lines trimmed); in a code tab, the rendered rows. A selection over an image only
-  keeps the nearest block's line with an empty text.
-- **Screenshot**: after the overlay is removed, the visible part of the tab is rendered with
-  `modern-screenshot`, cut to the rectangle plus a 12 px margin, the selection outlined in the
-  accent colour, at most 1568 px on the long edge (PNG, JPEG above 1.5 MB). The chip and the
-  transcript item show a thumbnail. If it cannot be taken (an image the webview refuses to
-  draw, a render error) the text alone is attached with the notice "The screenshot could not be
-  taken; the text was attached." A model that cannot read images (`imageInput: false`) gets no
-  screenshot, with a notice saying so; switching to such a model before Send drops it too. See
-  [ADR 0018](../decisions/0018-region-capture-by-dom-rendering.md).
-- **Result**: the chat opens with a chip ("docs/a.md lines 40–58", ✕ to drop it), the draft
-  "About this region:" (an existing draft is kept) and the focus in the message box. Nothing is
-  sent until Send, which passes the region with the message; the transcript then shows a
-  "Selected region" item right after it, and the history keeps its text and range.
+Two tools of the **AI tools** toolbar (top-right corner of a markdown or code tab) point the chat
+at part of the document ([ADR 0020](../decisions/0020-viewport-ai-tools-and-text-selections.md)).
+They need a markdown or code tab and are disabled otherwise; they only attach a selection and
+never call the provider.
+
+- **Text** (cursor button, **View → Ask About Selected Text**, `Ctrl+Alt+S`): a mode, shown
+  pressed, with a text cursor and the chat's colour for the selection. Highlight text as in any
+  editor; releasing the mouse attaches it. The mode stays on until the button is pressed again
+  `Escape` is pressed outside the chat, or another file is opened.
+- **Region** (dashed-square button, **View → Ask About a Region**, `Ctrl+Alt+R`): a crosshair
+  covers the tab's scroll area. Drag a rectangle (at least 24 × 24 px), or use the keyboard:
+  arrows move a rectangle from the centre, `Shift+arrows` resize it, `Enter` captures, `Escape`
+  cancels (the focus returns where it was). The size of the selection is announced as it
+  changes. One region per use.
+- **Lines**: in a markdown tab every block with a `data-line` marker that the selection touches
+  (each line box of highlighted text, or the rectangle) gives the range, from the first block's
+  start line to the line before the next block (blank separator lines trimmed); in a code tab,
+  the rendered rows. A region over an image only keeps the nearest block's line with an empty
+  text. **Highlighted text is narrowed** to the source lines that hold it: the rendered text is
+  looked up in the block's source without its markup (list and heading marks, emphasis, link
+  targets), so four lines highlighted in a long list or paragraph send those four lines, not
+  the whole block. When it cannot be found (an unusual construct), the block's lines are sent.
+- **Sent as text**: the message carries the source of those lines and, for highlighted text,
+  the text exactly as highlighted; the provider is told both. No screenshot is taken.
+- **Result**: the chat opens **next to the selection** (beside it, else above or below, narrower
+  if needed down to its minimum size, never covering it when there is room), with the draft
+  "About this selection:" or "About this region:" (an existing draft is kept) and the focus in
+  the message box. The selection stays **highlighted** over the document (its line boxes, and
+  the rectangle of a region) while the chat is open, after Send too; closing the chat, another
+  tab or a change of the file removes it.
+- **Selection line**: one line under the header recalls it ("Selection · lines 3–7 · Start of
+  the text…"; hover shows the file), with ✕ to drop it and its highlight.
+- **Quick actions** over the message box, while there is a selection: **Rewrite**, **Shorten**,
+  **Expand**, **Fix grammar**, **Make a table**, **Make a diagram** (a Mermaid block added after
+  the selection) and **Explain**. Each sends one message with the selection attached (it spends
+  tokens; the row carries the AI mark); the transcript shows the action's name. All but Explain
+  ask for an edit of the file, which goes through the permission settings and the inline review;
+  Explain answers in the chat. The editing actions state their scope strictly: the selection is
+  exactly the highlighted text (the source lines are context), one edit replaces exactly that
+  passage, and every other character of the file stays as it is; Make a diagram only inserts.
+  The model is asked, not forced: the review shows any change outside the selection, to reject.
+- Nothing is sent until Send or a quick action, which passes the selection with the message; the
+  transcript then shows a "Selected text" or "Selected region" item right after it, and the
+  history keeps its text, range and highlighted text.
 
 ## History
 
@@ -194,9 +237,9 @@ The full flow of a message, with the estimate and the history save, is in
 | Commands `ai_status` (60 s cache, `force`), `ai_capabilities`, `ai_providers`, `ai_set_provider`, `ai_context`, `ai_estimate`, `ai_start`, `ai_respond_permission`, `ai_cancel`; conversations | `src-tauri/src/commands/ai.rs`, `appdata/conversations.rs` |
 | Event reducer (events → chat items), saved-item format, line diff | `src/features/ai/timeline.ts`, `diff.ts` |
 | Stores: provider (status, capabilities, model), conversation (items, operation, permissions, usage, history), panel (geometry, draft, context, attachment) | `src/stores/aiProvider.ts`, `aiConversation.ts`, `aiPanel.ts` |
-| Floating panel and its parts: `AiPanel`, `StatusLine`, `ContextBar`, `Transcript`, `PermissionCard`, `ConfirmCard`, `Composer`, `ModelPicker`, `HistoryList` | `src/features/ai/` |
+| Floating panel and its parts: `AiPanel`, `StatusLine`, `SelectionLine`, `Transcript`, `PermissionCard`, `ConfirmCard`, `QuickActions` (prompts in `quickActionPrompts.ts`), `ContextBar`, `Composer`, `ModelPicker`, `HistoryList`; the AI tools over the document (`ViewportToolbar`) | `src/features/ai/` |
 | Inline review (rendered diff, change units, composing the accepted result) | `src/features/diff/`, `src/features/ai/InlineEditReview.tsx`, `editReview.ts` |
-| Region capture (overlay, source lines, screenshot) | `src/features/capture/`, `src/stores/capture.ts` |
+| Selections: region overlay, text mode, source lines, highlight layer, placement next to the selection (`rectNear`) | `src/features/capture/`, `src/stores/capture.ts`, `src/stores/aiPanel.ts` |
 | Mock provider for the browser and the tests | `src/ipc/mock/mockAi.ts` |
 
 The frontend never builds a provider's tool input: it sends the neutral `updatedEdit` (the
@@ -220,9 +263,9 @@ the same permission policy as the Rust gateway.
 | Stop | The process tree is killed; "Stopped." appears; the next message resumes the conversation. |
 | Folder, window or app closed while an operation runs | The operation is cancelled; on Windows the OS also kills the child if the app dies hard. |
 | Conversation lost by the provider | The provider's error is shown with **Start a new conversation from here**; the app's copy of the history is intact. |
-| Screenshot cannot be taken | The text of the region is attached alone, with a notice. |
 | An edit that cannot be shown in the preview | The line-diff card in the chat. |
 | Unknown control request from a newer CLI | Refused with an error response so the CLI never hangs. |
+| The selected file changes while the chat is open (an accepted edit, a change on disk) | The highlight and the selection not yet sent are dropped: their lines no longer match. |
 
 ## What the app cannot enforce
 
@@ -237,17 +280,20 @@ the same permission policy as the Rust gateway.
   does not sandbox it.
 - **A hard kill of the app on Linux** can leave the CLI running until it notices its closed
   pipes (on Windows a job object kills it).
-- **Linux is not verified yet**: the CLI integration and the capture of asset images were tested
-  on Windows 11 only (ADR 0014, ADR 0018).
+- **Linux is not verified yet**: the CLI integration was tested on Windows 11 only (ADR 0014).
+  The text mode and the selection highlight were checked in Chromium (browser dev mode and
+  Playwright), not yet in WebKitGTK (ADR 0020).
 
 ## Testing
 
 - `npm test`: event reducer, line and block diff, the chat against the mock provider (accept,
   reject, command prompt, stop, not installed, not logged in, late login error, new
-  conversation, history, context bar, confirmation card), the inline review and the capture, the
+  conversation, history, context bar, confirmation card, typing indicator, selection line and
+  quick actions), the inline review, the selections (region, text mode, highlight, placement), the
   "no token without a user action" test, and the provider-neutrality scan of the frontend.
 - `npm run test:e2e`: smoke tests of the panel, the context bar, permissions, the inline review
-  (`e2e/ai-review.spec.ts`) and region capture (`e2e/ai-capture.spec.ts`).
+  (`e2e/ai-review.spec.ts`) and the selections (`e2e/ai-capture.spec.ts`: region, text mode,
+  quick action, tooltips above the chat).
 - `cargo test`: gateway with the mock provider, the permission policy, context and estimate,
   conversations, protocol mapping on recorded samples, argument building, stdin line shapes, CLI
   probes parsing, and `no_start.rs` (no command but `ai_start` can start an operation).

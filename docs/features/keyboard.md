@@ -18,7 +18,8 @@ IGrasp can be used entirely from the keyboard. Press **F1** for the full list of
 | `Ctrl+Shift+L` | Broken Links view |
 | `Ctrl+Shift+O` | Focus the outline (opens the right panel) |
 | `Ctrl+Alt+C` | Show or hide the AI chat panel |
-| `Ctrl+Alt+R` | Ask about a region: select a rectangle of the tab (markdown or code) and attach it to the chat |
+| `Ctrl+Alt+S` | Ask about selected text: turn the text mode on or off (highlight text, release the mouse, and the chat opens next to it) |
+| `Ctrl+Alt+R` | Ask about a region: select a rectangle of the tab (markdown or code) and attach its text to the chat |
 | `Ctrl+Alt+N` / `Ctrl+Alt+H` | New AI conversation / show or hide the history (chat panel open) |
 | `Alt+arrows` / `Alt+Shift+arrows` | Move / resize the AI chat panel (its title focused) |
 | `Enter` / `Shift+Enter` (message box) | Send / new line |
@@ -57,8 +58,9 @@ Reserved for upcoming features (not bound yet, so they never need to be re-learn
 
 - **Tab order** follows the screen: "Skip to document" link, menu bar, title-bar toolbar,
   the AI chat panel when open, window controls, activity bar, the active sidebar view (its header actions, its boxes, then
-  its tree or list), sidebar resizer (arrow keys resize it), tabs, the document, the right
-  panel resizer and the right panel (Outline, then Backlinks), then the status bar items.
+  its tree or list), sidebar resizer (arrow keys resize it), tabs, the document, the AI tools
+  over it (AI Chat, Ask About Selected Text, Ask About a Region), the right panel resizer and the
+  right panel (Outline, then Backlinks), then the status bar items.
 - **Activity bar**: one tab stop; ↑ / ↓ move between views, Enter or Space opens one.
 - **Explorer**: the tree follows the WAI-ARIA tree pattern (arrows, Home/End, Enter, Space, `*`,
   type-ahead). See [file-tree.md](file-tree.md).

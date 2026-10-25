@@ -14,8 +14,8 @@
 .capture-selection {
   position: absolute;
   box-sizing: border-box;
-  border: 2px solid var(--accent);
-  background: var(--flash-bg);
+  border: 2px solid var(--ai-highlight-border);
+  background: var(--ai-highlight-bg);
   pointer-events: none;
 }
 
@@ -37,4 +37,41 @@
   color: var(--fg);
   font-size: var(--font-size-small);
   pointer-events: none;
+}
+
+/* The selection the chat is about, painted over the document while the chat is open. It lives
+   inside the scroll container, in content coordinates, so it scrolls with the text. */
+.ai-highlight-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.ai-highlight {
+  position: absolute;
+  box-sizing: border-box;
+  border-bottom: 2px solid var(--ai-highlight-border);
+  border-radius: 3px;
+  background: var(--ai-highlight-bg);
+}
+
+.ai-highlight-region {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed var(--ai-highlight-border);
+  border-radius: 6px;
+}
+
+/* The text mode: an editor's cursor and the chat's colour for the selection. */
+body[data-ai-select='text'] :is(.document-scroll, .code-scroll) {
+  cursor: text;
+}
+
+body[data-ai-select='text'] :is(.document-scroll, .code-scroll) ::selection {
+  background: var(--ai-selection-bg);
+  color: var(--ai-selection-fg);
 }

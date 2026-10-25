@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { ask, chatPanel, docBody, fileOnDisk, inlineReview, openChat } from './helpers';
+import { ask, chatPanel, docBody, fileOnDisk, inlineReview, openChat, treeItem } from './helpers';
+import type { MockWindow } from './helpers';
 
 const review = inlineReview;
 const dialog = chatPanel;
@@ -100,4 +101,37 @@ test('with Markdown edits set to Allow in the settings, the next edit is applied
   await expect(review(page)).toHaveCount(0);
   await expect(dialog(page).getByRole('region', { name: /^Proposed edit/ })).toHaveCount(0);
   expect((await fileOnDisk(page, 'README.md')) ?? '').toContain('(edited by the AI)');
+});
+
+test('Accept all keeps the reader where they were, through the reload of the edited file', async ({
+  page,
+}) => {
+  await openChat(page);
+  const paragraphs = Array.from(
+    { length: 60 },
+    (_, i) => `Paragraph ${String(i + 1)} with enough words to take a line or two of space.`,
+  );
+  await page.evaluate(
+    (text) => {
+      (window as unknown as MockWindow).__igraspMock?.writeFiles({ 'long.md': text });
+    },
+    `# Long\n\n${paragraphs.join('\n\n')}\n`,
+  );
+  await treeItem(page, 'long.md').click();
+  const scroller = page.locator('.tab-content .document-scroll');
+  await expect(scroller.locator('p').nth(40)).toBeAttached();
+  const top = () => scroller.evaluate((el) => Math.round(el.scrollTop));
+
+  await ask(page, 'Please edit twice long.md');
+  await expect(review(page).getByRole('group', { name: /^Change \d of 2/ })).toHaveCount(2);
+  await scroller.evaluate((el) => {
+    el.scrollTop = 1500;
+  });
+  await expect.poll(top).toBe(1500);
+  await review(page).getByRole('button', { name: 'Accept all' }).click();
+
+  await expect(review(page)).toHaveCount(0);
+  await expect(doc(page).getByText(/Paragraph 60.*\(edited by the AI\)/)).toBeAttached();
+  await page.waitForTimeout(300);
+  expect(await top()).toBe(1500);
 });

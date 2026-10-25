@@ -52,4 +52,23 @@
 
   --titlebar-inactive-opacity: 0.55;
   --window-close-hover: #c42b1c;
+
+  /* AI chat: the provider's warm accent, so the chat stands apart from the app's blue. */
+  --ai-accent: #ec9a78;
+  --ai-accent-soft: #3b2b24;
+  --ai-surface: #1f1b19;
+  --ai-surface-raised: #292421;
+  --ai-border: #4d3a31;
+  --ai-bubble-user: #b4532f;
+  --ai-bubble-user-end: #9a4425;
+  --ai-bubble-user-fg: #ffffff;
+  --ai-bubble-assistant: #2d2724;
+  --ai-send-bg: #c96442;
+  --ai-send-fg: #ffffff;
+  --ai-bloom: rgb(217 119 87 / 0.15);
+  --ai-bloom-far: rgb(255 150 100 / 0.06);
+  --ai-highlight-bg: rgb(224 137 106 / 0.3);
+  --ai-highlight-border: #ec9a78;
+  --ai-selection-bg: rgb(224 137 106 / 0.42);
+  --ai-selection-fg: #ffffff;
 }

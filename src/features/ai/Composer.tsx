@@ -1,9 +1,9 @@
-// The message box, the model picker and Send (the only control of the panel that spends tokens)
-// or Stop while an operation runs. The draft lives in the panel store so it survives closing the
-// panel and can be pre-filled (region capture).
+// The message box and Send (the only control of the panel, with the quick actions, that spends
+// tokens) or Stop while an operation runs. The draft lives in the panel store so it survives
+// closing the panel and can be pre-filled (a selection). The box grows with its text.
 
 import { Send } from 'lucide-react';
-import { forwardRef } from 'react';
+import { forwardRef, useLayoutEffect, useRef } from 'react';
 import type { KeyboardEvent } from 'react';
 import { AiMark } from '../../components/AiMark';
 import { IconButton } from '../../components/ui/IconButton';
@@ -12,7 +12,9 @@ import { selectBusy, useAiConversation } from '../../stores/aiConversation';
 import { useAiPanel } from '../../stores/aiPanel';
 import { useWorkspace } from '../../stores/workspace';
 import { CancelButton } from './CancelButton';
-import { ModelPicker } from './ModelPicker';
+
+/** The message box grows up to this height, then scrolls. */
+const MAX_INPUT_HEIGHT = 160;
 
 export const Composer = forwardRef<HTMLTextAreaElement>(function Composer(_props, ref) {
   const send = useAiConversation((s) => s.send);
@@ -25,6 +27,14 @@ export const Composer = forwardRef<HTMLTextAreaElement>(function Composer(_props
   const text = useAiPanel((s) => s.draft);
   const setText = useAiPanel((s) => s.setDraft);
   const canSend = usable && hasRoot && !busy && !confirming && text.trim().length > 0;
+  const own = useRef<HTMLTextAreaElement | null>(null);
+
+  useLayoutEffect(() => {
+    const el = own.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${String(Math.min(el.scrollHeight, MAX_INPUT_HEIGHT))}px`;
+  }, [text]);
 
   const submit = () => {
     if (!canSend) return;
@@ -46,26 +56,29 @@ export const Composer = forwardRef<HTMLTextAreaElement>(function Composer(_props
         submit();
       }}
     >
-      <textarea
-        ref={ref}
-        className="ai-input"
-        aria-label="Message"
-        placeholder={
-          usable
-            ? `Ask ${providerName} about this project… (Enter to send, uses tokens)`
-            : `${providerName} is unavailable`
-        }
-        title={busy ? 'Escape stops the answer; press it again to close the chat' : undefined}
-        value={text}
-        rows={2}
-        disabled={!usable || !hasRoot || confirming}
-        onChange={(e) => {
-          setText(e.target.value);
-        }}
-        onKeyDown={onKeyDown}
-      />
-      <div className="ai-composer-actions">
-        <ModelPicker />
+      <div className="ai-input-box">
+        <textarea
+          ref={(el) => {
+            own.current = el;
+            if (typeof ref === 'function') ref(el);
+            else if (ref) ref.current = el;
+          }}
+          className="ai-input"
+          aria-label="Message"
+          placeholder={
+            usable
+              ? `Message ${providerName}… (Enter to send, uses tokens)`
+              : `${providerName} is unavailable`
+          }
+          title={busy ? 'Escape stops the answer; press it again to close the chat' : undefined}
+          value={text}
+          rows={1}
+          disabled={!usable || !hasRoot || confirming}
+          onChange={(e) => {
+            setText(e.target.value);
+          }}
+          onKeyDown={onKeyDown}
+        />
         {busy ? (
           <CancelButton
             className="ai-send"

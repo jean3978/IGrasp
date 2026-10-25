@@ -16,5 +16,5 @@ are updated together with the code.
 | [search.md](search.md) | Search everything (Ctrl+T) and search in files (Ctrl+Shift+F) |
 | [links-and-graph.md](links-and-graph.md) | Internal links and anchors, broken links, backlinks, outline, the document graph |
 | [code-viewer.md](code-viewer.md) | Read-only viewer for linked source files, Open in default editor |
-| [ai-chat.md](ai-chat.md) | AI chat (Claude through its CLI today): context, permissions and settings, inline edit review, region capture, conversation history, provider abstraction and gateway |
+| [ai-chat.md](ai-chat.md) | AI chat (Claude through its CLI today): the AI tools over the document, text and region selections, quick actions, context, permissions and settings, inline edit review, conversation history, provider abstraction and gateway |
 | [keyboard.md](keyboard.md) | Keyboard shortcuts and accessibility |

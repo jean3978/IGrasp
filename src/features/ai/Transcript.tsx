@@ -1,13 +1,19 @@
 // The conversation: messages, tool calls, automatic decisions, usage lines, then what waits on
 // the user (permission prompts, the confirmation card). New item kinds (an edit under review, a
-// capture) render here through `Message`.
+// selection) render here through `Message`. An answer shows in one piece when it is complete,
+// rendered like a document (the preview's sanitized pipeline); until then an animated "…"
+// says the provider is working.
 
 import { clsx } from 'clsx';
+import { Sparkles } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { selectProviderName, useAiProvider } from '../../stores/aiProvider';
 import { AiMark } from '../../components/AiMark';
 import { Button } from '../../components/ui/Button';
 import { selectBusy, useAiConversation } from '../../stores/aiConversation';
+import { useWorkspace } from '../../stores/workspace';
+import { MarkdownPreview } from '../preview/MarkdownPreview';
+import { useMarkdown } from '../preview/useMarkdown';
 import { ConfirmCard } from './ConfirmCard';
 import { PermissionCard } from './PermissionCard';
 import { captureLabel, decisionText } from './timeline';
@@ -55,14 +61,18 @@ export function PermissionDecidedItem(item: {
   );
 }
 
-/** The region the message is about: its place in the document, the text and the screenshot. */
+/** The selection the message is about: its place in the document and its text. */
 export function CaptureItem(item: Extract<ChatItem, { kind: 'capture' }>) {
   const label = captureLabel(item);
+  const shown = item.selection ?? item.text;
   return (
-    <details className="ai-capture" open={item.thumbnail !== undefined || item.text.length < 400}>
-      <summary>Selected region: {label}</summary>
-      {item.thumbnail && <img className="ai-capture-thumb" src={item.thumbnail} alt="" />}
-      {item.text ? (
+    <details className="ai-capture" open={shown.length < 400}>
+      <summary>
+        {item.selection === undefined ? 'Selected region' : 'Selected text'}: {label}
+      </summary>
+      {item.selection !== undefined ? (
+        <pre className="ai-capture-text">{item.selection}</pre>
+      ) : item.text ? (
         <pre className="ai-capture-text">{item.text}</pre>
       ) : (
         <p className="ai-capture-empty">No text in the region.</p>
@@ -71,17 +81,80 @@ export function CaptureItem(item: Extract<ChatItem, { kind: 'capture' }>) {
   );
 }
 
-export function Message({ item }: { item: ChatItem }) {
+/** The provider's avatar beside its answers and the typing indicator. */
+function Avatar() {
+  return (
+    <span className="ai-avatar ai-avatar-small" aria-hidden>
+      <Sparkles />
+    </span>
+  );
+}
+
+/** A complete answer, rendered like a document (plain text until the render is ready). */
+function AssistantText({ text }: { text: string }) {
+  // Its own cache: answers must not push the open documents' renders out.
+  const { rendered } = useMarkdown(text, 'chat');
+  const rootPath = useWorkspace((s) => s.root?.path ?? '');
+  return (
+    <div className="ai-row ai-row-assistant">
+      <Avatar />
+      <div className="ai-msg ai-msg-assistant">
+        {rendered ? (
+          <div className="ai-markdown">
+            <MarkdownPreview rendered={rendered} rootPath={rootPath} />
+          </div>
+        ) : (
+          <div className="ai-plain">{text}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Three dots while the provider works on its answer. */
+export function TypingIndicator({ name }: { name: string }) {
+  return (
+    <div className="ai-row ai-row-assistant ai-typing-row">
+      <Avatar />
+      <div
+        className="ai-msg ai-msg-assistant ai-typing"
+        role="img"
+        aria-label={`${name} is writing`}
+      >
+        <span className="ai-typing-dot" />
+        <span className="ai-typing-dot" />
+        <span className="ai-typing-dot" />
+      </div>
+    </div>
+  );
+}
+
+/** An answer still being written, shown as it stands while a card waits on the user. */
+function PartialText({ text }: { text: string }) {
+  return (
+    <div className="ai-row ai-row-assistant">
+      <Avatar />
+      <div className="ai-msg ai-msg-assistant ai-plain ai-msg-partial">{text}</div>
+    </div>
+  );
+}
+
+export function Message({
+  item,
+  showPartial = false,
+}: {
+  item: ChatItem;
+  /** A permission or confirmation card waits: the answer so far explains what is asked. */
+  showPartial?: boolean;
+}) {
   switch (item.kind) {
     case 'user':
       return <div className="ai-msg ai-msg-user">{item.text}</div>;
     case 'assistant':
-      return (
-        <div className="ai-msg ai-msg-assistant">
-          {item.text}
-          {item.streaming && <span className="ai-cursor" aria-hidden />}
-        </div>
-      );
+      // Shown in one piece once complete; the typing indicator stands for it until then, except
+      // when the user must decide on a card: then what is written so far explains it.
+      if (!item.streaming) return <AssistantText text={item.text} />;
+      return showPartial && item.text.trim() !== '' ? <PartialText text={item.text} /> : null;
     case 'tool':
       return (
         <details className={clsx('ai-tool', { 'ai-tool-error': item.isError })}>
@@ -125,30 +198,44 @@ export function Transcript() {
   const pendingConfirm = useAiConversation((s) => s.pendingConfirm);
   const confirmStart = useAiConversation((s) => s.confirmStart);
   const cancelConfirm = useAiConversation((s) => s.cancelConfirm);
+  const busy = useAiConversation(selectBusy);
   const listRef = useRef<HTMLDivElement>(null);
+  const typing = busy && permissions.length === 0 && !pendingConfirm;
 
   // Follow the conversation as it grows.
   useEffect(() => {
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [items, permissions, pendingConfirm]);
+  }, [items, permissions, pendingConfirm, typing]);
 
   return (
     // No live region here: streamed text would be read word by word. `AiAnnouncer` says what
     // happens instead.
     <div className="ai-messages" ref={listRef}>
       {items.length === 0 && permissions.length === 0 && !pendingConfirm && (
-        <p className="ai-empty">
-          Ask {providerName} about this folder. Each message you send spends tokens; nothing runs on
-          its own. Edits to markdown files are shown as a diff to accept or reject.
-        </p>
+        <div className="ai-empty">
+          <span className="ai-avatar ai-avatar-large" aria-hidden>
+            <Sparkles />
+          </span>
+          <p className="ai-empty-title">Ask {providerName} about this project</p>
+          <p>
+            Highlight text with the cursor tool, or drag a region, and the chat opens next to it.
+            Each message you send spends tokens; nothing runs on its own. Edits to markdown files
+            are shown as a diff to accept or reject.
+          </p>
+        </div>
       )}
       {items.map((item) => (
-        <Message key={item.id} item={item} />
+        <Message
+          key={item.id}
+          item={item}
+          showPartial={permissions.length > 0 || pendingConfirm !== null}
+        />
       ))}
       {permissions.map((p) => (
         <PermissionCard key={p.requestId} permission={p} />
       ))}
+      {typing && <TypingIndicator name={providerName} />}
       {pendingConfirm && (
         <ConfirmCard
           title={pendingConfirm.title}

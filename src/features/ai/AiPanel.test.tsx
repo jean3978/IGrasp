@@ -27,6 +27,7 @@ import {
   useAiPanel,
 } from '../../stores/aiPanel';
 import { AiPanel } from './AiPanel';
+import { Message } from './Transcript';
 import { resetAiStores } from '../../test/resetAi';
 
 let stop: () => void = () => undefined;
@@ -52,7 +53,8 @@ afterEach(async () => {
 });
 
 const composer = () => screen.getByLabelText('Message');
-const statusLine = new RegExp(`${MOCK_PROVIDER_NAME} ${MOCK_PROVIDER_VERSION}`);
+/** The subtitle under the chat title: version · account · session. */
+const statusLine = new RegExp(`^${MOCK_PROVIDER_VERSION} · `);
 
 const renderPanel = () =>
   render(
@@ -398,6 +400,70 @@ describe('permission prompts and conversation rules', () => {
     expect(screen.queryByRole('button', { name: /Rules of this conversation/ })).toBeNull();
     await user.type(composer(), 'Run a command{Enter}');
     expect(await card()).toBeInTheDocument();
+  });
+});
+
+describe('the chat feel', () => {
+  it('shows a typing indicator, then the answer in one piece', async () => {
+    if (window.__igraspMock) window.__igraspMock.state.ai.stepMs = 40;
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByText(statusLine);
+    await user.type(composer(), 'What is this project?{Enter}');
+    const typing = await screen.findByRole('img', { name: `${MOCK_PROVIDER_NAME} is writing` });
+    expect(typing).toBeInTheDocument();
+    // Streamed text is never shown piece by piece.
+    expect(screen.queryByText(/This is the mock AI/)).toBeNull();
+    expect(await screen.findByText(/This is the mock AI/)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('img', { name: `${MOCK_PROVIDER_NAME} is writing` })).toBeNull();
+    });
+  });
+
+  it('shows the answer written so far only while a card waits on the user', () => {
+    const item = {
+      kind: 'assistant' as const,
+      id: 'a1',
+      text: 'I will list the recent commits first.',
+      streaming: true,
+    };
+    const { rerender } = render(<Message item={item} />);
+    expect(screen.queryByText(/list the recent commits/)).toBeNull();
+    rerender(<Message item={item} showPartial />);
+    expect(screen.getByText(/list the recent commits/)).toBeInTheDocument();
+  });
+
+  it('recalls the selection on one line and sends a quick action about it', async () => {
+    const capture = {
+      sourcePath: 'README.md',
+      firstLine: 3,
+      lastLine: 4,
+      text: 'Welcome to the **demo project**.\nMore text.',
+      selection: 'demo project',
+    };
+    useAiPanel.setState({ attachment: { capture } });
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByText(statusLine);
+    const line = screen.getByRole('group', { name: 'Selection: README.md lines 3–4' });
+    expect(within(line).getByText('demo project')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Shorten' }));
+    await waitFor(() => {
+      expect(window.__igraspMock?.state.ai.lastRequest?.prompt).toMatch(/^Shorten the selection/);
+    });
+    expect(window.__igraspMock?.state.ai.lastRequest?.capture).toEqual(capture);
+    // The transcript shows the action's name, not the instruction.
+    expect(screen.getByText('Shorten', { selector: '.ai-msg-user' })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(useAiConversation.getState().operationId).toBeNull();
+    });
+    expect(useAiPanel.getState().attachment).toBeNull();
+
+    // ✕ drops it.
+    useAiPanel.setState({ attachment: { capture } });
+    await user.click(await screen.findByRole('button', { name: 'Remove the selection' }));
+    expect(screen.queryByRole('group', { name: /^Selection:/ })).toBeNull();
   });
 });
 

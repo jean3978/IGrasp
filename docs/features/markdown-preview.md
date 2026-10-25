@@ -61,8 +61,15 @@ diff module and its limits are described in
   `Alt+Shift+R`), **Open in chat**, and **Apply** once every unit is decided and one is accepted.
 - **Answer**: the accepted hunks (or, for a `Write`, the content composed from the accepted
   blocks) go to the provider, which writes the file; nothing accepted is a rejection. The tab
-  leaves review mode at once, the focus goes to the document, and the live reload shows the written file; the chat says "Applied
-  2 of 3 changes to docs/a.md". A rejected new file closes its tab.
+  leaves review mode at once, the focus goes to the document, and the live reload shows the
+  written file; the chat says "Applied 2 of 3 changes to docs/a.md". A rejected new file closes
+  its tab.
+- **Where the reader was**: the document stays at the scroll position of the review, through the
+  switch back to the preview and the reload of the written file (the previous render stays on
+  screen while the new one is prepared; nothing blanks the document). Scrolling, a click or a
+  key during that first second wins.
+- In review mode the AI tools toolbar moves to the bottom-right corner of the view, so the review
+  bar keeps its Apply button.
 - The chat shows an **Edit card** with **Review in preview**, Accept all and Reject all; with the
   chat closed, the status bar item ("1 edit to review") leads to the review. Both focus the first undecided
   change.

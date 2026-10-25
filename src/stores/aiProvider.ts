@@ -22,6 +22,13 @@ interface AiProviderState {
   model: string;
   /** The model new conversations start with: the last one the user picked. */
   defaultModel: string;
+  /**
+   * `model` / `defaultModel` are only the provider's first model, put there because the remembered
+   * one was not offered (yet: the list may still be a placeholder). A later check with the real
+   * list brings the remembered model back; a model the user picks is never replaced.
+   */
+  modelIsFallback: boolean;
+  defaultIsFallback: boolean;
 
   /** Checks the provider; a check younger than a minute is reused unless `force`. */
   checkStatus: (force?: boolean) => Promise<void>;
@@ -42,12 +49,6 @@ let modelSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const selectUsable = (s: AiProviderState) =>
   s.status !== null && s.status.installed && s.status.loggedIn && s.status.problem === null;
-/** The selected model reads images (unknown models and an unloaded list are given the chance). */
-export const selectModelAcceptsImages = (s: AiProviderState): boolean => {
-  const info = s.capabilities?.models.find((m) => m.id === s.model);
-  if (info) return info.imageInput;
-  return s.capabilities?.imageInput ?? true;
-};
 export const selectProviderName = (s: AiProviderState) => s.status?.displayName ?? 'AI';
 
 export function errorMessage(err: unknown): string {
@@ -62,24 +63,37 @@ export const useAiProvider = create<AiProviderState>()((set, get) => ({
   providers: null,
   model: '',
   defaultModel: '',
+  modelIsFallback: false,
+  defaultIsFallback: false,
 
   async checkStatus(force = false) {
     if (get().checking) return;
     set({ checking: true });
     try {
-      const [status, capabilities] = await Promise.all([
-        backend.aiStatus(force),
-        get().capabilities ? Promise.resolve(get().capabilities) : backend.aiCapabilities(),
-      ]);
-      // The picker starts on the last model chosen (remembered in the settings).
+      // The status check also asks the provider which models it offers: the capabilities are
+      // read after it.
+      const status = await backend.aiStatus(force);
+      const capabilities = await backend.aiCapabilities();
+      // The picker starts on the last model chosen (remembered in the settings), if the provider
+      // still offers it; otherwise on its first model.
+      const offered = (id: string) => capabilities.models.some((m) => m.id === id);
       const remembered = useSettings.getState().settings.ai.model;
       set((s) => {
-        const fallback = remembered || (capabilities?.models[0]?.id ?? '');
+        const keepDefault = !s.defaultIsFallback && offered(s.defaultModel);
+        const defaultModel = keepDefault
+          ? s.defaultModel
+          : offered(remembered)
+            ? remembered
+            : (capabilities.models[0]?.id ?? '');
+        const defaultIsFallback = !keepDefault && !offered(remembered);
+        const keepModel = !s.modelIsFallback && offered(s.model);
         return {
           status,
           capabilities,
-          model: s.model || fallback,
-          defaultModel: s.defaultModel || fallback,
+          defaultModel,
+          defaultIsFallback,
+          model: keepModel ? s.model : defaultModel,
+          modelIsFallback: keepModel ? false : defaultIsFallback,
         };
       });
     } catch (err) {
@@ -103,7 +117,7 @@ export const useAiProvider = create<AiProviderState>()((set, get) => ({
 
   setModel(model) {
     const next = model.trim();
-    set({ model: next, defaultModel: next });
+    set({ model: next, defaultModel: next, modelIsFallback: false, defaultIsFallback: false });
     // Remembered for the next conversations and the next start (debounced: a custom id is
     // typed character by character).
     if (modelSaveTimer) clearTimeout(modelSaveTimer);
@@ -120,11 +134,15 @@ export const useAiProvider = create<AiProviderState>()((set, get) => ({
   },
 
   showModel(model) {
-    if (model) set({ model });
+    if (model) set({ model, modelIsFallback: false });
   },
 
   showRememberedModel() {
-    set((s) => ({ model: s.defaultModel || s.model }));
+    set((s) =>
+      s.defaultModel
+        ? { model: s.defaultModel, modelIsFallback: s.defaultIsFallback }
+        : { model: s.model },
+    );
   },
 
   async loadProviders() {
@@ -140,7 +158,14 @@ export const useAiProvider = create<AiProviderState>()((set, get) => ({
     useSettings.setState({ settings });
     // Another provider: its status and capabilities are checked again when needed.
     if (get().status?.providerId !== id) {
-      set({ status: null, capabilities: null, model: '', defaultModel: '' });
+      set({
+        status: null,
+        capabilities: null,
+        model: '',
+        defaultModel: '',
+        modelIsFallback: false,
+        defaultIsFallback: false,
+      });
     }
   },
 }));

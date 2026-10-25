@@ -18,7 +18,8 @@ test('the chat comes right after the toolbar in the tab order, and is a non-moda
   expect(await page.evaluate(() => Boolean(document.activeElement?.closest('.titlebar')))).toBe(
     true,
   );
-  // Escape (nothing running) closes the chat and the focus goes back to its toolbar button.
+  // Escape (nothing running) closes the chat and the focus goes back to its button over the
+  // view (there even with no tab open).
   await chatPanel(page).getByLabel('Message', { exact: true }).focus();
   await page.keyboard.press('Escape');
   await expect(chatPanel(page)).toHaveCount(0);

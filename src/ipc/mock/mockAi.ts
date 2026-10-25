@@ -76,9 +76,14 @@ export const MOCK_PROVIDER_ID = 'mock';
 export const MOCK_STATUS_CACHE_MS = 60_000;
 /** The mock's models; the last one does not accept images. */
 export const MOCK_MODELS: AiModel[] = [
-  { id: 'mock-fast', label: 'Mock Fast (default)', imageInput: true },
-  { id: 'mock-smart', label: 'Mock Smart', imageInput: true },
-  { id: 'mock-text', label: 'Mock Text (no images)', imageInput: false },
+  {
+    id: 'mock-fast',
+    label: 'Mock Fast (default)',
+    description: 'Quick answers',
+    imageInput: true,
+  },
+  { id: 'mock-smart', label: 'Mock Smart', description: 'Careful answers', imageInput: true },
+  { id: 'mock-text', label: 'Mock Text (no images)', description: null, imageInput: false },
 ];
 /** The instruction files the mock provider declares. */
 export const MOCK_CONTEXT_FILE_NAMES = ['AGENTS.md'];

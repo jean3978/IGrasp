@@ -22,8 +22,14 @@ The AI review adds four tokens, `--diff-added-bg`, `--diff-added-fg`, `--diff-re
 `--diff-removed-fg`, defined in each theme (Light removed background `#fff0ef`) and used by the rendered diff of a proposed edit and by
 the line-diff cards. Colour is not the only cue: in High Contrast, removed blocks get a dashed
 border and added blocks a solid one, and the flash after a decision is off under
-`prefers-reduced-motion`. Capture selections and screenshots outline the region with the accent
-token.
+`prefers-reduced-motion`.
+
+The AI chat has its own tokens in each theme (`--ai-accent`, `--ai-accent-soft`, `--ai-surface`,
+`--ai-surface-raised`, `--ai-border`, `--ai-bubble-*`, `--ai-send-*`, `--ai-bloom`,
+`--ai-bloom-far`, `--ai-highlight-*`, `--ai-selection-*`): a warm orange accent and warm
+surfaces so the chat stands apart from the app, a bloom of layered shadows behind the panel, and
+the colour of a selection highlighted for the chat. High Contrast keeps black surfaces, orange
+outlines, no bloom and no tinted highlight (an underline and a dashed outline instead).
 
 ## Settings
 

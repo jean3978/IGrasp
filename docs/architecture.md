@@ -69,7 +69,7 @@ The frontend never reads files directly: there is no fs plugin and no shell plug
 | `get_graph_status`, `get_doc_links`, `get_backlinks`, `list_broken_links` | Graph progress and broken count, a document's links with status, documents linking to one, every broken link. |
 | `search_symbols` | Ctrl+T hits (files and headings) for a query, with a request id. |
 | `search_text`, `cancel_search` | Starts a full-text search (returns its id) / stops it. |
-| `ai_status`, `ai_capabilities`, `ai_providers`, `ai_set_provider`, `ai_context`, `ai_estimate`, `ai_start`, `ai_respond_permission`, `ai_cancel` | Provider installed and logged in (cached 60 s) / what it supports / the providers / switch provider / what a message carries / its size / starts an operation for a user action in the open folder (returns its id) / answers a permission request / stops the operation. |
+| `ai_status`, `ai_capabilities`, `ai_providers`, `ai_set_provider`, `ai_context`, `ai_estimate`, `ai_start`, `ai_respond_permission`, `ai_cancel` | Provider installed and logged in (cached 60 s; the Claude provider also lists the CLI's models, once per CLI version and account, through its `initialize` control request: no message, no token) / what it supports, with exactly those models / the providers / switch provider / what a message carries / its size / starts an operation for a user action in the open folder (returns its id) / answers a permission request / stops the operation. |
 | `list_conversations`, `get_conversation`, `save_conversation`, `delete_conversation`, `forget_conversations` | The AI conversations of the open folder (app data only). |
 | `get_settings`, `update_settings`, `get_recent_folders`, …, `get_session`, `save_session` | App data. |
 
@@ -87,8 +87,8 @@ The frontend never reads files directly: there is no fs plugin and no shell plug
 | Folder | Role |
 |---|---|
 | `ipc/` | The `Backend` interface, its Tauri implementation (the only code calling `invoke`/`listen`) and the in-memory mock used in the browser and in tests. `generated/` holds the TypeScript types exported from Rust by ts-rs. |
-| `stores/` | zustand stores: `workspace` (layout: sidebar view, right panel), `tree`, `tabs` (document and code tabs, pending scroll targets), `documents`, `textFiles`, `history`, `recentFiles`, `graph`, `outline`, `quickOpen`, `search`, `settings`, `toasts`, `recent`, `ui`, `capture` (the overlay), and three for the AI: `aiProvider` (status, capabilities, model), `aiConversation` (items, operation, permissions, usage, history), `aiPanel` (the floating panel, draft, context, attachment); `session.ts` (save/restore), `diskChanges.ts`, `eventBridge.ts` (backend events → stores). |
-| `features/` | UI by feature: `titlebar` (menu bar, toolbar, window controls, `menuActions.ts`), `shell` (layout, activity bar, sidebar host, status bar), `explorer`, `search`, `recent`, `links` (broken links, backlinks), `outline`, `rightpanel`, `quickopen`, `code` (code viewer), `tabs`, `preview` (markdown pipeline, link resolver, reveal helpers), `mermaid`, `toasts`, `settings`, `shortcuts`, `welcome`, `splash`, `about`, `ai` (chat panel, context bar, history, permission and edit cards, inline review, event reducer, line diff), `diff` (the rendered block diff shared by AI review and, later, tutorials and Git), `capture` (region selection overlay, source-line mapping, screenshot). |
+| `stores/` | zustand stores: `workspace` (layout: sidebar view, right panel), `tree`, `tabs` (document and code tabs, pending scroll targets), `documents`, `textFiles`, `history`, `recentFiles`, `graph`, `outline`, `quickOpen`, `search`, `settings`, `toasts`, `recent`, `ui`, `capture` (the region overlay, the text mode and the selection highlight), and three for the AI: `aiProvider` (status, capabilities, model), `aiConversation` (items, operation, permissions, usage, history), `aiPanel` (the floating panel, draft, context, attachment); `session.ts` (save/restore), `diskChanges.ts`, `eventBridge.ts` (backend events → stores). |
+| `features/` | UI by feature: `titlebar` (menu bar, toolbar, window controls, `menuActions.ts`), `shell` (layout, activity bar, sidebar host, status bar), `explorer`, `search`, `recent`, `links` (broken links, backlinks), `outline`, `rightpanel`, `quickopen`, `code` (code viewer), `tabs`, `preview` (markdown pipeline, link resolver, reveal helpers, `keepScroll` for asynchronous renders), `mermaid`, `toasts`, `settings`, `shortcuts`, `welcome`, `splash`, `about`, `ai` (chat panel, selection line, quick actions, context bar, history, permission and edit cards, inline review, event reducer, line diff, the AI tools toolbar over the document), `diff` (the rendered block diff shared by AI review and, later, tutorials and Git), `capture` (region overlay, text mode, source-line mapping, selection highlight). |
 | `components/` | Shared UI: buttons and `VirtualRows` (the virtualized, keyboard-navigable list behind every new view). |
 | `styles/` | Design tokens and the three themes. |
 | `lib/` | Pure helpers (paths, link classification, platform). |
@@ -158,6 +158,12 @@ sequenceDiagram
   W-->>B: graph://changed (docs, removed, brokenCount)
   B->>UI: refresh link flags of open docs, backlinks, Broken Links view
 ```
+
+A file removed and created again in one batch is reported as **modified**: it was replaced in
+place (a temporary file renamed over it, as editors and the AI CLI save), so an open tab reloads
+instead of showing "deleted". A markdown file renamed over another stays a rename. While a new
+version renders, the previous render stays on screen, so a reload never blanks the document or
+loses its scroll position.
 
 ### The document graph
 
@@ -239,7 +245,35 @@ sequenceDiagram
 ```
 
 Nothing before `ai_start` reaches a provider; opening the panel, the context bar and the estimate
-only read metadata. The provider writes an accepted edit; the watcher then reloads the file.
+only read metadata. The provider writes an accepted edit; the watcher then reloads the file. The
+chat shows an answer in one piece when it is complete (rendered with the preview's sanitized
+pipeline, in its own render cache); streamed text is shown only while a card waits on the user.
+
+### Asking about a selection
+
+The **AI tools** toolbar over the view (`features/ai/ViewportToolbar.tsx`) starts the text mode
+or the region overlay; both only attach a selection, never call a provider
+([ADR 0020](decisions/0020-viewport-ai-tools-and-text-selections.md)).
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant H as CaptureHost (features/capture)
+  participant P as Panel store (aiPanel)
+  participant Ch as Chat panel
+  User->>H: highlight text and release (text mode), or drag a region
+  H->>H: blocks under the selection (data-line, code rows) → source lines
+  H->>H: highlighted text: narrowed to the lines that hold it (narrowToSelection)
+  H->>P: attachment AiCapture { sourcePath, lines, text, selection? }
+  H->>H: highlight painted in the scroll container (content coordinates)
+  H->>P: openNear(selection box) → rectNear
+  P-->>Ch: open beside the selection, draft pre-filled
+  User->>Ch: Send, or a quick action (Rewrite, Shorten…)
+  Ch->>Ch: ai_start(…, capture) as in "Sending a message"
+```
+
+The region's or selection's text goes as text (no screenshot); the provider quotes the
+highlighted text exactly and gives its source lines as context.
 
 ## State on disk
 

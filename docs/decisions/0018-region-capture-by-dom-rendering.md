@@ -1,6 +1,8 @@
 # 0018 — Region capture by rendering the DOM
 
-- Status: Accepted (Linux verification of asset images pending)
+- Status: Superseded in part by [0020](0020-viewport-ai-tools-and-text-selections.md): the
+  selection and the `data-line` mapping stay; the screenshot is no longer taken (a region is
+  sent as text)
 - Date: 2026-10-24
 
 ## Context
