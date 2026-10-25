@@ -25,6 +25,8 @@ const startRequest = (over: Partial<AiStartRequest>): AiStartRequest => ({
 const input = (over: Partial<QuizGenerationInput> = {}): QuizGenerationInput => ({
   subjectId: null,
   customSubject: null,
+  category: null,
+  role: null,
   count: 10,
   mode: 'fixed',
   round: null,

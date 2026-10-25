@@ -110,6 +110,8 @@ id: quiz-fixture-architecture
 title: "igrasp-demo — How igrasp-demo fits together"
 project: igrasp-demo
 subject: How igrasp-demo fits together
+category: global
+role: "New team member"
 scope: wholeProject
 level: 2
 generated: "2026-10-20T09:30:00.000Z"

@@ -12,8 +12,8 @@ use super::conversations::ConversationUsage;
 use super::{AppData, Cache, read_json, write_json};
 use crate::error::{AppError, AppResult};
 use crate::learning::corpus::SourceScope;
-use crate::learning::quiz::QuizMode;
 use crate::learning::quiz::schema::QuizQuestion;
+use crate::learning::quiz::{QuizCategory, QuizMode};
 use crate::profile::ProfileCorrections;
 
 pub const LEARNING_DIR: &str = "learning";
@@ -73,6 +73,10 @@ pub struct QuizRecord {
     pub subject: Option<String>,
     pub subject_title: String,
     pub mode: QuizMode,
+    /// The wizard's choices, for sorting quizzes: the kind of quiz and who took it (absent in
+    /// records saved before they existed).
+    pub category: Option<QuizCategory>,
+    pub role: Option<String>,
     pub scope: SourceScope,
     pub origin: QuizOrigin,
     /// Questions wanted (an adaptive quiz writes them round by round).
@@ -108,6 +112,8 @@ pub struct QuizSummary {
     pub answered: u32,
     pub score: u32,
     pub level: u32,
+    pub category: Option<QuizCategory>,
+    pub role: Option<String>,
 }
 
 /// Everything the app keeps about one folder for the learning features.
@@ -142,6 +148,8 @@ fn summary(r: &QuizRecord) -> QuizSummary {
         answered: u32::try_from(r.answers.len()).unwrap_or(u32::MAX),
         score: r.score,
         level: r.level,
+        category: r.category,
+        role: r.role.clone(),
     }
 }
 

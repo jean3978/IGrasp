@@ -196,7 +196,7 @@ export function composeMockQuiz(
     : paths
       ? `the code of ${deps.profile.name} in ${paths.join(', ')}`
       : input.customSubject
-        ? `"${input.customSubject}" in ${deps.profile.name} (a subject the developer typed)`
+        ? `"${input.customSubject}" in ${deps.profile.name} (${input.category === 'feature' ? 'a feature of the project' : input.category === 'global' ? 'a concept across the project' : 'a subject'} that the player typed)`
         : `${deps.profile.name} as a whole`;
   const lines = [
     resumeId === undefined
@@ -207,6 +207,7 @@ export function composeMockQuiz(
       : '',
     `Write ${String(input.count)} questions about ${about}, with these difficulties: ${planText}.`,
     input.scope.type === 'documentationOnly' ? 'Sources are limited to the documentation.' : '',
+    input.role ? `Audience: ${input.role} on this project.` : 'Audience: developers.',
     input.exclude.length > 0
       ? `Do not ask again: ${input.exclude.map((e) => e.question).join(' | ')}`
       : '',

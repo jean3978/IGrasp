@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { Tooltip } from 'radix-ui';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { FIXTURE_ROOT } from '../../ipc/mock/fixture';
+import type { ProjectProfile } from '../../ipc/types';
 import { useAiProvider } from '../../stores/aiProvider';
 import { useProjectProfile } from '../../stores/projectProfile';
 import { useQuiz } from '../../stores/quiz';
@@ -10,6 +11,7 @@ import { useSettings } from '../../stores/settings';
 import { useTabs } from '../../stores/tabs';
 import { useWorkspace } from '../../stores/workspace';
 import { resetAiStores } from '../../test/resetAi';
+import { rolesFor } from './quizRoles';
 import { QuizWizard } from './QuizWizard';
 
 const setup = () => useQuiz.getState().setup;
@@ -29,6 +31,12 @@ const kind = (name: string) =>
     name: new RegExp(name),
   });
 
+/** Step 1: picks a proposed role and goes on. */
+async function asRole(role = 'Contributor') {
+  await userEvent.click(screen.getByRole('radio', { name: role }));
+  await userEvent.click(next());
+}
+
 beforeEach(async () => {
   window.__igraspMock?.reset();
   resetAiStores();
@@ -43,69 +51,89 @@ beforeEach(async () => {
 });
 
 describe('the new-quiz wizard', () => {
-  it('goes kind, concept, options, then Start shows the confirmation card', async () => {
+  it('goes role, kind, concept, options, then Start shows the confirmation card', async () => {
     show();
-    expect(heading()).toHaveTextContent('What kind of quiz?');
-    expect(screen.getByRole('button', { name: /Kind of quiz/ })).toHaveAttribute(
-      'aria-current',
-      'step',
-    );
-    // Only the kinds on the first step: no subject chip, no option, no Start.
-    expect(screen.queryByRole('button', { name: /^Start/ })).toBeNull();
-    expect(screen.queryByLabelText('Questions')).toBeNull();
-
-    await userEvent.click(kind('Global concepts'));
-    expect(heading()).toHaveTextContent('Which concept?');
-    expect(heading()).toHaveFocus();
-    const concepts = screen.getByRole('radiogroup', { name: 'Concepts' });
+    expect(heading()).toHaveTextContent('Who are you on this project?');
+    // The fixture is a command-line tool and a library: roles for those.
+    const roles = screen.getByRole('radiogroup', { name: 'Roles' });
     expect(
-      within(concepts)
+      within(roles)
         .getAllByRole('radio')
         .map((r) => r.textContent),
-    ).toEqual(['The whole project', 'Architecture', 'Tech stack', 'Build, CI and release']);
+    ).toEqual(['Contributor', 'Maintainer', 'User of the tool', 'Developer using the library']);
+    expect(next()).toBeDisabled();
+    await asRole('Maintainer');
+
+    expect(heading()).toHaveTextContent('What kind of quiz?');
+    expect(heading()).toHaveFocus();
+    expect(screen.queryByRole('radio', { name: /Your own subject/ })).toBeNull();
+    await userEvent.click(kind('Global concepts'));
+    expect(heading()).toHaveTextContent('Which concept?');
+    const concepts = screen.getByRole('radiogroup', { name: 'Concepts' });
     await userEvent.click(within(concepts).getByRole('radio', { name: 'Tech stack' }));
     await userEvent.click(next());
 
     expect(heading()).toHaveTextContent('How should the quiz go?');
+    expect(screen.getByText('Maintainer', { selector: 'strong' })).toBeInTheDocument();
     expect(screen.getByText('Tech stack', { selector: 'strong' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Questions')).toBeInTheDocument();
-    expect(screen.getByRole('radiogroup', { name: 'Sources' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /^Start/ }));
     await waitFor(() => {
       expect(useQuiz.getState().screen).toBe('confirm');
     });
-    expect(useQuiz.getState().pending?.input.subjectId).toBe('concept:stack');
+    expect(useQuiz.getState().pending?.input).toMatchObject({
+      subjectId: 'concept:stack',
+      category: 'global',
+      role: 'Maintainer',
+    });
     expect(window.__igraspMock?.state.ai.starts).toEqual([]);
   });
 
-  it('waits for a feature to be picked', async () => {
+  it('takes a role of your own', async () => {
     show();
+    await userEvent.type(screen.getByRole('textbox', { name: 'Other role' }), 'Narrative designer');
+    expect(setup().role).toBe('Narrative designer');
+    for (const r of within(screen.getByRole('radiogroup', { name: 'Roles' })).getAllByRole('radio'))
+      expect(r).toHaveAttribute('aria-checked', 'false');
+    await userEvent.click(next());
+    expect(heading()).toHaveTextContent('What kind of quiz?');
+  });
+
+  it('types a feature that is not in the list, read as a feature', async () => {
+    show();
+    await asRole();
     await userEvent.click(kind('A feature'));
     expect(heading()).toHaveTextContent('Which feature?');
     expect(next()).toBeDisabled();
     await userEvent.click(screen.getByRole('radio', { name: 'Greeting' }));
     expect(next()).toBeEnabled();
-    expect(setup()).toMatchObject({ target: 'subject', subjectId: 'feature:greeting' });
-    // Back to the kinds keeps the choice highlighted.
-    await userEvent.click(screen.getByRole('button', { name: /Back/ }));
-    expect(kind('A feature')).toHaveAttribute('aria-checked', 'true');
-  });
-
-  it('takes a subject of your own, focused, and needs some text', async () => {
-    show();
-    await userEvent.click(kind('Your own subject'));
-    const field = screen.getByRole('textbox', { name: 'Your own subject' });
-    expect(field).toHaveFocus();
-    expect(next()).toBeDisabled();
-    await userEvent.type(field, 'how the greeting is built');
+    const other = screen.getByRole('textbox', { name: 'Something else' });
+    await userEvent.type(other, 'loud mode');
+    expect(setup()).toMatchObject({
+      target: 'custom',
+      category: 'feature',
+      customSubject: 'loud mode',
+    });
+    expect(screen.getByRole('radio', { name: 'Greeting' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
     await userEvent.click(next());
-    expect(screen.getByText('“how the greeting is built”')).toBeInTheDocument();
-    expect(setup()).toMatchObject({ target: 'custom', customSubject: 'how the greeting is built' });
+    expect(screen.getByText('“loud mode”')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /^Start/ }));
+    await waitFor(() => {
+      expect(useQuiz.getState().pending?.input).toMatchObject({
+        subjectId: null,
+        customSubject: 'loud mode',
+        category: 'feature',
+      });
+    });
+    useQuiz.getState().cancelConfirm();
   });
 
-  it('collects code to check from typed paths and open files, without sources', async () => {
+  it('collects code to check, as a code quiz without sources', async () => {
     useTabs.getState().openCode('src/main.ts');
     show();
+    await asRole();
     await userEvent.click(kind('Check specific code'));
     expect(next()).toBeDisabled();
     await userEvent.type(
@@ -113,17 +141,44 @@ describe('the new-quiz wizard', () => {
       '\\docs\\guide\\{Enter}',
     );
     await userEvent.click(screen.getByRole('button', { name: /main\.ts/ }));
-    expect(setup()).toMatchObject({ target: 'paths', paths: ['docs/guide', 'src/main.ts'] });
+    expect(setup()).toMatchObject({
+      target: 'paths',
+      category: 'code',
+      paths: ['docs/guide', 'src/main.ts'],
+    });
     await userEvent.click(screen.getByRole('button', { name: 'Remove docs/guide' }));
-    expect(setup().paths).toEqual(['src/main.ts']);
     await userEvent.click(next());
     expect(screen.getByText('src/main.ts', { selector: 'strong' })).toBeInTheDocument();
     expect(screen.queryByRole('radiogroup', { name: 'Sources' })).toBeNull();
-    expect(
-      screen.getByText(/Code check: only the files and folders you picked/),
-    ).toBeInTheDocument();
-    // "Change" goes back to the subject step.
     await userEvent.click(screen.getByRole('button', { name: 'Change' }));
     expect(heading()).toHaveTextContent('Which code should Hoot check?');
+  });
+});
+
+describe('rolesFor', () => {
+  const profile = (...kinds: string[]) =>
+    ({
+      kinds: kinds.map((value) => ({ value, confidence: 'high', evidence: [] })),
+    }) as unknown as ProjectProfile;
+
+  it('proposes the roles of the kinds of project', () => {
+    expect(rolesFor(profile('game'))).toEqual([
+      'Gameplay programmer',
+      'Game designer',
+      'Level designer',
+      'Artist',
+      'Technical artist',
+      'Sound designer',
+      'Producer',
+      'QA tester',
+    ]);
+    expect(rolesFor(profile('webFrontend', 'webBackend')).slice(0, 4)).toEqual([
+      'Frontend developer',
+      'UX/UI designer',
+      'Product manager',
+      'QA engineer',
+    ]);
+    expect(rolesFor(profile('documentation'))[0]).toBe('Technical writer');
+    expect(rolesFor(null)).toEqual(['Developer', 'Tech lead', 'New team member']);
   });
 });

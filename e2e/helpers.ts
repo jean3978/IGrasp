@@ -119,28 +119,35 @@ export async function openQuiz(page: Page): Promise<void> {
   });
   await page.keyboard.press('Control+Alt+q');
   await expect(page.getByRole('heading', { name: 'Quiz', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'What kind of quiz?' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Who are you on this project?' })).toBeVisible();
 }
 
-export type QuizKindLabel =
-  'Global concepts' | 'A feature' | 'Your own subject' | 'Check specific code';
+export type QuizKindLabel = 'Global concepts' | 'A feature' | 'Check specific code';
 
 export interface WizardChoice {
+  /** A proposed role (default: the first one), or `other` typed. */
+  role?: string;
+  otherRole?: string;
   kind?: QuizKindLabel;
   /** A subject chip of the global concepts or the features. */
   subject?: string;
-  /** Your own subject. */
+  /** "Something else": a concept or feature typed. */
   custom?: string;
   /** Code to check. */
   paths?: string[];
 }
 
-/** Walks the new-quiz wizard to its options step: the kind, then the subject, then Next. */
+/** Walks the new-quiz wizard to its options step: role, kind, subject, with Next between. */
 export async function toOptions(page: Page, choice: WizardChoice = {}): Promise<void> {
+  if (choice.otherRole)
+    await page.getByRole('textbox', { name: 'Other role' }).fill(choice.otherRole);
+  else if (choice.role) await page.getByRole('radio', { name: choice.role }).click();
+  else await page.getByRole('radiogroup', { name: 'Roles' }).getByRole('radio').first().click();
+  await page.getByRole('button', { name: /^Next/ }).click();
   await page.getByRole('radio', { name: new RegExp(choice.kind ?? 'Global concepts') }).click();
   if (choice.subject) await page.getByRole('radio', { name: choice.subject }).click();
   if (choice.custom)
-    await page.getByRole('textbox', { name: 'Your own subject' }).fill(choice.custom);
+    await page.getByRole('textbox', { name: 'Something else' }).fill(choice.custom);
   for (const p of choice.paths ?? []) {
     await page.getByLabel('A file or folder to check').fill(p);
     await page.keyboard.press('Enter');

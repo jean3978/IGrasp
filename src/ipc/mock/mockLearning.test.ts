@@ -11,6 +11,8 @@ const record = (id: string, finishedMs: number | null): QuizRecord => ({
   model: 'mock-fast',
   subject: null,
   subjectTitle: `About ${id}`,
+  category: null,
+  role: null,
   mode: 'fixed',
   scope: { type: 'wholeProject' },
   origin: { type: 'generated' },

@@ -2,7 +2,10 @@
  * The mock of Save results… / Save quiz… (`learning/save.rs`, `learning/quiz/file.rs`): the same
  * file name cleanup and the same front matter check.
  */
-import type { QuizSaveKind } from '../types';
+import type { QuizCategory, QuizSaveKind } from '../types';
+
+const categoryOf = (v: string | null): QuizCategory | null =>
+  v === 'global' || v === 'feature' || v === 'code' ? v : null;
 
 export interface SavedMarkdown {
   kind: QuizSaveKind;
@@ -45,6 +48,8 @@ export interface QuizFileInfo {
   subject: string | null;
   generated: string | null;
   questions: number;
+  category: QuizCategory | null;
+  role: string | null;
 }
 
 /** A top-level scalar of the front matter: plain, single- or double-quoted (Rust `field`). */
@@ -84,6 +89,8 @@ export function quizInfo(text: string): QuizFileInfo | null {
     title: field(fm, 'title'),
     subject: field(fm, 'subject'),
     generated: field(fm, 'generated'),
+    category: categoryOf(field(fm, 'category')),
+    role: field(fm, 'role'),
     questions,
   };
 }

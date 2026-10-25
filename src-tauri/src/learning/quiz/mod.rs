@@ -18,6 +18,20 @@ use super::corpus::SourceScope;
 pub const MIN_COUNT: u32 = 3;
 pub const MAX_COUNT: u32 = 30;
 
+/// The kind of quiz chosen in the wizard: kept with the quiz (record, history, quiz files) so
+/// quizzes can be sorted by it, and sent with a typed subject so the prompt knows what it is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum QuizCategory {
+    /// A concept across the project (architecture, security, …).
+    Global,
+    /// Something the project does: a feature, a game system.
+    Feature,
+    /// Specific files or folders, checked in detail.
+    Code,
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
@@ -65,6 +79,10 @@ pub struct QuizGenerationInput {
     pub subject_id: Option<String>,
     /// A subject the developer typed ("How saving works"), when no proposed subject is chosen.
     pub custom_subject: Option<String>,
+    /// The kind of quiz chosen in the wizard (what a typed subject is: a concept or a feature).
+    pub category: Option<QuizCategory>,
+    /// Who takes the quiz ("Programmer", "Artist", "Producer", …): the audience of the prompt.
+    pub role: Option<String>,
     /// Questions to write in this operation (a whole fixed quiz, or one adaptive round).
     pub count: u32,
     pub mode: QuizMode,
@@ -83,6 +101,8 @@ impl Default for QuizGenerationInput {
         Self {
             subject_id: None,
             custom_subject: None,
+            category: None,
+            role: None,
             count: 10,
             mode: QuizMode::Fixed,
             round: None,
@@ -115,6 +135,10 @@ impl QuizGenerationInput {
             .domain_gap
             .map(|g| g.trim().chars().take(200).collect::<String>())
             .filter(|g| !g.is_empty());
+        self.role = self
+            .role
+            .map(|r| r.trim().chars().take(80).collect::<String>())
+            .filter(|r| !r.is_empty());
         // A proposed subject wins over a typed one.
         let has_subject = self.subject_id.is_some();
         self.custom_subject = self

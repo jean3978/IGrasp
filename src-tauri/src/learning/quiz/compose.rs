@@ -117,6 +117,8 @@ pub fn compose(
         profile,
         subject: subject.as_ref(),
         custom_subject: input.custom_subject.as_deref(),
+        category: input.category,
+        role: input.role.as_deref(),
         count: input.count,
         plan: difficulty_plan,
         scope: &input.scope,
@@ -525,7 +527,8 @@ mod tests {
     /// `IGRASP_QUIZ_ROOT` (default: this repository), `IGRASP_QUIZ_COUNT` questions (5),
     /// `IGRASP_QUIZ_MODEL` (sonnet), `IGRASP_QUIZ_SUBJECT` (a subject id; none by default),
     /// `IGRASP_QUIZ_SCOPE=docs` for documentation only, `IGRASP_QUIZ_CUSTOM` (a typed subject),
-    /// `IGRASP_QUIZ_PATHS` (comma-separated files or folders: a code check). Prints the subjects, the activity and
+    /// `IGRASP_QUIZ_PATHS` (comma-separated files or folders: a code check), `IGRASP_QUIZ_ROLE`
+    /// (who takes the quiz). Prints the subjects, the activity and
     /// the accepted questions. Run with
     /// `cargo test --manifest-path src-tauri/Cargo.toml real_quiz -- --ignored --nocapture`.
     #[test]
@@ -555,6 +558,7 @@ mod tests {
                 .unwrap_or(5),
             subject_id: var("IGRASP_QUIZ_SUBJECT"),
             custom_subject: var("IGRASP_QUIZ_CUSTOM"),
+            role: var("IGRASP_QUIZ_ROLE"),
             scope: if let Some(paths) = var("IGRASP_QUIZ_PATHS") {
                 SourceScope::Paths {
                     paths: paths.split(',').map(str::to_owned).collect(),

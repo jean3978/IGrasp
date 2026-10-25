@@ -15,7 +15,8 @@ opened folder.
 ## Decision
 
 - A shareable learning file is **markdown**: a front matter that declares its kind
-  (`igrasp: quiz`, later `igrasp: tutorial`) with an id, title, project, subject, scope,
+  (`igrasp: quiz`, later `igrasp: tutorial`) with an id, title, project, subject, the wizard's
+  choices (`category`: global, feature or code; `role`: who it was written for), scope,
   starting level, the date it was generated, the provider and model it was written with, and
   `sources`: every cited range with the **SHA-256 of its lines** (`\n`-joined, `\r` removed).
 - The body has one heading per item (`## 1. <question>`) followed by a fenced **`igrasp-quiz`**

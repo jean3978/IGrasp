@@ -9,6 +9,8 @@ date: "2026-10-25 14:06"
 provider: "mock"
 model: "mock-large"
 mode: fixed
+category: global
+role: "Producer"
 score: 1
 level: 2
 questions: 2

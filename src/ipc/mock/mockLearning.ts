@@ -36,5 +36,7 @@ export function summaryOf(r: QuizRecord): QuizSummary {
     answered: r.answers.length,
     score: r.score,
     level: r.level,
+    category: r.category,
+    role: r.role,
   };
 }

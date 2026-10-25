@@ -15,13 +15,29 @@ today).
 - **Open**: **Learn → Quiz Me…** (`Ctrl+Alt+Q`), or the owl button of the AI tools over the
   view. The Quiz tab opens; opening it is free (the profile, the subjects, the history and a quiz
   to continue are local).
-- **Home**: Hoot and the **new-quiz wizard**, one question per step: **1. Kind of quiz**
-  (four cards: *Global concepts*, *A feature*, *Your own subject*, *Check specific code*; a click
-  moves on), **2. Subject** (only the input of that kind: the concept chips with *The whole
-  project*, the feature chips, a text field, or the code picker; Next waits for a choice),
-  **3. Options** (a summary of the choice with *Change*, then the number of questions (5 to 30),
-  the mode, the sources (not for a code check), the model, and **Start**). Back and the step
-  bar go back to an earlier step. Start shows the confirmation card with the expected size;
+- **Home**: Hoot and the **new-quiz wizard**, one question per step:
+  1. **Your role**: roles proposed for this kind of project (a game: gameplay programmer, game
+     designer, level designer, artist, technical artist, sound designer, producer, QA tester; a
+     web product: frontend and backend developers, UX/UI designer, product manager…), or *Other
+     role* typed. Preselected from your last quiz.
+  2. **Kind of quiz**: three cards, *Global concepts*, *A feature*, *Check specific code*; a click
+     moves on.
+  3. **Subject**: the concept chips (with *The whole project*) or the feature chips, plus
+     *Something else* to type a concept or feature that is not listed (sent as such, so Hoot
+     knows whether it is a concept or a feature), or the code picker for a code check.
+  4. **Options**: a summary ("As Artist · A feature: Player · Change"), the number of questions
+     (5 to 30), the mode, the sources (not for a code check), the model, and **Start**.
+
+  Back and the step bar go back to an earlier step.
+- **Your role shapes the questions**: developers (and roles that write code) get the
+  developer-to-developer audience; other roles get questions about how their work fits in the
+  project, in plain words, with a focus that fits them (an artist: how sprites, animations,
+  scenes and materials are wired; a producer: structure, pipeline, risks; QA: behaviour, edge
+  cases, tests…). Every question still cites the project's files.
+- **The wizard's choices are kept with the quiz**: the kind of quiz (`category`: global,
+  feature, code) and the role are stored in the quiz record and the history, written in saved
+  quiz files and results reports, listed with the saved quizzes, and shown as tags (the basis of
+  a sorted list of quizzes later). Start shows the confirmation card with the expected size;
   nothing is sent before its own Start. Below: **Continue your quiz** (a quiz in progress
   survives a restart), **Last results** with **Play again**, **Saved quizzes** with **Open quiz
   file…**, and the project profile.
@@ -69,8 +85,8 @@ paths.
   `enemy/`), and common features found by name (*NPCs*, *Enemies*, *Combat*, *Inventory and
   items*, *Saving and loading*, *Dialogue*, *Multiplayer*, *Search*, *Notifications*, …). A
   feature made mostly of the files of another one is not proposed twice; at most 12.
-- **Your own**: type any subject ("how the save system works"). The generation starts from the
-  files whose names match its words; if the project has nothing about it, Hoot says so.
+- **Something else**: under the concept or feature chips, type one that is not listed (a concept: "threading model"; a feature: "fishing"). It is sent with its kind, and the generation
+  starts from the files whose names match its words; if the project has nothing about it, Hoot says so.
 - **Check specific code**: pick files or folders (type them, with suggestions, or add a file
   open in a tab). The quiz cites only that code and asks **detailed, line-level questions**:
   control flow, edge cases, early returns, error paths, what a change would break. Use it to make

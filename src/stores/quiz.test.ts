@@ -325,15 +325,27 @@ describe('the quiz store', () => {
     expect(last?.type === 'message' && last.text).toMatch(/Cannot play that quiz: Not a quiz/);
   });
 
-  it('asks about a typed subject, and keeps it for more questions', async () => {
+  it('asks about a typed feature for a role, keeps both with the quiz and for more questions', async () => {
     setUp();
-    quiz().setSetup({ target: 'custom', customSubject: '  greeting ', count: 5 });
+    quiz().setSetup({
+      target: 'custom',
+      customSubject: '  greeting ',
+      category: 'feature',
+      role: ' Artist ',
+      count: 5,
+    });
     await startQuiz();
-    expect(mock().state.ai.lastRequest?.prompt).toContain(
-      '"greeting" in igrasp-demo (a subject the developer typed)',
+    const prompt = mock().state.ai.lastRequest?.prompt ?? '';
+    expect(prompt).toContain(
+      '"greeting" in igrasp-demo (a feature of the project that the player typed)',
     );
-    expect(quiz().record?.subject).toBe('custom:greeting');
-    expect(quiz().record?.subjectTitle).toBe('greeting');
+    expect(prompt).toContain('Audience: Artist on this project.');
+    expect(quiz().record).toMatchObject({
+      subject: 'custom:greeting',
+      subjectTitle: 'greeting',
+      category: 'feature',
+      role: 'Artist',
+    });
     for (let i = 0; i < 5; i++) {
       play(true);
       quiz().next();
@@ -341,18 +353,31 @@ describe('the quiz store', () => {
     await vi.waitFor(() => {
       expect(quiz().screen).toBe('results');
     });
+    await vi.waitFor(() => {
+      expect(quiz().history[0]).toMatchObject({ category: 'feature', role: 'Artist' });
+    });
     await quiz().keepGoing();
-    expect(quiz().pending?.input).toMatchObject({ subjectId: null, customSubject: 'greeting' });
+    expect(quiz().pending?.input).toMatchObject({
+      subjectId: null,
+      customSubject: 'greeting',
+      category: 'feature',
+      role: 'Artist',
+    });
+    // The next quiz starts with the role of the last one.
+    quiz().leaveFolder();
+    await quiz().openHome(FIXTURE_ROOT);
+    expect(quiz().setup.role).toBe('Artist');
   });
 
   it('checks specific code with questions on those files only', async () => {
     setUp();
-    quiz().setSetup({ target: 'paths', paths: ['src'], count: 5 });
+    quiz().setSetup({ target: 'paths', category: 'code', paths: ['src'], count: 5 });
     await startQuiz();
     expect(mock().state.ai.lastRequest?.prompt).toContain('the code of igrasp-demo in src');
     const record = quiz().record;
     expect(record?.scope).toEqual({ type: 'paths', paths: ['src'] });
     expect(record?.subjectTitle).toBe('Code check: src');
+    expect(record?.category).toBe('code');
     expect(record?.questions.length).toBeGreaterThan(0);
     for (const q of record?.questions ?? [])
       expect(q.sources.every((s) => s.path.startsWith('src/'))).toBe(true);

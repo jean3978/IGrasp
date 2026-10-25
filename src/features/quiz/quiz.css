@@ -246,6 +246,51 @@
   width: 100%;
 }
 
+/* "Something else" / "Other role": a typed choice under the chips, highlighted when it is the
+   one chosen. */
+.quiz-other {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 6px 10px;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-m);
+}
+
+.quiz-other-selected {
+  border-color: var(--ai-accent);
+  background: var(--ai-accent-soft);
+}
+
+.quiz-other-label {
+  color: var(--fg-muted);
+  font-size: var(--font-size-ui);
+  white-space: nowrap;
+}
+
+/* The wizard's choices kept with a quiz. */
+.quiz-tags {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.quiz-tag {
+  padding: 0 6px;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+  font-weight: 400;
+}
+
+.quiz-tag-role {
+  border-color: var(--ai-accent);
+}
+
 .quiz-code-check {
   display: grid;
   gap: 8px;

@@ -137,6 +137,8 @@ pub fn list_quiz_files(state: State<'_, AppState>) -> AppResult<Vec<QuizFileSumm
                     subject: quiz.subject.clone(),
                     generated: quiz.generated.clone(),
                     questions: quiz.questions,
+                    category: quiz.category,
+                    role: quiz.role.clone(),
                     modified_ms: index
                         .as_ref()
                         .and_then(|i| i.file(rel))

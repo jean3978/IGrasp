@@ -68,6 +68,8 @@ const record: QuizRecord = {
   model: 'mock-large',
   subject: 'arch',
   subjectTitle: 'How the app fits together',
+  category: 'feature',
+  role: 'Level designer',
   mode: 'adaptive',
   scope: { type: 'wholeProject' },
   origin: { type: 'generated' },
@@ -110,9 +112,12 @@ describe('quiz files', () => {
       level: 3,
       provider: 'mock',
       skipped: 0,
+      category: 'feature',
+      role: 'Level designer',
     });
     const played = recordFromFile(parsed, 'quizzes/q.md');
     expect(played.origin).toEqual({ type: 'file', path: 'quizzes/q.md' });
+    expect(played).toMatchObject({ category: 'feature', role: 'Level designer' });
     expect(played.usage.costUsd).toBeNull();
     expect(played.startLevel).toBe(3);
     expect(await checkSources(parsed, read)).toEqual({});

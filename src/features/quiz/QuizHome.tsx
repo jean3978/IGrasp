@@ -8,6 +8,7 @@ import { selectQuizBusy, useQuiz } from '../../stores/quiz';
 import { Hoot } from '../hoot/Hoot';
 import { ProjectProfilePanel } from '../profile/ProjectProfilePanel';
 import { formatWhen } from './quizFormat';
+import { QuizTags } from './QuizTags';
 import { QuizWizard } from './QuizWizard';
 
 export function QuizHome({ hootLine }: { hootLine: string }) {
@@ -71,6 +72,7 @@ export function QuizHome({ hootLine }: { hootLine: string }) {
             <p className="quiz-muted">
               {last.subjectTitle} · {last.score} of {last.answered} right ·{' '}
               {formatWhen(last.finishedMs)}
+              <QuizTags category={last.category} role={last.role} />
             </p>
           </div>
           <Button
@@ -108,7 +110,10 @@ export function QuizHome({ hootLine }: { hootLine: string }) {
                   title={`Play ${f.relPath} (no AI call)`}
                 >
                   <Play aria-hidden className="quiz-file-icon" />
-                  <span className="quiz-file-title">{f.subject ?? f.title ?? f.relPath}</span>
+                  <span className="quiz-file-title">
+                    {f.subject ?? f.title ?? f.relPath}
+                    <QuizTags category={f.category} role={f.role} />
+                  </span>
                   <span className="quiz-muted">
                     {f.questions} question{f.questions === 1 ? '' : 's'}
                     {f.generated ? ` · ${formatGenerated(f.generated)}` : ''} · {f.relPath}

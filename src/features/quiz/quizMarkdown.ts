@@ -108,6 +108,8 @@ export function resultsMarkdown(record: QuizRecord, project: string): string {
     `provider: ${yamlString(record.providerId)}`,
     `model: ${yamlString(record.model)}`,
     `mode: ${record.mode}`,
+    ...(record.category ? [`category: ${record.category}`] : []),
+    ...(record.role ? [`role: ${yamlString(record.role)}`] : []),
     `score: ${String(record.score)}`,
     `level: ${String(record.level)}`,
     `questions: ${String(answered)}`,

@@ -11,6 +11,7 @@ use ts_rs::TS;
 use crate::commands::files::{MAX_MARKDOWN_BYTES, decode_text};
 use crate::error::{AppError, AppResult};
 use crate::index::scanner::rel_path;
+use crate::learning::quiz::QuizCategory;
 
 /// Whether `text` starts with a front matter that declares `igrasp: quiz`.
 pub fn is_quiz_markdown(text: &str) -> bool {
@@ -34,6 +35,8 @@ pub struct QuizFileSummary {
     pub subject: Option<String>,
     pub generated: Option<String>,
     pub questions: u32,
+    pub category: Option<QuizCategory>,
+    pub role: Option<String>,
     pub modified_ms: i64,
 }
 
@@ -82,6 +85,9 @@ pub struct QuizFileInfo {
     pub generated: Option<String>,
     /// The `igrasp-quiz` blocks.
     pub questions: u32,
+    /// The kind of quiz and who it was written for (the wizard's choices).
+    pub category: Option<QuizCategory>,
+    pub role: Option<String>,
 }
 
 /// The summary of a quiz file, or `None` when `text` is not one.
@@ -101,6 +107,13 @@ pub fn info(text: &str) -> Option<QuizFileInfo> {
         title: field(fm, "title"),
         subject: field(fm, "subject"),
         generated: field(fm, "generated"),
+        category: field(fm, "category").and_then(|c| match c.as_str() {
+            "global" => Some(QuizCategory::Global),
+            "feature" => Some(QuizCategory::Feature),
+            "code" => Some(QuizCategory::Code),
+            _ => None,
+        }),
+        role: field(fm, "role"),
         questions: u32::try_from(questions).unwrap_or(u32::MAX),
     })
 }
@@ -193,7 +206,8 @@ mod tests {
     #[test]
     fn summarizes_a_quiz_file() {
         let text = "---\nigrasp: quiz\ntitle: \"IGrasp \\u2014 \\\"gateway\\\"\"\nsubject: 'It''s the gateway'\n\
-                    generated: 2026-10-24T14:02:00Z # UTC\nsources:\n  - path: a.rs\n---\n\n# Q\n\n\
+                    generated: 2026-10-24T14:02:00Z # UTC\ncategory: feature\nrole: Level designer\n\
+                    sources:\n  - path: a.rs\n---\n\n# Q\n\n\
                     ## 1. One\n\n```igrasp-quiz\nid: q1\n```\n\n## 2. Two\n\n~~~igrasp-quiz\nid: q2\n~~~\n";
         assert_eq!(
             info(text),
@@ -202,6 +216,8 @@ mod tests {
                 subject: Some("It's the gateway".to_owned()),
                 generated: Some("2026-10-24T14:02:00Z".to_owned()),
                 questions: 2,
+                category: Some(QuizCategory::Feature),
+                role: Some("Level designer".to_owned()),
             })
         );
         assert_eq!(info("# Not a quiz\n"), None);

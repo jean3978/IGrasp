@@ -10,6 +10,7 @@ import type {
   AiEventEnvelope,
   AiSizeEstimate,
   QuizExclusion,
+  QuizCategory,
   QuizFileSummary,
   QuizGenerationInput,
   QuizMode,
@@ -59,6 +60,10 @@ const ACTIVITY_LINES = 4;
 export interface QuizSetup {
   /** What the quiz is about: a proposed subject (or none), a typed one, or code to check. */
   target: QuizTarget;
+  /** The kind of quiz chosen in the wizard (a code check is `code`). */
+  category: QuizCategory;
+  /** Who takes the quiz (a proposed role or one typed); empty: not said. */
+  role: string;
   /** Null: no specific subject. */
   subjectId: string | null;
   /** The subject the developer typed (target `custom`). */
@@ -171,27 +176,43 @@ export type QuizTarget = 'subject' | 'custom' | 'paths';
 /** A typed subject is kept in the record as `custom:<text>`. */
 const CUSTOM = 'custom:';
 
-/** The subject fields of an input continuing `subject` (a record's). */
-export const subjectFields = (
-  subject: string | null,
-): Pick<QuizGenerationInput, 'subjectId' | 'customSubject'> =>
-  subject?.startsWith(CUSTOM)
-    ? { subjectId: null, customSubject: subject.slice(CUSTOM.length) }
-    : { subjectId: subject, customSubject: null };
+type ContinuedFields = Pick<
+  QuizGenerationInput,
+  'subjectId' | 'customSubject' | 'category' | 'role'
+>;
 
-/** What a new quiz is about, from the setup. */
+/** The subject, kind and role of an input continuing `record` (more questions, a round). */
+export const subjectFields = (
+  record: Pick<QuizRecord, 'subject' | 'category' | 'role'>,
+): ContinuedFields => ({
+  ...(record.subject?.startsWith(CUSTOM)
+    ? { subjectId: null, customSubject: record.subject.slice(CUSTOM.length) }
+    : { subjectId: record.subject, customSubject: null }),
+  category: record.category,
+  role: record.role,
+});
+
+/** What a new quiz is about and who takes it, from the setup. */
 export function targetInput(
   setup: QuizSetup,
-): Pick<QuizGenerationInput, 'subjectId' | 'customSubject' | 'scope'> {
+): ContinuedFields & Pick<QuizGenerationInput, 'scope'> {
+  const who = { category: setup.category, role: setup.role.trim() || null };
   if (setup.target === 'paths')
-    return { subjectId: null, customSubject: null, scope: { type: 'paths', paths: setup.paths } };
+    return {
+      ...who,
+      category: 'code',
+      subjectId: null,
+      customSubject: null,
+      scope: { type: 'paths', paths: setup.paths },
+    };
   if (setup.target === 'custom')
     return {
+      ...who,
       subjectId: null,
       customSubject: setup.customSubject.trim(),
       scope: scopeOf(setup.scope),
     };
-  return { subjectId: setup.subjectId, customSubject: null, scope: scopeOf(setup.scope) };
+  return { ...who, subjectId: setup.subjectId, customSubject: null, scope: scopeOf(setup.scope) };
 }
 
 /** The title a quiz shows: the subject's, the typed text, the code checked, or none. */
@@ -216,6 +237,8 @@ const setupFromSettings = (): QuizSetup => {
   const learning = useSettings.getState().settings.learning;
   return {
     target: 'subject',
+    category: 'global',
+    role: '',
     customSubject: '',
     paths: [],
     subjectId: null,
@@ -298,7 +321,7 @@ export const useQuiz = create<QuizState>()((set, get) => {
   ): QuizGenerationInput => {
     const number = record.rounds + 1;
     return {
-      ...subjectFields(record.subject),
+      ...subjectFields(record),
       count: Math.max(1, roundSize(total, number)),
       mode: 'adaptive',
       round: {
@@ -410,6 +433,8 @@ export const useQuiz = create<QuizState>()((set, get) => {
         model: r.model ?? useAiProvider.getState().model,
         subject: r.input.customSubject ? `${CUSTOM}${r.input.customSubject}` : r.input.subjectId,
         subjectTitle: titleOf(r.input, subjects),
+        category: r.input.category,
+        role: r.input.role,
         mode: r.input.mode,
         scope: r.input.scope,
         origin: { type: 'generated' },
@@ -485,6 +510,10 @@ export const useQuiz = create<QuizState>()((set, get) => {
           .listQuizHistory()
           .then((history) => {
             set({ history });
+            // The role of the last quiz is the likely one.
+            const lastRole = history.find((h) => h.role)?.role;
+            if (lastRole && get().setup.role === '')
+              set((s) => ({ setup: { ...s.setup, role: lastRole } }));
           })
           .catch(() => undefined),
         backend
@@ -532,7 +561,7 @@ export const useQuiz = create<QuizState>()((set, get) => {
       } else {
         count = record.count + setup.count;
         input = {
-          ...subjectFields(record.subject),
+          ...subjectFields(record),
           count: setup.count,
           mode: 'fixed',
           round: null,

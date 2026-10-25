@@ -63,6 +63,8 @@ const record: QuizRecord = {
   model: 'mock-large',
   subject: null,
   subjectTitle: 'The whole project',
+  category: 'global',
+  role: 'Producer',
   mode: 'fixed',
   scope: { type: 'wholeProject' },
   origin: { type: 'generated' },

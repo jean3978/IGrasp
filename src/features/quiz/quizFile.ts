@@ -7,6 +7,7 @@
 
 import { parse, stringify } from 'yaml';
 import type {
+  QuizCategory,
   QuestionKind,
   QuizQuestion,
   QuizRecord,
@@ -40,6 +41,9 @@ export interface ParsedQuizFile {
   scope: SourceScope;
   level: number;
   generated: string | null;
+  /** The wizard's choices when the quiz was written: the kind of quiz and who it was for. */
+  category: QuizCategory | null;
+  role: string | null;
   provider: string;
   model: string;
   questions: QuizQuestion[];
@@ -128,6 +132,8 @@ export function quizFileMarkdown(
     project,
     subject: record.subjectTitle,
     scope: scopeName(record.scope),
+    ...(record.category ? { category: record.category } : {}),
+    ...(record.role ? { role: record.role } : {}),
     level: record.startLevel,
     generated: new Date(record.startedMs).toISOString(),
     provider: record.providerId,
@@ -307,6 +313,11 @@ export function parseQuizFile(text: string): ParsedQuizFile {
     scope,
     level: Number.isInteger(level) ? Math.min(5, Math.max(1, level)) : 2,
     generated: str(data.generated),
+    category:
+      data.category === 'global' || data.category === 'feature' || data.category === 'code'
+        ? data.category
+        : null,
+    role: str(data.role),
     provider: str(data.provider) ?? '',
     model: str(data.model) ?? '',
     questions,
@@ -365,6 +376,8 @@ export function recordFromFile(file: ParsedQuizFile, path: string): QuizRecord {
     model: file.model,
     subject: null,
     subjectTitle: file.subject ?? file.title,
+    category: file.category,
+    role: file.role,
     mode: 'fixed',
     scope: file.scope,
     origin: { type: 'file', path },

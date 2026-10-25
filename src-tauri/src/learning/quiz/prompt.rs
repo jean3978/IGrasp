@@ -3,7 +3,7 @@
 //! facts. A snapshot test keeps the text stable; a neutrality test checks it names no provider.
 
 use super::difficulty::plan_text;
-use super::{QuizExclusion, QuizRound};
+use super::{QuizCategory, QuizExclusion, QuizRound};
 use crate::learning::corpus::{SourceScope, profile_block};
 use crate::learning::hoot::HOOT_TONE;
 use crate::learning::subjects::Subject;
@@ -14,6 +14,8 @@ pub struct PromptInput<'a> {
     pub profile: &'a ProjectProfile,
     pub subject: Option<&'a Subject>,
     pub custom_subject: Option<&'a str>,
+    pub category: Option<QuizCategory>,
+    pub role: Option<&'a str>,
     pub count: u32,
     pub plan: [u32; 5],
     pub scope: &'a SourceScope,
@@ -33,11 +35,92 @@ pub fn subject_phrase(input: &PromptInput<'_>) -> String {
         (None, _, SourceScope::Paths { paths }) => {
             format!("the code of {name} in {}", paths.join(", "))
         }
-        (None, Some(t), _) => format!(
-            "\"{t}\" in {name} (a subject the developer typed: interpret it in this project's terms; if the project has nothing about it, say so)"
-        ),
+        (None, Some(t), _) => {
+            let what = match input.category {
+                Some(QuizCategory::Feature) => "a feature of the project",
+                Some(QuizCategory::Global) => "a concept across the project",
+                _ => "a subject",
+            };
+            format!(
+                "\"{t}\" in {name} ({what} that the player typed: interpret it in this project's terms; if the project has nothing about it, say so)"
+            )
+        }
         (None, None, _) => format!(
             "{name} as a whole (no specific subject): what it does, its architecture and main modules, how its parts interact, how it is built and tested, and the decisions behind it"
+        ),
+    }
+}
+
+/// Whether a role reads and writes code for a living (the default audience when none is given).
+fn codes(role: &str) -> bool {
+    let r = role.to_lowercase();
+    [
+        "develop",
+        "program",
+        "engineer",
+        "coder",
+        "contributor",
+        "maintainer",
+        "devops",
+        "sre",
+        "architect",
+        "tech lead",
+        "scientist",
+    ]
+    .iter()
+    .any(|w| r.contains(w))
+}
+
+/// What a role cares about most, for the roles that do not write code every day.
+fn role_focus(role: &str) -> Option<&'static str> {
+    let r = role.to_lowercase();
+    let has = |words: &[&str]| words.iter().any(|w| r.contains(w));
+    Some(
+        if has(&["artist", "animator", "modeler", "illustrat", "vfx"]) {
+            "how their assets get into the project and come alive: scenes and prefabs, sprites and textures, animations and their names, materials and shaders, import settings, and the code that drives them"
+        } else if has(&["sound", "audio", "music", "composer"]) {
+            "how sound gets into the project: audio files and buses, what triggers each sound or music, and where volumes and mixing are set"
+        } else if has(&["level"]) {
+            "how levels are built and wired: the scenes and tiles, spawn points, triggers and collectibles, camera limits, and the values a level can tune"
+        } else if has(&["design", "ux", "ui"]) {
+            "the rules and the experience: what the user or player can do, the values that tune it (speeds, timers, limits), the screens and their flow, and where each one is defined"
+        } else if has(&["produc", "manager", "owner", "lead"]) {
+            "how the project is organised and shipped: its main parts and who depends on what, the build, test and release pipeline, the risky or complex areas, and the decisions that constrain the roadmap"
+        } else if has(&["qa", "test"]) {
+            "how the project behaves and can break: the expected behaviour and edge cases, the existing tests and what they cover, and how to reproduce and isolate a problem"
+        } else if has(&["writer", "narrative", "document"]) {
+            "where the project's words and stories live and how they are shown: texts, dialogues, localisation files, and the documentation and its conventions"
+        } else {
+            return None;
+        },
+    )
+}
+
+/// Who takes the quiz: developers by default, else the role they gave, with the depth of code
+/// detail that role needs. The grounding rules stay the same for every role.
+fn audience_block(role: Option<&str>, gap: &str) -> String {
+    let developers = format!(
+        "They know how to program and how to use common tooling, but they may be new to this project, or new to a domain it uses ({gap}). Never explain programming basics (functions, variables, loops, git, package managers, what a framework is). Talk developer to developer: precise, concise, no hand-holding. Respect their expertise."
+    );
+    let a = |r: &str| {
+        if r.starts_with(['A', 'E', 'I', 'O', 'U', 'a', 'e', 'i', 'o', 'u']) {
+            "An"
+        } else {
+            "A"
+        }
+    };
+    match role {
+        None => format!("Developers. {developers}"),
+        Some(r) if codes(r) => format!(
+            "{} {r} on this project. {developers} Favour what they need to know to work on this project.",
+            a(r)
+        ),
+        Some(r) => format!(
+            "{} {r} on this project, who may not read code every day (new to a domain: {gap}). Ask what they need to understand about how this project is made and how their own work fits into it: the structure, the behaviour, the pipelines and tools that touch their work, the conventions and the decisions. Prefer behaviour and structure to code details, and name code concepts in plain words when you need them, but every question is still about this project and cites the files that prove its answer. Do not quiz them on syntax. Respect their expertise in their own craft.{}",
+            a(r),
+            role_focus(r).map_or_else(String::new, |f| format!(
+                " Focus on what matters to their work: {f}."
+            ))
         ),
     }
 }
@@ -119,7 +202,7 @@ pub fn generation_prompt(input: &PromptInput<'_>) -> String {
         "You are Hoot, the quiz master of IGrasp, writing a quiz about ONE specific software project for the developer who has it open. You can read, list and search the project's files; you cannot change anything. Work only from what is actually in this project.
 
 # Audience
-Developers. They know how to program and how to use common tooling, but they may be new to this project, or new to a domain it uses ({gap}). Never explain programming basics (functions, variables, loops, git, package managers, what a framework is). Talk developer to developer: precise, concise, no hand-holding. Respect their expertise.
+{audience}
 
 # This project
 {profile}
@@ -157,6 +240,7 @@ Answer with JSON only, following the schema you were given. No prose outside the
 {agent}
 ",
         profile = profile_block(input.profile),
+        audience = audience_block(input.role, &gap),
         task = task.join("\n"),
         map = input.corpus_map,
         anchors = input.anchor_files.trim_end(),
@@ -279,6 +363,8 @@ mod tests {
             profile: &p,
             subject: Some(&s),
             custom_subject: None,
+            category: None,
+            role: None,
             count: 5,
             plan: [1, 2, 1, 1, 0],
             scope,
@@ -314,6 +400,8 @@ mod tests {
             profile: &p,
             subject: None,
             custom_subject: custom,
+            category: None,
+            role: None,
             count: 5,
             plan: [1, 2, 1, 1, 0],
             scope,
@@ -326,9 +414,34 @@ mod tests {
         };
         static WHOLE: SourceScope = SourceScope::WholeProject;
         let typed = generation_prompt(&base(Some("How saving works"), &WHOLE));
-        assert!(typed.contains("\"How saving works\" in demo (a subject the developer typed"));
+        assert!(typed.contains("\"How saving works\" in demo (a subject that the player typed"));
         assert!(typed.contains("test understanding, not memory"));
         assert!(typed.contains("whether a function returns early"));
+        // The kind of quiz tells what a typed subject is.
+        let feature = generation_prompt(&PromptInput {
+            category: Some(QuizCategory::Feature),
+            ..base(Some("Fishing"), &WHOLE)
+        });
+        assert!(
+            feature.contains("\"Fishing\" in demo (a feature of the project that the player typed")
+        );
+        // The role sets the audience: developers by default, a role's own depth otherwise.
+        assert!(typed.contains("# Audience\nDevelopers. They know how to program"));
+        let programmer = generation_prompt(&PromptInput {
+            role: Some("Gameplay programmer"),
+            ..base(None, &WHOLE)
+        });
+        assert!(
+            programmer.contains("A Gameplay programmer on this project. They know how to program")
+        );
+        let artist = generation_prompt(&PromptInput {
+            role: Some("Artist"),
+            ..base(None, &WHOLE)
+        });
+        assert!(artist.contains("An Artist on this project, who may not read code every day"));
+        assert!(artist.contains("cites the files that prove its answer"));
+        assert!(artist.contains("Focus on what matters to their work: how their assets get into"));
+        assert!(!artist.contains("Never explain programming basics"));
         static PATHS: std::sync::LazyLock<SourceScope> =
             std::sync::LazyLock::new(|| SourceScope::Paths {
                 paths: vec!["src/save".into(), "src/main.ts".into()],

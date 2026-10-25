@@ -74,25 +74,36 @@ export function SubjectChoices({ group, label }: { group: SubjectGroup; label: s
   );
 }
 
-/** A subject the developer types. */
-export function CustomSubjectField() {
+const CUSTOM_PLACEHOLDERS: Record<SubjectGroup, string> = {
+  global: 'e.g. rendering pipeline, threading model, localization',
+  feature: 'e.g. fishing, the shop, matchmaking, exporting to PDF',
+};
+
+/** "Something else": a concept or a feature that is not in the list, typed. */
+export function CustomSubjectField({ group }: { group: SubjectGroup }) {
   const customSubject = useQuiz((s) => s.setup.customSubject);
+  const selected = useQuiz((s) => s.setup.target === 'custom');
   const setSetup = useQuiz((s) => s.setSetup);
   const id = useId();
   return (
-    <div className="quiz-custom">
-      <label className="visually-hidden" htmlFor={id}>
-        Your own subject
+    <div className={clsx('quiz-other', { 'quiz-other-selected': selected })}>
+      <label className="quiz-other-label" htmlFor={id}>
+        Something else
       </label>
       <input
         id={id}
         className="quiz-custom-subject text-input"
         type="text"
         maxLength={200}
-        placeholder="e.g. how the save system works, the rendering pipeline, error recovery"
+        placeholder={CUSTOM_PLACEHOLDERS[group]}
         value={customSubject}
         onChange={(e) => {
-          setSetup({ customSubject: e.target.value, target: 'custom' });
+          const text = e.target.value;
+          // Typing selects it; emptying it goes back to the chips.
+          setSetup({ customSubject: text, target: text.trim() === '' ? 'subject' : 'custom' });
+        }}
+        onFocus={() => {
+          if (customSubject.trim() !== '') setSetup({ target: 'custom' });
         }}
       />
     </div>
