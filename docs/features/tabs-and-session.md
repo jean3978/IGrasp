@@ -30,7 +30,8 @@ For every folder, IGrasp remembers (in the app-data folder, `sessions.json`):
 - the active tab;
 - the expanded folders of the Explorer;
 - the sidebar visibility and width, and its view (Explorer, Search, Recent Changes, Broken Links);
-- the right panel visibility and width;
+- the right panel visibility and width (for both panels, the width the user set with the sash,
+  never one the layout squeezed while the window was small);
 - the AI chat panel: open or closed, and its rectangle (position and size, in window pixels), added
   in 0.3.0. The rectangle is clamped to the window on restore and whenever the window is resized,
   so a panel saved on a large screen never opens out of sight; without one, the default is

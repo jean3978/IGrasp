@@ -60,3 +60,8 @@ A second panel on the right holds sections about the active document:
 Toggle it with `Ctrl+Alt+B`, the toolbar button or View › Toggle Right Panel; resize it with the
 sash, or drag it closed. Its visibility and width are saved with the folder's session (hidden by
 default).
+
+The sidebar and the right panel keep the width the user gives them: a drag of the sash (or the
+arrow keys on a focused sash) sets it, and only that is saved. When the window shrinks the
+layout may squeeze a panel for a while, and it returns to the user's width when the window grows
+again (`useStoredWidth` in `features/shell/WorkspaceLayout.tsx`).
