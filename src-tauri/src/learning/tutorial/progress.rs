@@ -1,12 +1,19 @@
 //! The reader's progress in a tutorial (ADR 0027): always personal, kept in app data and keyed
 //! by the tutorial's id, so it survives updates of the tutorial and covers shared tutorials too.
 //! The frontend owns its content (the player computes XP and the step hashes, `academyEngine.ts`);
-//! the backend stores it and caps its size.
+//! the backend stores it and caps its size, and counts the steps updated since they were read
+//! (`step_hash` mirrors the frontend's, asserted on a shared fixture) for the library.
 
 use std::collections::BTreeMap;
+use std::sync::LazyLock;
 
+use regex::Regex;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use sha2::{Digest, Sha256};
 use ts_rs::TS;
+
+use super::schema::{Step, Tutorial};
 
 /// Completed steps and answers kept per tutorial at most (8 chapters of 12 steps fit).
 pub const MAX_PROGRESS_STEPS: usize = 200;
@@ -85,9 +92,101 @@ pub struct TutorialUsage {
 /// Operations kept per folder.
 pub const MAX_USAGE: usize = 20;
 
+/// The JSON of `v` with sorted keys, without nulls, empty lists and self-checks (`canonicalJson` in
+/// `src/lib/tutorial.ts`). `serde_json`'s map is sorted and its strings escape like
+/// `JSON.stringify`.
+fn canonical(v: &Value) -> String {
+    match v {
+        Value::Array(items) => format!(
+            "[{}]",
+            items.iter().map(canonical).collect::<Vec<_>>().join(",")
+        ),
+        Value::Object(map) => format!(
+            "{{{}}}",
+            map.iter()
+                .filter(|(k, v)| {
+                    !v.is_null()
+                        && !v.as_array().is_some_and(Vec::is_empty)
+                        && k.as_str() != "selfCheck"
+                })
+                .map(|(k, v)| format!("{}:{}", Value::String(k.clone()), canonical(v)))
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+        other => other.to_string(),
+    }
+}
+
+static LINE_NUMBERS: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#""(?:firstLine|lastLine|answerLine)":\d+,?"#).expect("valid regex")
+});
+
+/// The hash a step had when the reader completed it (`stepHash` in `src/lib/tutorial.ts`):
+/// line numbers are left out, so a relocation alone does not mark a step updated.
+pub fn step_hash(step: &Step) -> String {
+    let json = canonical(&serde_json::to_value(step).unwrap_or(Value::Null));
+    let json = LINE_NUMBERS.replace_all(&json, "");
+    let digest = Sha256::digest(json.as_bytes());
+    digest.iter().take(8).map(|b| format!("{b:02x}")).collect()
+}
+
+/// The steps the reader completed that changed since (the library's "n updated").
+pub fn updated_steps(t: &Tutorial, p: &TutorialProgress) -> u32 {
+    let mut n = 0u32;
+    for c in &t.chapters {
+        for (i, s) in c.steps.iter().enumerate() {
+            if let Some(hash) = p.completed.get(&format!("{}:{i}", c.id))
+                && *hash != step_hash(s)
+            {
+                n += 1;
+            }
+        }
+    }
+    n
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn step_hashes_match_the_frontend() {
+        #[derive(Deserialize)]
+        struct Input {
+            tutorial: Tutorial,
+        }
+        #[derive(Deserialize)]
+        struct Hashes {
+            hashes: BTreeMap<String, String>,
+        }
+        let base =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/test/fixtures/tutorial");
+        let input: Input = serde_json::from_str(
+            &std::fs::read_to_string(base.join("format/every-step/input.json")).unwrap(),
+        )
+        .unwrap();
+        let expected: Hashes =
+            serde_json::from_str(&std::fs::read_to_string(base.join("step-hashes.json")).unwrap())
+                .unwrap();
+        let mut seen = 0;
+        for c in &input.tutorial.chapters {
+            for (i, s) in c.steps.iter().enumerate() {
+                let key = format!("{}:{i}", c.id);
+                assert_eq!(Some(&step_hash(s)), expected.hashes.get(&key), "{key}");
+                seen += 1;
+            }
+        }
+        assert_eq!(seen, expected.hashes.len());
+
+        // Completed with these hashes: nothing updated; one step changed: one.
+        let mut p = TutorialProgress {
+            completed: expected.hashes.clone(),
+            ..Default::default()
+        };
+        assert_eq!(updated_steps(&input.tutorial, &p), 0);
+        p.completed.insert("c1:0".into(), "0000000000000000".into());
+        assert_eq!(updated_steps(&input.tutorial, &p), 1);
+    }
 
     #[test]
     fn progress_is_capped_and_reads_with_defaults() {

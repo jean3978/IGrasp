@@ -1,0 +1,418 @@
+{
+  "folder": "docs/tutorials/how-igrasp-demo-starts-a-tour-of-igrasp-demo",
+  "tutorial": {
+    "id": "how-igrasp-demo-starts-20261025-5726",
+    "title": "How igrasp-demo starts: a tour of igrasp-demo",
+    "intro": "You will follow igrasp-demo from src/main.ts to its Makefile, its architecture page and its decisions.",
+    "project": "igrasp-demo",
+    "subject": "How igrasp-demo starts",
+    "familiarity": "newHere",
+    "length": "standard",
+    "generated": "2026-10-25T18:04:03Z",
+    "provider": "mock",
+    "model": "mock-fast",
+    "chapters": [
+      {
+        "id": "c1",
+        "title": "The entry point: main() in src/main.ts",
+        "goal": "Explain how src/main.ts builds the greeting and when it is shouted.",
+        "minutes": 4,
+        "hootIntro": "Hoot starts where igrasp-demo starts: main() in src/main.ts.",
+        "steps": [
+          {
+            "type": "explain",
+            "title": "Where igrasp-demo starts",
+            "body": "The README points at `src/main.ts` lines 9-12: `main()` takes `Options` and returns the greeting from `greet(name)`.",
+            "sources": [
+              {
+                "path": "src/main.ts",
+                "firstLine": 9,
+                "lastLine": 12
+              }
+            ]
+          },
+          {
+            "type": "codeTour",
+            "title": "From the import to the call",
+            "stops": [
+              {
+                "path": "src/main.ts",
+                "firstLine": 1,
+                "lastLine": 2,
+                "annotation": "src/main.ts imports `greet` from `./greet`: the greeting is not built here."
+              },
+              {
+                "path": "src/main.ts",
+                "firstLine": 4,
+                "lastLine": 7,
+                "annotation": "`Options` has a `name` and an optional `loud` flag."
+              },
+              {
+                "path": "src/main.ts",
+                "firstLine": 9,
+                "lastLine": 12,
+                "annotation": "`main()` defaults `loud` to false and upper-cases the message only when asked."
+              }
+            ]
+          },
+          {
+            "type": "spotIt",
+            "title": "Find the shout",
+            "prompt": "Click the line of main() that decides whether igrasp-demo shouts.",
+            "path": "src/main.ts",
+            "firstLine": 9,
+            "lastLine": 12,
+            "answerLine": 11,
+            "explanation": "Line 11 of src/main.ts returns `message.toUpperCase()` when `loud` is true, the message otherwise."
+          },
+          {
+            "type": "quickCheck",
+            "kind": "multipleChoice",
+            "question": "What does main() in src/main.ts return when loud is false?",
+            "choices": [
+              "The message as greet made it",
+              "The message upper-cased",
+              "An empty string"
+            ],
+            "answer": 0,
+            "hint": "Read the ternary at the end of main() in src/main.ts.",
+            "explanation": "main() returns `loud ? message.toUpperCase() : message`, so with loud false it is the message from greet(name).",
+            "sources": [
+              {
+                "path": "src/main.ts",
+                "firstLine": 9,
+                "lastLine": 12
+              }
+            ]
+          },
+          {
+            "type": "recap",
+            "takeaways": [
+              "main() in src/main.ts gets its message from greet(name).",
+              "Options.loud defaults to false in main().",
+              "Line 11 of src/main.ts upper-cases the message only when loud."
+            ],
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "title": "Build and test with the Makefile",
+        "goal": "Explain the build and test targets of the Makefile and how CI runs make test.",
+        "minutes": 4,
+        "hootIntro": "Hoot runs the Makefile of igrasp-demo, the way its CI does.",
+        "steps": [
+          {
+            "type": "explain",
+            "title": "Two targets in the Makefile",
+            "body": "The igrasp-demo Makefile has `build` (`npm run build`) and `test` (`npm test`); package.json maps them to `tsc` and `vitest run`.",
+            "sources": [
+              {
+                "path": "Makefile",
+                "firstLine": 1,
+                "lastLine": 5
+              }
+            ]
+          },
+          {
+            "type": "putInOrder",
+            "title": "From a push to the tests",
+            "prompt": "Put what happens after a push to igrasp-demo in order.",
+            "items": [
+              "ci.yml starts the test job on push",
+              "the job runs make test",
+              "the Makefile runs npm test",
+              "package.json runs vitest run"
+            ],
+            "explanation": "ci.yml triggers on push and runs `make test`; the Makefile calls `npm test`, which package.json maps to `vitest run`.",
+            "sources": [
+              {
+                "path": ".github/workflows/ci.yml",
+                "firstLine": 1,
+                "lastLine": 7
+              },
+              {
+                "path": "Makefile",
+                "firstLine": 4,
+                "lastLine": 5
+              }
+            ]
+          },
+          {
+            "type": "match",
+            "title": "Which file does what",
+            "prompt": "Match each file of igrasp-demo to its job.",
+            "pairs": [
+              {
+                "left": "Makefile",
+                "right": "names the build and test targets"
+              },
+              {
+                "left": "package.json",
+                "right": "maps the npm scripts to tsc and vitest"
+              },
+              {
+                "left": "ci.yml",
+                "right": "runs make test on every push"
+              }
+            ],
+            "explanation": "The Makefile is the entry, package.json holds the scripts, and .github/workflows/ci.yml runs `make test` on push.",
+            "sources": [
+              {
+                "path": "Makefile",
+                "firstLine": 1,
+                "lastLine": 5
+              },
+              {
+                "path": "package.json",
+                "firstLine": 5,
+                "lastLine": 5
+              }
+            ]
+          },
+          {
+            "type": "tryIt",
+            "title": "Run the tests of igrasp-demo",
+            "instruction": "In a terminal at the root of igrasp-demo, run the Makefile's `test` target and watch vitest run.",
+            "command": "make test",
+            "where": "terminal",
+            "expected": "npm test runs vitest run, as package.json says.",
+            "sources": [
+              {
+                "path": "Makefile",
+                "firstLine": 4,
+                "lastLine": 5
+              }
+            ]
+          },
+          {
+            "type": "recap",
+            "takeaways": [
+              "The Makefile has build and test targets.",
+              "package.json maps them to tsc and vitest run.",
+              "ci.yml runs make test on every push."
+            ],
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "c3",
+        "title": "The architecture page of igrasp-demo",
+        "goal": "Explain the flowchart of docs/architecture.md: who owns the folder and who renders.",
+        "minutes": 3,
+        "hootIntro": "Hoot adjusts his glasses over docs/architecture.md.",
+        "steps": [
+          {
+            "type": "diagram",
+            "title": "The two halves",
+            "mermaid": "flowchart LR\n  UI[React UI] -->|invoke| Rust[Rust backend]\n  Rust -->|events| UI\n  Rust --> FS[(Folder)]",
+            "caption": "The flowchart of docs/architecture.md: only the Rust backend touches the folder.",
+            "sources": [
+              {
+                "path": "docs/architecture.md",
+                "firstLine": 3,
+                "lastLine": 8
+              }
+            ]
+          },
+          {
+            "type": "conceptBridge",
+            "title": "Invoke and events",
+            "concept": "In a desktop app split in two processes, the UI asks the native side with commands and listens to its events.",
+            "applied": "In igrasp-demo, docs/architecture.md draws `React UI -->|invoke| Rust backend` and `Rust -->|events| UI`: the backend owns the file system.",
+            "docsUrl": "https://v2.tauri.app/develop/calling-rust/",
+            "sources": [
+              {
+                "path": "docs/architecture.md",
+                "firstLine": 3,
+                "lastLine": 12
+              }
+            ]
+          },
+          {
+            "type": "explain",
+            "title": "Who owns the folder",
+            "body": "docs/architecture.md says \"The backend owns the file system; the frontend renders\" (line 12).",
+            "sources": [
+              {
+                "path": "docs/architecture.md",
+                "firstLine": 10,
+                "lastLine": 12
+              }
+            ]
+          },
+          {
+            "type": "quickCheck",
+            "kind": "trueFalse",
+            "question": "In docs/architecture.md, the React UI of igrasp-demo reads the folder itself.",
+            "choices": ["True", "False"],
+            "answer": 1,
+            "hint": "Follow the arrow to the Folder node in docs/architecture.md.",
+            "explanation": "Only `Rust --> FS[(Folder)]` reaches the folder; the UI invokes the backend.",
+            "sources": [
+              {
+                "path": "docs/architecture.md",
+                "firstLine": 3,
+                "lastLine": 8
+              }
+            ]
+          },
+          {
+            "type": "recap",
+            "takeaways": [
+              "docs/architecture.md splits igrasp-demo in a React UI and a Rust backend.",
+              "The UI invokes the backend; the backend sends events.",
+              "Only the backend touches the folder."
+            ],
+            "sources": []
+          }
+        ]
+      },
+      {
+        "id": "c4",
+        "title": "Decisions and changes of igrasp-demo",
+        "goal": "Explain decision 0001-use-git-cli.md and what CHANGELOG.md records.",
+        "minutes": 3,
+        "hootIntro": "Hoot opens the one decision igrasp-demo recorded.",
+        "steps": [
+          {
+            "type": "explain",
+            "title": "Decision 0001",
+            "body": "docs/decisions/0001-use-git-cli.md records that igrasp-demo runs `git` as a subprocess.",
+            "sources": [
+              {
+                "path": "docs/decisions/0001-use-git-cli.md",
+                "firstLine": 1,
+                "lastLine": 3
+              }
+            ]
+          },
+          {
+            "type": "explain",
+            "title": "The changelog",
+            "body": "CHANGELOG.md of igrasp-demo keeps an Unreleased section that lists \"Everything\".",
+            "sources": [
+              {
+                "path": "CHANGELOG.md",
+                "firstLine": 1,
+                "lastLine": 5
+              }
+            ]
+          },
+          {
+            "type": "quickCheck",
+            "kind": "multipleChoice",
+            "question": "How does decision 0001-use-git-cli.md say igrasp-demo talks to git?",
+            "choices": ["As a subprocess", "Through a library", "Over a web service"],
+            "answer": 0,
+            "hint": "Read line 3 of the decision record.",
+            "explanation": "docs/decisions/0001-use-git-cli.md: \"We run `git` as a subprocess.\"",
+            "sources": [
+              {
+                "path": "docs/decisions/0001-use-git-cli.md",
+                "firstLine": 3,
+                "lastLine": 3
+              }
+            ]
+          },
+          {
+            "type": "explain",
+            "title": "The decisions folder",
+            "body": "docs/architecture.md points readers at the decisions folder of igrasp-demo (line 14).",
+            "sources": [
+              {
+                "path": "docs/architecture.md",
+                "firstLine": 14,
+                "lastLine": 14
+              }
+            ]
+          },
+          {
+            "type": "recap",
+            "takeaways": [
+              "Decision 0001 makes igrasp-demo run git as a subprocess.",
+              "CHANGELOG.md collects changes under Unreleased.",
+              "The decisions live in docs/decisions."
+            ],
+            "sources": []
+          }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "path": "src/main.ts",
+        "lines": "9-12",
+        "sha256": "3b2f4cbca4febc859adda07eceeba11b9f3ec9b368809322d954472677551159"
+      },
+      {
+        "path": "src/main.ts",
+        "lines": "1-2",
+        "sha256": "7983d9da78c95553efc4773497826448d33b922fd6ac11a9ea9497a6adff6d0b"
+      },
+      {
+        "path": "src/main.ts",
+        "lines": "4-7",
+        "sha256": "318d04a4cf4a8357601e754cc656eb233c1f30db3933dd37a02ecfa8e9047959"
+      },
+      {
+        "path": "Makefile",
+        "lines": "1-5",
+        "sha256": "45bff86efd967a19f64390835fc608cd7c6def303e437d5b8887c579c7f4c5a9"
+      },
+      {
+        "path": ".github/workflows/ci.yml",
+        "lines": "1-7",
+        "sha256": "3b872f04838430635b13a3253c64f9c37f3786ebea9cf46ed63351c41a6375c9"
+      },
+      {
+        "path": "Makefile",
+        "lines": "4-5",
+        "sha256": "2dfc2b14e0dae415dc29e8d69c14f248261849c70e7a23c200bd9620f27bfcc4"
+      },
+      {
+        "path": "package.json",
+        "lines": "5",
+        "sha256": "e2deaee2cdfd055d94367944c2b264afa9b4254e622006eb186def65d94d3cdf"
+      },
+      {
+        "path": "docs/architecture.md",
+        "lines": "3-8",
+        "sha256": "2fb38e8b4fea54db8e98696adb5fa7baa5dd94ccc31798264c921ef00d5932ff"
+      },
+      {
+        "path": "docs/architecture.md",
+        "lines": "3-12",
+        "sha256": "2b2d1eb71a3bbca671ecaddddf3a1d87e4a332dbbfad24432d2ff3213d2f57d8"
+      },
+      {
+        "path": "docs/architecture.md",
+        "lines": "10-12",
+        "sha256": "95e01ee281c3341c3ac178d10815f2846995cd289e110f173c29361d7e627b71"
+      },
+      {
+        "path": "docs/decisions/0001-use-git-cli.md",
+        "lines": "1-3",
+        "sha256": "cb0bbb0e0524f339a6277248e0e0912a394f79b259e4e69b2eabeea502dce1ff"
+      },
+      {
+        "path": "CHANGELOG.md",
+        "lines": "1-5",
+        "sha256": "caf8f8ac78ce77afa59d0bfe15c15e060f655c59b13a414187f621776ee11f9f"
+      },
+      {
+        "path": "docs/decisions/0001-use-git-cli.md",
+        "lines": "3",
+        "sha256": "a3ecd9f3b3cfdbb5e79cd0357ad9cec1aad0a343ebbb77b4bd6ded3b541349bf"
+      },
+      {
+        "path": "docs/architecture.md",
+        "lines": "14",
+        "sha256": "670150a22f2aa522aa4dae6e6aecd583d77803af256923a23aaf9d8896e396d9"
+      }
+    ],
+    "generationCommit": "1f3c5e7a9b0d2f4a6c8e0b1d3f5a7c9e1b3d5f70"
+  }
+}

@@ -36,6 +36,10 @@ pub struct SavedQuizFile {
 pub trait SaveDialog {
     /// The path the user picked, or `None` when the dialog was dismissed.
     fn pick(&self, directory: &Path, file_name: &str) -> Option<PathBuf>;
+    /// A folder the user picked (Save as… of a tutorial), or `None` when dismissed.
+    fn pick_folder(&self, _directory: &Path) -> Option<PathBuf> {
+        None
+    }
 }
 
 /// A file name for the dialog: no folders, no characters a file system refuses, `.md`.

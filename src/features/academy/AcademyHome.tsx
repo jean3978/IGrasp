@@ -3,12 +3,22 @@
 // (the one control here that spends tokens, through its confirmation card), the library and the
 // project profile. Opening it spends nothing.
 
-import { ArrowRight, BookOpen, ListChecks, Play, Sparkles, Trash2 } from 'lucide-react';
+import {
+  ArrowRight,
+  BookOpen,
+  Download,
+  ListChecks,
+  Play,
+  Share2,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { AiMark } from '../../components/AiMark';
 import { Button } from '../../components/ui/Button';
 import type { TutorialSubject, TutorialSummary } from '../../ipc/types';
 import { selectAcademyBusy, useAcademy } from '../../stores/academy';
+import { useTutorialWrite } from '../../stores/tutorialWrite';
 import { Hoot } from '../hoot/Hoot';
 import { ProjectProfilePanel } from '../profile/ProjectProfilePanel';
 import { InlineCode } from '../quiz/InlineCode';
@@ -283,6 +293,7 @@ function Library({ tutorials, labelledBy }: { tutorials: TutorialSummary[]; labe
   const openTutorial = useAcademy((s) => s.openTutorial);
   const reviewOutline = useAcademy((s) => s.reviewOutline);
   const deleteTutorial = useAcademy((s) => s.deleteTutorial);
+  const prepareWrite = useTutorialWrite((s) => s.prepare);
   const busy = useAcademy(selectAcademyBusy);
   const [confirming, setConfirming] = useState<string | null>(null);
   return (
@@ -352,6 +363,30 @@ function Library({ tutorials, labelledBy }: { tutorials: TutorialSummary[]; labe
                   >
                     <ListChecks aria-hidden /> Outline
                   </Button>
+                )}
+                {t.reference.type === 'private' && written > 0 && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      aria-label={`${t.sharedAs ? 'Update the shared copy of' : 'Share'} ${t.title}`}
+                      title={
+                        t.sharedAs
+                          ? `Write this version again in ${t.sharedAs}`
+                          : 'Share with the project: write it as markdown files in the folder'
+                      }
+                      onClick={() => void prepareWrite({ type: 'share', id: key }, t.title)}
+                    >
+                      <Share2 aria-hidden />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      aria-label={`Save ${t.title} as…`}
+                      title="Save a copy as markdown files in a folder you choose"
+                      onClick={() => void prepareWrite({ type: 'export', id: key }, t.title)}
+                    >
+                      <Download aria-hidden />
+                    </Button>
+                  </>
                 )}
                 {t.reference.type === 'private' &&
                   (confirming === key ? (

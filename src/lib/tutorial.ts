@@ -122,12 +122,18 @@ export function mergeSourceHashes(
 /** A step's key in the progress: `"<chapter id>:<step index>"`. */
 export const stepKey = (chapterId: string, index: number) => `${chapterId}:${index}`;
 
-/** JSON with sorted keys and no undefined values: the same text for the same step. */
+/** JSON with sorted keys, without nulls, empty lists and self-checks (Rust skips them too). */
 export function canonicalJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   if (value !== null && typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([k, v]) => v !== undefined && v !== null && k !== 'selfCheck')
+      .filter(
+        ([k, v]) =>
+          v !== undefined &&
+          v !== null &&
+          !(Array.isArray(v) && v.length === 0) &&
+          k !== 'selfCheck',
+      )
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
     return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(',')}}`;
   }
@@ -180,6 +186,8 @@ export function normalizeTutorial(input: Tutorial): Tutorial {
     if (c.hootIntro !== undefined) c.hootIntro = oneLine(c.hootIntro);
     for (const s of c.steps) {
       delete s.selfCheck;
+      // Rust omits an empty list of sources (a recap's) when it writes JSON.
+      (s as { sources?: Citation[] }).sources ??= [];
       switch (s.type) {
         case 'explain':
           s.title = oneLine(s.title);

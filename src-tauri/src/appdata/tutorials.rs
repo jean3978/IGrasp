@@ -51,6 +51,8 @@ pub struct ProgressSummary {
     pub last_opened_ms: i64,
     pub chapter: u32,
     pub step: u32,
+    /// Steps completed before that changed since ("updated since you read it").
+    pub updated: u32,
 }
 
 /// A row of the Academy's library: a private tutorial or a tutorial shared in the folder.
@@ -110,6 +112,7 @@ impl TutorialSummary {
                 last_opened_ms: p.last_opened_ms,
                 chapter: p.chapter,
                 step: p.step,
+                updated: crate::learning::tutorial::progress::updated_steps(t, p),
             }),
         }
     }
@@ -220,7 +223,6 @@ impl AppData {
     }
 
     /// Records where a private tutorial was shared in the folder.
-    #[allow(dead_code)] // Called by "Share with the project" (the sharing step of Phase 5).
     pub fn set_tutorial_shared_as(&self, root: &str, id: &str, rel: &str) -> AppResult<()> {
         let mut stored = self.private_tutorial(root, id)?;
         stored.shared_as = Some(rel.to_owned());

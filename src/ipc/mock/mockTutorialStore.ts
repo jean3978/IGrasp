@@ -12,7 +12,13 @@ import type {
   TutorialSummary,
   TutorialUsage,
 } from '../types';
-import { mergeSourceHashes, newTutorialId, normalizeTutorial } from '../../lib/tutorial';
+import {
+  mergeSourceHashes,
+  newTutorialId,
+  normalizeTutorial,
+  stepHash,
+  stepKey,
+} from '../../lib/tutorial';
 
 export const MAX_PRIVATE_TUTORIALS = 200;
 export const MAX_SUGGESTED = 24;
@@ -113,6 +119,15 @@ export function summaryOf(
           lastOpenedMs: progress.lastOpenedMs,
           chapter: progress.chapter,
           step: progress.step,
+          updated: t.chapters.reduce(
+            (n, c) =>
+              n +
+              c.steps.filter((s, i) => {
+                const hash = progress.completed[stepKey(c.id, i)];
+                return hash !== undefined && hash !== stepHash(s);
+              }).length,
+            0,
+          ),
         }
       : null,
   };

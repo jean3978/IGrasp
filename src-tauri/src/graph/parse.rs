@@ -12,6 +12,7 @@ use regex::Regex;
 
 use super::slug::Slugger;
 use crate::learning::quiz::file::{self, QuizFileInfo};
+use crate::learning::tutorial::markdown::{self as tutorial, TutorialFileInfo};
 
 /// Headings and links kept per document; beyond, the rest is ignored (and counted).
 pub const MAX_ITEMS_PER_DOC: usize = 5000;
@@ -43,6 +44,8 @@ pub struct ParsedDoc {
     pub truncated: bool,
     /// Set when the document is a quiz file (`igrasp: quiz` front matter).
     pub quiz: Option<QuizFileInfo>,
+    /// Set when the document is a tutorial README or chapter (`igrasp: tutorial…`).
+    pub tutorial: Option<TutorialFileInfo>,
 }
 
 static HTML_HREF: LazyLock<Regex> = LazyLock::new(|| {
@@ -198,6 +201,7 @@ pub fn parse(text: &str) -> ParsedDoc {
         }
     }
     doc.quiz = file::info(text);
+    doc.tutorial = tutorial::info(text);
     doc
 }
 
@@ -262,6 +266,26 @@ mod tests {
         assert_eq!(info.questions, 1);
         assert_eq!(quiz.headings.len(), 1);
         assert!(parse("# Notes\n").quiz.is_none());
+    }
+
+    #[test]
+    fn flags_tutorial_files() {
+        let readme = parse(
+            "---\nigrasp: tutorial\nid: t-1\ntitle: The watcher\nchapters: []\n---\n\n# The watcher\n",
+        );
+        let info = readme.tutorial.expect("a tutorial README");
+        assert_eq!(info.id, "t-1");
+        assert_eq!(info.chapter, None);
+        assert_eq!(info.title.as_deref(), Some("The watcher"));
+        let chapter = parse(
+            "---\nigrasp: tutorial-chapter\ntutorial: t-1\nchapter: c2\n---\n\n# 2. Debounce\n",
+        );
+        assert_eq!(
+            chapter.tutorial.expect("a chapter").chapter.as_deref(),
+            Some("c2")
+        );
+        assert!(parse("---\nigrasp: quiz\n---\n").tutorial.is_none());
+        assert!(parse("# igrasp: tutorial\n").tutorial.is_none());
     }
 
     #[test]

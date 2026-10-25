@@ -18,6 +18,7 @@ pub mod progress;
 pub mod prompt;
 pub mod repo;
 pub mod schema;
+pub mod share;
 pub mod suggest;
 pub mod validate;
 

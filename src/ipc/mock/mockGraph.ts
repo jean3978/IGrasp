@@ -5,6 +5,8 @@ import GithubSlugger from 'github-slugger';
 import { classifyHref } from '../../lib/linkTargets';
 import type { Backlink, BrokenDoc, LinkInfo, LinkStatus, LinkTarget } from '../types';
 import { quizInfo } from './mockSave';
+import { tutorialFileInfo } from './mockTutorialShare';
+import type { TutorialFileInfo } from './mockTutorialShare';
 import type { QuizFileInfo } from './mockSave';
 
 export interface MockHeading {
@@ -20,6 +22,8 @@ export interface MockDoc {
   links: LinkInfo[];
   /** Set for a quiz file (Rust `ParsedDoc::quiz`). */
   quiz: QuizFileInfo | null;
+  /** Set for a tutorial README or chapter (Rust `ParsedDoc::tutorial`). */
+  tutorial: TutorialFileInfo | null;
 }
 
 interface RawLink {
@@ -140,7 +144,10 @@ export function resolveLink(
   const fragmentStatus = (anchors: Set<string> | undefined): LinkStatus => {
     if (fragment === null) return { kind: 'ok' };
     if (!anchors) return { kind: 'notChecked' };
-    return { kind: hasAnchor(anchors, fragment) ? 'ok' : 'missingAnchor' };
+    if (hasAnchor(anchors, fragment)) return { kind: 'ok' };
+    // A GitHub line fragment (a tutorial's citations use them, also into markdown files).
+    if (/^L\d+(?:-L\d+)?$/.test(fragment)) return { kind: 'notChecked' };
+    return { kind: 'missingAnchor' };
   };
   if (isMarkdown(rel)) {
     if (lookup.markdown.has(rel)) {
@@ -214,6 +221,7 @@ export function buildGraph(
       anchors: doc.anchors,
       links: doc.links.map((l) => ({ ...l, ...resolveLink(rel, l.href, doc.anchors, lookup) })),
       quiz: quizInfo(files.get(rel) ?? ''),
+      tutorial: tutorialFileInfo(files.get(rel) ?? ''),
     });
   }
   return graph;

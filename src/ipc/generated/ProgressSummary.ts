@@ -3,4 +3,8 @@
 /**
  * The reader's progress, as a library row shows it.
  */
-export type ProgressSummary = { stepsDone: number, xp: number, graduated: boolean, lastOpenedMs: number, chapter: number, step: number, };
+export type ProgressSummary = { stepsDone: number, xp: number, graduated: boolean, lastOpenedMs: number, chapter: number, step: number, 
+/**
+ * Steps completed before that changed since ("updated since you read it").
+ */
+updated: number, };

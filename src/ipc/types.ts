@@ -59,6 +59,9 @@ import type { TutorialSummary } from './generated/TutorialSummary';
 import type { Tutorial } from './generated/Tutorial';
 import type { TutorialRef } from './generated/TutorialRef';
 import type { StoredTutorial } from './generated/StoredTutorial';
+import type { WritePlan } from './generated/WritePlan';
+import type { WriteTarget } from './generated/WriteTarget';
+import type { WrittenTutorial } from './generated/WrittenTutorial';
 import type { TutorialProgress } from './generated/TutorialProgress';
 
 export type {
@@ -200,6 +203,11 @@ export type { TutorialSubjects } from './generated/TutorialSubjects';
 export type { TutorialSummary } from './generated/TutorialSummary';
 export type { ProgressSummary } from './generated/ProgressSummary';
 export type { StoredTutorial } from './generated/StoredTutorial';
+export type { PlannedFile } from './generated/PlannedFile';
+export type { PlannedState } from './generated/PlannedState';
+export type { WritePlan } from './generated/WritePlan';
+export type { WriteTarget } from './generated/WriteTarget';
+export type { WrittenTutorial } from './generated/WrittenTutorial';
 export type { TutorialProgress } from './generated/TutorialProgress';
 export type { StepAnswer } from './generated/StepAnswer';
 export type { TutorialUsage } from './generated/TutorialUsage';
@@ -422,9 +430,12 @@ export interface Backend {
    * profile and the corpus, no AI), followed by the subjects the AI suggested earlier.
    */
   listTutorialSubjects(): Promise<TutorialSubjects>;
-  /** The Academy's library: the private tutorials of the open folder, with the progress. Local. */
+  /**
+   * The Academy's library: the private tutorials of the open folder (newest first), then the
+   * shared ones found in the folder, with the progress. Local.
+   */
   listTutorials(): Promise<TutorialSummary[]>;
-  /** A tutorial to take (`TutorialNotFound` when it is gone). Local. */
+  /** A tutorial to take, private or shared (`TutorialNotFound` when it is gone). Local. */
   getTutorial(reference: TutorialRef): Promise<Tutorial>;
   /**
    * Saves a private tutorial in app data (after its outline, each chapter, accepted proposals).
@@ -441,6 +452,18 @@ export interface Backend {
   saveTutorialProgress(progress: TutorialProgress): Promise<void>;
   /** Keeps the AI's subject suggestions with the folder; resolves to all of them. */
   saveSuggestedSubjects(subjects: TutorialSubject[]): Promise<TutorialSubject[]>;
+  /**
+   * What writing a tutorial in the folder would do (its files, new, changed or unchanged, and the
+   * chapter files removed), for the confirmation. Writes nothing. `tutorial` is the new version
+   * of a shared one (`Shared` target); a private one is written as stored.
+   */
+  planTutorialWrite(target: WriteTarget, tutorial?: Tutorial): Promise<WritePlan>;
+  /**
+   * Writes a tutorial after the user confirmed its plan: Share with the project (records where on
+   * the private copy), an update of a shared one, or Save as… (the folder dialog runs here;
+   * `SaveCancelled` when dismissed). `TutorialFolderTaken` when another tutorial is there.
+   */
+  writeTutorial(target: WriteTarget, tutorial?: Tutorial): Promise<WrittenTutorial>;
 
   listen<E extends EventName>(
     event: E,

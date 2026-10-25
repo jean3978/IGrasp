@@ -10,10 +10,13 @@ use tauri::{AppHandle, Manager, State};
 use crate::appdata::AppData;
 use crate::appdata::tutorials::{StoredTutorial, TutorialSummary};
 use crate::commands::appdata::notify_recovered;
+use crate::commands::learning::NativeSaveDialog;
 use crate::error::{AppError, AppResult};
+use crate::learning::save::SaveDialog;
 use crate::learning::tutorial::families::{TutorialSubject, TutorialSubjects};
 use crate::learning::tutorial::progress::TutorialProgress;
 use crate::learning::tutorial::schema::Tutorial;
+use crate::learning::tutorial::share::{self, WritePlan, WriteTarget, WrittenTutorial};
 use crate::learning::tutorial::{TutorialRef, compose, freshness, markdown, new_tutorial_id, repo};
 use crate::learning::{self, root_key};
 use crate::state::{AppState, Workspace};
@@ -38,11 +41,12 @@ pub async fn list_tutorial_subjects(app: AppHandle) -> AppResult<TutorialSubject
     subjects
 }
 
-/// The library of the open folder: its private tutorials, newest first, with the progress.
+/// The library of the open folder: its private tutorials (newest first), then the shared ones
+/// the graph found (each README read again, chapters included), with the progress.
 pub fn library(ws: &Workspace, appdata: &AppData) -> AppResult<Vec<TutorialSummary>> {
     let key = root_key(ws);
     let progress = appdata.folder_learning(&key)?.tutorial_progress;
-    Ok(appdata
+    let mut list: Vec<TutorialSummary> = appdata
         .private_tutorials(&key)?
         .into_iter()
         .map(|s| {
@@ -56,11 +60,43 @@ pub fn library(ws: &Workspace, appdata: &AppData) -> AppResult<Vec<TutorialSumma
                 progress.get(&s.tutorial.id),
             )
         })
-        .collect())
+        .collect();
+    let readmes: Vec<String> = {
+        let graph = ws.graph.read().unwrap_or_else(|e| e.into_inner());
+        graph
+            .docs()
+            .filter(|(_, doc)| doc.tutorial.as_ref().is_some_and(|t| t.chapter.is_none()))
+            .map(|(rel, _)| rel.clone())
+            .collect()
+    };
+    let modified = |rel: &str| {
+        let index = ws.index.read().unwrap_or_else(|e| e.into_inner());
+        index
+            .as_ref()
+            .and_then(|i| i.file(rel))
+            .map_or(0, |f| f.modified_ms)
+    };
+    let mut shared = Vec::new();
+    for rel in readmes {
+        match share::read_shared(&ws.guard, &rel) {
+            Ok(t) => shared.push(TutorialSummary::of(
+                TutorialRef::Shared {
+                    rel_path: rel.clone(),
+                },
+                &t,
+                None,
+                modified(&rel),
+                progress.get(&t.id),
+            )),
+            Err(e) => log::warn!("{rel}: {e}"),
+        }
+    }
+    shared.sort_by_key(|s| std::cmp::Reverse(s.updated_ms));
+    list.extend(shared);
+    Ok(list)
 }
 
-/// The tutorials of the open folder (private ones, and later the shared ones), for the
-/// Academy's library. Local.
+/// The tutorials of the open folder (private and shared), for the Academy's library. Local.
 #[tauri::command]
 pub fn list_tutorials(
     app: AppHandle,
@@ -71,11 +107,11 @@ pub fn list_tutorials(
     list
 }
 
-/// A tutorial to take: a private one from app data.
+/// A tutorial to take: a private one from app data, a shared one from its files.
 pub fn read_tutorial(ws: &Workspace, appdata: &AppData, r: &TutorialRef) -> AppResult<Tutorial> {
     match r {
         TutorialRef::Private { id } => Ok(appdata.private_tutorial(&root_key(ws), id)?.tutorial),
-        TutorialRef::Shared { rel_path } => Err(AppError::NotATutorialFile(rel_path.clone())),
+        TutorialRef::Shared { rel_path } => share::read_shared(&ws.guard, rel_path),
     }
 }
 
@@ -170,6 +206,104 @@ pub fn save_tutorial_progress(
     })
 }
 
+/// The folder a write goes to and the tutorial it writes. `Shared` takes the new version from
+/// the frontend (accepted changes) and requires the README on disk to hold the same tutorial;
+/// `Share` and `Export` write the private copy as stored.
+pub fn write_input(
+    ws: &Workspace,
+    appdata: &AppData,
+    provider_id: &str,
+    target: &WriteTarget,
+    tutorial: Option<Tutorial>,
+) -> AppResult<(String, Tutorial)> {
+    let key = root_key(ws);
+    match target {
+        WriteTarget::Share { id } => {
+            let stored = appdata.private_tutorial(&key, id)?;
+            let folder = share::share_folder(
+                &ws.guard,
+                &appdata.settings()?.learning.tutorials_folder,
+                &stored.tutorial,
+                stored.shared_as.as_deref(),
+            )?;
+            Ok((folder, stored.tutorial))
+        }
+        WriteTarget::Export { id } => {
+            Ok((String::new(), appdata.private_tutorial(&key, id)?.tutorial))
+        }
+        WriteTarget::Shared { rel_path } => {
+            let on_disk = share::read_shared(&ws.guard, rel_path)?;
+            let t = match tutorial {
+                Some(t) if t.id == on_disk.id => prepared(ws.guard.root(), provider_id, t),
+                Some(_) => {
+                    return Err(AppError::NotATutorialFile(format!(
+                        "{rel_path} holds another tutorial"
+                    )));
+                }
+                None => on_disk,
+            };
+            Ok((share::folder_of(rel_path).to_owned(), t))
+        }
+    }
+}
+
+/// What a write would do (the files, new, changed or unchanged, and the chapter files removed),
+/// for the confirmation. Writes nothing.
+#[tauri::command]
+pub fn plan_tutorial_write(
+    state: State<'_, AppState>,
+    target: WriteTarget,
+    tutorial: Option<Tutorial>,
+) -> AppResult<WritePlan> {
+    let provider = state.ai.provider_id();
+    state.with_workspace(|ws| {
+        let (folder, t) = write_input(ws, &state.appdata, provider, &target, tutorial)?;
+        if matches!(target, WriteTarget::Export { .. }) {
+            // The folder is chosen in the dialog: every file is new there.
+            return Ok(share::export_plan(&t));
+        }
+        share::plan(&ws.guard, &folder, &t)
+    })
+}
+
+/// Writes a tutorial in the folder after the user confirmed the plan: Share with the project
+/// (and records where on the private copy), an update of a shared tutorial, or Save as… (the
+/// folder dialog runs here; `SaveCancelled` when dismissed).
+#[tauri::command]
+pub async fn write_tutorial(
+    app: AppHandle,
+    target: WriteTarget,
+    tutorial: Option<Tutorial>,
+) -> AppResult<WrittenTutorial> {
+    let handle = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = handle.state::<AppState>();
+        let provider = state.ai.provider_id();
+        let (guard, key, folder, t) = state.with_workspace(|ws| {
+            let (folder, t) = write_input(ws, &state.appdata, provider, &target, tutorial)?;
+            Ok((ws.guard.clone(), root_key(ws), folder, t))
+        })?;
+        match &target {
+            WriteTarget::Export { .. } => {
+                let chosen = NativeSaveDialog { app: &handle }
+                    .pick_folder(guard.root())
+                    .ok_or(AppError::SaveCancelled)?;
+                share::export(guard.root(), &chosen, &t)
+            }
+            WriteTarget::Share { id } => {
+                let written = share::write(&guard, &folder, &t)?;
+                if let Some(readme) = &written.readme {
+                    state.appdata.set_tutorial_shared_as(&key, id, readme)?;
+                }
+                Ok(written)
+            }
+            WriteTarget::Shared { .. } => share::write(&guard, &folder, &t),
+        }
+    })
+    .await
+    .map_err(blocking_error)?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -221,5 +355,62 @@ mod tests {
         let back =
             read_tutorial(&ws, &appdata, &TutorialRef::Private { id: t.id.clone() }).unwrap();
         assert_eq!(back.id, t.id);
+    }
+
+    #[test]
+    fn shared_tutorials_are_listed_read_and_updated_only_with_the_same_id() {
+        use std::sync::atomic::AtomicBool;
+
+        use crate::graph;
+        use crate::index::scanner;
+
+        let dir = tree(&[("src/index/watcher.rs", "a\nb\nc\nd\ne\nf\ng\n")]);
+        let guard = RootGuard::new(dir.path()).unwrap();
+        let t = prepared(guard.root(), "mock", sample());
+        let folder = share::share_folder(&guard, "docs/tutorials", &t, None).unwrap();
+        share::write(&guard, &folder, &t).unwrap();
+        let appdata = tempfile::tempdir().unwrap();
+        let appdata = AppData::new(appdata.path().to_path_buf());
+        let options = ScanOptions::default();
+        let ws = Workspace::new(guard.clone(), 1, options.clone());
+        let never = AtomicBool::new(false);
+        let scanned = scanner::scan(guard.root(), &options, &never, &|_| {}).unwrap();
+        *ws.index.write().unwrap() = Some(scanned.index);
+        graph::build(&guard, &ws.index, &ws.graph, &never, &|_, _| {}).unwrap();
+
+        let list = library(&ws, &appdata).unwrap();
+        assert_eq!(list.len(), 1, "{list:?}");
+        let readme = format!("{folder}/README.md");
+        assert_eq!(
+            list[0].reference,
+            TutorialRef::Shared {
+                rel_path: readme.clone()
+            }
+        );
+        let written = t.chapters.iter().filter(|c| c.is_written()).count();
+        assert_eq!(list[0].chapters_written as usize, written);
+        let shared = TutorialRef::Shared {
+            rel_path: readme.clone(),
+        };
+        assert_eq!(read_tutorial(&ws, &appdata, &shared).unwrap().id, t.id);
+
+        let target = WriteTarget::Shared { rel_path: readme };
+        let mut other = t.clone();
+        other.id = "someone-else".to_owned();
+        assert!(matches!(
+            write_input(&ws, &appdata, "mock", &target, Some(other)),
+            Err(AppError::NotATutorialFile(_))
+        ));
+        let mut changed = t.clone();
+        changed.intro = "A new intro.".to_owned();
+        let (f, next) = write_input(&ws, &appdata, "mock", &target, Some(changed)).unwrap();
+        assert_eq!(f, folder);
+        let plan = share::plan(&guard, &f, &next).unwrap();
+        assert_eq!(plan.files[0].state, share::PlannedState::Changed);
+        assert!(
+            plan.files[1..]
+                .iter()
+                .all(|p| p.state == share::PlannedState::Unchanged)
+        );
     }
 }

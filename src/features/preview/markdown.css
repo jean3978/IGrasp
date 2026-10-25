@@ -636,3 +636,20 @@
   cursor: help;
   text-decoration: underline dotted;
 }
+
+/* A tutorial's interactive step in its chapter file: a folded card (the quiz block's frame). */
+.tutorial-block-kind {
+  margin: 0 0 6px;
+  color: var(--ai-accent);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.markdown-body .tutorial-block-stops {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 20px;
+}

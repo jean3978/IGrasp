@@ -128,6 +128,10 @@ export const tauriBackend: Backend = {
   forgetTutorials: () => invoke('forget_tutorials'),
   getTutorialProgress: (id) => invoke('get_tutorial_progress', { id }),
   saveTutorialProgress: (progress) => invoke('save_tutorial_progress', { progress }),
+  planTutorialWrite: (target, tutorial) =>
+    invoke('plan_tutorial_write', { target, tutorial: tutorial ?? null }),
+  writeTutorial: (target, tutorial) =>
+    invoke('write_tutorial', { target, tutorial: tutorial ?? null }),
   saveSuggestedSubjects: (subjects) => invoke('save_suggested_subjects', { subjects }),
   getCurrentQuiz: () => invoke('get_current_quiz'),
   saveCurrentQuiz: (record) => invoke('save_current_quiz', { record }),

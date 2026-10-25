@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import slugs from '../test/fixtures/tutorial/slugs.json';
+import everyStep from '../test/fixtures/tutorial/format/every-step/input.json';
+import stepHashes from '../test/fixtures/tutorial/step-hashes.json';
 import {
   canonicalJson,
   citationLines,
@@ -10,6 +12,7 @@ import {
   slug,
   stepCitations,
   stepHash,
+  stepKey,
   tutorialCitations,
 } from './tutorial';
 import { sha256Hex } from './sha256';
@@ -101,5 +104,17 @@ describe('tutorial helpers', () => {
     );
     expect(newTutorialId('!!!', '2026-10-25')).toMatch(/^tutorial-20261025-/);
     expect(newTutorialId('x'.repeat(90), '2026').split('-')[0]).toHaveLength(40);
+  });
+});
+
+describe('step hashes shared with Rust', () => {
+  it('match step-hashes.json (asserted by progress.rs too)', () => {
+    const t = everyStep.tutorial as Tutorial;
+    const got: Record<string, string> = {};
+    for (const c of t.chapters)
+      c.steps.forEach((s, i) => {
+        got[stepKey(c.id, i)] = stepHash(s);
+      });
+    expect(got).toEqual(stepHashes.hashes);
   });
 });

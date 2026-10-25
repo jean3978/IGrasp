@@ -508,3 +508,55 @@
 [data-motion='off'] .academy-card:hover {
   transform: none;
 }
+
+/* Share / Save as… / update: the files a write will touch. */
+.academy-write-dialog {
+  width: min(560px, 92vw);
+}
+
+.academy-write-files {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 40vh;
+  margin: 12px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.academy-write-files li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: var(--border-width) solid var(--quiz-card-border);
+  border-radius: var(--radius-s);
+  background: var(--quiz-card);
+}
+
+.academy-write-files li[data-state='unchanged'] {
+  opacity: 0.7;
+}
+
+.academy-write-files li .quiz-muted {
+  margin-left: auto;
+}
+
+.academy-write-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.academy-write-error {
+  color: var(--danger);
+}
+
+.academy-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}

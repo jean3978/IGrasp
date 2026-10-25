@@ -70,7 +70,6 @@ pub enum AppError {
     #[error("Not a tutorial: {0}")]
     NotATutorialFile(String),
     #[error("{0} already holds another tutorial.")]
-    #[allow(dead_code)] // Raised by sharing (a later step of Phase 5).
     TutorialFolderTaken(String),
     #[error("This chapter is not written yet: {0}")]
     ChapterNotWritten(String),

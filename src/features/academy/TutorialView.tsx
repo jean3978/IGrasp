@@ -2,7 +2,7 @@
 // graduation. Opening it and reading it are local; the effects follow the reader's progress
 // (confetti on a completed chapter, a ring on a streak) and every gain is announced.
 
-import { ArrowLeft, Sparkles } from 'lucide-react';
+import { ArrowLeft, Download, Share2, Sparkles } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Button } from '../../components/ui/Button';
 import type { TutorialRef } from '../../ipc/types';
@@ -10,6 +10,7 @@ import { useAcademy } from '../../stores/academy';
 import { useQuiz } from '../../stores/quiz';
 import { useTabs } from '../../stores/tabs';
 import { useTutorialPlayer } from '../../stores/tutorialPlayer';
+import { useTutorialWrite } from '../../stores/tutorialWrite';
 import { playEffect } from '../quiz/effects/effects';
 import { ChapterPlayer } from './ChapterPlayer';
 import { CourseMap } from './CourseMap';
@@ -69,6 +70,21 @@ export function TutorialView({ reference, motion }: { reference: TutorialRef; mo
     void useQuiz.getState().prepareForTutorial(reference, tutorial.title);
     useTabs.getState().openSpecial('quiz');
   };
+  const written = tutorial.chapters.some((c) => c.steps.length > 0);
+  const share =
+    reference.type === 'private' && written
+      ? () =>
+          void useTutorialWrite
+            .getState()
+            .prepare({ type: 'share', id: reference.id }, tutorial.title)
+      : undefined;
+  const saveAs =
+    reference.type === 'private' && written
+      ? () =>
+          void useTutorialWrite
+            .getState()
+            .prepare({ type: 'export', id: reference.id }, tutorial.title)
+      : undefined;
 
   return (
     <div className="academy-tutorial">
@@ -81,6 +97,12 @@ export function TutorialView({ reference, motion }: { reference: TutorialRef; mo
           progress={progress}
           motion={motion}
           onQuiz={quizMe}
+          onShare={
+            share &&
+            (() => {
+              share();
+            })
+          }
           onBack={() => {
             closeGraduation();
             backHome();
@@ -117,6 +139,27 @@ export function TutorialView({ reference, motion }: { reference: TutorialRef; mo
                 <span className="academy-tag academy-tag-done">graduated</span>
               )}
             </p>
+            {(share ?? saveAs) && (
+              <div className="academy-head-actions">
+                {share && (
+                  <Button
+                    onClick={share}
+                    title="Write it as markdown files in the project, for everyone"
+                  >
+                    <Share2 aria-hidden /> Share with the project
+                  </Button>
+                )}
+                {saveAs && (
+                  <Button
+                    variant="ghost"
+                    onClick={saveAs}
+                    title="Save a copy as markdown files in a folder you choose"
+                  >
+                    <Download aria-hidden /> Save as…
+                  </Button>
+                )}
+              </div>
+            )}
             {writing && <p className="quiz-note">Hoot is writing the next chapters…</p>}
             {failure && (
               <p className="quiz-note" role="alert">

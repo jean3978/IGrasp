@@ -16,6 +16,7 @@ import { AcademyHome } from './AcademyHome';
 import { OutlineReview } from './OutlineReview';
 import { TutorialOptions } from './TutorialOptions';
 import { TutorialView } from './TutorialView';
+import { WriteConfirmDialog } from './WriteConfirmDialog';
 import '../quiz/quiz.css';
 import './academy.css';
 import './reader.css';
@@ -53,6 +54,7 @@ export function AcademyTab() {
           {screen === 'tutorial' && open && <TutorialView reference={open} motion={motion} />}
         </div>
       </div>
+      <WriteConfirmDialog />
       {motion && !reducedMotion && <EffectsCanvas />}
     </>
   );

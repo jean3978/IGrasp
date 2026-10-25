@@ -22,6 +22,7 @@ import { rehypeMarkInsecureMedia } from './insecureMedia';
 import { renderMath } from './math';
 import { markMermaidBlocks } from './mermaid';
 import { markQuizBlocks } from './quizBlocks';
+import { markTutorialBlocks } from './tutorialBlocks';
 import { rehypeQuoteLines, rehypeSourceLines } from './lines';
 import type { FrontMatter } from './frontmatter';
 import { sanitizeSchema } from './sanitize';
@@ -62,5 +63,6 @@ export async function renderMarkdown(content: string): Promise<RenderedMarkdown>
   await highlightCode(hast);
   markMermaidBlocks(hast);
   markQuizBlocks(hast);
+  markTutorialBlocks(hast);
   return { hast, frontMatter: file.data.frontMatter ?? null };
 }

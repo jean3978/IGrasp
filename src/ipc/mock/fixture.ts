@@ -3,6 +3,9 @@
 
 import { sha256Hex } from '../../lib/sha256';
 
+import type { Tutorial } from '../types';
+import sharedTutorial from '../../test/fixtures/tutorial/format/every-step/input.json';
+
 export const FIXTURE_ROOT = '/home/demo/igrasp-demo';
 export const FIXTURE_NAME = 'igrasp-demo';
 
@@ -212,6 +215,16 @@ const AGES: Record<string, number> = {
 export function fixtureMtimes(now: number): Map<string, number> {
   return new Map(Object.entries(AGES).map(([rel, age]) => [rel, now - age]));
 }
+
+/**
+ * A tutorial shared with the project, from the format fixture's JSON (every step type). Not on
+ * the fake disk by default (the fixture's file lists stay as they are): `addSharedTutorial` of
+ * the mock controls writes its files there.
+ */
+export const FIXTURE_SHARED_TUTORIAL: { folder: string; tutorial: Tutorial } = {
+  folder: sharedTutorial.folder,
+  tutorial: sharedTutorial.tutorial as Tutorial,
+};
 
 export const FIXTURE_FILES: Record<string, string> = {
   'README.md': README,

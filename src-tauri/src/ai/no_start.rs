@@ -306,6 +306,27 @@ fn no_ai_operation_starts_without_a_user_action() {
                 },
             )?;
             state.appdata.tutorial_progress(&key_of(root), &t.id)?;
+            // Sharing: the plan, the write, the shared copy read back and planned again.
+            let share = crate::learning::tutorial::share::WriteTarget::Share { id: t.id.clone() };
+            let (folder, shared) =
+                crate::commands::tutorials::write_input(ws, &state.appdata, "mock", &share, None)?;
+            crate::learning::tutorial::share::plan(&ws.guard, &folder, &shared)?;
+            let written = crate::learning::tutorial::share::write(&ws.guard, &folder, &shared)?;
+            let readme = written.readme.unwrap_or_default();
+            crate::commands::tutorials::read_tutorial(
+                ws,
+                &state.appdata,
+                &crate::learning::tutorial::TutorialRef::Shared {
+                    rel_path: readme.clone(),
+                },
+            )?;
+            crate::commands::tutorials::write_input(
+                ws,
+                &state.appdata,
+                "mock",
+                &crate::learning::tutorial::share::WriteTarget::Shared { rel_path: readme },
+                None,
+            )?;
             state.appdata.save_suggested_subjects(
                 &key_of(root),
                 cards.cards.into_iter().take(1).collect(),

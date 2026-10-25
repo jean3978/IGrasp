@@ -915,6 +915,66 @@ pub fn read(files: &[TutorialFile]) -> Result<(Tutorial, Vec<(String, String)>),
     ))
 }
 
+/// What the graph keeps of a tutorial file, to list the folder's shared tutorials and mark their
+/// files in the preview without reading them again.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TutorialFileInfo {
+    /// The tutorial's id.
+    pub id: String,
+    /// `None` for the README, the chapter's id for a chapter file.
+    pub chapter: Option<String>,
+    pub title: Option<String>,
+}
+
+/// The few fields of either front matter that the graph needs (the rest is ignored).
+#[derive(Deserialize)]
+struct Head {
+    igrasp: String,
+    #[serde(default)]
+    id: Option<String>,
+    #[serde(default)]
+    tutorial: Option<String>,
+    #[serde(default)]
+    chapter: Option<String>,
+    #[serde(default)]
+    title: Option<String>,
+}
+
+/// The summary of a tutorial README or chapter file, or `None` when `text` is neither.
+pub fn info(text: &str) -> Option<TutorialFileInfo> {
+    // Cheap test first: most markdown files have no front matter at all.
+    if !text.starts_with("---") || !text.contains("igrasp: tutorial") {
+        return None;
+    }
+    let text = text.replace("\r\n", "\n");
+    let (fm, _) = front_matter(&text)?;
+    let head: Head = serde_yaml::from_str(fm).ok()?;
+    match head.igrasp.as_str() {
+        KIND => Some(TutorialFileInfo {
+            id: head.id.filter(|s| !s.is_empty())?,
+            chapter: None,
+            title: head.title,
+        }),
+        CHAPTER_KIND => Some(TutorialFileInfo {
+            id: head.tutorial.filter(|s| !s.is_empty())?,
+            chapter: Some(head.chapter.unwrap_or_default()),
+            title: None,
+        }),
+        _ => None,
+    }
+}
+
+/// The chapter files a README names (written chapters), in order.
+pub fn chapter_files(readme: &str) -> Result<Vec<String>, String> {
+    let text = readme.replace("\r\n", "\n");
+    let (fm, _) = front_matter(&text).ok_or("README.md has no front matter")?;
+    let front: FrontMatter = serde_yaml::from_str(fm).map_err(|e| e.to_string())?;
+    if front.igrasp != KIND {
+        return Err(format!("not a tutorial (igrasp: {})", front.igrasp));
+    }
+    Ok(front.chapters.into_iter().filter_map(|c| c.file).collect())
+}
+
 // ---------------------------------------------------------------------------------------------
 // Normalization: what the format can hold exactly (trimmed texts, one-line titles and reasons).
 
@@ -1093,6 +1153,69 @@ pub(crate) mod tests {
             let text = c["text"].as_str().unwrap();
             assert_eq!(slug(text), c["slug"].as_str().unwrap(), "{text:?}");
         }
+    }
+
+    /// The format fixtures shared with the mock's writer (`mockTutorialMarkdown.ts`): each case
+    /// is a folder with `input.json` (`{ folder, tutorial }`) and the exact files `write`
+    /// produces. `IGRASP_UPDATE_FIXTURES=1` rewrites them (and the sample case's input).
+    #[test]
+    fn the_format_fixtures_are_what_write_produces() {
+        #[derive(Serialize, Deserialize)]
+        struct Input {
+            folder: String,
+            tutorial: Tutorial,
+        }
+        let base = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../src/test/fixtures/tutorial/format");
+        let update = std::env::var_os("IGRASP_UPDATE_FIXTURES").is_some();
+        if update {
+            let sample_dir = base.join("sample");
+            std::fs::create_dir_all(&sample_dir).unwrap();
+            let input = Input {
+                folder: "docs/tutorials/orbit-s-watcher".into(),
+                tutorial: sample(),
+            };
+            let json = serde_json::to_string_pretty(&input).unwrap() + "\n";
+            std::fs::write(sample_dir.join("input.json"), json).unwrap();
+        }
+        let mut cases = 0;
+        for case in std::fs::read_dir(&base).unwrap() {
+            let case = case.unwrap().path();
+            let input: Input =
+                serde_json::from_str(&std::fs::read_to_string(case.join("input.json")).unwrap())
+                    .unwrap();
+            let mut t = input.tutorial;
+            normalize(&mut t);
+            let files = write(&t, &input.folder);
+            let on_disk: std::collections::BTreeSet<String> = std::fs::read_dir(&case)
+                .unwrap()
+                .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+                .filter(|n| n.ends_with(".md"))
+                .collect();
+            if update {
+                for n in &on_disk {
+                    std::fs::remove_file(case.join(n)).unwrap();
+                }
+                for f in &files {
+                    std::fs::write(case.join(&f.name), &f.text).unwrap();
+                }
+            } else {
+                let names: std::collections::BTreeSet<String> =
+                    files.iter().map(|f| f.name.clone()).collect();
+                assert_eq!(names, on_disk, "{}", case.display());
+                for f in &files {
+                    let expected = std::fs::read_to_string(case.join(&f.name))
+                        .unwrap()
+                        .replace("\r\n", "\n");
+                    assert_eq!(f.text, expected, "{}/{}", case.display(), f.name);
+                }
+            }
+            let (back, skipped) = read(&files).unwrap();
+            assert_eq!(skipped, vec![], "{}", case.display());
+            assert_eq!(back, t, "{}", case.display());
+            cases += 1;
+        }
+        assert!(cases >= 2);
     }
 
     #[test]
