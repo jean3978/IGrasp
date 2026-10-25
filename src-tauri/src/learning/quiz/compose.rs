@@ -585,7 +585,9 @@ mod tests {
                 composed.request,
                 &root,
                 AiPermissionSettings::default(),
-                Some(Box::new(composed.validator)),
+                Some(crate::ai::run::RunPlan::Validated(Box::new(
+                    composed.validator,
+                ))),
                 Box::new(move |_, e| {
                     let _ = tx.send(e);
                 }),

@@ -367,6 +367,9 @@ pub enum AiEvent {
         of: u32,
         reason: String,
     },
+    /// A staged operation (`ai::run::start_staged`) starts its stage `number` of `of`: a new
+    /// validated run of the same operation, e.g. the next chapter of a tutorial (`label`).
+    Stage { number: u32, of: u32, label: String },
     #[serde(rename_all = "camelCase")]
     Done {
         outcome: AiOutcome,

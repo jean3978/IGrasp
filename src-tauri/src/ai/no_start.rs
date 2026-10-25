@@ -408,3 +408,32 @@ fn only_the_gateway_starts_a_provider() {
         vec!["ai/gateway.rs".to_owned(), "ai/run.rs".to_owned()]
     );
 }
+
+/// Validated and staged runs are started by the gateway only (a staged run starts its stages'
+/// validated runs itself, inside the one operation).
+#[test]
+fn only_the_gateway_starts_a_run() {
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut files = Vec::new();
+    sources(&src, &src, &mut files);
+    let mut callers: Vec<String> = Vec::new();
+    for (rel, text) in &files {
+        if rel == "ai/no_start.rs" {
+            continue;
+        }
+        let code: String = text
+            .split("#[cfg(test)]\nmod ")
+            .next()
+            .unwrap_or(text)
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .flat_map(|l| l.chars().filter(|c| !c.is_whitespace()))
+            .collect();
+        let code = code.replace("fnstart_staged(", "");
+        if code.contains("run::start(") || code.contains("start_staged(") {
+            callers.push(rel.clone());
+        }
+    }
+    callers.sort();
+    assert_eq!(callers, vec!["ai/gateway.rs".to_owned()]);
+}

@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::ai::context::{self, Caps};
 use crate::ai::estimate::estimate;
-use crate::ai::run::OutputValidator;
+use crate::ai::run::RunPlan;
 use crate::ai::types::{
     AiCapabilities, AiContextDocument, AiEstimateInput, AiEventEnvelope, AiInlinedDocument,
     AiProviderInfo, AiProviderStatus, AiRequest, AiSizeEstimate, AiStartRequest, AiUserAction,
@@ -126,7 +126,7 @@ pub fn operation_request(
     names: &[String],
     action: AiUserAction,
     request: AiStartRequest,
-) -> AppResult<(AiRequest, Option<Box<dyn OutputValidator>>)> {
+) -> AppResult<(AiRequest, Option<RunPlan>)> {
     match action {
         AiUserAction::QuizGeneration => {
             let input = request.quiz.ok_or_else(|| {
@@ -142,7 +142,10 @@ pub fn operation_request(
                 request.model,
                 request.resume_id,
             )?;
-            Ok((composed.request, Some(Box::new(composed.validator))))
+            Ok((
+                composed.request,
+                Some(RunPlan::Validated(Box::new(composed.validator))),
+            ))
         }
         _ => Ok((context::request_from(&ws.guard, names, request)?, None)),
     }
@@ -160,7 +163,7 @@ pub async fn ai_start(
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
         let names = state.ai.capabilities().context_file_names;
-        let (root, (request, validator)) = state.with_workspace(|ws| {
+        let (root, (request, plan)) = state.with_workspace(|ws| {
             Ok((
                 ws.guard.root().to_path_buf(),
                 operation_request(ws, &state.appdata, &names, action, request)?,
@@ -174,7 +177,7 @@ pub async fn ai_start(
             request,
             &root,
             permissions,
-            validator,
+            plan,
             Box::new(move |operation_id, event| {
                 if let Err(e) = emitter.emit(
                     EVENT_AI,
@@ -309,9 +312,9 @@ mod tests {
             }),
             ..AiStartRequest::default()
         };
-        let (request, validator) =
+        let (request, plan) =
             operation_request(&ws, &appdata, &[], AiUserAction::QuizGeneration, start).unwrap();
-        assert!(validator.is_some());
+        assert!(plan.is_some());
         assert_eq!(request.policy, AiPolicy::ReadOnly);
         assert!(!request.prompt.contains("ignore the rules"));
         assert!(request.prompt.starts_with("You are Hoot"));

@@ -869,7 +869,7 @@ mod poc {
                 request,
                 root,
                 AiPermissionSettings::default(),
-                Some(validator),
+                Some(crate::ai::run::RunPlan::Validated(validator)),
                 Box::new(move |_, e| {
                     let _ = tx.send(e);
                 }),
