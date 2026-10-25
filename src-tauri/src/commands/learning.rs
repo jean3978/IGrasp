@@ -1,11 +1,15 @@
 //! Learning commands (quiz, later tutorials): the project profile and its corrections. All of
 //! them are local and spend no token; the only generation is `ai_start`.
 
+use std::path::{Path, PathBuf};
+
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_dialog::DialogExt;
 
 use crate::appdata::learning::{QuizRecord, QuizSummary};
 use crate::commands::appdata::notify_recovered;
 use crate::error::{AppError, AppResult};
+use crate::learning::save::{self, QuizSaveKind, SaveDialog, SavedQuizFile};
 use crate::learning::subjects::Subject;
 use crate::learning::{self, root_key};
 use crate::profile::{ProfileCorrections, ProjectProfile};
@@ -114,4 +118,50 @@ pub fn get_quiz_record(state: State<'_, AppState>, id: String) -> AppResult<Quiz
 #[tauri::command]
 pub fn forget_quizzes(state: State<'_, AppState>) -> AppResult<()> {
     state.appdata.forget_quizzes(&folder_key(&state)?)
+}
+
+/// The system's save dialog.
+struct NativeSaveDialog<'a> {
+    app: &'a AppHandle,
+}
+
+impl SaveDialog for NativeSaveDialog<'_> {
+    fn pick(&self, directory: &Path, file_name: &str) -> Option<PathBuf> {
+        self.app
+            .dialog()
+            .file()
+            .set_title("Save as")
+            .set_directory(directory)
+            .set_file_name(file_name)
+            .add_filter("Markdown", &["md"])
+            .blocking_save_file()
+            .and_then(|p| p.into_path().ok())
+    }
+}
+
+/// "Save results…" and "Save quiz…": the save dialog (on the folder of the kind), then the
+/// markdown written where the user chose. `SaveCancelled` when the dialog is dismissed.
+#[tauri::command]
+pub async fn save_quiz_markdown(
+    app: AppHandle,
+    kind: QuizSaveKind,
+    markdown: String,
+    suggested_name: String,
+) -> AppResult<SavedQuizFile> {
+    let handle = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = handle.state::<AppState>();
+        let root = state.with_workspace(|ws| Ok(ws.guard.root().to_path_buf()))?;
+        let learning = state.appdata.settings()?.learning;
+        save::save(
+            &root,
+            &learning,
+            kind,
+            &markdown,
+            &suggested_name,
+            &NativeSaveDialog { app: &handle },
+        )
+    })
+    .await
+    .map_err(|e| AppError::Io(std::io::Error::other(e.to_string())))?
 }

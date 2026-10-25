@@ -6,6 +6,7 @@ pub mod agent_files;
 pub mod corpus;
 pub mod hoot;
 pub mod quiz;
+pub mod save;
 pub mod subjects;
 
 use std::sync::Arc;

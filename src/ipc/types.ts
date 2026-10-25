@@ -49,6 +49,8 @@ import type { ProjectProfile } from './generated/ProjectProfile';
 import type { Subject } from './generated/Subject';
 import type { QuizRecord } from './generated/QuizRecord';
 import type { QuizSummary } from './generated/QuizSummary';
+import type { QuizSaveKind } from './generated/QuizSaveKind';
+import type { SavedQuizFile } from './generated/SavedQuizFile';
 
 export type {
   AppInfo,
@@ -146,6 +148,8 @@ export type { QuizAnswer } from './generated/QuizAnswer';
 export type { QuizOrigin } from './generated/QuizOrigin';
 export type { QuizRecord } from './generated/QuizRecord';
 export type { QuizSummary } from './generated/QuizSummary';
+export type { QuizSaveKind } from './generated/QuizSaveKind';
+export type { SavedQuizFile } from './generated/SavedQuizFile';
 export type { LearningSettings } from './generated/LearningSettings';
 export type { LearningSettingsPatch } from './generated/LearningSettingsPatch';
 export type { QuizScopeSetting } from './generated/QuizScopeSetting';
@@ -343,6 +347,16 @@ export interface Backend {
   getQuizRecord(id: string): Promise<QuizRecord>;
   /** Forgets the history and the current quiz of the open folder (quiz files stay). */
   forgetQuizzes(): Promise<void>;
+  /**
+   * Save results… / Save quiz…: the save dialog on the folder of the kind (settings.learning),
+   * then `markdown` written where the user chose. Rejects with `SaveCancelled` when dismissed,
+   * and with `NotAQuizFile` for a quiz without its front matter. The only learning write in the folder.
+   */
+  saveQuizMarkdown(
+    kind: QuizSaveKind,
+    markdown: string,
+    suggestedName: string,
+  ): Promise<SavedQuizFile>;
 
   listen<E extends EventName>(
     event: E,

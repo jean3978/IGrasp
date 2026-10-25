@@ -4,6 +4,7 @@
 
 pub mod compose;
 pub mod difficulty;
+pub mod file;
 pub mod prompt;
 pub mod schema;
 pub mod validate;

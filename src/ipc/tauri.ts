@@ -126,6 +126,8 @@ export const tauriBackend: Backend = {
   listQuizHistory: () => invoke('list_quiz_history'),
   getQuizRecord: (id) => invoke('get_quiz_record', { id }),
   forgetQuizzes: () => invoke('forget_quizzes'),
+  saveQuizMarkdown: (kind, markdown, suggestedName) =>
+    invoke('save_quiz_markdown', { kind, markdown, suggestedName }),
 
   listen: (event, handler) =>
     tauriListen<Parameters<typeof handler>[0]>(event, (e) => {

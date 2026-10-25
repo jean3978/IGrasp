@@ -19,6 +19,8 @@ import type {
   QuizSummary,
   SourceScope,
 } from '../ipc/types';
+import { BackendError } from '../ipc/types';
+import { resultsFileName, resultsMarkdown } from '../features/quiz/quizMarkdown';
 import {
   answer as engineAnswer,
   initialEngine,
@@ -129,6 +131,8 @@ interface QuizState {
   goHome: () => void;
   newQuiz: () => void;
   forgetHistory: () => Promise<void>;
+  /** Save results…: the save dialog, then a toast that opens the file (silent when dismissed). */
+  saveResults: () => Promise<void>;
   /** The folder closed or changed. */
   leaveFolder: () => void;
 }
@@ -719,6 +723,29 @@ export const useQuiz = create<QuizState>()((set, get) => {
     async forgetHistory() {
       await backend.forgetQuizzes();
       set({ history: [], saved: null });
+    },
+
+    async saveResults() {
+      const { record } = get();
+      if (!record) return;
+      const project = useProjectProfile.getState().profile?.name ?? 'project';
+      try {
+        const file = await backend.saveQuizMarkdown(
+          'results',
+          resultsMarkdown(record, project),
+          resultsFileName(project, record.finishedMs ?? Date.now()),
+        );
+        useToasts
+          .getState()
+          .notify(
+            'info',
+            `Results saved to ${file.relPath ?? file.path}`,
+            file.relPath ?? undefined,
+          );
+      } catch (err) {
+        if (err instanceof BackendError && err.code === 'SaveCancelled') return;
+        useToasts.getState().notify('error', `Cannot save the results: ${errorMessage(err)}`);
+      }
     },
 
     leaveFolder() {

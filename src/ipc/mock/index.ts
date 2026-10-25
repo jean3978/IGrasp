@@ -47,6 +47,8 @@ import {
 import { fixtureSubjects } from './mockSubjects';
 import { emptyQuizzes, saveCurrent, summaryOf as quizSummaryOf } from './mockLearning';
 import type { FolderQuizzes } from './mockLearning';
+import { isQuizMarkdown, safeFileName } from './mockSave';
+import type { SavedMarkdown } from './mockSave';
 
 type Handler = (payload: never) => void;
 
@@ -81,6 +83,11 @@ export interface MockState {
   learning: Map<string, ProfileCorrections>;
   /** The quiz in progress and the history by root path (app data). */
   quizzes: Map<string, FolderQuizzes>;
+  /** What the next save dialog returns (root-relative): null = the suggested name in the folder
+   * of the kind, '' = dismissed. */
+  saveDialogResult: string | null;
+  /** Files written by Save results… / Save quiz…, in order. */
+  saved: SavedMarkdown[];
   /** The mock AI provider: installed, logged in, speed, operations started. */
   ai: MockAiState;
 }
@@ -127,6 +134,8 @@ function initialState(): MockState {
     pickFolderResult: FIXTURE_ROOT,
     learning: new Map(),
     quizzes: new Map(),
+    saveDialogResult: null,
+    saved: [],
     ai: { ...DEFAULT_MOCK_AI, starts: [], conversations: new Map() },
   };
 }
@@ -712,6 +721,25 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     listSubjects: () => {
       if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
       return Promise.resolve(fixtureSubjects(state.files));
+    },
+    saveQuizMarkdown: (kind, markdown, suggestedName) => {
+      const root = state.root;
+      if (!root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      if (kind === 'quiz' && !isQuizMarkdown(markdown))
+        return Promise.reject(
+          new BackendError('NotAQuizFile', 'Not a quiz file: no `igrasp: quiz` front matter'),
+        );
+      // Like the dialog opening on the folder of the kind and the user pressing Save.
+      const folder =
+        kind === 'results'
+          ? state.settings.learning.quizResultsFolder
+          : state.settings.learning.quizzesFolder;
+      const relPath = state.saveDialogResult ?? `${folder}/${safeFileName(suggestedName)}`;
+      if (relPath === '')
+        return Promise.reject(new BackendError('SaveCancelled', 'The save was cancelled.'));
+      state.saved.push({ kind, relPath, markdown });
+      controls.writeFiles({ [relPath]: markdown });
+      return Promise.resolve({ path: `${root.path}/${relPath}`, relPath });
     },
 
     openAppDataDir: () => {

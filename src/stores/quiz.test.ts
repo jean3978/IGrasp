@@ -10,6 +10,7 @@ import { startEventBridge } from './eventBridge';
 import { useProjectProfile } from './projectProfile';
 import { afterReveal, useQuiz } from './quiz';
 import { useSettings } from './settings';
+import { useToasts } from './toasts';
 import { useWorkspace } from './workspace';
 
 let stop: () => void = () => undefined;
@@ -117,6 +118,22 @@ describe('the quiz store', () => {
       expect(quiz().history).toHaveLength(1);
     });
     expect(mock().state.quizzes.get(FIXTURE_ROOT)?.current).toBeNull();
+    expect(starts()).toEqual(['quizGeneration']);
+
+    // Save results…: dismissed writes nothing and says nothing; then saved, with Open.
+    mock().state.saveDialogResult = '';
+    await quiz().saveResults();
+    expect(mock().state.saved).toHaveLength(0);
+    expect(useToasts.getState().toasts).toHaveLength(0);
+    mock().state.saveDialogResult = null;
+    await quiz().saveResults();
+    const [saved] = mock().state.saved;
+    expect(saved?.kind).toBe('results');
+    expect(saved?.relPath).toMatch(/^quiz-results\/quiz-results-.+-\d{4}-\d\d-\d\d-\d{4}\.md$/);
+    expect(saved?.markdown).toContain('questions: 10');
+    expect(mock().state.files.get(saved?.relPath ?? '')).toBe(saved?.markdown);
+    const toast = useToasts.getState().toasts.at(-1);
+    expect(toast?.type === 'message' && toast.openPath).toBe(saved?.relPath);
     expect(starts()).toEqual(['quizGeneration']);
   });
 
