@@ -56,7 +56,7 @@ flowchart LR
 | `appdata/` | Versioned JSON files in the OS app-data folder, written atomically, recovered when corrupt; `settings.rs` (including `ai`), `session.rs` (including the AI panel), `conversations.rs` keeps the AI conversations per folder (the app's own readable copy, trimmed). |
 | `ai/` | AI providers behind one trait ([ADR 0015](decisions/0015-ai-provider-abstraction-and-gateway.md)): `types.rs` (neutral request, events, capabilities, status), `gateway.rs` (the only door: provider chosen in the settings, a user action per operation, one at a time, the permission policy, cancelled when the folder, window or app closes), `policy.rs` (permission kind → Ask / Allow / Deny from `settings.ai.permissions`; a read-only operation denies everything), `context.rs` (the provider's instruction files from the root down and the current file, read through the root guard with caps of 32 KB / 96 KB), `estimate.rs` (size from metadata: small / medium / large), `process.rs` (children die with the app), `no_start.rs` (tests: nothing but `ai_start` can start an operation), `providers/claude_cli/` ([ADR 0014](decisions/0014-claude-cli-integration.md): `cli.rs` probes, `turn.rs` one process per operation, `protocol.rs` wire format → events, permission kinds and the neutral edit → tool input), `providers/mock.rs` (scripted provider, tests only). The provider is built from a small registry (`build_provider` in `mod.rs`) by `settings.ai.provider`; the policy is [ADR 0019](decisions/0019-permission-policy-history-and-floating-chat.md). |
 | `profile/` | The project profile ([ADR 0021](decisions/0021-project-profile-from-a-marker-table.md)), local and without AI: `walk.rs` (one bounded, ignore-aware walk), `markers.rs` (the marker table: files, extensions and manifest keys → kinds, engines, frameworks, build, tests, CI), `manifests.rs` (TOML / JSON parsing), `languages.rs`, `modules.rs`, `summary.rs`, `tests.rs` (one fixture per kind, the dogfooding test, the ignored perf test). |
-| `learning/` | The quiz (tutorials in Phase 5): `mod.rs` (the profile with corrections, cached per disk revision), `corpus.rs` (files a generation may read and cite, scopes, secrets out), `agent_files.rs` (instruction files: context only, never cited), `subjects.rs` (subject proposals from the profile and corpus), `hoot.rs` (the tone of every learning prompt), `save.rs` (`save_quiz_markdown` behind a `SaveDialog` trait), `quiz/` ([ADR 0022](decisions/0022-grounded-generation-pipeline.md): `schema.rs`, `difficulty.rs`, `prompt.rs` with a snapshot, `validate.rs` with shared fixtures, `compose.rs` (the request built in `ai_start`, the `QuizValidator`, the ignored `real_quiz` test), `file.rs` (recognising quiz files, [ADR 0024](decisions/0024-shareable-learning-files-as-markdown.md))). |
+| `learning/` | The quiz (tutorials in Phase 5): `mod.rs` (the profile with corrections, cached per disk revision), `corpus.rs` (files a generation may read and cite, scopes: whole project, documentation only, or the paths of a code check; secrets out), `agent_files.rs` (instruction files: context only, never cited), `subjects.rs` (global concepts and features proposed from the profile and corpus), `role.rs` (the player's role read as a family of crafts: the prompt's audience and focus; mirrored by `quizRoles.ts` on a shared fixture), `hoot.rs` (the tone of every learning prompt), `save.rs` (`save_quiz_markdown` behind a `SaveDialog` trait), `quiz/` ([ADR 0022](decisions/0022-grounded-generation-pipeline.md): `schema.rs`, `difficulty.rs`, `prompt.rs` with a snapshot, `validate.rs` with shared fixtures, `compose.rs` (the request built in `ai_start`, the `QuizValidator`, the ignored `real_quiz` test), `file.rs` (recognising quiz files, [ADR 0024](decisions/0024-shareable-learning-files-as-markdown.md))). |
 | `error.rs` | `AppError`, serialized as `{ code, message }`. |
 
 `ai/run.rs` runs a **validated run**: one gateway operation whose structured answer is checked by
@@ -102,7 +102,7 @@ The frontend never reads files directly: there is no fs plugin and no shell plug
 |---|---|
 | `ipc/` | The `Backend` interface, its Tauri implementation (the only code calling `invoke`/`listen`) and the in-memory mock used in the browser and in tests. `generated/` holds the TypeScript types exported from Rust by ts-rs. |
 | `stores/` | zustand stores: `workspace` (layout: sidebar view, right panel), `tree`, `tabs` (document and code tabs, pending scroll targets), `documents`, `textFiles`, `history`, `recentFiles`, `graph`, `outline`, `quickOpen`, `search`, `settings`, `toasts`, `recent`, `ui`, `capture` (the region overlay, the text mode and the selection highlight), and three for the AI: `aiProvider` (status, capabilities, model), `aiConversation` (items, operation, permissions, usage, history), `aiPanel` (the floating panel, draft, context, attachment), and two for learning: `projectProfile` (the profile, its corrections, the subjects) and `quiz` (the screens, the setup, the one generation call in `start`, playing, history, saving, quiz files); `session.ts` (save/restore), `diskChanges.ts`, `eventBridge.ts` (backend events → stores). |
-| `features/` | UI by feature: `titlebar` (menu bar, toolbar, window controls, `menuActions.ts`), `shell` (layout, activity bar, sidebar host, status bar), `explorer`, `search`, `recent`, `links` (broken links, backlinks), `outline`, `rightpanel`, `quickopen`, `code` (code viewer), `tabs`, `preview` (markdown pipeline, link resolver, reveal helpers, `keepScroll` for asynchronous renders), `mermaid`, `toasts`, `settings`, `shortcuts`, `welcome`, `splash`, `about`, `ai` (chat panel, selection line, quick actions, context bar, history, permission and edit cards, inline review, event reducer, line diff, the AI tools toolbar over the document), `diff` (the rendered block diff shared by AI review and, later, tutorials and Git), `capture` (region overlay, text mode, source-line mapping, selection highlight), `quiz` (the Quiz tab: home, confirmation, generation, question card, results, `quizEngine.ts`, `quizMarkdown.ts` for results, `quizFile.ts` for shareable quiz files, `effects/` the particle system), `hoot` (the owl, its states and lines), `profile` (the profile card and its edit dialog). |
+| `features/` | UI by feature: `titlebar` (menu bar, toolbar, window controls, `menuActions.ts`), `shell` (layout, activity bar, sidebar host, status bar), `explorer`, `search`, `recent`, `links` (broken links, backlinks), `outline`, `rightpanel`, `quickopen`, `code` (code viewer), `tabs`, `preview` (markdown pipeline, link resolver, reveal helpers, `keepScroll` for asynchronous renders), `mermaid`, `toasts`, `settings`, `shortcuts`, `welcome`, `splash`, `about`, `ai` (chat panel, selection line, quick actions, context bar, history, permission and edit cards, inline review, event reducer, line diff, the AI tools toolbar over the document), `diff` (the rendered block diff shared by AI review and, later, tutorials and Git), `capture` (region overlay, text mode, source-line mapping, selection highlight), `quiz` (the Quiz tab: home with the new-quiz wizard (`QuizWizard.tsx`: role, kind of quiz, subject, options, each step adapted to the ones before by `quizRoles.ts`; `SubjectPicker.tsx`), confirmation, generation, question card, Look it up (`LookUpDialog.tsx`), results, `quizEngine.ts`, `quizMarkdown.ts` for results, `quizFile.ts` for shareable quiz files, `effects/` the particle system), `hoot` (the owl, its states and lines), `profile` (the profile card and its edit dialog). |
 | `components/` | Shared UI: buttons and `VirtualRows` (the virtualized, keyboard-navigable list behind every new view). |
 | `styles/` | Design tokens and the three themes. |
 | `lib/` | Pure helpers (paths, link classification, platform). |
@@ -298,25 +298,29 @@ sequenceDiagram
   participant L as learning/quiz/compose.rs
   participant G as ai/gateway.rs + run.rs
   participant P as AiProvider
-  Q->>C: ai_estimate({ quiz }) (Start on the home: free)
+  Q->>C: ai_estimate({ quiz }) (the wizard's Start: free)
   C->>L: corpus, anchors, agent files (context only)
   C-->>Q: size, inlined files → confirmation card
   Q->>C: ai_start(quizGeneration, { quiz }) (the card's Start)
-  C->>L: prompt + schema + QuizValidator (from the profile, subject, scope, plan)
+  C->>L: prompt + schema + QuizValidator (from the profile, role, kind, subject, scope, plan)
   C->>G: start(read-only request, validator)
   G->>P: attempt 1
   P-->>G: structuredOutput
-  G->>L: check: citations, ranges, scope, generic, duplicates
+  G->>L: check: choices, citations, ranges, scope, generic, duplicates
   alt too few questions pass
     G-->>Q: ai://event attempt (reason)
     G->>P: attempt 2, resuming with the repair prompt
   end
   G-->>Q: ai://event structuredOutput (accepted questions), usage, done
-  Q->>Q: quizEngine orders by level; save_current_quiz after each answer
+  Q->>Q: choices shuffled; quizEngine orders by level; save_current_quiz after each answer
 ```
 
-The frontend sends only a `QuizGenerationInput`; Rust ignores any prompt or schema it might
-send for a quiz. An adaptive quiz repeats `ai_start` once per round, each from the player's
+The frontend sends only a `QuizGenerationInput` (the wizard's role, kind of quiz, a proposed or
+typed subject or the paths of a code check, mode, count, sources); Rust ignores any prompt or
+schema it might send for a quiz. The accepted result carries the questions and, when the
+generator reports them, `materialNote` (too little material) and `docsNote` (what the
+documentation lacks); the store shuffles each multiple choice question's choices once, and the
+record keeps that order. An adaptive quiz repeats `ai_start` once per round, each from the player's
 **Next round** click, with the previous round's resume id. Play again and quiz files replay
 from app data or the file without any AI call.
 

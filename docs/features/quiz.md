@@ -2,8 +2,10 @@
 
 **Quiz Me** asks you questions about how the open project is made, written by the AI from the
 project's own files ([ADR 0016](../decisions/0016-learning-features-grounded-in-the-project.md)).
-Every question cites a file you can open at the lines that prove the answer. It is for developers
-joining a project, or coming back to one: nothing generic, no trivia about a language.
+Every question cites a file you can open at the lines that prove the answer. It is for anyone
+joining a project, or coming back to one: developers by default, or the role you pick (an artist,
+a designer, a producer, QA…), at the depth that role needs. Nothing generic, no trivia about a
+language.
 
 Two rules of the AI features hold here too: **no token without a user action** (only the
 confirmation card's Start, Keep going and Next round spend tokens) and **the provider is
@@ -158,7 +160,7 @@ right one first); the record keeps that order, so replays and quiz files show th
 An original owl ([ADR 0023](../decisions/0023-hoot-the-owl.md)) with five states: idle,
 thinking, cheering, explaining, encouraging. Its lines are local and never repeat back to back;
 the AI writes only the questions, hints and explanations, in Hoot's tone (warm, brief, precise,
-for developers). `?hoot=1` in the dev server shows every state in the three themes.
+at the depth the role needs). `?hoot=1` in the dev server shows every state in the three themes.
 
 ## Saving results
 

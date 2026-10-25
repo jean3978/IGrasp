@@ -63,10 +63,14 @@ No Confluence, no editor plugin, no note-taking vault — just the project's own
 - **Quiz Me.** `Ctrl+Alt+Q`: Hoot the owl asks you questions about how **this** project is
   made, written by the AI from its code, configuration, build, tests and docs, each citing the
   lines that prove the answer (**Read more →** opens them). Every question is checked before you
-  see it: real files, real lines, nothing generic. Fixed or adaptive to your level, whole
-  project or docs only, hints, streaks, confetti, and a detected **project profile** (engine,
-  frameworks, languages, modules) you can correct. Works on games (Godot, Unity, Unreal), web
-  apps, tools and libraries alike.
+  see it: real files, real lines, nothing generic. A short wizard asks **who you are** on the
+  project (programmer, artist, game or UX designer, producer, QA…), then a global concept, a
+  feature, or **specific code to check** before you submit it, and Hoot writes for that role.
+  Fixed or adaptive to your level, whole project or docs only, hints, **Look it up** (`L`) to
+  open the cited files before answering, streaks, confetti, a **Documentation gap** note when
+  the project's docs are thin, and a detected **project profile** (engine, frameworks,
+  languages, modules) you can correct. Works on games (Godot, Unity, Unreal), web apps, tools
+  and libraries alike.
 - **Share a quiz.** Save results as a readable report, or save the quiz itself as a markdown file
   your teammates replay **without the AI**; it tells them when the cited code has changed.
 - **Themes.** Light, Dark, High Contrast and Follow System.
@@ -195,9 +199,10 @@ type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
       highlight text or drag a region, the chat opens beside it, with quick actions (Rewrite,
       Shorten, Expand, Fix grammar, Make a table, Make a diagram, Explain).
 - [x] **Phase 4 — Quiz** (0.4.0): a fun quiz about the project with Hoot the owl, grounded in
-      the whole project (code, config, docs) with checked citations, a local project profile,
-      fixed and adaptive modes, effects, saved results, and shareable quiz files replayed
-      without the AI.
+      the whole project (code, config, docs) with checked citations, a local project profile, a
+      wizard that adapts to your role (kind of quiz, concepts, features or a code check),
+      documentation gaps reported, Look it up, fixed and adaptive modes, effects, saved results,
+      and shareable quiz files replayed without the AI.
 - [ ] **Phase 5 — Tutorials**: Hoot's Academy, interactive tutorials generated about the project
       (architecture, features, dependencies, how things are built, any engine or stack), saved
       privately with your progress, shareable with the team, and checked for freshness only when

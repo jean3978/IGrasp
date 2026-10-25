@@ -2,7 +2,8 @@
 
 What kind of project the open folder is, detected **locally, without AI**
 ([ADR 0021](../decisions/0021-project-profile-from-a-marker-table.md)). Every learning
-generation (the quiz today, tutorials in Phase 5) receives it, the subject proposals are derived
+generation (the quiz today, tutorials in Phase 5) receives it, the subject proposals and the
+roles the quiz wizard proposes (a game: programmers, designers, artists, producers…) are derived
 from it, and you see and correct it.
 
 ## What is detected

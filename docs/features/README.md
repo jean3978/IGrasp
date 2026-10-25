@@ -17,6 +17,6 @@ are updated together with the code.
 | [links-and-graph.md](links-and-graph.md) | Internal links and anchors, broken links, backlinks, outline, the document graph |
 | [code-viewer.md](code-viewer.md) | Read-only viewer for linked source files, Open in default editor |
 | [ai-chat.md](ai-chat.md) | AI chat (Claude through its CLI today): the AI tools over the document, text and region selections, quick actions, context, permissions and settings, inline edit review, conversation history, provider abstraction and gateway |
-| [quiz.md](quiz.md) | Quiz Me: grounded questions about the project, modes and sources, Hoot, effects, saving results, shareable quiz files replayed without AI |
+| [quiz.md](quiz.md) | Quiz Me: grounded questions about the project, the new-quiz wizard (role, kind, subject, code checks), modes and sources, Look it up, documentation gaps, Hoot, effects, saving results, shareable quiz files replayed without AI |
 | [project-profile.md](project-profile.md) | The project profile detected locally, its corrections, adding an ecosystem |
 | [keyboard.md](keyboard.md) | Keyboard shortcuts and accessibility |

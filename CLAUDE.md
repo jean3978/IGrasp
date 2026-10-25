@@ -38,8 +38,8 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   that only `ai_start` starts an operation; `providers/claude_cli/` spawns the `claude` CLI,
   `providers/mock.rs` is the Rust test provider; `run.rs` validated runs: one operation, capped
   retries announced by `attempt`), `profile/` (the project profile from a marker table, local),
-  `learning/` (corpus and agent files, subjects, Hoot's tone, `save.rs` the save dialog behind a
-  trait, `quiz/` schema, difficulty, prompt with a snapshot, validator with shared fixtures,
+  `learning/` (corpus and agent files, subjects, Hoot's tone, `role.rs` the player's role read as a
+  family of crafts, `save.rs` the save dialog behind a trait, `quiz/` schema, difficulty, prompt with a snapshot, validator with shared fixtures,
   `compose.rs` the quiz request built in `ai_start`, `file.rs` quiz files), `appdata/learning.rs`
   (corrections, quiz in progress, history per folder), `paths.rs` (root guard), `state.rs`,
   `error.rs`, `perf.rs` (ignored performance tests).
@@ -58,8 +58,9 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   inline review; `features/diff` the rendered block diff (two markdown strings in, reused by
   later phases); `features/capture` the text and region selections (source lines, narrowing to
   the highlighted text, highlight). Selections go to the AI as text, never as images.
-  `features/quiz` is the Quiz tab (engine, cards, results, `quizMarkdown.ts`, `quizFile.ts`,
-  `effects/`), `features/hoot` the owl (`?hoot=1` shows its states), `features/profile` the
+  `features/quiz` is the Quiz tab (the new-quiz wizard `QuizWizard.tsx` with `SubjectPicker.tsx`
+  and `quizRoles.ts`, engine, cards, `LookUpDialog.tsx`, results, `quizMarkdown.ts`,
+  `quizFile.ts`, `effects/`), `features/hoot` the owl (`?hoot=1` shows its states), `features/profile` the
   profile card and dialog.
 - `src/features/titlebar/menuActions.ts`: every user action. Menus, toolbar buttons and
   shortcuts (`features/shortcuts/keymap.ts`) dispatch through it.
@@ -121,7 +122,10 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   same policy. Its instruction-file name is `AGENTS.md` (the fixture has one at the root and in
   `docs/`), so the context bar can be tested without a provider name.
 - Quiz and tutorials (ADR 0016) are grounded in the whole project: every item cites project
-  files, nothing generic, written for developers.
+  files, nothing generic (an industry standard only as this project applies it), written for the
+  player's role (developers by default). The wizard's role, kind of quiz and subject all reach
+  the prompt; what a role is offered comes from its family (`learning/role.rs` and
+  `quizRoles.ts`, which must agree on `src/test/fixtures/quiz/roles.json`).
 - Learning prompts and schemas live in Rust (`learning/`); the frontend never sends a prompt for a
   quiz, only a `QuizGenerationInput`. Agent instruction files are context, never cited. Hoot's
   lines are local (`hootLines.ts`). The validator's rules exist twice (`validate.rs` and

@@ -27,7 +27,8 @@ dependency; lines written by the AI on every event would spend tokens without a 
   results). They cost nothing and run without a provider.
 - The AI's voice is limited to what it writes on request: questions, hints and explanations.
   Their tone (`learning/hoot.rs`, `HOOT_TONE`) is shared by every learning prompt: warm, brief,
-  precise, for developers, never condescending, never generic.
+  precise, never condescending, never generic; the prompt's audience (from the player's role,
+  developers by default) says how much code to show.
 - Celebrations (confetti, sparks, a ring on a level up) are drawn by a small in-house particle
   system on a canvas over the Quiz tab, capped at 400 particles and idle when nothing moves.
 

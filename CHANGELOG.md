@@ -33,7 +33,7 @@ developers on any kind of project (games, web, tools, libraries), with nothing g
   networking, configuration, the engine's model, decisions, build, testing) and **Features**
   (feature pages and folders, a game's own systems such as player, enemies or NPCs, common
   features found by name), each detected locally and named as a concept, never a folder path;
-  **your own subject** typed freely; and **Check specific code**: files or folders you pick (or
+  **Something else** typed under the concepts or the features; and **Check specific code**: files or folders you pick (or
   open in tabs) for detailed, line-level questions, e.g. before submitting a change. Other
   subjects ask about understanding a concept and its implementation, not one-line trivia.
   Each step adapts to the ones before: the kinds of quiz follow the role (no code check for an
