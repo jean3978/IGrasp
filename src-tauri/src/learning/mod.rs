@@ -9,6 +9,7 @@ pub mod quiz;
 pub mod role;
 pub mod save;
 pub mod subjects;
+pub mod tutorial;
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
