@@ -13,6 +13,7 @@ mod no_start;
 pub mod policy;
 mod process;
 mod providers;
+pub mod run;
 pub mod types;
 
 use std::path::Path;

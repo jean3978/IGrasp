@@ -23,7 +23,7 @@ description: string | null, allowed: boolean,
 /**
  * Why, in a few words, e.g. `allowed by your settings`.
  */
-reason: string, } | { "type": "usage", inputTokens: number, outputTokens: number, costUsd: number | null, durationMs: number, } | { "type": "error", message: string, } | { "type": "done", outcome: AiOutcome, 
+reason: string, } | { "type": "usage", inputTokens: number, outputTokens: number, costUsd: number | null, durationMs: number, } | { "type": "error", message: string, } | { "type": "structuredOutput", value: JsonValue, } | { "type": "attempt", number: number, of: number, reason: string, } | { "type": "done", outcome: AiOutcome, 
 /**
  * Exit code, stderr tail or transport error, when there is something to say.
  */

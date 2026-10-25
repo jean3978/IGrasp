@@ -205,6 +205,9 @@ export function applyEvent(items: ChatItem[], event: AiEvent): ChatItem[] {
     case 'permissionRequest':
     case 'usage':
     case 'done':
+    // Generations (the quiz) read these; the chat never asks for them.
+    case 'structuredOutput':
+    case 'attempt':
       return items;
   }
 }

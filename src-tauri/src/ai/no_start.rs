@@ -13,6 +13,10 @@
 //!   the code behind them.)
 //! - `only_ai_start_calls_the_gateway_start` reads the sources: `.start(` on the gateway appears
 //!   in the `ai_start` command and nowhere else, so no other command can spend tokens.
+//! - `only_the_gateway_starts_a_provider` reads the sources: a provider's `start` is called by
+//!   the gateway and by its validated runs (`ai/run.rs`, capped retries inside one operation)
+//!   only. The runs' own tests check that no attempt starts after `Done`, after a cancel, or
+//!   beyond `1 + MAX_RETRIES`.
 
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
@@ -248,6 +252,7 @@ fn no_ai_operation_starts_without_a_user_action() {
             },
             root,
             AiPermissionSettings::default(),
+            None,
             Box::new(move |_, event| {
                 let _ = tx.send(event);
             }),
@@ -322,4 +327,35 @@ fn only_ai_start_calls_the_gateway_start() {
         .find("#[tauri::command]")
         .map_or(text.len(), |i| at + 1 + i);
     assert!(call < next_command, "the call is in the body of ai_start");
+}
+
+#[test]
+fn only_the_gateway_starts_a_provider() {
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut files = Vec::new();
+    sources(&src, &src, &mut files);
+    let mut callers: Vec<String> = Vec::new();
+    for (rel, text) in &files {
+        if rel == "ai/no_start.rs" {
+            continue;
+        }
+        // Only the code before a `#[cfg(test)]` module counts, comments dropped, and whitespace
+        // removed so a call split over lines still matches.
+        let code: String = text
+            .split("#[cfg(test)]\nmod ")
+            .next()
+            .unwrap_or(text)
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .flat_map(|l| l.chars().filter(|c| !c.is_whitespace()))
+            .collect();
+        if code.contains("provider.start(") {
+            callers.push(rel.clone());
+        }
+    }
+    callers.sort();
+    assert_eq!(
+        callers,
+        vec!["ai/gateway.rs".to_owned(), "ai/run.rs".to_owned()]
+    );
 }

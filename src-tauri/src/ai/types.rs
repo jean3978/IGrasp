@@ -334,6 +334,16 @@ pub enum AiEvent {
     },
     /// An error the provider reported inside the conversation (not logged in, unknown model).
     Error { message: String },
+    /// The final answer of an operation started with `AiRequest::output_schema`. In a validated
+    /// operation (`ai::run`), only the accepted answer is emitted, once, before `Done`.
+    StructuredOutput { value: serde_json::Value },
+    /// A validated operation starts another attempt (a retry with a repair prompt), `number` of
+    /// `of`, because of `reason` (plain language, for the user).
+    Attempt {
+        number: u32,
+        of: u32,
+        reason: String,
+    },
     #[serde(rename_all = "camelCase")]
     Done {
         outcome: AiOutcome,

@@ -103,6 +103,7 @@ pub fn ai_start(
         request,
         &root,
         permissions,
+        None,
         Box::new(move |operation_id, event| {
             if let Err(e) = app.emit(
                 EVENT_AI,
