@@ -21,6 +21,7 @@ import type {
   RenamedPath,
   RootInfo,
   Session,
+  ProfileCorrections,
   Settings,
 } from '../types';
 import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT, FIXTURE_SIZES, fixtureMtimes } from './fixture';
@@ -33,6 +34,12 @@ import { gitignorePatterns, isMarkdown, listFixtureDir, scanFixture } from './mo
 import type { MockScanOptions } from './mockIndex';
 import { DEFAULT_MOCK_AI, MOCK_PROVIDER_ID, createMockAi } from './mockAi';
 import type { MockAiState } from './mockAi';
+import {
+  EMPTY_CORRECTIONS,
+  applyCorrections,
+  fixtureProfile,
+  normalizeCorrections,
+} from './mockProfile';
 
 type Handler = (payload: never) => void;
 
@@ -63,6 +70,8 @@ export interface MockState {
   pickFolderResult: string | null;
   /** Files and URLs the app asked to open externally, in order. */
   opened: string[];
+  /** Profile corrections by root path (app data of the learning features). */
+  learning: Map<string, ProfileCorrections>;
   /** The mock AI provider: installed, logged in, speed, operations started. */
   ai: MockAiState;
 }
@@ -107,6 +116,7 @@ function initialState(): MockState {
     graph: null,
     graphDelayMs: 0,
     pickFolderResult: FIXTURE_ROOT,
+    learning: new Map(),
     ai: { ...DEFAULT_MOCK_AI, starts: [], conversations: new Map() },
   };
 }
@@ -621,6 +631,20 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     saveConversation: ai.saveConversation,
     deleteConversation: ai.deleteConversation,
     forgetConversations: ai.forgetConversations,
+
+    getProjectProfile: () => {
+      const root = state.root;
+      if (!root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const corrections = state.learning.get(root.path) ?? EMPTY_CORRECTIONS;
+      return Promise.resolve(applyCorrections(fixtureProfile(state.files, root.name), corrections));
+    },
+    setProfileCorrections: (corrections) => {
+      const root = state.root;
+      if (!root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const normalized = normalizeCorrections(corrections);
+      state.learning.set(root.path, normalized);
+      return Promise.resolve(applyCorrections(fixtureProfile(state.files, root.name), normalized));
+    },
 
     openAppDataDir: () => {
       state.opened.push(appInfo.appDataDir);

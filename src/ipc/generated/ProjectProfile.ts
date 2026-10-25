@@ -3,6 +3,7 @@ import type { Detected } from "./Detected";
 import type { DocsFacts } from "./DocsFacts";
 import type { LanguageShare } from "./LanguageShare";
 import type { Module } from "./Module";
+import type { ProfileCorrections } from "./ProfileCorrections";
 import type { ProjectKind } from "./ProjectKind";
 
 export type ProjectProfile = { 
@@ -29,7 +30,11 @@ repository: boolean,
 /**
  * One line: "IGrasp: a Tauri desktop app in Rust and TypeScript (React), tested with …".
  */
-summary: string, filesSeen: number, 
+summary: string, 
+/**
+ * The user's corrections, already applied above.
+ */
+corrections: ProfileCorrections, filesSeen: number, 
 /**
  * The walk hit its budget: the profile says what it saw.
  */

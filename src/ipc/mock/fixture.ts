@@ -135,6 +135,17 @@ export const FIXTURE_FILES: Record<string, string> = {
   'node_modules/some-pkg/README.md': '# some-pkg\n\nAlways skipped.\n',
   'src/main.ts': MAIN_TS,
   Makefile: 'build:\n\tnpm run build\n\ntest:\n\tnpm test\n',
+  // The project profile's evidence (see mockProfile.ts).
+  'package.json': `{
+  "name": "igrasp-demo",
+  "main": "src/main.ts",
+  "bin": { "demo": "src/main.ts" },
+  "scripts": { "build": "tsc", "test": "vitest run" },
+  "devDependencies": { "typescript": "^5.9.0", "vitest": "^4.0.0" }
+}
+`,
+  '.github/workflows/ci.yml':
+    'name: CI\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: make test\n',
   'scripts/deploy.sh': '#!/bin/sh\necho "deploying"\n',
   'assets/logo.bin': 'BIN\u0000\u0001\u0002\u0003',
   'logs/huge.log': 'see FIXTURE_SIZES\n',

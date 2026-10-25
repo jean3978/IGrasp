@@ -32,6 +32,11 @@ pub struct Workspace {
     pub symbols: Mutex<Option<Candidates>>,
     /// The running full-text search, cancelled with the workspace.
     pub searches: SearchRegistry,
+    /// Bumped by the watcher on every batch of disk events (any file, not only markdown), so
+    /// what is computed from the whole folder (the project profile) knows it is stale.
+    pub disk_revision: Arc<AtomicU64>,
+    /// The project profile and its walk, built on request and reused while the disk is unchanged.
+    pub learning: Mutex<Option<crate::learning::LearningCache>>,
 }
 
 /// What the background scan, the watcher and the graph builder of a workspace share.
@@ -44,6 +49,7 @@ pub struct ScanContext {
     pub cancel: Arc<AtomicBool>,
     pub watch: SharedWatch,
     pub graph: SharedGraph,
+    pub disk_revision: Arc<AtomicU64>,
 }
 
 impl Workspace {
@@ -58,6 +64,8 @@ impl Workspace {
             graph: Arc::default(),
             symbols: Mutex::new(None),
             searches: SearchRegistry::default(),
+            disk_revision: Arc::default(),
+            learning: Mutex::new(None),
         }
     }
 
@@ -70,6 +78,7 @@ impl Workspace {
             cancel: self.cancel.clone(),
             watch: self.watch.clone(),
             graph: self.graph.clone(),
+            disk_revision: self.disk_revision.clone(),
         }
     }
 }

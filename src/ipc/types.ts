@@ -44,6 +44,8 @@ import type { AiSizeEstimate } from './generated/AiSizeEstimate';
 import type { AiStartRequest } from './generated/AiStartRequest';
 import type { AiUserAction } from './generated/AiUserAction';
 import type { PermissionDecision } from './generated/PermissionDecision';
+import type { ProfileCorrections } from './generated/ProfileCorrections';
+import type { ProjectProfile } from './generated/ProjectProfile';
 
 export type {
   AppInfo,
@@ -116,6 +118,14 @@ export type { AiSizeBucket } from './generated/AiSizeBucket';
 export type { EditHunk } from './generated/EditHunk';
 export type { ProposedEdit } from './generated/ProposedEdit';
 export type { ConversationUsage } from './generated/ConversationUsage';
+export type { Confidence } from './generated/Confidence';
+export type { Detected } from './generated/Detected';
+export type { DocsFacts } from './generated/DocsFacts';
+export type { LanguageShare } from './generated/LanguageShare';
+export type { Module } from './generated/Module';
+export type { ProfileCorrections } from './generated/ProfileCorrections';
+export type { ProjectKind } from './generated/ProjectKind';
+export type { ProjectProfile } from './generated/ProjectProfile';
 export type {
   AiCapabilities,
   AiEventEnvelope,
@@ -289,6 +299,14 @@ export interface Backend {
   deleteConversation(id: string): Promise<void>;
   /** Deletes every conversation of the open folder. */
   forgetConversations(): Promise<void>;
+
+  /**
+   * The project profile of the open folder, built locally from one walk (no AI), cached until
+   * the disk changes (`force` rebuilds), with the user's corrections applied.
+   */
+  getProjectProfile(force?: boolean): Promise<ProjectProfile>;
+  /** Saves the corrections of the open folder (app data) and returns the corrected profile. */
+  setProfileCorrections(corrections: ProfileCorrections): Promise<ProjectProfile>;
 
   listen<E extends EventName>(
     event: E,

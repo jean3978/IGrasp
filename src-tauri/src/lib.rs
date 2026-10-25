@@ -6,11 +6,10 @@ mod commands;
 mod error;
 mod graph;
 mod index;
+mod learning;
 mod paths;
 #[cfg(test)]
 mod perf;
-// Reached by the profile commands from step 5 of the phase 4 plan on.
-#[allow(dead_code)]
 mod profile;
 mod search;
 mod state;
@@ -106,6 +105,8 @@ pub fn run() {
             commands::ai::save_conversation,
             commands::ai::delete_conversation,
             commands::ai::forget_conversations,
+            commands::learning::get_project_profile,
+            commands::learning::set_profile_corrections,
         ])
         .build(tauri::generate_context!())
         .expect("error while building IGrasp")

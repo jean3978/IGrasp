@@ -211,6 +211,21 @@ fn no_ai_operation_starts_without_a_user_action() {
     state.appdata.forget_conversations(&key).unwrap();
     assert_eq!(starts(&state), 0, "conversation commands");
 
+    // The learning commands: the project profile (a local walk) and its corrections.
+    state
+        .with_workspace(|ws| {
+            let (profile, _) = crate::learning::corrected_profile(ws, &state.appdata, true)?;
+            assert!(profile.files_seen > 0);
+            state
+                .appdata
+                .update_folder_learning(&crate::learning::root_key(ws), |l| {
+                    l.profile_corrections.notes = "also a server".into();
+                })?;
+            crate::learning::corrected_profile(ws, &state.appdata, false)
+        })
+        .unwrap();
+    assert_eq!(starts(&state), 0, "profile and corrections");
+
     // Closing the folder.
     state.ai.cancel_all();
     state.workspace.write().unwrap().take();

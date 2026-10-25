@@ -8,7 +8,7 @@
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -322,10 +322,13 @@ struct WatchContext {
     index: SharedIndex,
     cancel: Arc<AtomicBool>,
     graph: SharedGraph,
+    disk_revision: Arc<AtomicU64>,
 }
 
 impl WatchContext {
     fn handle(&self, result: DebounceEventResult) {
+        // Any batch, whatever it touches, makes what is computed from the whole folder stale.
+        self.disk_revision.fetch_add(1, Ordering::SeqCst);
         if self.cancel.load(Ordering::SeqCst) {
             return;
         }
@@ -396,6 +399,7 @@ fn emit_status(app: &AppHandle, mode: WatchMode, reason: Option<String>) {
 
 /// Starts watching the guarded root recursively. Falls back to polling every 2 s when the native
 /// watcher cannot be used (for example when the Linux inotify watch limit is reached).
+#[allow(clippy::too_many_arguments)] // The parts of the scan context the watcher keeps.
 pub fn start_watcher(
     app: AppHandle,
     guard: RootGuard,
@@ -404,6 +408,7 @@ pub fn start_watcher(
     index: SharedIndex,
     cancel: Arc<AtomicBool>,
     graph: SharedGraph,
+    disk_revision: Arc<AtomicU64>,
 ) -> Option<WatchHandle> {
     let root = guard.root().to_path_buf();
     let ctx = Arc::new(WatchContext {
@@ -415,6 +420,7 @@ pub fn start_watcher(
         index,
         cancel,
         graph,
+        disk_revision,
     });
     let handler = |ctx: Arc<WatchContext>| move |result: DebounceEventResult| ctx.handle(result);
 

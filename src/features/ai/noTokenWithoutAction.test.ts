@@ -18,6 +18,7 @@ import { useAiPanel } from '../../stores/aiPanel';
 import { startEventBridge } from '../../stores/eventBridge';
 import { useGraph } from '../../stores/graph';
 import { useOutline } from '../../stores/outline';
+import { useProjectProfile } from '../../stores/projectProfile';
 import { useQuickOpen } from '../../stores/quickOpen';
 import { useSearch } from '../../stores/search';
 import { useSettings } from '../../stores/settings';
@@ -211,6 +212,18 @@ describe('no token without a user action', () => {
       },
     });
     await useSettings.getState().update({ ai: { confirmFrom: 'never' } });
+
+    // The project profile and its corrections (local detection).
+    await useProjectProfile.getState().load(FIXTURE_ROOT, true);
+    await useProjectProfile.getState().saveCorrections({
+      addKinds: ['service'],
+      removeKinds: [],
+      addEngines: [],
+      removeEngines: [],
+      addFrameworks: ['Nakama'],
+      removeFrameworks: [],
+      notes: 'Also a dedicated server.',
+    });
 
     expect(starts()).toEqual([]);
   });

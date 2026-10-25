@@ -459,6 +459,62 @@ fn summaries_read_right() {
     );
 }
 
+#[test]
+fn corrections_add_remove_and_stand() {
+    let mut p = profile_of(&[
+        ("project.godot", "config/name=\"Arena\"\n"),
+        ("player.gd", "extends Node\n"),
+        ("Dockerfile", "FROM x"),
+    ]);
+    let mut c = ProfileCorrections {
+        add_kinds: vec![K::Service, K::Service],
+        remove_kinds: vec![K::Infrastructure],
+        add_frameworks: vec!["  Nakama ".into(), "nakama".into()],
+        notes: "  This is also a dedicated server.  ".into(),
+        ..ProfileCorrections::default()
+    };
+    c.normalize();
+    assert_eq!(c.add_kinds, vec![K::Service]);
+    assert_eq!(c.add_frameworks, vec!["Nakama".to_owned()]);
+    assert_eq!(c.notes, "This is also a dedicated server.");
+    apply_corrections(&mut p, &c);
+    assert_eq!(kinds(&p), vec![K::Service, K::Game]);
+    assert_eq!(p.kinds[0].evidence, vec![BY_YOU.to_owned()]);
+    assert!(has(&p.frameworks, "Nakama"));
+    assert!(p.summary.starts_with("Arena: a service"), "{}", p.summary);
+    // Removing everything leaves Unknown, never an empty list.
+    let c = ProfileCorrections {
+        remove_kinds: vec![K::Game, K::Infrastructure],
+        ..ProfileCorrections::default()
+    };
+    let mut p = profile_of(&[("project.godot", ""), ("Dockerfile", "")]);
+    apply_corrections(&mut p, &c);
+    assert_eq!(kinds(&p), vec![K::Unknown]);
+}
+
+/// The mock backend's fixture (`src/ipc/mock/mockProfile.ts` hand-writes this detection).
+#[test]
+fn the_mock_fixture_profile() {
+    let p = profile_of(&[
+        (
+            "package.json",
+            r#"{"name":"igrasp-demo","main":"src/main.ts","bin":{"demo":"src/main.ts"},"scripts":{"build":"tsc","test":"vitest run"},"devDependencies":{"typescript":"^5.9.0","vitest":"^4.0.0"}}"#,
+        ),
+        (".github/workflows/ci.yml", "name: CI\n"),
+        ("Makefile", "build:\n\tnpm run build\n"),
+        ("src/main.ts", &"export const x = 1;\n".repeat(20)),
+        ("scripts/deploy.sh", "echo deploying\n"),
+        ("README.md", "# Demo\n"),
+    ]);
+    assert_eq!(kinds(&p), vec![K::Cli, K::Library]);
+    assert_eq!(values(&p.build), vec!["make", "npm scripts"]);
+    assert_eq!(values(&p.tests), vec!["Vitest"]);
+    assert_eq!(values(&p.ci), vec!["GitHub Actions"]);
+    assert_eq!(p.dependencies, vec!["typescript", "vitest"]);
+    let modules: Vec<&str> = p.modules.iter().map(|m| m.path.as_str()).collect();
+    assert_eq!(modules, vec!["src", "scripts"]);
+}
+
 /// The profile card of IGrasp opened on itself must be right.
 #[test]
 fn dogfooding_the_repository() {

@@ -100,11 +100,6 @@ impl Walk {
         })
     }
 
-    /// Whether a folder (any depth) of that root-relative path holds a file.
-    pub fn has_dir(&self, dir: &str) -> bool {
-        self.under(dir).next().is_some()
-    }
-
     /// Files and bytes per folder, counting every ancestor.
     pub fn folder_totals(&self) -> BTreeMap<String, (u64, u64)> {
         let mut out: BTreeMap<String, (u64, u64)> = BTreeMap::new();
@@ -255,7 +250,5 @@ mod tests {
         assert_eq!(t["a"], (2, 15));
         assert_eq!(t["a/b"], (1, 10));
         assert_eq!(t[""], (3, 16));
-        assert!(w.has_dir("a/b"));
-        assert!(!w.has_dir("a/b/c.rs"));
     }
 }

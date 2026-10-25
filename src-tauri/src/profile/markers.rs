@@ -595,7 +595,8 @@ pub fn detect(root: &Path, walk: &Walk, manifests: &Manifests) -> Detection {
     if let Some(p) = manifests.packages.iter().find(|p| !p.path.contains('/')) {
         if p.bin {
             kinds.add(K::Cli, High, &p.path);
-        } else if p.exports && !app_kind && !p.workspaces {
+        }
+        if p.exports && !app_kind && !p.workspaces {
             kinds.add(K::Library, Medium, &p.path);
         }
     }

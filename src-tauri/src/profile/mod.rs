@@ -109,10 +109,114 @@ pub struct ProjectProfile {
     pub repository: bool,
     /// One line: "IGrasp: a Tauri desktop app in Rust and TypeScript (React), tested with …".
     pub summary: String,
+    /// The user's corrections, already applied above.
+    pub corrections: ProfileCorrections,
     pub files_seen: u64,
     /// The walk hit its budget: the profile says what it saw.
     pub truncated: bool,
     pub built_ms: u64,
+}
+
+/// What the user changed in the detected profile, remembered per folder in app data and applied
+/// on every later build. A removed item never comes back while the correction stands.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct ProfileCorrections {
+    pub add_kinds: Vec<ProjectKind>,
+    pub remove_kinds: Vec<ProjectKind>,
+    pub add_engines: Vec<String>,
+    pub remove_engines: Vec<String>,
+    pub add_frameworks: Vec<String>,
+    pub remove_frameworks: Vec<String>,
+    /// Free text ("this is also a dedicated server"), sent verbatim in the prompts.
+    pub notes: String,
+}
+
+/// The evidence of an item the user added.
+pub const BY_YOU: &str = "(you)";
+/// Characters kept of the notes.
+pub const MAX_NOTES_CHARS: usize = 1000;
+/// Items kept per list of a correction.
+const MAX_CORRECTION_ITEMS: usize = 20;
+
+impl ProfileCorrections {
+    /// Trims, drops blanks and duplicates, caps the sizes.
+    pub fn normalize(&mut self) {
+        let clean = |v: &mut Vec<String>| {
+            let mut seen = Vec::new();
+            for s in v.drain(..) {
+                let s: String = s.trim().chars().take(80).collect();
+                if !s.is_empty() && !seen.iter().any(|x: &String| x.eq_ignore_ascii_case(&s)) {
+                    seen.push(s);
+                }
+            }
+            seen.truncate(MAX_CORRECTION_ITEMS);
+            *v = seen;
+        };
+        for v in [
+            &mut self.add_engines,
+            &mut self.remove_engines,
+            &mut self.add_frameworks,
+            &mut self.remove_frameworks,
+        ] {
+            clean(v);
+        }
+        for v in [&mut self.add_kinds, &mut self.remove_kinds] {
+            v.sort();
+            v.dedup();
+            v.retain(|k| *k != ProjectKind::Unknown);
+        }
+        self.notes = self.notes.trim().chars().take(MAX_NOTES_CHARS).collect();
+    }
+}
+
+fn correct<T: PartialEq + Clone>(
+    list: &mut Vec<Detected<T>>,
+    add: &[T],
+    remove: &[T],
+    same: impl Fn(&T, &T) -> bool,
+) {
+    list.retain(|d| !remove.iter().any(|r| same(r, &d.value)));
+    for (i, value) in add.iter().enumerate() {
+        list.retain(|d| !same(&d.value, value));
+        // The user's items come first, in their order.
+        list.insert(
+            i.min(list.len()),
+            Detected {
+                value: value.clone(),
+                confidence: Confidence::High,
+                evidence: vec![BY_YOU.to_owned()],
+            },
+        );
+    }
+}
+
+/// Applies `c` to a detected profile and writes the summary again.
+pub fn apply_corrections(profile: &mut ProjectProfile, c: &ProfileCorrections) {
+    let ci = |a: &String, b: &String| a.eq_ignore_ascii_case(b);
+    correct(&mut profile.kinds, &c.add_kinds, &c.remove_kinds, |a, b| {
+        a == b
+    });
+    if profile.kinds.len() > 1 || !c.add_kinds.is_empty() {
+        profile.kinds.retain(|k| k.value != ProjectKind::Unknown);
+    }
+    if profile.kinds.is_empty() {
+        profile.kinds.push(Detected {
+            value: ProjectKind::Unknown,
+            confidence: Confidence::Low,
+            evidence: Vec::new(),
+        });
+    }
+    correct(&mut profile.engines, &c.add_engines, &c.remove_engines, ci);
+    correct(
+        &mut profile.frameworks,
+        &c.add_frameworks,
+        &c.remove_frameworks,
+        ci,
+    );
+    profile.corrections = c.clone();
+    profile.summary = summary::summary(profile);
 }
 
 /// Dependencies listed at most.
@@ -174,6 +278,7 @@ pub fn from_walk(
         docs: summary::docs_facts(walk),
         repository: false,
         summary: String::new(),
+        corrections: ProfileCorrections::default(),
         files_seen: walk.files.len() as u64,
         truncated: walk.truncated,
         built_ms: 0,
