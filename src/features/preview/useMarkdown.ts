@@ -14,11 +14,12 @@ const CACHE_SIZE = 20;
  * Which cache a render goes to: the open documents, or the AI chat's answers (which must not push
  * the documents out, and are many and small).
  */
-export type MarkdownScope = 'document' | 'chat';
+export type MarkdownScope = 'document' | 'chat' | 'academy';
 
 const caches: Record<MarkdownScope, Map<string, RenderedMarkdown>> = {
   document: new Map(),
   chat: new Map(),
+  academy: new Map(),
 };
 
 function remember(cache: Map<string, RenderedMarkdown>, key: string, value: RenderedMarkdown) {

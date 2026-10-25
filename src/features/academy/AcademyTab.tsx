@@ -18,6 +18,7 @@ import { TutorialOptions } from './TutorialOptions';
 import { TutorialView } from './TutorialView';
 import '../quiz/quiz.css';
 import './academy.css';
+import './reader.css';
 
 export function AcademyTab() {
   const root = useWorkspace((s) => s.root?.path ?? null);
