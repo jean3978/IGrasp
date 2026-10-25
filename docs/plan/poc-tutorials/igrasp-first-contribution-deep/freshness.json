@@ -1,0 +1,141 @@
+{
+  "affectedSteps": [
+    [
+      0,
+      1
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      0,
+      7
+    ]
+  ],
+  "afterRelocation": {
+    "badge": "sourcesMissing",
+    "missing": 1,
+    "of": 20
+  },
+  "modified": {
+    "changed": "docs/decisions/0007-e2e-with-playwright-and-mock-ipc.md",
+    "missing": "src-tauri/src/commands/graph.rs",
+    "moved": "docs/architecture.md"
+  },
+  "relocatedCitations": 2,
+  "report": {
+    "badge": {
+      "badge": "sourcesMissing",
+      "missing": 1,
+      "of": 20
+    },
+    "checks": [
+      {
+        "firstLine": 75,
+        "lastLine": 85,
+        "lines": "70-80",
+        "path": "docs/architecture.md",
+        "state": "moved"
+      },
+      {
+        "lines": "84-91",
+        "path": "src/ipc/tauri.ts",
+        "state": "upToDate"
+      },
+      {
+        "lines": "64-76",
+        "path": "src-tauri/src/commands/graph.rs",
+        "state": "missing"
+      },
+      {
+        "lines": "84-92",
+        "path": "src-tauri/src/lib.rs",
+        "state": "upToDate"
+      },
+      {
+        "lines": "266-276",
+        "path": "src/ipc/types.ts",
+        "state": "upToDate"
+      },
+      {
+        "lines": "502-512",
+        "path": "src/ipc/mock/index.ts",
+        "state": "upToDate"
+      },
+      {
+        "lines": "87-103",
+        "path": "src/stores/graph.ts",
+        "state": "upToDate"
+      },
+      {
+        "lines": "1-19",
+        "path": "src/ipc/client.ts",
+        "state": "upToDate"
+      },
+      {
+        "lines": "240-242",
+        "path": "src/ipc/types.ts",
+        "state": "upToDate"
+      },
+      {
+        "lines": "8-19",
+        "path": "src/ipc/client.ts",
+        "state": "upToDate"
+      },
+      {
+        "lines": "31-32",
+        "path": "src/ipc/tauri.ts",
+        "state": "upToDate"
+      },
+      {
+        "lines": "67-90",
+        "path": "src-tauri/src/lib.rs",
+        "state": "upToDate"
+      },
+      {
+        "lines": "67-68",
+        "path": "src/ipc/tauri.ts",
+        "state": "upToDate"
+      },
+      {
+        "lines": "150",
+        "path": "src/ipc/mock/index.ts",
+        "state": "upToDate"
+      },
+      {
+        "firstLine": 106,
+        "lastLine": 108,
+        "lines": "101-103",
+        "path": "docs/architecture.md",
+        "state": "moved"
+      },
+      {
+        "lines": "67-70",
+        "path": "src-tauri/src/lib.rs",
+        "state": "upToDate"
+      },
+      {
+        "lines": "12-36",
+        "path": "docs/decisions/0007-e2e-with-playwright-and-mock-ipc.md",
+        "state": "changed"
+      },
+      {
+        "lines": "1-2",
+        "path": "src/ipc/mock/index.ts",
+        "state": "upToDate"
+      },
+      {
+        "lines": "90",
+        "path": "src/ipc/tauri.ts",
+        "state": "upToDate"
+      },
+      {
+        "lines": "275-276",
+        "path": "src/ipc/types.ts",
+        "state": "upToDate"
+      }
+    ],
+    "moved": 2
+  }
+}

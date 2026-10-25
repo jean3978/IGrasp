@@ -1,0 +1,68 @@
+{
+  "chapter": {
+    "attemptReasons": [
+      "2 rejected: 1 cited lines that do not check out, 1 cited a file that does not exist"
+    ],
+    "attempts": 2,
+    "costUsd": 0.5122774999999999,
+    "error": null,
+    "inputTokens": 213482,
+    "outcome": "Completed",
+    "outputTokens": 10832,
+    "promptBytes": 2932,
+    "providerDurationMs": 66246,
+    "rejectedCount": 2,
+    "sessionCostUsd": 0.9759357,
+    "toolUses": 0,
+    "tools": {},
+    "wallMs": 69042
+  },
+  "chapterIndex": 1,
+  "chapterSteps": [
+    "explain",
+    "codeTour",
+    "diagram",
+    "explain",
+    "spotIt",
+    "quickCheck",
+    "match",
+    "explain",
+    "tryIt",
+    "recap"
+  ],
+  "freshPrompt": false,
+  "input": {
+    "domainGap": null,
+    "familiarity": "maintainer",
+    "length": "deep",
+    "role": null,
+    "subject": "Your first contribution: adding a new IPC command from Rust to the mock backend and the UI"
+  },
+  "insufficientMaterial": false,
+  "model": "sonnet",
+  "outline": {
+    "attemptReasons": [],
+    "attempts": 1,
+    "costUsd": 0.4636582,
+    "error": null,
+    "inputTokens": 529158,
+    "outcome": "Completed",
+    "outputTokens": 6509,
+    "promptBytes": 86589,
+    "providerDurationMs": 53553,
+    "rejectedCount": 0,
+    "sessionCostUsd": 0.4636582,
+    "toolUses": 30,
+    "tools": {
+      "Glob": 3,
+      "Grep": 7,
+      "Read": 20
+    },
+    "wallMs": 54750
+  },
+  "outlineChapters": 8,
+  "profile": "igrasp: a Tauri desktop app in TypeScript and Rust (React), tested with Playwright, Vitest and cargo test.",
+  "root": "<repo>",
+  "roundTripLossless": true,
+  "suggestedSubjects": []
+}

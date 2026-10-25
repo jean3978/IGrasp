@@ -1,0 +1,68 @@
+{
+  "chapter": {
+    "attemptReasons": [],
+    "attempts": 1,
+    "costUsd": 0.4015232,
+    "error": null,
+    "inputTokens": 153368,
+    "outcome": "Completed",
+    "outputTokens": 7460,
+    "promptBytes": 3045,
+    "providerDurationMs": 45757,
+    "rejectedCount": 0,
+    "toolUses": 0,
+    "tools": {},
+    "wallMs": 46973,
+    "sessionCostUsd": 0.8600893
+  },
+  "chapterIndex": 1,
+  "chapterSteps": [
+    "explain",
+    "codeTour",
+    "quickCheck",
+    "explain",
+    "spotIt",
+    "putInOrder",
+    "tryIt",
+    "recap"
+  ],
+  "freshPrompt": false,
+  "input": {
+    "domainGap": null,
+    "familiarity": "newHere",
+    "length": "standard",
+    "role": null,
+    "subject": "The action system: how actions, effects and attributes work together"
+  },
+  "insufficientMaterial": false,
+  "model": "sonnet",
+  "outline": {
+    "attemptReasons": [
+      "5 chapters rejected: was generic, was generic, was generic, was generic, was generic",
+      "4 chapters rejected: was generic, was generic, was generic, was generic"
+    ],
+    "attempts": 3,
+    "costUsd": 0.4585661,
+    "error": null,
+    "inputTokens": 576407,
+    "outcome": "Completed",
+    "outputTokens": 14807,
+    "promptBytes": 57947,
+    "providerDurationMs": 88167,
+    "rejectedCount": 9,
+    "toolUses": 11,
+    "tools": {
+      "Glob": 1,
+      "Grep": 1,
+      "Read": 9
+    },
+    "wallMs": 92051,
+    "sessionCostUsd": 0.4585661
+  },
+  "outlineChapters": 5,
+  "profile": "ActionRoguelike: an Unreal Engine 5.8 game in C++ and C.",
+  "root": "<samples>/unreal",
+  "roundTripLossless": true,
+  "suggestedSubjects": [],
+  "costNote": "costUsd fields corrected after the run: the provider reports a cumulative session cost, the chapter is charged by difference"
+}

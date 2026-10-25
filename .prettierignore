@@ -10,3 +10,6 @@ test-results
 package-lock.json
 # Markdown is hand-written documentation; tables and line breaks are kept as authored.
 **/*.md
+
+# Proof-of-concept outputs written by the tutorial generator (docs/plan/poc-tutorials), kept as written.
+docs/plan/poc-tutorials/**/*.json

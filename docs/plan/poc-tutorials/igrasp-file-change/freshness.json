@@ -1,0 +1,139 @@
+{
+  "affectedSteps": [
+    [
+      0,
+      0
+    ]
+  ],
+  "afterRelocation": {
+    "badge": "maybeOutdated",
+    "changed": 1,
+    "of": 16
+  },
+  "modified": {
+    "changed": "src-tauri/src/index/watcher.rs",
+    "missing": null,
+    "moved": "src-tauri/src/index/watcher.rs"
+  },
+  "relocatedCitations": 15,
+  "report": {
+    "badge": {
+      "badge": "maybeOutdated",
+      "changed": 1,
+      "of": 16
+    },
+    "checks": [
+      {
+        "lines": "329-358",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "changed"
+      },
+      {
+        "firstLine": 81,
+        "lastLine": 94,
+        "lines": "76-89",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 105,
+        "lastLine": 128,
+        "lines": "100-123",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 129,
+        "lastLine": 147,
+        "lines": "124-142",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 148,
+        "lastLine": 171,
+        "lines": "143-166",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 564,
+        "lastLine": 584,
+        "lines": "559-579",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 148,
+        "lastLine": 162,
+        "lines": "143-157",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 96,
+        "lastLine": 103,
+        "lines": "91-98",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 114,
+        "lastLine": 132,
+        "lines": "109-127",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 210,
+        "lastLine": 257,
+        "lines": "205-252",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 85,
+        "lastLine": 94,
+        "lines": "80-89",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 405,
+        "lastLine": 473,
+        "lines": "400-468",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 63,
+        "lastLine": 79,
+        "lines": "58-74",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 512,
+        "lastLine": 611,
+        "lines": "507-606",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 738,
+        "lastLine": 753,
+        "lines": "733-748",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      },
+      {
+        "firstLine": 6,
+        "lastLine": 13,
+        "lines": "1-8",
+        "path": "src-tauri/src/index/watcher.rs",
+        "state": "moved"
+      }
+    ],
+    "moved": 15
+  }
+}

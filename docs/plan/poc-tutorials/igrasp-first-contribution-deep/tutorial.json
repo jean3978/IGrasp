@@ -1,0 +1,425 @@
+{
+  "id": "igrasp-your-first-contribution-adding-a-new-ipc-command-from-rust-to-the-mock-backend-and-the-ui-2026-10-25",
+  "title": "IGrasp: your first IPC command, from Rust to the mock to the UI",
+  "intro": "You will add one command to IGrasp end to end. You will write the Rust handler and its ts-rs types, register it in lib.rs, declare it on the Backend interface, implement it twice (tauri.ts and the in-memory mock), and call it from a store and a view. You will also know which checks catch a missed step, and which ones don't.",
+  "project": "igrasp",
+  "subject": "Your first contribution: adding a new IPC command from Rust to the mock backend and the UI",
+  "familiarity": "maintainer",
+  "length": "deep",
+  "generated": "2026-10-25T16:02:13Z",
+  "provider": "claude-cli",
+  "model": "sonnet",
+  "generationCommit": "d353601",
+  "docsNote": "No page lists the places a new command must touch. The checklist lives in the agent-oriented notes and is only implied by ADR 0007 and the command table in docs/architecture.md; a short \"Adding an IPC command\" section in CONTRIBUTING.md would help.",
+  "chapters": [
+    {
+      "id": "c1",
+      "title": "The map: one command, five places",
+      "goal": "Name every file a new command touches (commands/*.rs, lib.rs, ipc/types.ts, ipc/tauri.ts, ipc/mock/index.ts, a store) by following get_graph_status through them, and explain why src/ipc/client.ts is the single switch between the real backend and the mock.",
+      "minutes": 8,
+      "hootIntro": "Before you write a line, let's trace get_graph_status through every file a new IGrasp command has to touch.",
+      "steps": [
+        {
+          "type": "explain",
+          "title": "A command is one name spelled in five files",
+          "body": "A command has no registry that generates the others: `get_graph_status` is typed by hand in the Rust handler (`commands/graph.rs`), the `generate_handler!` list (`lib.rs`), the `Backend` interface (`ipc/types.ts`), `tauriBackend` (`ipc/tauri.ts`) and the mock (`ipc/mock/index.ts`). A sixth place, a zustand store, is where the UI actually calls it. The snake_case string in `invoke('get_graph_status')` is the only link between the Rust and TypeScript halves, so a typo there is a runtime error, not a compile error.",
+          "sources": [
+            {
+              "path": "docs/architecture.md",
+              "firstLine": 70,
+              "lastLine": 80,
+              "why": "The command table lists get_graph_status among the IPC commands."
+            },
+            {
+              "path": "src/ipc/tauri.ts",
+              "firstLine": 84,
+              "lastLine": 91,
+              "why": "The string-to-method mapping."
+            }
+          ]
+        },
+        {
+          "type": "codeTour",
+          "title": "Follow get_graph_status through the code",
+          "stops": [
+            {
+              "path": "src-tauri/src/commands/graph.rs",
+              "firstLine": 64,
+              "lastLine": 76,
+              "annotation": "The Rust end. `with_graph` takes the workspace read lock via `with_workspace`, so with no folder open the command fails with `AppError::NoRootOpen`. The handler itself is one line: `g.status(generation)`."
+            },
+            {
+              "path": "src-tauri/src/lib.rs",
+              "firstLine": 84,
+              "lastLine": 92,
+              "annotation": "`tauri::generate_handler!` is the allow-list of callable commands. A `#[tauri::command]` function missing here compiles fine and is simply unreachable from the webview."
+            },
+            {
+              "path": "src/ipc/types.ts",
+              "firstLine": 266,
+              "lastLine": 276,
+              "annotation": "The contract. `getGraphStatus(): Promise<GraphStatus>` sits in `Backend` next to the other graph queries, with the generated `GraphStatus` type imported at the top of the file (line 20) and re-exported (line 68)."
+            },
+            {
+              "path": "src/ipc/tauri.ts",
+              "firstLine": 84,
+              "lastLine": 91,
+              "annotation": "The real implementation is a one-liner over the local `invoke` wrapper. Arguments are camelCase objects (`{ relPath }`) matching the Rust parameter names, which Tauri converts from snake_case."
+            },
+            {
+              "path": "src/ipc/mock/index.ts",
+              "firstLine": 502,
+              "lastLine": 512,
+              "annotation": "The mock re-implements the same rule in TypeScript: reject with `NoRootOpen` when `state.root` is null, then answer from `state.graph` and `state.index`, with `ready` false until the fake build finishes."
+            },
+            {
+              "path": "src/stores/graph.ts",
+              "firstLine": 87,
+              "lastLine": 103,
+              "annotation": "The caller. `loadStatus` imports `backend` from `ipc/client`, remembers the generation before the await, and drops the answer if the generation moved on. Conventions say IPC calls live in stores, not components."
+            }
+          ]
+        },
+        {
+          "type": "diagram",
+          "title": "Who talks to whom",
+          "mermaid": "flowchart LR\n  Store[\"stores/graph.ts<br/>loadStatus\"] --> Client[\"ipc/client.ts<br/>backend\"]\n  Client -->|isTauri| Tauri[\"ipc/tauri.ts<br/>tauriBackend\"]\n  Client -->|otherwise| Mock[\"ipc/mock/index.ts<br/>createMockBackend\"]\n  Types[\"ipc/types.ts<br/>Backend\"] -.implemented by.-> Tauri\n  Types -.implemented by.-> Mock\n  Tauri -->|invoke get_graph_status| Lib[\"lib.rs<br/>generate_handler!\"]\n  Lib --> Cmd[\"commands/graph.rs<br/>get_graph_status\"]\n  Cmd --> State[\"state.rs<br/>with_workspace\"]\n  Cmd --> G[\"graph/mod.rs<br/>Graph::status\"]",
+          "caption": "Stores see only `Backend`; client.ts picks which implementation sits behind it. Only the left branch crosses the process boundary.",
+          "sources": [
+            {
+              "path": "src/ipc/client.ts",
+              "firstLine": 1,
+              "lastLine": 19,
+              "why": "The selection of the implementation."
+            },
+            {
+              "path": "src/ipc/types.ts",
+              "firstLine": 240,
+              "lastLine": 242,
+              "why": "The Backend interface both sides implement."
+            },
+            {
+              "path": "src-tauri/src/commands/graph.rs",
+              "firstLine": 64,
+              "lastLine": 76,
+              "why": "The Rust end of the call."
+            }
+          ]
+        },
+        {
+          "type": "explain",
+          "title": "client.ts is the only switch",
+          "body": "`select()` returns `tauriBackend` when `'__TAURI_INTERNALS__' in window`, otherwise it builds the mock and publishes its controls on `window.__igraspMock`. The choice is made once, at module load, and exported as the constant `backend`, so no store or component ever branches on the environment. The cost: `tauri.ts` is imported even in the browser (its comment says it is unused there, with window calls resolved lazily by `win()`), and a bundle in the wrong environment cannot swap implementations at runtime. The gain is that Vitest, `npm run dev` and Playwright exercise the exact same store code as the desktop app.",
+          "sources": [
+            {
+              "path": "src/ipc/client.ts",
+              "firstLine": 8,
+              "lastLine": 19,
+              "why": "isTauri, select and the exported backend."
+            },
+            {
+              "path": "src/ipc/tauri.ts",
+              "firstLine": 31,
+              "lastLine": 32,
+              "why": "Lazy window access because the module is imported outside Tauri."
+            }
+          ]
+        },
+        {
+          "type": "spotIt",
+          "title": "Spot the environment test",
+          "prompt": "Click the line that decides, at runtime, that the app is running inside the Tauri webview.",
+          "path": "src/ipc/client.ts",
+          "firstLine": 8,
+          "lastLine": 19,
+          "answerLine": 9,
+          "explanation": "`isTauri()` looks for `__TAURI_INTERNALS__` on `window`. `select()` uses it on line 13 to return `tauriBackend`; everything else gets the mock, with its controls exposed for tests on line 15."
+        },
+        {
+          "type": "quickCheck",
+          "kind": "multipleChoice",
+          "question": "You add `getFoo()` to the `Backend` interface and implement it in `tauriBackend` and the mock, but forget to list the Rust command in `generate_handler!` in lib.rs. What happens?",
+          "choices": [
+            "tsc and Vitest pass; the call fails only when the real app invokes it",
+            "The TypeScript build fails on the unknown command name",
+            "cargo test fails because the command is unregistered",
+            "The mock throws, since it checks lib.rs at startup"
+          ],
+          "answer": 0,
+          "hint": "Which of these checks ever reads the string passed to `invoke`?",
+          "explanation": "The command name is a plain string in `tauri.ts`, and the mock never touches lib.rs, so typecheck and unit tests are green. Only a run of the real app (or a manual check) reveals the missing handler. Omitting a method from either implementation, by contrast, is caught by `tsc`: `tauriBackend` is typed `Backend` and the mock returns `Backend & { controls }`.",
+          "sources": [
+            {
+              "path": "src-tauri/src/lib.rs",
+              "firstLine": 67,
+              "lastLine": 90,
+              "why": "The handler list that must be extended by hand."
+            },
+            {
+              "path": "src/ipc/tauri.ts",
+              "firstLine": 67,
+              "lastLine": 68,
+              "why": "tauriBackend is typed as Backend."
+            },
+            {
+              "path": "src/ipc/mock/index.ts",
+              "firstLine": 150,
+              "lastLine": 150,
+              "why": "The mock's return type is Backend & { controls }."
+            }
+          ]
+        },
+        {
+          "type": "match",
+          "title": "Match the file to its job",
+          "prompt": "Match each file to what it does for a command.",
+          "pairs": [
+            {
+              "left": "src-tauri/src/commands/graph.rs",
+              "right": "The #[tauri::command] handler and the response structs"
+            },
+            {
+              "left": "src-tauri/src/lib.rs",
+              "right": "The generate_handler! list that exposes the command"
+            },
+            {
+              "left": "src/ipc/types.ts",
+              "right": "The Backend interface and re-exports of generated types"
+            },
+            {
+              "left": "src/ipc/tauri.ts",
+              "right": "The real implementation over invoke, with error mapping"
+            },
+            {
+              "left": "src/ipc/mock/index.ts",
+              "right": "The in-memory implementation used in browser, Vitest and Playwright"
+            }
+          ],
+          "explanation": "Each file owns exactly one role, which is why a command needs all five. `client.ts` is the sixth file in the picture but touches no command: it only chooses between the last two.",
+          "sources": [
+            {
+              "path": "docs/architecture.md",
+              "firstLine": 101,
+              "lastLine": 103,
+              "why": "The ipc/ folder's role in the architecture table."
+            },
+            {
+              "path": "src-tauri/src/lib.rs",
+              "firstLine": 67,
+              "lastLine": 70,
+              "why": "The handler registration."
+            }
+          ]
+        },
+        {
+          "type": "explain",
+          "title": "Why a hand-kept mock is a deliberate cost",
+          "body": "ADR 0007 chose an in-memory mock because Playwright cannot drive WebView2 or WebKitGTK, so the whole UI is tested against `createMockBackend`. The ADR states the consequence plainly: the mock must be kept in step with the Rust commands, since only the TypeScript interface and the generated event types are shared. That is why `mock/index.ts` reproduces Rust details such as the `NoRootOpen` and `IndexNotReady` rejections and generation numbers. Parity is a convention backed by tests, not by the compiler.",
+          "sources": [
+            {
+              "path": "docs/decisions/0007-e2e-with-playwright-and-mock-ipc.md",
+              "firstLine": 12,
+              "lastLine": 36,
+              "why": "The decision and its consequences."
+            },
+            {
+              "path": "src/ipc/mock/index.ts",
+              "firstLine": 1,
+              "lastLine": 2,
+              "why": "What the mock is used for."
+            }
+          ]
+        },
+        {
+          "type": "tryIt",
+          "title": "Trace a command yourself",
+          "instruction": "Search the repo for `list_broken_links` and then for `listBrokenLinks`. Note which files show up for each spelling, and where both meet on one line of `src/ipc/tauri.ts`. Then check that every file you found is one of the five places from this chapter, plus the store and the panel that call it.",
+          "command": "rg \"list_broken_links|listBrokenLinks\" src src-tauri/src docs/architecture.md",
+          "where": "terminal",
+          "expected": "Snake_case in lib.rs, commands/graph.rs, tauri.ts and architecture.md; camelCase in types.ts, tauri.ts, the mock, the store and the panel.",
+          "sources": [
+            {
+              "path": "src/ipc/tauri.ts",
+              "firstLine": 90,
+              "lastLine": 90,
+              "why": "Both spellings meet on this line."
+            },
+            {
+              "path": "src/ipc/types.ts",
+              "firstLine": 275,
+              "lastLine": 276,
+              "why": "The interface entry for listBrokenLinks."
+            }
+          ]
+        },
+        {
+          "type": "recap",
+          "takeaways": [
+            "A new command lives in five hand-synced places: commands/*.rs, the generate_handler! list in lib.rs, the Backend interface in ipc/types.ts, tauriBackend in ipc/tauri.ts and the mock in ipc/mock/index.ts, plus a store that calls it.",
+            "src/ipc/client.ts picks the implementation once, from __TAURI_INTERNALS__, so stores always import `backend` and never test the environment.",
+            "tsc catches a missing method on either implementation, but a missing lib.rs entry or a mistyped invoke string only fails at runtime in the real app."
+          ],
+          "sources": [
+            {
+              "path": "src/ipc/client.ts",
+              "firstLine": 8,
+              "lastLine": 19,
+              "why": "The single switch."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "The Rust side: a command in commands/ with AppState and AppError",
+      "goal": "Write a #[tauri::command] in src-tauri/src/commands/graph.rs style: take State<AppState>, go through with_workspace so a closed folder yields NoRootOpen, return AppResult<T>, and register it in generate_handler! in lib.rs.",
+      "minutes": 9,
+      "steps": []
+    },
+    {
+      "id": "c3",
+      "title": "Types across the wire: ts-rs, camelCase and the generated folder",
+      "goal": "Define a response struct with Serialize, TS, rename_all camelCase and #[ts(export)], explain how .cargo/config.toml (TS_RS_EXPORT_DIR, TS_RS_LARGE_INT) turns cargo test into the type generator, and why CI's git diff --exit-code on src/ipc/generated fails an unregenerated type.",
+      "minutes": 8,
+      "steps": []
+    },
+    {
+      "id": "c4",
+      "title": "The frontend contract: Backend interface and the Tauri implementation",
+      "goal": "Add the method to the Backend interface in src/ipc/types.ts (import and re-export of the generated type), then implement it in tauri.ts through the wrapping invoke, with the camelCase argument names matching the Rust parameters, and explain how errors become BackendError.",
+      "minutes": 8,
+      "steps": []
+    },
+    {
+      "id": "c5",
+      "title": "The mock backend: behaving like Rust in src/ipc/mock",
+      "goal": "Implement the command in createMockBackend (src/ipc/mock/index.ts) so it matches Rust: NoRootOpen rejection, the generation, state.graph/state.index readiness, structuredClone of results, and helper logic placed in a mock*.ts module; explain why the mock exists (ADR 0007).",
+      "minutes": 10,
+      "steps": []
+    },
+    {
+      "id": "c6",
+      "title": "Store and view: calling the command from the UI",
+      "goal": "Call the new command from a zustand store action (as useGraph.loadBroken does, ignoring responses of an older generation) and render it in a view such as BrokenLinksPanel, and, when it is a user action, register it in menuActions.ts so menus, buttons and shortcuts dispatch through it.",
+      "minutes": 9,
+      "steps": []
+    },
+    {
+      "id": "c7",
+      "title": "Proving it: Rust tests, mock tests, Playwright and npm run check",
+      "goal": "Test the command at each layer: a Rust unit test on a tempdir graph like commands/graph.rs, a Vitest test on createMockBackend after openRoot, a Playwright spec using openFixture and window.__igraspMock, then run npm run check and read what it covers.",
+      "minutes": 9,
+      "steps": []
+    },
+    {
+      "id": "c8",
+      "title": "Ship it: docs, changelog and the traps that remain",
+      "goal": "Finish a command contribution the way IGrasp expects it: a row in docs/architecture.md's command table, the docs/features page, CHANGELOG [Unreleased], Conventional Commits; and list the drift risks (mock vs Rust, an unlisted handler, a filtered cargo test skipping export_bindings).",
+      "minutes": 8,
+      "steps": []
+    }
+  ],
+  "sources": [
+    {
+      "path": "docs/architecture.md",
+      "lines": "70-80",
+      "sha256": "616f0f135c0d37d8278fad862242b158451dcc5dc3b32d59c1805cf073b46054"
+    },
+    {
+      "path": "src/ipc/tauri.ts",
+      "lines": "84-91",
+      "sha256": "28c6e3535ce01e0532af0aa610ff15779125fdda7420ca85d0e4351e48779bd7"
+    },
+    {
+      "path": "src-tauri/src/commands/graph.rs",
+      "lines": "64-76",
+      "sha256": "389e99eb9c0e2054c330e1299a63efae4bdbcc288319db30f91f263385eedf2b"
+    },
+    {
+      "path": "src-tauri/src/lib.rs",
+      "lines": "84-92",
+      "sha256": "90d776941905995ae82e7119e9e663ffbb32de5c1b19ba1167d1842d5ffc1e90"
+    },
+    {
+      "path": "src/ipc/types.ts",
+      "lines": "266-276",
+      "sha256": "f1d240f3a4fbc587f84a882a47b4d05406b03b205b793dd029f7160a1382c14d"
+    },
+    {
+      "path": "src/ipc/mock/index.ts",
+      "lines": "502-512",
+      "sha256": "d5280c7b1f5249006ae4a21778c676152a77647757e3a3033a137e4889fb4a6e"
+    },
+    {
+      "path": "src/stores/graph.ts",
+      "lines": "87-103",
+      "sha256": "dee5f5b6dabaf1eee1b5b8cb264485cacb427ac590eccb94de47c9552fb35a64"
+    },
+    {
+      "path": "src/ipc/client.ts",
+      "lines": "1-19",
+      "sha256": "0b40c21df43cd5fa3e40b6f309ddcde8c51bfa81f4caf667b3a74c4122eb79f6"
+    },
+    {
+      "path": "src/ipc/types.ts",
+      "lines": "240-242",
+      "sha256": "3e5f396f0c968084ce7932abb1ef6144fac5ca7ec72fd5c16b11a52f1762fcfb"
+    },
+    {
+      "path": "src/ipc/client.ts",
+      "lines": "8-19",
+      "sha256": "e94025a10a1cd623624b26eabefab9ce2bba1aaac8c1c65450237b58d636f2e5"
+    },
+    {
+      "path": "src/ipc/tauri.ts",
+      "lines": "31-32",
+      "sha256": "224782f64fdd92785621fc8f325c0976fbb83a9e7452df180a7085fe697f9daa"
+    },
+    {
+      "path": "src-tauri/src/lib.rs",
+      "lines": "67-90",
+      "sha256": "00e21d30973d53206ab2af96d4fdc121178b1512df7036f8fcda50047d12bb57"
+    },
+    {
+      "path": "src/ipc/tauri.ts",
+      "lines": "67-68",
+      "sha256": "cadb82ea503e1bdd306126db5f6d6e542e16d18522966486443eedeca6382a2c"
+    },
+    {
+      "path": "src/ipc/mock/index.ts",
+      "lines": "150",
+      "sha256": "3444c9f41b9054bb6cbffa0d7a110a2c80839d6b7ea127c05bd15ae1e948f328"
+    },
+    {
+      "path": "docs/architecture.md",
+      "lines": "101-103",
+      "sha256": "fe49bf18462bfb2dedda7147ea9412d568a2d5eeadd07a8b5fdccb35a1ba1eae"
+    },
+    {
+      "path": "src-tauri/src/lib.rs",
+      "lines": "67-70",
+      "sha256": "77be5465cbad0b1f660b276aa0c0d728cbbf6d9a151771f5931d901cbc63d4af"
+    },
+    {
+      "path": "docs/decisions/0007-e2e-with-playwright-and-mock-ipc.md",
+      "lines": "12-36",
+      "sha256": "fc564d6a90aaa529f736c1b5a7f07bcd52fb886fc1f05349dca0c3251586aacd"
+    },
+    {
+      "path": "src/ipc/mock/index.ts",
+      "lines": "1-2",
+      "sha256": "c20d31222d57fbf747781923e36877e7067e50beae09af79ff99d7a39c268e79"
+    },
+    {
+      "path": "src/ipc/tauri.ts",
+      "lines": "90",
+      "sha256": "5604b7131b205191f810fa07610857ea246d25ba4fa1d02926816f96399f4d6f"
+    },
+    {
+      "path": "src/ipc/types.ts",
+      "lines": "275-276",
+      "sha256": "27ab838cdb275f4ff50d0723eedd6ec1fb8d36a90864db4a9895c4b4079c1ba8"
+    }
+  ]
+}
