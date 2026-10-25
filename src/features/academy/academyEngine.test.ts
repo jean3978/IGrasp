@@ -8,6 +8,7 @@ import {
   STREAK_BONUS,
   STREAK_FROM,
   chapterStates,
+  chapterSummary,
   completeStep,
   emptyProgress,
   resumeStep,
@@ -136,6 +137,54 @@ describe('progress', () => {
       ).progress;
     expect(chapterStates(t, p)).toEqual(['done', 'unwritten']);
     expect(p.graduated).toBe(false);
+  });
+
+  it('sums up a chapter for its recap: steps, right answers, what is left', () => {
+    const t = tutorial(1);
+    const first = t.chapters[0];
+    if (!first) throw new Error('chapter');
+    const recap = steps.length - 1;
+    let p = emptyProgress('t', 0);
+    expect(chapterSummary(first, p, recap)).toEqual({
+      steps: 6,
+      done: 1,
+      interactive: 4,
+      right: 0,
+      firstTry: 0,
+      missing: [0, 1, 2, 3, 4],
+      chapterDone: false,
+    });
+    p = completeStep(t, p, 0, 0, { kind: 'read' }, 1).progress;
+    p = completeStep(
+      t,
+      p,
+      0,
+      1,
+      { kind: 'answered', right: true, tries: 1, usedHint: false },
+      1,
+    ).progress;
+    p = completeStep(
+      t,
+      p,
+      0,
+      2,
+      { kind: 'answered', right: true, tries: 2, usedHint: false },
+      1,
+    ).progress;
+    expect(chapterSummary(first, p, recap)).toMatchObject({
+      // The three steps done, and the recap on screen.
+      done: 4,
+      right: 2,
+      firstTry: 1,
+      missing: [3, 4],
+    });
+    for (let i = 3; i < steps.length; i++)
+      p = completeStep(t, p, 0, i, { kind: 'read' }, 2).progress;
+    expect(chapterSummary(first, p, recap)).toMatchObject({
+      done: 6,
+      missing: [],
+      chapterDone: true,
+    });
   });
 
   it('marks the steps that changed since they were read, not the moved ones', () => {

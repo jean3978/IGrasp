@@ -80,7 +80,7 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   `quizFile.ts`, `effects/`), `features/hoot` the owl (`?hoot=1` shows its states and moments),
   `features/profile` the profile card and dialog. `features/academy` is the Academy tab
   (`AcademyTab`, `AcademyHome`, `TutorialOptions`, `AcademyConfirm`, `AcademyGeneration`,
-  `OutlineReview`, `TutorialView`, `CourseMap`, `ChapterPlayer`, `steps/` the ten step types,
+  `OutlineReview`, `TutorialView`, `CourseMap`, `ChapterPlayer`, `steps/` the ten step types (`Recap.tsx` the end of a chapter),
   `FreshnessPanel`, `ReviewScreen`, `WriteConfirmDialog`, `GraduationScreen`, `StepQuestions`; `academyEngine.ts`
   the XP rules; `tutorialBlocks.ts` the preview's block parser). `src/components/CodeView.tsx`
   is the read-only code view of Look it up, code tours and Spot it.

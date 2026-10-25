@@ -470,10 +470,81 @@
   color: var(--fg-muted);
 }
 
-.academy-takeaways {
+/* The chapter's recap: Hoot, how the chapter went, the takeaways as numbered cards, what is
+   left and what comes next. */
+.academy-recap {
   display: flex;
   flex-direction: column;
+  gap: 14px;
+}
+
+.academy-recap-hero {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.academy-recap-heading {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.academy-recap-title {
+  margin: 0;
+}
+
+.academy-recap-line {
+  margin: 0;
+  color: var(--fg-muted);
+  font-style: italic;
+}
+
+.academy-recap-stats {
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.academy-recap-stats li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: var(--border-width) solid var(--quiz-card-border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.academy-recap-stats strong {
+  color: var(--fg-strong);
+}
+
+.academy-recap-stats li[data-tone='xp'] {
+  border-color: var(--ai-accent);
+  color: var(--ai-accent);
+}
+
+.academy-recap-stats li[data-tone='xp'] strong {
+  color: var(--ai-accent);
+}
+
+.academy-recap-stats svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+
+.academy-takeaways {
+  display: grid;
+  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -481,16 +552,95 @@
 
 .academy-takeaways li {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: flex-start;
+  padding: 12px 14px;
+  border: var(--border-width) solid var(--quiz-card-border);
+  border-left: 3px solid var(--quiz-good);
+  border-radius: 10px;
+  background: var(--bg);
   color: var(--fg-strong);
+  line-height: 1.5;
+  animation: academy-takeaway-in 0.35s ease-out both;
 }
 
-.academy-takeaways svg {
+.academy-takeaway-number {
+  display: inline-flex;
   flex: none;
-  width: 18px;
-  height: 18px;
-  color: var(--quiz-good);
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--quiz-good);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+@keyframes academy-takeaway-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[data-motion='off'] .academy-takeaways li {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .academy-takeaways li {
+    animation: none;
+  }
+}
+
+.academy-recap-missing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-left: 3px solid var(--warning);
+  background: var(--warning-bg);
+}
+
+.academy-recap-missing p {
+  margin: 0;
+}
+
+.academy-recap-next {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.academy-recap-next svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ai-accent);
+}
+
+.academy-recap-next-label {
+  flex: none;
+  padding: 1px 8px;
+  border: var(--border-width) solid var(--ai-accent);
+  border-radius: 999px;
+  color: var(--ai-accent);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+}
+
+.academy-recap-next-note {
+  color: var(--fg-muted);
 }
 
 /* Code tour and Spot it. */

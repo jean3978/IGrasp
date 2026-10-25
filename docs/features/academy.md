@@ -97,7 +97,7 @@ Reading never calls the AI.
   | Explain | Prose about the project, with its sources | `Enter` / `→` next, `←` previous, `R` read more |
   | Concept bridge | A short concept box, then how this project applies it, citing its lines; a link to the official documentation when there is one | as Explain |
   | Diagram | A Mermaid diagram and its caption | as Explain (the diagram has its own keys when focused) |
-  | Recap | The chapter's takeaways | as Explain |
+  | Recap | The chapter's end: Hoot, how it went (steps done, answers right, the +25 XP bonus to come), the takeaways as numbered cards, the steps left with **Go to step N**, and the next chapter | as Explain |
   | Code tour | The cited file in a read-only viewer, one stop (a highlighted range and its annotation) at a time | `→` / `←` or `N` / `P` stops, `Enter` on the last stop, `O` open in the code viewer |
   | Spot it | A snippet: click the line the question asks for | `↑` / `↓` move the line cursor, `Enter` picks |
   | Put in order | Shuffled items to put in order, then Check | `Space` picks up / drops, `↑` / `↓` move, `Enter` checks |

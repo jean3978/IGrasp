@@ -18,6 +18,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   date), at the end of the chapter's file; a shared tutorial changes only after the write
   confirmation.
 
+### Changed
+
+- The recap at the end of a chapter: Hoot, how the chapter went (steps done, answers right, the
+  chapter bonus to come), the takeaways as numbered cards, the steps still to do with a way back
+  to the first one, and what comes next.
+
 ### Fixed
 
 - A code tour went back to its first stop after **Open in the code viewer** and a return to the

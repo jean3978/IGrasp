@@ -1,12 +1,12 @@
-// The steps one reads: an explain card, a concept bridge, a diagram and the chapter's recap.
+// The steps one reads: an explain card, a concept bridge and a diagram (the recap, in Recap.tsx).
 // Keys while the card has the focus: Enter or → next, ← previous, R read more, D the official
 // docs (a bridge), Escape back to the map.
 
-import { ArrowLeft, ArrowRight, Check, ExternalLink, Lightbulb } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink, Lightbulb } from 'lucide-react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { backend } from '../../../ipc/client';
-import type { ConceptBridgeStep, DiagramStep, ExplainStep, RecapStep } from '../../../ipc/types';
+import type { ConceptBridgeStep, DiagramStep, ExplainStep } from '../../../ipc/types';
 import { MermaidBlock } from '../../mermaid/MermaidBlock';
 import { InlineCode } from '../../quiz/InlineCode';
 import { StepMarkdown, StepSources } from './common';
@@ -114,20 +114,6 @@ export function Diagram({ step, props }: { step: DiagramStep; props: StepProps }
           <InlineCode text={step.caption} />
         </p>
       )}
-    </ReadFrame>
-  );
-}
-
-export function Recap({ step, props }: { step: RecapStep; props: StepProps }) {
-  return (
-    <ReadFrame props={props} nextLabel="Finish chapter">
-      <ul className="academy-takeaways" aria-label="Key takeaways">
-        {step.takeaways.map((t) => (
-          <li key={t}>
-            <Check aria-hidden /> <InlineCode text={t} />
-          </li>
-        ))}
-      </ul>
     </ReadFrame>
   );
 }

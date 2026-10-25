@@ -12,7 +12,8 @@ import { Hoot } from '../hoot/Hoot';
 import { InlineCode } from '../quiz/InlineCode';
 import { stepsDone } from './academyEngine';
 import { CodeTour, SpotIt } from './steps/CodeSteps';
-import { ConceptBridge, Diagram, Explain, Recap } from './steps/ReadSteps';
+import { ConceptBridge, Diagram, Explain } from './steps/ReadSteps';
+import { Recap } from './steps/Recap';
 import { Match, PutInOrder } from './steps/OrderSteps';
 import { QuickCheck, TryIt } from './steps/ActionSteps';
 import { citationLabel } from './steps/stepUtils';
@@ -201,7 +202,7 @@ export function ChapterPlayer({
             <span className="academy-tag academy-tag-warn">updated since you read it</span>
           )}
         </p>
-        {step.type !== 'quickCheck' && (
+        {step.type !== 'quickCheck' && step.type !== 'recap' && (
           <h2 className="academy-step-title">
             <InlineCode text={stepTitle(step)} />
           </h2>

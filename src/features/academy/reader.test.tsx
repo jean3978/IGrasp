@@ -184,6 +184,47 @@ describe('reading with the keyboard', () => {
   });
 });
 
+describe('the recap', () => {
+  it('sums up the chapter, numbers the takeaways, and leads to the steps left', async () => {
+    const t = await written();
+    render(
+      <Tooltip.Provider>
+        <TutorialView reference={{ type: 'private', id: t.id }} motion={false} />
+      </Tooltip.Provider>,
+    );
+    await screen.findByRole('list', { name: 'Chapters' });
+    const chapter = t.chapters[0];
+    if (!chapter) throw new Error('chapter');
+    const recap = chapter.steps.findIndex((s) => s.type === 'recap');
+    act(() => {
+      player().openChapter(0);
+      player().goto(recap);
+    });
+    const card = await screen.findByRole('article', { name: /^Recap:/ });
+    expect(
+      within(card).getByRole('heading', { name: 'What to keep from chapter 1' }),
+    ).toBeVisible();
+    const stats = within(card).getByRole('list', { name: 'This chapter' });
+    expect(stats).toHaveTextContent(`1/${String(chapter.steps.length)} steps`);
+    const takeaways = within(card).getByRole('list', { name: 'Key takeaways' });
+    expect(within(takeaways).getAllByRole('listitem')[0]).toHaveTextContent(/^1/);
+    // Skipped steps: said, with a way back to the first one.
+    const note = within(card).getByRole('note');
+    expect(note).toHaveTextContent(
+      `${String(recap)} steps left before this chapter counts as done`,
+    );
+    await userEvent.click(within(note).getByRole('button', { name: /Go to step 1/ }));
+    expect(player().step).toBe(0);
+    // What comes next.
+    act(() => {
+      player().goto(recap);
+    });
+    const again = await screen.findByRole('article', { name: /^Recap:/ });
+    expect(again).toHaveTextContent(`Up nextChapter 2: ${t.chapters[1]?.title ?? ''}`);
+    expect(mock().state.ai.starts).toHaveLength(2);
+  });
+});
+
 const props = (over: Partial<StepProps> = {}): StepProps => ({
   stepKey: 'c1:3',
   done: false,

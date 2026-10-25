@@ -182,6 +182,47 @@ export function chapterStates(t: Tutorial, p: TutorialProgress): ChapterState[] 
 export const stepsDone = (c: Chapter, p: TutorialProgress) =>
   c.steps.filter((_, i) => stepKey(c.id, i) in p.completed).length;
 
+/** How a chapter went, for its recap. */
+export interface ChapterSummary {
+  steps: number;
+  /** Steps done, counting the recap on screen as done. */
+  done: number;
+  /** Interactive steps, and those answered right (at the first try). */
+  interactive: number;
+  right: number;
+  firstTry: number;
+  /** Steps other than the recap still to do, in order (the chapter is not done without them). */
+  missing: number[];
+  /** Already counted as done (its chapter bonus was earned before). */
+  chapterDone: boolean;
+}
+
+/** The summary of `chapter` shown on its recap (step `recap`). */
+export function chapterSummary(c: Chapter, p: TutorialProgress, recap: number): ChapterSummary {
+  let interactive = 0;
+  let right = 0;
+  let firstTry = 0;
+  const missing: number[] = [];
+  c.steps.forEach((step, i) => {
+    const key = stepKey(c.id, i);
+    if (i !== recap && !(key in p.completed)) missing.push(i);
+    if (!isInteractive(step)) return;
+    interactive++;
+    const answer = p.answers[key];
+    if (answer?.right) right++;
+    if (answer?.firstTry) firstTry++;
+  });
+  return {
+    steps: c.steps.length,
+    done: c.steps.length - missing.length,
+    interactive,
+    right,
+    firstTry,
+    missing,
+    chapterDone: p.chaptersDone.includes(c.id),
+  };
+}
+
 /** The first step of `chapter` not done yet (or 0). */
 export function resumeStep(c: Chapter, p: TutorialProgress): number {
   const i = c.steps.findIndex((_, k) => !(stepKey(c.id, k) in p.completed));

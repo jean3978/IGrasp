@@ -22,6 +22,7 @@ export type HootMoment =
   | 'checkingSteps'
   | 'chapterIntro'
   | 'chapterDone'
+  | 'recap'
   | 'graduation'
   | 'outdated'
   | 'verified'
@@ -74,6 +75,11 @@ export const HOOT_LINES: Record<HootMoment, string[]> = {
   ],
   chapterIntro: ['Ready? This one is about the code.', 'Glasses on. Let us read.'],
   chapterDone: ['Chapter done. Onward.', 'That one is yours now.', 'Well read. Next stop?'],
+  recap: [
+    'Before we move on: the part worth keeping.',
+    'If you remember three things, make it these.',
+    'The whole chapter, folded small.',
+  ],
   graduation: [
     'You graduated. The project has fewer secrets now.',
     'Diploma earned. Hoot is proud.',
@@ -105,6 +111,7 @@ export const MOMENT_STATE: Record<HootMoment, HootState> = {
   checkingSteps: 'thinking',
   chapterIntro: 'explaining',
   chapterDone: 'cheering',
+  recap: 'explaining',
   graduation: 'cheering',
   outdated: 'encouraging',
   verified: 'cheering',
