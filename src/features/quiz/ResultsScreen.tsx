@@ -196,6 +196,7 @@ export function ResultsScreen({
                     </>
                   )}
                   {a.usedHint && <span className="quiz-muted"> · with hint</span>}
+                  {a.lookedUp && <span className="quiz-muted"> · looked it up</span>}
                 </p>
                 <p className="quiz-explanation">
                   <InlineCode text={q.explanation} />

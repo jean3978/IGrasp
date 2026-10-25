@@ -62,6 +62,42 @@ describe('QuestionCard', () => {
     expect(onEscape).toHaveBeenCalled();
   });
 
+  it('opens the cited files with Look it up or L', () => {
+    const onLookUp = vi.fn();
+    const onChoose = vi.fn();
+    render(
+      <QuestionCard
+        question={mc}
+        number={1}
+        total={5}
+        chosen={null}
+        usedHint={false}
+        onChoose={onChoose}
+        onHint={vi.fn()}
+        onLookUp={onLookUp}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Look it up/ }));
+    fireEvent.keyDown(screen.getByRole('article'), { key: 'l' });
+    expect(onLookUp).toHaveBeenCalledTimes(2);
+    expect(onChoose).not.toHaveBeenCalled();
+  });
+
+  it('has no Look it up without files to read', () => {
+    render(
+      <QuestionCard
+        question={mc}
+        number={1}
+        total={5}
+        chosen={null}
+        usedHint={false}
+        onChoose={vi.fn()}
+        onHint={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /Look it up/ })).toBeNull();
+  });
+
   it('answers a true/false question with T and F', () => {
     const onChoose = vi.fn();
     render(

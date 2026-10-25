@@ -873,6 +873,177 @@
   font-size: 0.9em;
 }
 
+/* Look it up: the cited files in a glowing window, Hoot standing on its top edge. */
+.quiz-look {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 4501;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(880px, 100vw - 48px);
+  height: min(720px, 100vh - 160px);
+  padding: 18px 20px 16px;
+  border: var(--border-width) solid var(--ai-accent);
+  border-radius: var(--radius-l);
+  background: var(--bg-overlay);
+  box-shadow:
+    0 0 0 4px var(--ai-bloom),
+    0 0 36px 6px var(--ai-bloom),
+    0 0 110px 30px var(--ai-bloom-far),
+    var(--shadow-dialog);
+  color: var(--fg);
+  /* Lower than centred: Hoot stands above the top edge. */
+  transform: translate(-50%, -46%);
+  animation: quiz-look-in 220ms ease-out;
+}
+
+/* Focused on open so the keys reach it; the glowing border already shows where it is. */
+.quiz-look:focus {
+  outline: none;
+}
+
+@keyframes quiz-look-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -44%) scale(0.97);
+  }
+}
+
+.quiz-look-hoot {
+  position: absolute;
+  top: -110px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* Its feet on the window's edge: no branch here. */
+.quiz-look-hoot .hoot-branch {
+  display: none;
+}
+
+.quiz-look-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.quiz-look-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--fg-strong);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.quiz-look-title svg {
+  width: 18px;
+  height: 18px;
+  color: var(--ai-accent);
+}
+
+.quiz-look-question {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.quiz-look-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.quiz-look-file,
+.quiz-look-path {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-small);
+}
+
+.quiz-look-path {
+  margin: 0;
+  color: var(--fg-strong);
+}
+
+.quiz-look-file {
+  padding: 3px 10px;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.quiz-look-file-active {
+  border-color: var(--ai-accent);
+  color: var(--fg-strong);
+}
+
+.quiz-look-file:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 2px;
+}
+
+.quiz-look-code {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--bg-editor);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  user-select: text;
+}
+
+.quiz-look-code:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: -1px;
+}
+
+.quiz-look-line {
+  display: flex;
+  min-width: max-content;
+  line-height: 20px;
+}
+
+.quiz-look-ln {
+  position: sticky;
+  left: 0;
+  flex: none;
+  width: calc(var(--gutter-chars, 3) * 1ch + 28px);
+  padding-right: 16px;
+  background: var(--bg-editor);
+  color: var(--fg-muted);
+  text-align: right;
+  user-select: none;
+}
+
+.quiz-look-text {
+  padding-right: 24px;
+  white-space: pre;
+  tab-size: 4;
+}
+
+.quiz-look-status {
+  margin: 12px;
+  color: var(--fg-muted);
+}
+
+.quiz-look-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quiz-look {
+    animation: none;
+  }
+}
+
 /* The particle effects, over the tab, never in the way of the pointer. */
 .quiz-effects {
   position: absolute;

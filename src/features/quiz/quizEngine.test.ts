@@ -88,6 +88,7 @@ describe('the quiz engine', () => {
       chosen: current.answer,
       correct: true,
       usedHint: true,
+      lookedUp: false,
       levelAt: 3,
     });
     expect(takeHint(out.state)).toBe(out.state);

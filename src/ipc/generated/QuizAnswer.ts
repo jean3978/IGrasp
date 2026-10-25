@@ -9,6 +9,11 @@ export type QuizAnswer = { questionId: string,
  */
 chosen: number, correct: boolean, usedHint: boolean, 
 /**
+ * The player opened the cited files ("Look it up") before answering. Absent in records
+ * saved before 0.4.0's look-up (false).
+ */
+lookedUp: boolean, 
+/**
  * The player's level when the question was asked.
  */
 levelAt: number, };

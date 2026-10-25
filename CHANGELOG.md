@@ -25,7 +25,9 @@ developers on any kind of project (games, web, tools, libraries), with nothing g
   round started by your Next round), **Whole project** or **Documentation only** sources, the
   model, and the confirmation card before anything is sent. Multiple choice and true/false
   cards played with the keyboard, a hint, the explanation, and **Read more →** opening the cited
-  file at its lines. Five flames show your level; the order follows it.
+  file at its lines. **Look it up** (`L`) opens the cited files before you answer, in a glowing
+  window with Hoot perched on top, its eyes following the pointer. Five flames show your level;
+  the order follows it.
 - **Grounded generation**: the prompt and JSON schema belong to the app; every question is
   checked (a real file of the project, a line range inside it, never an agent instruction file
   or a secret, the scope, no duplicate, a hint that does not give the answer, and a question

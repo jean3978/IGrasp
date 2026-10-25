@@ -1,6 +1,6 @@
 // The sources of a question: how they read and how they open.
 
-import type { QuizSource } from '../../ipc/types';
+import type { QuizQuestion, QuizSource } from '../../ipc/types';
 import { openSourceFile } from '../../stores/tabs';
 
 /** `src/a.rs:12-30`, `src/a.rs:12` or the path alone. */
@@ -14,4 +14,14 @@ export function sourceLabel(s: QuizSource): string {
 export function openSource(s: QuizSource) {
   if (s.kind === 'binary') return;
   openSourceFile(s.path, s.firstLine ?? undefined, s.lastLine ?? undefined);
+}
+
+/** The files a question cites that can be read as text, once each, in citation order. */
+export function lookUpSources(question: QuizQuestion): QuizSource[] {
+  const seen = new Set<string>();
+  return question.sources.filter((s) => {
+    if (s.kind === 'binary' || seen.has(s.path)) return false;
+    seen.add(s.path);
+    return true;
+  });
 }

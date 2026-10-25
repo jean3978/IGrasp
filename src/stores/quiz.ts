@@ -40,6 +40,7 @@ import {
   roundSize,
   roundsOf,
   takeHint,
+  takeLook,
 } from '../features/quiz/quizEngine';
 import type { EngineState } from '../features/quiz/quizEngine';
 import { errorMessage, useAiProvider } from './aiProvider';
@@ -133,6 +134,8 @@ interface QuizState {
   owns: (operationId: number) => boolean;
   answer: (choice: number) => void;
   hint: () => void;
+  /** "Look it up" opened the cited files before the answer (recorded with it). */
+  lookUp: () => void;
   /** After the reveal: the next question, or the results when the pool is played. */
   next: () => void;
   finish: () => Promise<void>;
@@ -643,6 +646,11 @@ export const useQuiz = create<QuizState>()((set, get) => {
     hint() {
       const engine = get().engine;
       if (engine) set({ engine: takeHint(engine) });
+    },
+
+    lookUp() {
+      const engine = get().engine;
+      if (engine) set({ engine: takeLook(engine) });
     },
 
     next() {

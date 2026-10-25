@@ -3,6 +3,10 @@ import { answerAll, openQuiz, quizCard, quizMock, savedMarkdown, startQuiz } fro
 
 test('a fixed quiz played with the keyboard, its results saved as markdown', async ({ page }) => {
   await openQuiz(page);
+  // Slow enough for the generation screen to be seen.
+  await quizMock(page, (m) => {
+    m.state.ai.stepMs = 150;
+  });
   // Opening the tab and the card spend nothing.
   await page.getByRole('button', { name: /^Start/ }).click();
   await expect(page.getByRole('group', { name: /Confirm/ })).toBeVisible();
@@ -33,14 +37,37 @@ test('a fixed quiz played with the keyboard, its results saved as markdown', asy
   expect(await quizMock(page, (m) => m.state.files.size)).toBe(before + 1);
 });
 
+test('Look it up opens the cited file, Escape closes it and the quiz goes on', async ({ page }) => {
+  await openQuiz(page);
+  await startQuiz(page);
+  await expect(quizCard(page)).toBeVisible();
+  await page.keyboard.press('l');
+  const look = page.getByRole('dialog', { name: 'Look it up' });
+  await expect(look).toBeVisible();
+  await expect(look.locator('.quiz-look-code')).not.toBeEmpty();
+  await expect(look.locator('.hoot[data-follow]')).toHaveCount(1);
+  // Keys belong to the window: no answer, and Escape only closes it.
+  await page.keyboard.press('1');
+  await page.keyboard.press('Escape');
+  await expect(look).toHaveCount(0);
+  await expect(quizCard(page)).toBeVisible();
+  await expect(page.locator('.quiz-reveal')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Look again/ })).toBeFocused();
+  await page.keyboard.press('1');
+  await page.keyboard.press('Enter');
+  expect(await answerAll(page)).toBe(9);
+  await page.locator('.quiz-review-item summary').first().click();
+  await expect(page.getByText('· looked it up')).toBeVisible();
+});
+
 test('a retry is shown, then the quiz plays', async ({ page }) => {
   await openQuiz(page);
   await quizMock(page, (m) => {
     m.state.ai.quizScript = 'retry';
-    m.state.ai.stepMs = 120;
+    m.state.ai.stepMs = 200;
   });
   await startQuiz(page);
-  await expect(page.locator('.quiz-attempt')).toContainText('retry 1 of 2');
+  await expect(page.locator('.quiz-attempt')).toContainText('retry 1 of 2', { timeout: 15_000 });
   await expect(quizCard(page)).toBeVisible();
   expect(await answerAll(page)).toBe(10);
 });

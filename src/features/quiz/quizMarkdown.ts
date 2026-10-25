@@ -3,7 +3,7 @@
 // one), the explanation and the sources. Links are root-absolute (`/src/x.ts#L3-L8`): they work
 // wherever the user saves the file inside the folder, in IGrasp and on GitHub.
 
-import type { QuizQuestion, QuizRecord, QuizSource } from '../../ipc/types';
+import type { QuizAnswer, QuizQuestion, QuizRecord, QuizSource } from '../../ipc/types';
 import { formatElapsed } from './quizFormat';
 
 /** A YAML scalar that stays a string whatever it contains (JSON strings are valid YAML). */
@@ -65,12 +65,14 @@ function questionSection(
   q: QuizQuestion,
   chosen: number,
   correct: boolean,
-  usedHint: boolean,
+  answer: Pick<QuizAnswer, 'usedHint' | 'lookedUp'>,
 ): string {
   const choices = q.choices
     .map((c, i) => `- [${i === chosen ? 'x' : ' '}] ${oneLine(c)}${i === q.answer ? ' ✓' : ''}`)
     .join('\n');
-  const verdict = `${correct ? '**Right**' : '**Missed**'}${usedHint ? ' · with the hint' : ''}`;
+  const verdict = `${correct ? '**Right**' : '**Missed**'}${answer.usedHint ? ' · with the hint' : ''}${
+    answer.lookedUp ? ' · looked it up' : ''
+  }`;
   const sources = q.sources.map((s) => {
     const why = s.why ? ` — ${oneLine(s.why)}` : '';
     return `- ${sourceLink(s)}${why}`;
@@ -95,6 +97,7 @@ export function resultsMarkdown(record: QuizRecord, project: string): string {
   const { day, time } = dateParts(record.finishedMs ?? record.startedMs);
   const answered = record.answers.length;
   const hints = record.answers.filter((a) => a.usedHint).length;
+  const looks = record.answers.filter((a) => a.lookedUp).length;
   const title = `${project} — ${record.subjectTitle}`;
   const front = [
     '---',
@@ -118,15 +121,15 @@ export function resultsMarkdown(record: QuizRecord, project: string): string {
         }`
       : 'none (replayed)';
   const table = [
-    '| Score | Level reached | Best streak | Hints | Time | AI |',
-    '|---|---|---|---|---|---|',
+    '| Score | Level reached | Best streak | Hints | Looked up | Time | AI |',
+    '|---|---|---|---|---|---|---|',
     `| ${String(record.score)}/${String(answered)} | ${String(record.level)}/5 | ${String(
       record.bestStreak,
-    )} | ${String(hints)} | ${formatElapsed(elapsed)} | ${ai} |`,
+    )} | ${String(hints)} | ${String(looks)} | ${formatElapsed(elapsed)} | ${ai} |`,
   ];
   const sections = record.answers.flatMap((a, i) => {
     const q = record.questions.find((x) => x.id === a.questionId);
-    return q ? [questionSection(i + 1, q, a.chosen, a.correct, a.usedHint)] : [];
+    return q ? [questionSection(i + 1, q, a.chosen, a.correct, a)] : [];
   });
   const notes = record.materialNote ? ['', `> ${oneLine(record.materialNote)}`] : [];
   return `${[

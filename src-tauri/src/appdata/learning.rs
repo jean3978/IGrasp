@@ -48,6 +48,9 @@ pub struct QuizAnswer {
     pub chosen: u32,
     pub correct: bool,
     pub used_hint: bool,
+    /// The player opened the cited files ("Look it up") before answering. Absent in records
+    /// saved before 0.4.0's look-up (false).
+    pub looked_up: bool,
     /// The player's level when the question was asked.
     pub level_at: u32,
 }

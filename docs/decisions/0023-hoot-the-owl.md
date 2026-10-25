@@ -19,6 +19,9 @@ dependency; lines written by the AI on every event would spend tokens without a 
   with keyframes and transitions on the SVG parts (`hoot.css`); `prefers-reduced-motion` or the
   Effects setting off shows a still pose per state. A gallery (`?hoot=1`) shows them side by
   side for review.
+- In the **Look it up** window Hoot stands on the top edge and its eyes follow the pointer
+  (`followPointer`: the pupils move inside the eyes, set directly on pointer moves without
+  re-rendering; still when the effects are off).
 - Hoot's **speech lines are local** (`hootLines.ts`): short, varied, never the same line twice
   in a row, chosen per moment (home, thinking, reading a file, right, wrong, streak, level up,
   results). They cost nothing and run without a provider.

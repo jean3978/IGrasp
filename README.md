@@ -165,7 +165,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the details, and
 | `Ctrl+Alt+R` | Ask about a region |
 | `Ctrl+Alt+N` / `Ctrl+Alt+H` | New AI conversation / history |
 | `Alt+Shift+A` / `Alt+Shift+R` | Accept all / reject all changes of an AI edit under review |
-| `Ctrl+Alt+Q` | Quiz Me (then `1`–`4`, `T` / `F`, `H` for a hint, `Enter`) |
+| `Ctrl+Alt+Q` | Quiz Me (then `1`–`4`, `T` / `F`, `H` for a hint, `L` to look it up, `Enter`) |
 | `Ctrl+W` | Close the tab |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab |
 | `Alt+1` … `Alt+9` | Go to a tab |

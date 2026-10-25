@@ -24,10 +24,18 @@ today).
 - **Generating**: Hoot thinks, the files the AI reads appear as it reads them, the elapsed time,
   a retry line when questions did not check out ("Checking the questions… retry 1 of 2: 2 cited
   agent files"), and **Stop**.
-- **A question**: multiple choice (`1`–`4`) or true/false (`T` / `F`), **Hint** (`H`), then the
-  reveal: right or wrong, Hoot's reaction, the explanation, and the sources. **Read more →**
-  opens the cited file at its lines (a markdown file in the preview, any other text file in the
-  code viewer). `Enter` goes on, `Esc` goes back to the home and keeps the quiz.
+- **A question**: multiple choice (`1`–`4`) or true/false (`T` / `F`), **Hint** (`H`), **Look it
+  up** (`L`), then the reveal: right or wrong, Hoot's reaction, the explanation, and the sources.
+  **Read more →** opens the cited file at its lines (a markdown file in the preview, any other
+  text file in the code viewer). `Enter` goes on, `Esc` goes back to the home and keeps the quiz.
+- **Look it up**: nobody knows a project by heart, so before answering you can open the files
+  the question cites. They open in a glowing window with Hoot standing on its top edge, eyes
+  following your pointer: syntax-highlighted, read-only, one button per file when there are
+  several, scrolled near the cited lines without marking them (the answer is still yours to
+  find). `Esc` or **Back to the question** returns to the card; keys typed in the window never
+  answer. Like the hint, it is recorded with the answer ("looked it up" on the results and in the
+  saved report) and does not change your level. Questions that cite only binary files have no
+  Look it up.
 - **Level and streak**: five flames show your level (1 to 5). Two right answers in a row move it
   up, two wrong ones down, a wrong answer at level 5 drops it at once. The next question is the
   unplayed one nearest your level (lower first). The streak badge appears at 2 in a row.

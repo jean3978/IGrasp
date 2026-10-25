@@ -382,3 +382,12 @@
   opacity: 0;
   transform-origin: 50% 100%;
 }
+
+/* The eyes following the pointer (Look it up): a short ease so they glide, not jump. */
+.hoot-gaze {
+  transition: transform 90ms ease-out;
+}
+
+.hoot-still .hoot-gaze {
+  transition: none;
+}

@@ -27,6 +27,8 @@ export interface EngineState {
   /** The answer of the current question once given. */
   chosen: number | null;
   usedHint: boolean;
+  /** The cited files were opened ("Look it up") for the current question. */
+  lookedUp: boolean;
 }
 
 export interface AnswerOutcome {
@@ -51,6 +53,7 @@ export function initialEngine(startLevel: number): EngineState {
     current: null,
     chosen: null,
     usedHint: false,
+    lookedUp: false,
   };
 }
 
@@ -86,11 +89,17 @@ export function next(state: EngineState, questions: QuizQuestion[]): EngineState
     asked: q ? [...state.asked, q.id] : state.asked,
     chosen: null,
     usedHint: false,
+    lookedUp: false,
   };
 }
 
 export function takeHint(state: EngineState): EngineState {
   return state.chosen === null ? { ...state, usedHint: true } : state;
+}
+
+/** "Look it up": recorded with the answer like the hint; the level ignores both. */
+export function takeLook(state: EngineState): EngineState {
+  return state.chosen === null ? { ...state, lookedUp: true } : state;
 }
 
 /**
@@ -136,6 +145,7 @@ export function answer(state: EngineState, question: QuizQuestion, choice: numbe
       chosen: choice,
       correct,
       usedHint: state.usedHint,
+      lookedUp: state.lookedUp,
       levelAt,
     },
   };
@@ -155,7 +165,13 @@ export function restoreEngine(
   for (const a of answers) {
     const q = byId.get(a.questionId);
     if (!q) continue;
-    state = { ...state, current: q.id, asked: [...state.asked, q.id], usedHint: a.usedHint };
+    state = {
+      ...state,
+      current: q.id,
+      asked: [...state.asked, q.id],
+      usedHint: a.usedHint,
+      lookedUp: a.lookedUp,
+    };
     state = answer(state, q, a.chosen).state;
   }
   return next(state, questions);

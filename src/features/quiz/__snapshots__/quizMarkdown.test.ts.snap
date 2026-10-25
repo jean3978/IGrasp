@@ -18,9 +18,9 @@ questions: 2
 
 2026-10-25 at 14:06, fixed mode.
 
-| Score | Level reached | Best streak | Hints | Time | AI |
-|---|---|---|---|---|---|
-| 1/2 | 2/5 | 1 | 1 | 1 min 35 s | mock-large · $0.04 |
+| Score | Level reached | Best streak | Hints | Looked up | Time | AI |
+|---|---|---|---|---|---|---|
+| 1/2 | 2/5 | 1 | 1 | 1 | 1 min 35 s | mock-large · $0.04 |
 
 ## 1. Which helper does src/main.ts import to build its message?
 
@@ -42,7 +42,7 @@ Sources:
 - [x] True ✓
 - [ ] False
 
-**Right**
+**Right** · looked it up
 
 assets/logo bin.png is a binary file.
 

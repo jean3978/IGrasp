@@ -46,7 +46,7 @@ In a view or dialog:
 | Ctrl+T dialog | ↑ / ↓, PageUp / PageDown; Enter opens, `Ctrl+Enter` keeps the tab open, `Alt+Enter` opens and keeps searching |
 | Code viewer | `Ctrl+G` go to line |
 | Review mode (an AI edit in the preview) | `Tab` moves between the changes and their buttons; `A` / `R` on a focused change accepts / rejects it |
-| Quiz question | `1`–`4` choose, `T` / `F` true / false, `H` hint, `Enter` next (after the answer; the Next button has the focus), `Esc` back to the quiz home (the quiz is kept). The focus starts on the first choice; the verdict, level and streak are announced; the results screen takes the focus on its heading, which reads the score |
+| Quiz question | `1`–`4` choose, `T` / `F` true / false, `H` hint, `L` look it up (the cited files in a window; `Esc` closes it and the focus returns to its button), `Enter` next (after the answer; the Next button has the focus), `Esc` back to the quiz home (the quiz is kept). The focus starts on the first choice; the verdict, level and streak are announced; the results screen takes the focus on its heading, which reads the score |
 | Region selection | Arrows move a 200 × 120 rectangle from the centre, `Shift+arrows` resize it, `Enter` captures, `Esc` cancels (a mouse drag works too) |
 | Links, results, backlinks | `Ctrl+click`, middle click, double click or `Ctrl+Enter` open in a kept tab |
 

@@ -98,6 +98,7 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
       { keys: '1 … 4', label: 'Choose an answer' },
       { keys: 'T / F', label: 'True / false' },
       { keys: 'H', label: 'Show the hint' },
+      { keys: 'L', label: 'Look it up: open the files the question cites' },
       { keys: 'Enter', label: 'Next question, after the answer' },
       { keys: 'Esc', label: 'Back to the quiz home (the quiz is kept)' },
     ],

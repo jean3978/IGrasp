@@ -1,11 +1,12 @@
 // One question as a card: the choices as big buttons (1–5, or True / False), the hint, and once
 // answered the reveal: right or wrong, the explanation, and the sources ("Read more →" opens the
 // file at its lines). Props only (no store), so the tutorials embed it as their Quick check.
-// Keys while focus is inside the card: 1–5 or T/F answer, H shows the hint, Enter goes on,
+// Keys while focus is inside the card: 1–5 or T/F answer, H shows the hint, L opens the cited
+// files (Look it up), Enter goes on,
 // Escape leaves.
 
 import { clsx } from 'clsx';
-import { ArrowRight, Check, Lightbulb, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Check, Lightbulb, X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import type { QuizQuestion } from '../../ipc/types';
@@ -23,6 +24,9 @@ export interface QuestionCardProps {
   usedHint: boolean;
   onChoose: (choice: number) => void;
   onHint: () => void;
+  /** "Look it up": opens the cited files; absent when the question cites none to read. */
+  onLookUp?: () => void;
+  lookedUp?: boolean;
   /** Enter after the reveal (the focused button does the same). */
   onNext?: () => void;
   onEscape?: () => void;
@@ -53,6 +57,8 @@ export function QuestionCard(props: QuestionCardProps) {
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
+    // Keys of the Look it up window bubble here through its portal: they are not the card's.
+    if (!e.currentTarget.contains(e.target as Node)) return;
     const key = e.key.toLowerCase();
     if (key === 'escape') {
       e.stopPropagation();
@@ -70,6 +76,11 @@ export function QuestionCard(props: QuestionCardProps) {
     if (key === 'h') {
       e.preventDefault();
       onHint();
+      return;
+    }
+    if (key === 'l' && props.onLookUp) {
+      e.preventDefault();
+      props.onLookUp();
       return;
     }
     if (isTrueFalse(question) && (key === 't' || key === 'f')) {
@@ -154,6 +165,17 @@ export function QuestionCard(props: QuestionCardProps) {
           >
             <Lightbulb aria-hidden /> {usedHint ? 'Hint shown' : 'Hint'}
           </button>
+          {props.onLookUp && (
+            <button
+              type="button"
+              className="quiz-hint-button quiz-look-button"
+              onClick={props.onLookUp}
+              aria-keyshortcuts="L"
+              title="Open the files this question is about (L)"
+            >
+              <BookOpen aria-hidden /> {props.lookedUp ? 'Look again' : 'Look it up'}
+            </button>
+          )}
         </div>
       )}
       {revealed && (

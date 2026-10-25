@@ -4,7 +4,7 @@
 // keeps a still pose. Idle Hoot blinks now and then; the speech bubble shows a local line.
 
 import { clsx } from 'clsx';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './hoot.css';
 
 export type HootState = 'idle' | 'thinking' | 'cheering' | 'explaining' | 'encouraging';
@@ -21,8 +21,13 @@ export interface HootProps {
   announce?: boolean;
   /** False keeps Hoot still (the quiz effects are off). */
   motion?: boolean;
+  /** The eyes follow the pointer (the Look it up window); they look down until it moves. */
+  followPointer?: boolean;
   className?: string;
 }
+
+/** How far the pupils move from the centre of the eyes, in viewBox units. */
+const MAX_GAZE = 4.5;
 
 /** The delay before the next blink: 4 to 6 seconds. */
 const blinkDelay = () => 4000 + Math.random() * 2000;
@@ -34,8 +39,32 @@ export function Hoot({
   line = null,
   announce = false,
   motion = true,
+  followPointer = false,
   className,
 }: HootProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const gazeRef = useRef<SVGGElement>(null);
+  useEffect(() => {
+    const gaze = gazeRef.current;
+    if (!followPointer || !motion || !gaze) return;
+    // Looking down at the file below until the pointer moves.
+    gaze.style.transform = `translate(0px, ${String(MAX_GAZE * 0.8)}px)`;
+    const onMove = (e: PointerEvent) => {
+      const r = svgRef.current?.getBoundingClientRect();
+      if (!r) return;
+      // From the point between the eyes (60, 58 in the 120 x 140 viewBox).
+      const dx = e.clientX - (r.left + (r.width * 60) / 120);
+      const dy = e.clientY - (r.top + (r.height * 58) / 140);
+      const d = Math.hypot(dx, dy) || 1;
+      const k = Math.min(1, d / 120) * MAX_GAZE;
+      gaze.style.transform = `translate(${(dx / d) * k}px, ${(dy / d) * k}px)`;
+    };
+    window.addEventListener('pointermove', onMove);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      gaze.style.removeProperty('transform');
+    };
+  }, [followPointer, motion]);
   const [blink, setBlink] = useState(false);
   useEffect(() => {
     if (state !== 'idle' || !motion) return;
@@ -73,8 +102,10 @@ export function Hoot({
       className={clsx('hoot', className, { 'hoot-still': !motion })}
       data-state={state}
       data-blink={blink ? '' : undefined}
+      data-follow={followPointer && motion ? '' : undefined}
     >
       <svg
+        ref={svgRef}
         className="hoot-svg"
         viewBox="0 0 120 140"
         width={size}
@@ -119,11 +150,13 @@ export function Hoot({
             <g className="hoot-eyes">
               <circle className="hoot-eye-white" cx="44" cy="58" r="13" />
               <circle className="hoot-eye-white" cx="76" cy="58" r="13" />
-              <g className="hoot-pupils">
-                <circle className="hoot-pupil" cx="45" cy="59" r="6" />
-                <circle className="hoot-pupil" cx="75" cy="59" r="6" />
-                <circle className="hoot-catchlight" cx="47" cy="56.5" r="1.8" />
-                <circle className="hoot-catchlight" cx="77" cy="56.5" r="1.8" />
+              <g className="hoot-gaze" ref={gazeRef}>
+                <g className="hoot-pupils">
+                  <circle className="hoot-pupil" cx="45" cy="59" r="6" />
+                  <circle className="hoot-pupil" cx="75" cy="59" r="6" />
+                  <circle className="hoot-catchlight" cx="47" cy="56.5" r="1.8" />
+                  <circle className="hoot-catchlight" cx="77" cy="56.5" r="1.8" />
+                </g>
               </g>
               <path className="hoot-happy" d="M36 60 q 8 -9 16 0 M68 60 q 8 -9 16 0" />
             </g>

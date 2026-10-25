@@ -69,8 +69,8 @@ const record: QuizRecord = {
   count: 2,
   questions,
   answers: [
-    { questionId: 'r1-q1', chosen: 1, correct: false, usedHint: true, levelAt: 2 },
-    { questionId: 'r1-q2', chosen: 0, correct: true, usedHint: false, levelAt: 2 },
+    { questionId: 'r1-q1', chosen: 1, correct: false, usedHint: true, lookedUp: false, levelAt: 2 },
+    { questionId: 'r1-q2', chosen: 0, correct: true, usedHint: false, lookedUp: true, levelAt: 2 },
   ],
   startLevel: 2,
   level: 2,
