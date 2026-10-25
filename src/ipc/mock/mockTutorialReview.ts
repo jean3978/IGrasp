@@ -1,4 +1,4 @@
-// "Check with Claude" in the mock, like `learning/tutorial/review.rs`: the composed review of a
+// "Check with the AI" in the mock, like `learning/tutorial/review.rs`: the composed review of a
 // tutorial, the scripted answers of the mock model, and the validator (a replacement is a valid
 // step of the same type, every written chapter is reviewed; a retry lists the problems; when the
 // attempts run out the best review is kept, or the run fails).

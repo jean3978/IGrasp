@@ -52,7 +52,7 @@ export interface TutorialSetup {
 
 export type GenerationKind = 'outline' | 'chapters' | 'suggest' | 'review';
 
-/** A review ("Check with Claude") of a tutorial, accepted proposal by proposal. */
+/** A review ("Check with the AI") of a tutorial, accepted proposal by proposal. */
 export interface ReviewState {
   reference: TutorialRef;
   /** The tutorial as it was reviewed. */
@@ -146,7 +146,7 @@ interface AcademyState {
   prepareChapter: (tutorialId: string, index: number, goal?: string) => Promise<void>;
   /** Estimates "Suggest more subjects" (spends nothing). */
   prepareSuggest: () => Promise<void>;
-  /** Estimates "Check with Claude" of a tutorial (spends nothing). */
+  /** Estimates "Check with the AI" of a tutorial (spends nothing). */
   prepareReview: (ref: TutorialRef) => Promise<void>;
   /**
    * Applies the accepted proposals: a private tutorial is saved; for a shared one, resolves to

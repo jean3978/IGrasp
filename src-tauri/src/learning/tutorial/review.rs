@@ -1,4 +1,4 @@
-//! "Check with Claude" (uses tokens, with consent): the AI rereads a tutorial against the
+//! "Check with the AI" (uses tokens, with consent): the AI rereads a tutorial against the
 //! project as it is now and says, per written chapter, whether it is still correct or outdated
 //! (with the reason and the change it saw), proposes a replacement for each outdated step (a
 //! valid step of the same type, checked like a written chapter's), and names topics the

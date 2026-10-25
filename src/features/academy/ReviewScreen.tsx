@@ -1,4 +1,4 @@
-// What "Check with Claude" found, chapter by chapter: still correct, or outdated with the reason;
+// What "Check with the AI" found, chapter by chapter: still correct, or outdated with the reason;
 // each proposed step as a before/after diff with Accept and Reject (A / R on a focused proposal),
 // Accept all / Reject all; the topics the tutorial misses (a private tutorial can get a chapter
 // on one, through its own confirmation). Nothing changes until "Apply": a private tutorial is
