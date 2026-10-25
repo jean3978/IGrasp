@@ -15,7 +15,7 @@ Use the project's own vocabulary (what its code and docs call things), not gener
 # Your task
 Write 5 questions about "How demo is built" (its scripts), with these difficulties: 1 of difficulty 1, 2 of difficulty 2, 1 of difficulty 3, 1 of difficulty 4
 (1 = a newcomer who read the README can answer it; 3 = you must have read the relevant code; 5 = you must understand how several parts of this project interact).
-Sources: the whole project (code, configuration, build scripts, tests and documentation). Ask about how this project is made, not only about what its documentation says.
+Sources: the whole project (code, configuration, build scripts, tests and documentation). Ask about how this project is made, not only about what its documentation says: at least half of the questions cite code, configuration, build or test files that you open with your tools (the anchor files below are only a starting point).
 Kinds: multiple choice (3 to 5 distinct choices, exactly one correct, the wrong ones plausible for someone who skimmed this project) and true/false (choices exactly ["True", "False"]). Mix them, at most one third true/false. Number the questions q1, q2, …
 
 # Grounding rules (non-negotiable)

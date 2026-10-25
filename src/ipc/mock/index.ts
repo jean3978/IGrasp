@@ -221,6 +221,13 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     writeFiles: (files) => {
       controls.writeFiles(files);
     },
+    files: () => state.files,
+    profile: () =>
+      applyCorrections(
+        fixtureProfile(state.files, state.root?.name ?? FIXTURE_NAME),
+        (state.root && state.learning.get(state.root.path)) ?? EMPTY_CORRECTIONS,
+      ),
+    subjects: () => fixtureSubjects(state.files),
   });
 
   // Strictly increasing, so two writes in the same millisecond still count as a change.

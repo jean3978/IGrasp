@@ -116,6 +116,7 @@ export type { AiPolicy } from './generated/AiPolicy';
 export type { AiCapture } from './generated/AiCapture';
 export type { AiContextRole } from './generated/AiContextRole';
 export type { AiSizeBucket } from './generated/AiSizeBucket';
+export type { AiInlinedDocument } from './generated/AiInlinedDocument';
 export type { EditHunk } from './generated/EditHunk';
 export type { ProposedEdit } from './generated/ProposedEdit';
 export type { ConversationUsage } from './generated/ConversationUsage';

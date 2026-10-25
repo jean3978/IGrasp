@@ -2,6 +2,7 @@
 //! prompt, the validator of the answers, and the composition of the one read-only request
 //! `ai_start` sends. Provider-neutral: no provider name, flag or wire format here.
 
+pub mod compose;
 pub mod difficulty;
 pub mod prompt;
 pub mod schema;
@@ -93,6 +94,10 @@ impl QuizGenerationInput {
     /// Clamps the numbers into their ranges and trims the texts.
     pub fn normalized(mut self) -> Self {
         self.count = self.count.clamp(MIN_COUNT, MAX_COUNT);
+        // An adaptive operation writes one round, never more.
+        if self.mode == QuizMode::Adaptive {
+            self.count = self.count.min(difficulty::ROUND_SIZE);
+        }
         self.start_level = self
             .start_level
             .clamp(difficulty::MIN_LEVEL, difficulty::MAX_LEVEL);
@@ -128,6 +133,9 @@ mod tests {
         .unwrap();
         let input = input.normalized();
         assert_eq!((input.count, input.start_level), (MIN_COUNT, 5));
+        let adaptive: QuizGenerationInput =
+            serde_json::from_str(r#"{ "count": 10, "mode": "adaptive" }"#).unwrap();
+        assert_eq!(adaptive.normalized().count, difficulty::ROUND_SIZE);
         assert_eq!(input.mode, QuizMode::Adaptive);
         assert_eq!(input.scope, SourceScope::DocumentationOnly);
         let round = input.round.unwrap();

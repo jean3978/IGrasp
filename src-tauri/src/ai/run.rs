@@ -20,8 +20,6 @@ pub const MAX_RETRIES: u32 = 2;
 
 /// What a validator decides about the answer of an attempt.
 #[derive(Debug, Clone, PartialEq)]
-// Constructed by the validators of the learning features (the quiz, step 14).
-#[allow(dead_code)]
 pub enum Verdict {
     /// Good enough: emitted as the final `StructuredOutput`, then `Done(Completed)`.
     Accept(Value),

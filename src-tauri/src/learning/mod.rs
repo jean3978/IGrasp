@@ -3,14 +3,10 @@
 //! calls a provider: generations go through `ai_start` and the gateway like every AI operation.
 
 pub mod agent_files;
-// Partly used by the quiz composer (step 14 of the phase 4 plan).
-#[allow(dead_code)]
 pub mod corpus;
 pub mod hoot;
-pub mod subjects;
-// Used by the quiz composer (step 14 of the phase 4 plan).
-#[allow(dead_code)]
 pub mod quiz;
+pub mod subjects;
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;

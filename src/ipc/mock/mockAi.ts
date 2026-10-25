@@ -18,6 +18,15 @@ import { BackendError } from '../types';
 import { collectContext, contextDocuments, estimateSize, requestFrom } from './mockContext';
 import type { FileLookup } from './mockContext';
 import { summaryOf, upsert } from './mockConversations';
+import {
+  MOCK_MAX_RETRIES,
+  MOCK_QUIZ_SCHEMA,
+  MockQuizValidator,
+  composeMockQuiz,
+  jsonOfText,
+  scriptedAnswer,
+} from './mockQuiz';
+import type { MockQuizComposed, MockQuizScript } from './mockQuiz';
 import type {
   AiCapabilities,
   AiEvent,
@@ -43,6 +52,9 @@ import type {
   JsonValue,
   PermissionDecision,
   ProposedEdit,
+  ProjectProfile,
+  QuizGenerationInput,
+  Subject,
   Settings,
 } from '../types';
 
@@ -59,6 +71,8 @@ export interface MockAiState {
   statusChecks: number;
   /** Saved conversations by root path, newest first (the app's history copy). */
   conversations: Map<string, Conversation[]>;
+  /** What the mock AI answers to a quiz generation (`mockQuiz.ts`). */
+  quizScript: MockQuizScript;
 }
 
 export const DEFAULT_MOCK_AI: MockAiState = {
@@ -69,6 +83,7 @@ export const DEFAULT_MOCK_AI: MockAiState = {
   lastRequest: null,
   statusChecks: 0,
   conversations: new Map(),
+  quizScript: 'valid',
 };
 
 export const MOCK_PROVIDER_ID = 'mock';
@@ -105,6 +120,10 @@ export const MOCK_NEW_FILE_CONTENT = '# New note\n\nWritten by the AI on request
 export const MOCK_REJECTED_BY_USER = 'The user rejected this in IGrasp.';
 /** Delay between the deltas of the `slow` script: ten of them take two seconds. */
 export const MOCK_SLOW_STEP_MS = 200;
+/** Delay between the file reads of the `slow` quiz script. */
+export const MOCK_QUIZ_SLOW_STEP_MS = 1000;
+/** Bytes of the fixed blocks of the real quiz prompt (audience, rules, voice), for estimates. */
+export const MOCK_QUIZ_RULES_BYTES = 9000;
 // The gateway's policy texts, the same as in Rust (`ai/policy.rs`).
 export const DENIED_BY_SETTINGS = "Denied by the user's IGrasp settings.";
 export const DENIED_READ_ONLY =
@@ -125,6 +144,11 @@ interface Deps {
   file: FileLookup;
   fileContent: (relPath: string) => string | undefined;
   writeFiles: (files: Record<string, string>) => void;
+  /** Every file of the fake disk (the quiz corpus). */
+  files: () => Map<string, string>;
+  /** The project profile and the subjects of the open folder (`mockProfile`, `mockSubjects`). */
+  profile: () => ProjectProfile;
+  subjects: () => Subject[];
 }
 
 /** Like the Rust gateway: a markdown edit is reviewed only with its edit, inside the folder. */
@@ -200,6 +224,11 @@ class ScriptedOperation {
   start(steps: Step[]) {
     this.steps = steps;
     this.schedule();
+  }
+
+  /** Adds steps after the current ones (a validated run's next attempt). */
+  extend(steps: Step[]) {
+    this.steps.push(...steps);
   }
 
   private readonly next = () => {
@@ -285,6 +314,9 @@ export function createMockAi({
   file,
   fileContent,
   writeFiles,
+  files,
+  profile,
+  subjects,
 }: Deps) {
   let nextId = 0;
   let sessions = 0;
@@ -609,6 +641,115 @@ export function createMockAi({
     return [session, ...steps(request)];
   };
 
+  /** Composes a quiz generation (throws a `BackendError` for a subject no longer proposed). */
+  const compose = (input: QuizGenerationInput, resumeId: string | undefined): MockQuizComposed => {
+    try {
+      return composeMockQuiz(
+        {
+          files: files(),
+          profile: profile(),
+          subjects: subjects(),
+          agentNames: MOCK_CONTEXT_FILE_NAMES,
+        },
+        input,
+        resumeId,
+      );
+    } catch (err) {
+      throw new BackendError('Ai', err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  /**
+   * A quiz generation, like a validated run of the gateway: the attempts of the chosen script,
+   * each checked by the quiz validator, at most `1 + MOCK_MAX_RETRIES`, each retry announced.
+   */
+  const quizScript = (request: AiRequest, composed: MockQuizComposed): Step[] => {
+    const session: Step = (op) => {
+      send(op, { type: 'session', resumeId: op.resumeId, model: request.model ?? 'mock-default' });
+    };
+    if (!ai().loggedIn) {
+      return [
+        session,
+        (op) => {
+          send(op, { type: 'error', message: MOCK_LATE_LOGIN_ERROR });
+        },
+        finish(true),
+      ];
+    }
+    const resumeId = request.resumeId;
+    if (resumeId !== undefined && !issued.has(resumeId)) {
+      return [
+        (op) => {
+          send(op, { type: 'error', message: `${MOCK_NO_CONVERSATION} ${resumeId}` });
+        },
+        finish(true),
+      ];
+    }
+    const kind = ai().quizScript;
+    const validator = new MockQuizValidator(composed, profile(), MOCK_CONTEXT_FILE_NAMES);
+    const reads = composed.inlined.filter((d) => !d.contextOnly).map((d) => d.path);
+    const delay = kind === 'slow' ? MOCK_QUIZ_SLOW_STEP_MS : undefined;
+    const read = (path: string): Step => {
+      const step: Step = (op) => {
+        const toolId = uid('tool');
+        send(op, {
+          type: 'toolUse',
+          toolId,
+          tool: 'Read',
+          summary: `Read ${path}`,
+          input: { file_path: `/mock/${path}` },
+        });
+        send(op, { type: 'toolResult', toolId, content: 'ok', isError: false });
+      };
+      return delay === undefined ? step : after(delay, step);
+    };
+    let attempt = 0;
+    const attemptSteps = (): Step[] => {
+      attempt += 1;
+      const n = attempt;
+      const steps: Step[] =
+        n === 1
+          ? (kind === 'slow' ? [...reads, ...reads, ...reads] : reads).slice(0, 5).map(read)
+          : [];
+      steps.push((op) => {
+        const output = scriptedAnswer(kind, composed, n);
+        let value: unknown = output;
+        if (kind === 'textOnly') {
+          const text = `Here is the quiz:\n\`\`\`json\n${JSON.stringify(output)}\n\`\`\``;
+          send(op, { type: 'text', text });
+          value = jsonOfText(text);
+        }
+        send(op, {
+          type: 'usage',
+          inputTokens: n === 1 ? 24000 : 6000,
+          outputTokens: 2400,
+          costUsd: n === 1 ? 0.12 : 0.04,
+          durationMs: 9000,
+        });
+        let verdict = validator.check(value);
+        if (verdict.type === 'retry' && n >= 1 + MOCK_MAX_RETRIES)
+          verdict = validator.onExhausted();
+        if (verdict.type === 'accept') {
+          send(op, { type: 'structuredOutput', value: verdict.value as unknown as JsonValue });
+          end(op, 'Completed', null);
+        } else if (verdict.type === 'fail') {
+          send(op, { type: 'error', message: verdict.message });
+          end(op, 'Failed', null);
+        } else {
+          send(op, {
+            type: 'attempt',
+            number: n + 1,
+            of: 1 + MOCK_MAX_RETRIES,
+            reason: verdict.reason,
+          });
+          op.extend(attemptSteps());
+        }
+      });
+      return steps;
+    };
+    return [session, ...attemptSteps()];
+  };
+
   /** The last status check, reused for a minute like the Rust gateway's. */
   let statusCache: { at: number; status: AiProviderStatus } | null = null;
 
@@ -678,13 +819,44 @@ export function createMockAi({
     // eslint-disable-next-line @typescript-eslint/require-await
     aiEstimate: async (input: AiEstimateInput): Promise<AiSizeEstimate> => {
       requireRoot();
+      if (input.quiz) {
+        // Like `quiz_estimate`: the composed prompt, which inlines its documents.
+        const composed = compose(input.quiz, undefined);
+        const inlinedBytes = composed.inlined.reduce((n, d) => n + d.bytes, 0);
+        const size = estimateSize(
+          MOCK_QUIZ_RULES_BYTES + composed.prompt.length + inlinedBytes,
+          [],
+          0,
+        );
+        return { ...size, documents: composed.inlined.length, inlined: composed.inlined };
+      }
       const docs = contextDocuments(file, input.contextPaths, MOCK_CONTEXT_FILE_NAMES, false);
       return estimateSize(input.promptBytes, docs, input.images);
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     aiStart: async (action: AiUserAction, start: AiStartRequest): Promise<number> => {
       requireRoot();
-      const request = requestFrom(file, MOCK_CONTEXT_FILE_NAMES, start);
+      const quiz = action === 'quizGeneration';
+      if (quiz && !start.quiz) {
+        throw new BackendError('Ai', "A quiz generation needs the quiz's options.");
+      }
+      // Like `operation_request`: a quiz is composed here, read-only; what the frontend sent as a
+      // prompt, context, capture, images or schema is ignored.
+      let composed: MockQuizComposed | null = null;
+      if (quiz && start.quiz) {
+        composed = compose(start.quiz, start.resumeId);
+      }
+      const request: AiRequest = composed
+        ? {
+            prompt: composed.prompt,
+            ...(start.model === undefined ? {} : { model: start.model }),
+            ...(start.resumeId === undefined ? {} : { resumeId: start.resumeId }),
+            context: [],
+            images: [],
+            policy: 'readOnly',
+            outputSchema: MOCK_QUIZ_SCHEMA,
+          }
+        : requestFrom(file, MOCK_CONTEXT_FILE_NAMES, start);
       if (!ai().installed) throw new BackendError('Ai', MOCK_NOT_INSTALLED);
       if (running) {
         throw new BackendError('Ai', 'An AI operation is still running; stop it first.');
@@ -704,7 +876,7 @@ export function createMockAi({
         structuredClone(settings().ai.permissions),
       );
       running = op;
-      op.start(script(request));
+      op.start(composed ? quizScript(request, composed) : script(request));
       return op.id;
     },
     aiRespondPermission: (

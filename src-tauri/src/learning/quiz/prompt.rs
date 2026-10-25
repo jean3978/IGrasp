@@ -37,7 +37,7 @@ pub fn subject_phrase(profile: &ProjectProfile, subject: Option<&Subject>) -> St
 
 fn scope_block(scope: &SourceScope) -> String {
     match scope {
-        SourceScope::WholeProject => "Sources: the whole project (code, configuration, build scripts, tests and documentation). Ask about how this project is made, not only about what its documentation says.".to_owned(),
+        SourceScope::WholeProject => "Sources: the whole project (code, configuration, build scripts, tests and documentation). Ask about how this project is made, not only about what its documentation says: at least half of the questions cite code, configuration, build or test files that you open with your tools (the anchor files below are only a starting point).".to_owned(),
         SourceScope::DocumentationOnly => "Sources are limited to the project's documentation listed below; cite documentation files only. The code is not available in this quiz; questions are about what the documentation says about this project and how its parts fit.".to_owned(),
         SourceScope::Paths { paths } => format!(
             "Sources are limited to these files; cite them only: {}.",
@@ -143,12 +143,38 @@ Answer with JSON only, following the schema you were given. No prose outside the
     )
 }
 
+/// The prompt of a generation that continues a conversation (an adaptive round, or more
+/// questions): the project, the corpus and the rules are already in it.
+pub fn continuation_prompt(input: &PromptInput<'_>) -> String {
+    let subject = subject_phrase(input.profile, input.subject);
+    let mut lines = Vec::new();
+    lines.extend(round_block(input.round));
+    lines.push(format!(
+        "Write {} new questions about {subject}, with these difficulties: {}.",
+        input.count,
+        plan_text(&input.plan)
+    ));
+    lines.push(scope_block(input.scope));
+    lines.extend(exclusions_block(input.exclude));
+    lines.push("Do not repeat any question of this conversation. The grounding rules, the self-check, Hoot's voice and the schema are the same as before: every question cites lines you actually read in this project. Number the questions q1, q2, … Answer with JSON only.".to_owned());
+    lines.join("\n")
+}
+
 /// The prompt of a retry: the accepted questions stay, the rejected ones are replaced.
-pub fn repair_prompt(kept: usize, rejected: &[(String, String)], missing: &[u32]) -> String {
+pub fn repair_prompt(
+    kept: usize,
+    rejected: &[(String, String)],
+    missing: &[u32],
+    short_by: usize,
+) -> String {
     let mut lines = vec![format!(
         "Thank you. IGrasp checked your questions against the project. {kept} were accepted."
     )];
-    if rejected.is_empty() {
+    if rejected.is_empty() && short_by > 0 {
+        lines.push(format!(
+            "Add {short_by} new questions that respect the rules, and return the complete JSON again with the accepted questions unchanged (same ids)."
+        ));
+    } else if rejected.is_empty() {
         lines.push(
             "Your answer could not be read as the quiz JSON. Return the complete JSON again, following the schema."
                 .to_owned(),
@@ -261,7 +287,7 @@ mod tests {
     #[test]
     fn the_prompt_names_no_provider() {
         let text = prompt(None, &SourceScope::WholeProject, &[]).to_lowercase()
-            + &repair_prompt(1, &[("q2".into(), "generic".into())], &[4]).to_lowercase();
+            + &repair_prompt(1, &[("q2".into(), "generic".into())], &[4], 0).to_lowercase();
         for name in [
             "claude",
             "anthropic",
@@ -315,6 +341,7 @@ mod tests {
                 ),
             ],
             &[4],
+            0,
         );
         assert!(text.starts_with(
             "Thank you. IGrasp checked your questions against the project. 7 were accepted."
@@ -323,6 +350,7 @@ mod tests {
         assert!(text.contains("- q3: cites CLAUDE.md, an agent instruction file"));
         assert!(text.contains("at least one question of difficulty 4."));
         assert!(text.ends_with("Same schema, JSON only."));
-        assert!(repair_prompt(0, &[], &[]).contains("could not be read as the quiz JSON"));
+        assert!(repair_prompt(0, &[], &[], 0).contains("could not be read as the quiz JSON"));
+        assert!(repair_prompt(4, &[], &[], 6).contains("Add 6 new questions"));
     }
 }

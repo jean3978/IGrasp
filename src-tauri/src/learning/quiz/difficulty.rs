@@ -82,17 +82,6 @@ pub fn plan_text(plan: &[u32; 5]) -> String {
         .join(", ")
 }
 
-/// Rounds of an adaptive quiz of `count` questions.
-pub fn rounds(count: u32) -> u32 {
-    count.div_ceil(ROUND_SIZE).max(1)
-}
-
-/// Questions of round `number` (1-based) of a quiz of `count` questions.
-pub fn round_size(count: u32, number: u32) -> u32 {
-    let before = ROUND_SIZE * number.saturating_sub(1);
-    count.saturating_sub(before).min(ROUND_SIZE)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,16 +110,10 @@ mod tests {
     }
 
     #[test]
-    fn plan_text_and_rounds() {
+    fn plan_text_lists_the_levels() {
         assert_eq!(
             plan_text(&[2, 3, 0, 0, 1]),
             "2 of difficulty 1, 3 of difficulty 2, 1 of difficulty 5"
         );
-        assert_eq!(rounds(10), 2);
-        assert_eq!(rounds(12), 3);
-        assert_eq!(rounds(3), 1);
-        assert_eq!(round_size(12, 1), 5);
-        assert_eq!(round_size(12, 3), 2);
-        assert_eq!(round_size(12, 4), 0);
     }
 }

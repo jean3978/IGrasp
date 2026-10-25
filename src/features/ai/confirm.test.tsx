@@ -150,6 +150,7 @@ describe('the confirmation card in the chat', () => {
             bucket: 'medium',
             documents: 1,
             images: 1,
+            inlined: [],
           }}
           onStart={onStart}
           onCancel={onCancel}

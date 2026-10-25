@@ -221,11 +221,39 @@ pub fn propose(profile: &ProjectProfile, corpus: &Corpus) -> Vec<Subject> {
                 anchors.push(m.to_owned());
             }
         }
-        if let Some(module) = profile.modules.first() {
+        // The program's entry points (`src/main.tsx`, `src-tauri/src/lib.rs`, `main.gd`, …),
+        // shallowest first; else the largest module's main file.
+        let mut entries: Vec<&CorpusFile> = text
+            .iter()
+            .copied()
+            .filter(|f| {
+                let name = f.path.rsplit('/').next().unwrap_or(&f.path).to_lowercase();
+                f.path.matches('/').count() <= 2
+                    && !is_test_path(&f.path)
+                    && ["main.", "lib.rs", "index.", "app.", "program.cs"]
+                        .iter()
+                        .any(|p| name.starts_with(p))
+                    && f.language.is_some_and(|l| l != "CSS" && l != "HTML")
+            })
+            .collect();
+        entries.sort_by_key(|f| (f.path.matches('/').count(), f.path.clone()));
+        if entries.is_empty() {
+            if let Some(module) = profile.modules.first() {
+                anchors.extend(
+                    pick_anchors(text_under(corpus, &module.path))
+                        .into_iter()
+                        .take(1),
+                );
+            }
+        } else {
+            // One per top-level folder: a Tauri app's `src/` and `src-tauri/`.
+            let mut tops = BTreeSet::new();
             anchors.extend(
-                pick_anchors(text_under(corpus, &module.path))
-                    .into_iter()
-                    .take(1),
+                entries
+                    .iter()
+                    .filter(|f| tops.insert(f.path.split('/').next().unwrap_or_default()))
+                    .take(2)
+                    .map(|f| f.path.clone()),
             );
         }
         anchors.truncate(MAX_ANCHORS);

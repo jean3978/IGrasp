@@ -225,11 +225,26 @@ fn no_ai_operation_starts_without_a_user_action() {
                 .update_folder_learning(&crate::learning::root_key(ws), |l| {
                     l.profile_corrections.notes = "also a server".into();
                 })?;
-            crate::learning::corrected_profile(ws, &state.appdata, false)?;
-            crate::learning::subjects(ws, &state.appdata, &names)
+            let (profile, walk) = crate::learning::corrected_profile(ws, &state.appdata, false)?;
+            crate::learning::subjects(ws, &state.appdata, &names)?;
+            // Composing a quiz (what `ai_estimate` with a quiz does) starts nothing.
+            crate::learning::quiz::compose::compose(
+                ws.guard.root(),
+                &profile,
+                &walk,
+                &names,
+                crate::learning::quiz::QuizGenerationInput::default(),
+                None,
+                None,
+            )
+            .map(|_| ())
         })
         .unwrap();
-    assert_eq!(starts(&state), 0, "profile, corrections and subjects");
+    assert_eq!(
+        starts(&state),
+        0,
+        "profile, corrections, subjects and quiz estimate"
+    );
 
     // Closing the folder.
     state.ai.cancel_all();
@@ -320,7 +335,7 @@ fn only_ai_start_calls_the_gateway_start() {
     );
     // And that call is inside `ai_start`.
     let (_, text) = files.iter().find(|(r, _)| r == "commands/ai.rs").unwrap();
-    let at = text.find("pub fn ai_start(").expect("ai_start exists");
+    let at = text.find("fn ai_start(").expect("ai_start exists");
     let call = text.find(".ai.start(").expect("the call exists");
     assert!(call > at);
     let next_command = text[at + 1..]
