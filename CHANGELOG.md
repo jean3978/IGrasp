@@ -28,7 +28,7 @@ developers on any kind of project (games, web, tools, libraries), with nothing g
   file at its lines. **Look it up** (`L`) opens the cited files before you answer, in a glowing
   window with Hoot perched on top, its eyes following the pointer. Five flames show your level;
   the order follows it.
-- **What to ask about**: subjects grouped as **Global** concepts (architecture, tech stack,
+- **New-quiz wizard**: kind of quiz, subject, then options, one step at a time. Subjects grouped as **Global** concepts (architecture, tech stack,
   security, data and storage, state, design patterns, error handling, concurrency, UI,
   networking, configuration, the engine's model, decisions, build, testing) and **Features**
   (feature pages and folders, a game's own systems such as player, enemies or NPCs, common

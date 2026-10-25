@@ -119,15 +119,42 @@ export async function openQuiz(page: Page): Promise<void> {
   });
   await page.keyboard.press('Control+Alt+q');
   await expect(page.getByRole('heading', { name: 'Quiz', level: 1 })).toBeVisible();
-  await expect(page.getByRole('radio', { name: 'No specific subject' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'What kind of quiz?' })).toBeVisible();
 }
 
-/** Sets up a new quiz on the home, then Start and the confirmation card's Start. */
+export type QuizKindLabel =
+  'Global concepts' | 'A feature' | 'Your own subject' | 'Check specific code';
+
+export interface WizardChoice {
+  kind?: QuizKindLabel;
+  /** A subject chip of the global concepts or the features. */
+  subject?: string;
+  /** Your own subject. */
+  custom?: string;
+  /** Code to check. */
+  paths?: string[];
+}
+
+/** Walks the new-quiz wizard to its options step: the kind, then the subject, then Next. */
+export async function toOptions(page: Page, choice: WizardChoice = {}): Promise<void> {
+  await page.getByRole('radio', { name: new RegExp(choice.kind ?? 'Global concepts') }).click();
+  if (choice.subject) await page.getByRole('radio', { name: choice.subject }).click();
+  if (choice.custom)
+    await page.getByRole('textbox', { name: 'Your own subject' }).fill(choice.custom);
+  for (const p of choice.paths ?? []) {
+    await page.getByLabel('A file or folder to check').fill(p);
+    await page.keyboard.press('Enter');
+  }
+  await page.getByRole('button', { name: /^Next/ }).click();
+  await expect(page.getByRole('heading', { name: 'How should the quiz go?' })).toBeVisible();
+}
+
+/** Sets up a new quiz with the wizard, then Start and the confirmation card's Start. */
 export async function startQuiz(
   page: Page,
-  options: { subject?: string; mode?: 'Fixed' | 'Adaptive'; count?: number } = {},
+  options: WizardChoice & { mode?: 'Fixed' | 'Adaptive'; count?: number } = {},
 ): Promise<void> {
-  if (options.subject) await page.getByRole('radio', { name: options.subject }).click();
+  await toOptions(page, options);
   if (options.mode) await page.getByRole('radio', { name: options.mode, exact: true }).click();
   if (options.count !== undefined)
     await page.getByLabel('Questions', { exact: true }).fill(String(options.count));

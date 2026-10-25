@@ -15,8 +15,13 @@ today).
 - **Open**: **Learn → Quiz Me…** (`Ctrl+Alt+Q`), or the owl button of the AI tools over the
   view. The Quiz tab opens; opening it is free (the profile, the subjects, the history and a quiz
   to continue are local).
-- **Home**: Hoot, **what to ask about** (below), the number of questions (5 to 30), the mode,
-  the sources, the model, and **Start**. Start shows the confirmation card with the expected size;
+- **Home**: Hoot and the **new-quiz wizard**, one question per step: **1. Kind of quiz**
+  (four cards: *Global concepts*, *A feature*, *Your own subject*, *Check specific code*; a click
+  moves on), **2. Subject** (only the input of that kind: the concept chips with *The whole
+  project*, the feature chips, a text field, or the code picker; Next waits for a choice),
+  **3. Options** (a summary of the choice with *Change*, then the number of questions (5 to 30),
+  the mode, the sources (not for a code check), the model, and **Start**). Back and the step
+  bar go back to an earlier step. Start shows the confirmation card with the expected size;
   nothing is sent before its own Start. Below: **Continue your quiz** (a quiz in progress
   survives a restart), **Last results** with **Play again**, **Saved quizzes** with **Open quiz
   file…**, and the project profile.

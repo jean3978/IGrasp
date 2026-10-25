@@ -1,5 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { answerAll, openQuiz, quizCard, quizMock, savedMarkdown, startQuiz } from './helpers';
+import {
+  answerAll,
+  openQuiz,
+  quizCard,
+  quizMock,
+  savedMarkdown,
+  startQuiz,
+  toOptions,
+} from './helpers';
 
 test('a fixed quiz played with the keyboard, its results saved as markdown', async ({ page }) => {
   await openQuiz(page);
@@ -7,7 +15,8 @@ test('a fixed quiz played with the keyboard, its results saved as markdown', asy
   await quizMock(page, (m) => {
     m.state.ai.stepMs = 150;
   });
-  // Opening the tab and the card spend nothing.
+  // Opening the tab, the wizard and the card spend nothing.
+  await toOptions(page);
   await page.getByRole('button', { name: /^Start/ }).click();
   await expect(page.getByRole('group', { name: /Confirm/ })).toBeVisible();
   expect(await quizMock(page, (m) => m.state.ai.starts)).toEqual([]);
@@ -62,11 +71,7 @@ test('Look it up opens the cited file, Escape closes it and the quiz goes on', a
 
 test('Check specific code writes questions on the picked files only', async ({ page }) => {
   await openQuiz(page);
-  await page.getByLabel('A file or folder to check').fill('src');
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('list', { name: 'Code to check' })).toContainText('src');
-  await expect(page.getByRole('radio', { name: 'Documentation only' })).toBeDisabled();
-  await startQuiz(page, { count: 5 });
+  await startQuiz(page, { kind: 'Check specific code', paths: ['src'], count: 5 });
   await expect(quizCard(page)).toBeVisible();
   await expect(page.locator('.quiz-subject-name')).toHaveText('Code check: src');
   const answered = await answerAll(page);
@@ -111,6 +116,7 @@ test('Stop during a slow generation returns to the home', async ({ page }) => {
 
 test('an adaptive quiz writes its second round only on Next round', async ({ page }) => {
   await openQuiz(page);
+  await toOptions(page);
   await page.getByRole('radio', { name: 'Adaptive', exact: true }).click();
   await page.getByRole('button', { name: /^Start/ }).click();
   const card = page.getByRole('group', { name: /Confirm/ });
