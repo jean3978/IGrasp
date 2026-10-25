@@ -13,6 +13,11 @@
   color: var(--fg);
 }
 
+/* Focused by the results screen for screen readers; not a control, so no ring. */
+.quiz-title[tabindex='-1']:focus {
+  outline: none;
+}
+
 .quiz-title {
   margin: 0 0 4px;
   font-size: 22px;
@@ -290,7 +295,8 @@
 .quiz-flame {
   width: 18px;
   height: 18px;
-  color: var(--quiz-flame-off);
+  /* Unlit: an outline at 3:1, so the five places of the level stay visible. */
+  color: var(--quiz-flame-idle);
   transition:
     color var(--duration-normal) ease,
     transform var(--duration-normal) ease;

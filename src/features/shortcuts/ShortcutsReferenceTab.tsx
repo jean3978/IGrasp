@@ -16,7 +16,7 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
     title: 'General',
     rows: [
       ...fromActions(['file.openFolder', 'file.settings', 'help.shortcuts']),
-      { keys: 'Alt+F / E / V / H', label: 'Open the File, Edit, View or Help menu' },
+      { keys: 'Alt+F / E / V / L / H', label: 'Open the File, Edit, View, Learn or Help menu' },
       { keys: 'F10 or Alt', label: 'Focus the menu bar' },
       { keys: 'Esc', label: 'Close menus, dialogs and full-screen views' },
     ],
@@ -89,6 +89,17 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
       ...fromActions(['ai.acceptAllChanges', 'ai.rejectAllChanges']),
       { keys: 'A / R', label: 'Accept / reject the focused change' },
       { keys: 'Tab', label: 'Next change or button' },
+    ],
+  },
+  {
+    title: 'Quiz (a question on screen)',
+    rows: [
+      ...fromActions(['learn.quiz']),
+      { keys: '1 … 4', label: 'Choose an answer' },
+      { keys: 'T / F', label: 'True / false' },
+      { keys: 'H', label: 'Show the hint' },
+      { keys: 'Enter', label: 'Next question, after the answer' },
+      { keys: 'Esc', label: 'Back to the quiz home (the quiz is kept)' },
     ],
   },
   {

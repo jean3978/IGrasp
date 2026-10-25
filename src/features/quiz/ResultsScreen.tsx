@@ -5,7 +5,7 @@
 
 import { clsx } from 'clsx';
 import { ChevronRight, FilePlus2, Plus, RotateCcw, Save, Share2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AiMark } from '../../components/AiMark';
 import { Button } from '../../components/ui/Button';
 import { selectQuizBusy, useQuiz } from '../../stores/quiz';
@@ -77,6 +77,11 @@ export function ResultsScreen({
     const share = record && record.answers.length > 0 ? record.score / record.answers.length : 0;
     return pickLine(share >= CHEER_FROM ? 'resultsHigh' : 'resultsLow');
   });
+  // The Next button that led here is gone: focus the results so a screen reader reads them.
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    titleRef.current?.focus();
+  }, []);
   if (!record) return null;
   const answered = record.answers.length;
   const share = answered === 0 ? 0 : record.score / answered;
@@ -88,7 +93,12 @@ export function ResultsScreen({
       <section className="quiz-results-top">
         <ScoreRing score={record.score} total={answered} motion={motion} />
         <div className="quiz-results-facts">
-          <h2 className="quiz-title">{record.subjectTitle}</h2>
+          <h2 className="quiz-title" ref={titleRef} tabIndex={-1}>
+            <span className="visually-hidden">
+              Results: {record.score} of {answered} right.{' '}
+            </span>
+            {record.subjectTitle}
+          </h2>
           <p className="quiz-results-line">
             Level reached <LevelFlames level={record.level} /> · best streak {record.bestStreak} ·{' '}
             {formatElapsed(elapsed)}
