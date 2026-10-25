@@ -12,7 +12,9 @@ pub mod compose;
 pub mod families;
 pub mod freshness;
 pub mod markdown;
+pub mod progress;
 pub mod prompt;
+pub mod repo;
 pub mod schema;
 pub mod validate;
 
@@ -168,6 +170,31 @@ impl TutorialInput {
             .filter(|r| !r.is_empty());
         self
     }
+}
+
+/// The id of a new tutorial: `<slug of the subject, at most 40 characters>-<yyyymmdd>-<4 hex>`,
+/// from its RFC 3339 generation date.
+pub fn new_tutorial_id(subject: &str, generated: &str) -> String {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static COUNTER: AtomicU32 = AtomicU32::new(0);
+    let mut slug = markdown::slug(subject);
+    if slug.len() > 40 {
+        slug.truncate(40);
+        slug = slug.trim_end_matches('-').to_owned();
+    }
+    if slug.is_empty() || slug == "chapter" {
+        slug = "tutorial".to_owned();
+    }
+    let date: String = generated
+        .chars()
+        .filter(char::is_ascii_digit)
+        .take(8)
+        .collect();
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.subsec_nanos());
+    let n = nanos ^ COUNTER.fetch_add(0x9e37, Ordering::SeqCst);
+    format!("{slug}-{date}-{:04x}", n & 0xffff)
 }
 
 /// A tutorial the user can open: private (app data) or shared (a README in the folder).

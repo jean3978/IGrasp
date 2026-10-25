@@ -66,6 +66,23 @@ pub fn source_hashes(root: &Path, t: &Tutorial) -> Vec<SourceHash> {
         .collect()
 }
 
+/// The sources of `t` after a change of its chapters (a chapter written, a proposal accepted):
+/// a citation already recorded keeps its hash (hashing it again would hide a change since the
+/// tutorial was written), a new one is hashed against the files of `root` now.
+pub fn merge_source_hashes(root: &Path, t: &Tutorial) -> Vec<SourceHash> {
+    let fresh = source_hashes(root, t);
+    fresh
+        .into_iter()
+        .map(|s| {
+            t.sources
+                .iter()
+                .find(|o| o.path == s.path && o.lines == s.lines)
+                .cloned()
+                .unwrap_or(s)
+        })
+        .collect()
+}
+
 /// What a cited range looks like now.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "state", rename_all = "camelCase")]

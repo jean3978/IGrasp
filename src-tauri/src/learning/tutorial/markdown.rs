@@ -1081,6 +1081,20 @@ pub(crate) mod tests {
         t
     }
 
+    /// Shared with the frontend (`src/lib/tutorial.test.ts`).
+    #[test]
+    fn slugs_match_the_shared_fixture() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../src/test/fixtures/tutorial/slugs.json");
+        let cases: Vec<serde_json::Value> =
+            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        assert!(cases.len() > 5);
+        for c in cases {
+            let text = c["text"].as_str().unwrap();
+            assert_eq!(slug(text), c["slug"].as_str().unwrap(), "{text:?}");
+        }
+    }
+
     #[test]
     fn the_round_trip_loses_nothing() {
         let t = sample();

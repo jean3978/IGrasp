@@ -54,6 +54,12 @@ import type { SavedQuizFile } from './generated/SavedQuizFile';
 import type { QuizFileSummary } from './generated/QuizFileSummary';
 import type { QuizFileText } from './generated/QuizFileText';
 import type { TutorialSubjects } from './generated/TutorialSubjects';
+import type { TutorialSubject } from './generated/TutorialSubject';
+import type { TutorialSummary } from './generated/TutorialSummary';
+import type { Tutorial } from './generated/Tutorial';
+import type { TutorialRef } from './generated/TutorialRef';
+import type { StoredTutorial } from './generated/StoredTutorial';
+import type { TutorialProgress } from './generated/TutorialProgress';
 
 export type {
   AppInfo,
@@ -191,6 +197,12 @@ export type { FamilyKind } from './generated/FamilyKind';
 export type { SubjectPick } from './generated/SubjectPick';
 export type { TutorialSubject } from './generated/TutorialSubject';
 export type { TutorialSubjects } from './generated/TutorialSubjects';
+export type { TutorialSummary } from './generated/TutorialSummary';
+export type { ProgressSummary } from './generated/ProgressSummary';
+export type { StoredTutorial } from './generated/StoredTutorial';
+export type { TutorialProgress } from './generated/TutorialProgress';
+export type { StepAnswer } from './generated/StepAnswer';
+export type { TutorialUsage } from './generated/TutorialUsage';
 export type {
   AiCapabilities,
   AiEventEnvelope,
@@ -409,6 +421,25 @@ export interface Backend {
    * profile and the corpus, no AI), followed by the subjects the AI suggested earlier.
    */
   listTutorialSubjects(): Promise<TutorialSubjects>;
+  /** The Academy's library: the private tutorials of the open folder, with the progress. Local. */
+  listTutorials(): Promise<TutorialSummary[]>;
+  /** A tutorial to take (`TutorialNotFound` when it is gone). Local. */
+  getTutorial(reference: TutorialRef): Promise<Tutorial>;
+  /**
+   * Saves a private tutorial in app data (after its outline, each chapter, accepted proposals).
+   * A new one (empty id) gets its id, date, provider and generation commit; the cited ranges are
+   * hashed (a citation already recorded keeps its hash). Never writes in the folder.
+   */
+  saveTutorial(tutorial: Tutorial): Promise<StoredTutorial>;
+  /** Deletes a private tutorial and the progress in it. */
+  deleteTutorial(id: string): Promise<void>;
+  /** Forgets the private tutorials, every progress, the suggestions and the usage of the folder. */
+  forgetTutorials(): Promise<void>;
+  getTutorialProgress(id: string): Promise<TutorialProgress | null>;
+  /** Saves the reader's progress (after each step). */
+  saveTutorialProgress(progress: TutorialProgress): Promise<void>;
+  /** Keeps the AI's subject suggestions with the folder; resolves to all of them. */
+  saveSuggestedSubjects(subjects: TutorialSubject[]): Promise<TutorialSubject[]>;
 
   listen<E extends EventName>(
     event: E,

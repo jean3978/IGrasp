@@ -280,6 +280,43 @@ fn no_ai_operation_starts_without_a_user_action() {
         "profile, corrections, subjects and quiz estimate"
     );
 
+    // The Academy: the cards, the library, a private tutorial saved, read and deleted, the
+    // progress, the AI's suggestions kept, forgetting.
+    state
+        .with_workspace(|ws| {
+            let cards = crate::learning::tutorial_subjects(ws, &state.appdata, &names)?;
+            let mut t = crate::learning::tutorial::markdown::tests::sample();
+            t.id = String::new();
+            let t = crate::commands::tutorials::prepared(ws.guard.root(), "mock", t);
+            state
+                .appdata
+                .save_private_tutorial(&key_of(root), t.clone())?;
+            crate::commands::tutorials::library(ws, &state.appdata)?;
+            crate::commands::tutorials::read_tutorial(
+                ws,
+                &state.appdata,
+                &crate::learning::tutorial::TutorialRef::Private { id: t.id.clone() },
+            )?;
+            state.appdata.save_tutorial_progress(
+                &key_of(root),
+                crate::learning::tutorial::progress::TutorialProgress {
+                    tutorial_id: t.id.clone(),
+                    ..Default::default()
+                },
+            )?;
+            state.appdata.tutorial_progress(&key_of(root), &t.id)?;
+            state.appdata.save_suggested_subjects(
+                &key_of(root),
+                cards.cards.into_iter().take(1).collect(),
+            )?;
+            state
+                .appdata
+                .delete_private_tutorial(&key_of(root), &t.id)?;
+            state.appdata.forget_tutorials(&key_of(root))
+        })
+        .unwrap();
+    assert_eq!(starts(&state), 0, "the Academy's local commands");
+
     // Closing the folder.
     state.ai.cancel_all();
     state.workspace.write().unwrap().take();

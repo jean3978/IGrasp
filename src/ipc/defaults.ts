@@ -23,6 +23,9 @@ export const DEFAULT_LEARNING_SETTINGS: LearningSettings = {
   effects: true,
   quizResultsFolder: 'quiz-results',
   quizzesFolder: 'quizzes',
+  tutorialFamiliarity: 'newHere',
+  tutorialLength: 'standard',
+  tutorialsFolder: 'docs/tutorials',
 };
 
 /** Mirrors `Settings::default()` in Rust; used until the real settings are loaded. */

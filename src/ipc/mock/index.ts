@@ -46,7 +46,15 @@ import {
 } from './mockProfile';
 import { fixtureSubjects } from './mockSubjects';
 import { fixtureTutorialSubjects } from './mockFamilies';
-import { emptyTutorials } from './mockTutorialStore';
+import {
+  addSuggested,
+  emptyTutorials,
+  normalizedProgress,
+  prepared,
+  privateSummaries,
+  saveStored,
+  validTutorialId,
+} from './mockTutorialStore';
 import type { FolderTutorials } from './mockTutorialStore';
 import { emptyQuizzes, saveCurrent, summaryOf as quizSummaryOf } from './mockLearning';
 import type { FolderQuizzes } from './mockLearning';
@@ -158,6 +166,22 @@ export function createMockBackend(): Backend & { controls: MockControls } {
   let searchId = 0;
   const cancelled = new Set<number>();
   const handlers = new Map<EventName, Set<Handler>>();
+
+  /** The open folder's path; throws `NoRootOpen` like the Rust commands. */
+  const requireRootPath = (): string => {
+    if (!state.root) throw new BackendError('NoRootOpen', 'No folder is open.');
+    return state.root.path;
+  };
+  /** The Academy's app data of the open folder. */
+  const tutorialsOf = (): FolderTutorials => {
+    const root = requireRootPath();
+    let folder = state.tutorials.get(root);
+    if (!folder) {
+      folder = emptyTutorials();
+      state.tutorials.set(root, folder);
+    }
+    return folder;
+  };
 
   const emit: MockControls['emit'] = (event, payload) => {
     for (const h of handlers.get(event) ?? []) (h as (p: typeof payload) => void)(payload);
@@ -646,6 +670,10 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         next.learning.quizzesFolder,
         DEFAULT_LEARNING_SETTINGS.quizzesFolder,
       );
+      next.learning.tutorialsFolder = relativeFolder(
+        next.learning.tutorialsFolder,
+        DEFAULT_LEARNING_SETTINGS.tutorialsFolder,
+      );
       state.settings = next;
       return Promise.resolve(structuredClone(next));
     },
@@ -735,6 +763,55 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
       const folder = state.tutorials.get(state.root.path) ?? emptyTutorials();
       return Promise.resolve(fixtureTutorialSubjects(state.files, folder.suggested));
+    },
+    // The Academy's app data, like `commands/tutorials.rs` (no provider involved).
+    // eslint-disable-next-line @typescript-eslint/require-await
+    listTutorials: async () => privateSummaries(tutorialsOf()),
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getTutorial: async (reference) => {
+      const folder = tutorialsOf();
+      if (reference.type === 'shared')
+        throw new BackendError('NotATutorialFile', `Not a tutorial: ${reference.relPath}`);
+      const found = folder.stored.get(reference.id);
+      if (!found)
+        throw new BackendError(
+          'TutorialNotFound',
+          `This tutorial no longer exists: ${reference.id}`,
+        );
+      return structuredClone(found.tutorial);
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    saveTutorial: async (tutorial) => {
+      const folder = tutorialsOf();
+      const t = prepared(tutorial, state.settings.ai.provider, (p) => state.files.get(p));
+      return saveStored(folder, t, Date.now());
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    deleteTutorial: async (id) => {
+      const folder = tutorialsOf();
+      if (!validTutorialId(id))
+        throw new BackendError('InvalidPath', `Invalid path: invalid tutorial id "${id}"`);
+      folder.stored.delete(id);
+      folder.progress.delete(id);
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    forgetTutorials: async () => {
+      const root = requireRootPath();
+      state.tutorials.set(root, emptyTutorials());
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getTutorialProgress: async (id) => structuredClone(tutorialsOf().progress.get(id) ?? null),
+    // eslint-disable-next-line @typescript-eslint/require-await
+    saveTutorialProgress: async (progress) => {
+      if (!validTutorialId(progress.tutorialId))
+        throw new BackendError('InvalidPath', 'Invalid path: invalid tutorial id');
+      tutorialsOf().progress.set(progress.tutorialId, normalizedProgress(progress));
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    saveSuggestedSubjects: async (subjects) => {
+      const folder = tutorialsOf();
+      addSuggested(folder, structuredClone(subjects));
+      return structuredClone(folder.suggested);
     },
     saveQuizMarkdown: (kind, markdown, suggestedName) => {
       const root = state.root;
