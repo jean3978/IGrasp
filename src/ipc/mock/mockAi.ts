@@ -682,6 +682,21 @@ export function createMockAi({
 
   /** Composes a quiz generation (throws a `BackendError` for a subject no longer proposed). */
   const compose = (input: QuizGenerationInput, resumeId: string | undefined): MockQuizComposed => {
+    let about: Tutorial | null = null;
+    if (input.tutorial) {
+      const ref = input.tutorial;
+      about = ref.type === 'private' ? (tutorial(ref.id) ?? null) : null;
+      if (!about)
+        throw new BackendError(
+          'TutorialNotFound',
+          `This tutorial no longer exists: ${ref.type === 'private' ? ref.id : ref.relPath}`,
+        );
+      if (!about.chapters.some((c) => c.steps.length > 0))
+        throw new BackendError(
+          'ChapterNotWritten',
+          `This chapter is not written yet: ${about.title}`,
+        );
+    }
     try {
       return composeMockQuiz(
         {
@@ -692,6 +707,7 @@ export function createMockAi({
         },
         input,
         resumeId,
+        about,
       );
     } catch (err) {
       throw new BackendError('Ai', err instanceof Error ? err.message : String(err));

@@ -30,6 +30,8 @@ pub enum QuizCategory {
     Feature,
     /// Specific files or folders, checked in detail.
     Code,
+    /// What a reader of a tutorial should now understand ("Quiz me on this tutorial").
+    Tutorial,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -94,6 +96,10 @@ pub struct QuizGenerationInput {
     pub scope: SourceScope,
     /// "I'm new to …" (optional, reused by the tutorials).
     pub domain_gap: Option<String>,
+    /// "Quiz me on this tutorial": the backend limits the sources to the tutorial's cited files
+    /// and asks what a reader of it should now understand.
+    #[ts(optional)]
+    pub tutorial: Option<crate::learning::tutorial::TutorialRef>,
 }
 
 impl Default for QuizGenerationInput {
@@ -110,6 +116,7 @@ impl Default for QuizGenerationInput {
             exclude: Vec::new(),
             scope: SourceScope::WholeProject,
             domain_gap: None,
+            tutorial: None,
         }
     }
 }

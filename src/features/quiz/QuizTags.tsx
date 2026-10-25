@@ -7,6 +7,7 @@ const CATEGORY_LABELS: Record<QuizCategory, string> = {
   global: 'Global',
   feature: 'Feature',
   code: 'Code check',
+  tutorial: 'Tutorial',
 };
 
 export function QuizTags({

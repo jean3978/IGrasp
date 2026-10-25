@@ -100,6 +100,8 @@ pub struct QuizRecord {
     /// What the project's documentation lacks for this quiz, as the generation reported it.
     pub docs_note: Option<String>,
     pub suggested_subjects: Vec<String>,
+    /// The tutorial a "Quiz me on this tutorial" was about (its id).
+    pub tutorial: Option<String>,
 }
 
 /// A line of the history.

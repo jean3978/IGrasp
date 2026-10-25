@@ -79,7 +79,17 @@ fn quiz_estimate(
     input: QuizGenerationInput,
 ) -> AppResult<AiSizeEstimate> {
     let (profile, walk) = learning::corrected_profile(ws, appdata, false)?;
-    let composed = compose(ws.guard.root(), &profile, &walk, names, input, None, None)?;
+    let tutorial = quiz_tutorial(ws, appdata, &input)?;
+    let composed = compose(
+        ws.guard.root(),
+        &profile,
+        &walk,
+        names,
+        input,
+        tutorial.as_ref(),
+        None,
+        None,
+    )?;
     // The prompt already holds the inlined documents: they are not counted twice.
     let mut size = estimate(composed.prompt_bytes, &[], 0);
     size.documents = u32::try_from(composed.inlined.len()).unwrap_or(u32::MAX);
@@ -126,6 +136,19 @@ fn tutorial_estimate(
         .tutorial_usage;
     size.cost_hint = Some(cost::hint(&usage, op.kind, op.length, op.calls));
     Ok(size)
+}
+
+/// The tutorial of "Quiz me on this tutorial", when the quiz is about one.
+fn quiz_tutorial(
+    ws: &Workspace,
+    appdata: &AppData,
+    input: &QuizGenerationInput,
+) -> AppResult<Option<crate::learning::tutorial::schema::Tutorial>> {
+    input
+        .tutorial
+        .as_ref()
+        .map(|r| crate::commands::tutorials::read_tutorial(ws, appdata, r))
+        .transpose()
 }
 
 /// The approximate size of a message, from file metadata (nothing is read), or of a quiz or a
@@ -180,12 +203,14 @@ pub fn operation_request(
                 AppError::Ai("A quiz generation needs the quiz's options.".to_owned())
             })?;
             let (profile, walk) = learning::corrected_profile(ws, appdata, false)?;
+            let tutorial = quiz_tutorial(ws, appdata, &input)?;
             let composed = compose(
                 ws.guard.root(),
                 &profile,
                 &walk,
                 names,
                 input,
+                tutorial.as_ref(),
                 request.model,
                 request.resume_id,
             )?;

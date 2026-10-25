@@ -8,6 +8,7 @@ use crate::learning::corpus::{SourceScope, profile_block};
 use crate::learning::hoot::HOOT_TONE;
 use crate::learning::role::{RoleFamily, family, focus};
 use crate::learning::subjects::Subject;
+use crate::learning::tutorial::schema::{Step, Tutorial};
 use crate::profile::ProjectProfile;
 
 /// Everything the generation prompt is made of.
@@ -23,6 +24,8 @@ pub struct PromptInput<'a> {
     pub round: Option<QuizRound>,
     pub exclude: &'a [QuizExclusion],
     pub domain_gap: Option<&'a str>,
+    /// "Quiz me on this tutorial": the tutorial the quiz is about.
+    pub tutorial: Option<&'a Tutorial>,
     pub corpus_map: &'a str,
     pub anchor_files: &'a str,
     pub agent_files: &'a str,
@@ -31,6 +34,12 @@ pub struct PromptInput<'a> {
 /// What the quiz is about, as the prompt names it.
 pub fn subject_phrase(input: &PromptInput<'_>) -> String {
     let name = &input.profile.name;
+    if let Some(t) = input.tutorial {
+        return format!(
+            "the tutorial \"{}\" about {name} ({}), which the player just took",
+            t.title, t.subject
+        );
+    }
     match (input.subject, input.custom_subject, input.scope) {
         (Some(s), _, _) => format!("{name}'s \"{}\" ({})", s.title, s.focus),
         (None, _, SourceScope::Paths { paths }) => {
@@ -94,6 +103,7 @@ fn fit_block(role: Option<&str>, category: Option<QuizCategory>) -> Option<Strin
         QuizCategory::Global => "global concepts: how the project is made across its parts (its architecture, its stack, the practices and patterns it follows), not one feature",
         QuizCategory::Feature => "a feature: one thing the project does, followed end to end, not the project as a whole",
         QuizCategory::Code => "a code check of the files they picked",
+        QuizCategory::Tutorial => "a quiz on a tutorial they took: what a reader of it should now understand about this project",
     });
     if role.is_none() && kind.is_none() {
         return None;
@@ -116,10 +126,11 @@ fn fit_block(role: Option<&str>, category: Option<QuizCategory>) -> Option<Strin
     Some(text)
 }
 
-/// What kind of questions to write: understanding by default, a precise code check for paths.
-fn style_block(scope: &SourceScope) -> &'static str {
+/// What kind of questions to write: understanding by default, a precise code check for paths
+/// (a tutorial's cited files are paths too, but its quiz tests understanding).
+fn style_block(scope: &SourceScope, tutorial: bool) -> &'static str {
     match scope {
-        SourceScope::Paths { .. } => {
+        SourceScope::Paths { .. } if !tutorial => {
             "Question style: a code check. The developer wants to be sure they understand this code precisely, for example before submitting it for review. Ask detailed questions about the code in these files: control flow and edge cases, early returns and error paths, invariants and assumptions, what a function returns or does in a given situation, what a change would break, how the code interacts with its callers. Precise line-level questions are welcome here."
         }
         _ => {
@@ -137,6 +148,31 @@ fn scope_block(scope: &SourceScope) -> String {
             paths.join(", ")
         ),
     }
+}
+
+/// What the tutorial taught: its chapters' goals and recaps (the quiz checks they stuck).
+fn tutorial_block(tutorial: Option<&Tutorial>) -> Option<String> {
+    let t = tutorial?;
+    let mut lines = vec![format!(
+        "The tutorial \"{}\" taught these chapters; ask what a reader who took it should now understand about this project (not what the tutorial's text said word for word), citing the project's files, never the tutorial:",
+        t.title
+    )];
+    for c in t.chapters.iter().filter(|c| c.is_written()) {
+        let recap: Vec<String> = c
+            .steps
+            .iter()
+            .filter_map(|s| match s {
+                Step::Recap(r) => Some(r.takeaways.join(" / ")),
+                _ => None,
+            })
+            .collect();
+        lines.push(
+            format!("- {}: {} {}", c.title, c.goal, recap.join(" "))
+                .trim_end()
+                .to_owned(),
+        );
+    }
+    Some(lines.join("\n"))
 }
 
 fn round_block(round: Option<QuizRound>) -> Option<String> {
@@ -183,8 +219,9 @@ pub fn generation_prompt(input: &PromptInput<'_>) -> String {
         ),
         "(1 = a newcomer who read the README can answer it; 3 = you must have read the relevant code; 5 = you must understand how several parts of this project interact).".to_owned(),
         scope_block(input.scope),
-        style_block(input.scope).to_owned(),
+        style_block(input.scope, input.tutorial.is_some()).to_owned(),
     ];
+    task.extend(tutorial_block(input.tutorial));
     task.extend(fit_block(input.role, input.category));
     task.extend(round_block(input.round));
     task.extend(exclusions_block(input.exclude));
@@ -261,7 +298,8 @@ pub fn continuation_prompt(input: &PromptInput<'_>) -> String {
         plan_text(&input.plan)
     ));
     lines.push(scope_block(input.scope));
-    lines.push(style_block(input.scope).to_owned());
+    lines.push(style_block(input.scope, input.tutorial.is_some()).to_owned());
+    lines.extend(tutorial_block(input.tutorial));
     lines.extend(fit_block(input.role, input.category));
     lines.extend(exclusions_block(input.exclude));
     lines.push(CHOICES_BLOCK.to_owned());
@@ -375,6 +413,7 @@ mod tests {
             round,
             exclude,
             domain_gap: Some("I'm new to make"),
+            tutorial: None,
             corpus_map: "Makefile (20 B)\nsrc/ (1 files, 300 B)\n  src/main.ts (300 B, TypeScript)",
             anchor_files: "## Makefile (2 lines)\n  1 | build:\n  2 | \tnpm run build\n",
             agent_files: "## AGENTS.md (1 lines)\n  1 | Be brief.\n",
@@ -412,6 +451,7 @@ mod tests {
             round: None,
             exclude: &[],
             domain_gap: None,
+            tutorial: None,
             corpus_map: "",
             anchor_files: "",
             agent_files: "",
@@ -497,6 +537,7 @@ mod tests {
             round: None,
             exclude: &[],
             domain_gap: None,
+            tutorial: None,
             corpus_map: "",
             anchor_files: "",
             agent_files: "",

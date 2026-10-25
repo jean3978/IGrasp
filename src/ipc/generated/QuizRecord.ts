@@ -48,4 +48,8 @@ resumeId: string | null, materialNote: string | null,
 /**
  * What the project's documentation lacks for this quiz, as the generation reported it.
  */
-docsNote: string | null, suggestedSubjects: Array<string>, };
+docsNote: string | null, suggestedSubjects: Array<string>, 
+/**
+ * The tutorial a "Quiz me on this tutorial" was about (its id).
+ */
+tutorial: string | null, };

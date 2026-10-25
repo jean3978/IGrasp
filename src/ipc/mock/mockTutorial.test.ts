@@ -321,6 +321,55 @@ describe('mock tutorial generation', () => {
     ).rejects.toMatchObject({ code: 'Ai' });
   });
 
+  it('quizzes on a written tutorial, limited to its cited files', async () => {
+    const t = await outline();
+    await expect(
+      backend.aiStart('quizGeneration', {
+        prompt: '',
+        contextPaths: [],
+        images: [],
+        policy: 'readOnly',
+        quiz: {
+          subjectId: null,
+          customSubject: t.title,
+          category: 'tutorial',
+          role: null,
+          count: 5,
+          mode: 'fixed',
+          round: null,
+          startLevel: 2,
+          exclude: [],
+          scope: { type: 'wholeProject' },
+          domainGap: null,
+          tutorial: { type: 'private', id: t.id },
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'ChapterNotWritten' });
+    const written = await run({ kind: 'chapters', id: t.id, indices: [0] });
+    const chapter = (outputs(written)[0] as ChapterResult).chapter;
+    await backend.saveTutorial({ ...t, chapters: [chapter, ...t.chapters.slice(1)] });
+    const size = await backend.aiEstimate({
+      promptBytes: 0,
+      contextPaths: [],
+      images: 0,
+      quiz: {
+        subjectId: null,
+        customSubject: null,
+        category: 'tutorial',
+        role: null,
+        count: 5,
+        mode: 'fixed',
+        round: null,
+        startLevel: 2,
+        exclude: [],
+        scope: { type: 'wholeProject' },
+        domainGap: null,
+        tutorial: { type: 'private', id: t.id },
+      },
+    });
+    expect(size.inlined.filter((d) => !d.contextOnly).map((d) => d.path)).toEqual(['src/main.ts']);
+  });
+
   it('accepts a text-only answer', async () => {
     const events = await run({ kind: 'outline', input: input() }, 'textOnly');
     expect(outcome(events)).toBe('Completed');

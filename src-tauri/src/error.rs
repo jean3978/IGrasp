@@ -73,7 +73,6 @@ pub enum AppError {
     #[allow(dead_code)] // Raised by sharing (a later step of Phase 5).
     TutorialFolderTaken(String),
     #[error("This chapter is not written yet: {0}")]
-    #[allow(dead_code)] // Raised by the review and the tutorial quiz (later steps of Phase 5).
     ChapterNotWritten(String),
 }
 

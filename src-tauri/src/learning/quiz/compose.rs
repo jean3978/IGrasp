@@ -13,12 +13,13 @@ use super::difficulty::plan;
 use super::prompt::{PromptInput, continuation_prompt, generation_prompt, repair_prompt};
 use super::schema::{QuizResult, schema};
 use super::validate::{Context, Validated, validate};
-use super::{QuizExclusion, QuizGenerationInput};
+use super::{QuizCategory, QuizExclusion, QuizGenerationInput};
 use crate::ai::run::{MAX_RETRIES, OutputValidator, Verdict};
 use crate::ai::types::{AiPolicy, AiRequest};
 use crate::error::{AppError, AppResult};
 use crate::learning::corpus::{Corpus, Inlined, SourceScope, read_text};
 use crate::learning::subjects::{Subject, custom_anchors, pick_anchors, propose};
+use crate::learning::tutorial::schema::Tutorial;
 use crate::profile::ProjectProfile;
 use crate::profile::walk::Walk;
 
@@ -62,10 +63,27 @@ pub fn compose(
     walk: &Walk,
     agent_names: &[String],
     input: QuizGenerationInput,
+    tutorial: Option<&Tutorial>,
     model: Option<String>,
     resume_id: Option<String>,
 ) -> AppResult<Composed> {
-    let input = input.normalized();
+    let mut input = input.normalized();
+    // "Quiz me on this tutorial": the tutorial's cited files are the sources.
+    if let Some(t) = tutorial {
+        let mut paths: Vec<String> = t.citations().into_iter().map(|c| c.path).collect();
+        paths.sort();
+        paths.dedup();
+        if paths.is_empty() {
+            return Err(AppError::ChapterNotWritten(t.title.clone()));
+        }
+        input.scope = SourceScope::Paths { paths };
+        input.subject_id = None;
+        input.custom_subject = None;
+        input.category = Some(QuizCategory::Tutorial);
+        if input.domain_gap.is_none() {
+            input.domain_gap = t.domain_gap.clone();
+        }
+    }
     let whole = Corpus::build(root, walk, &SourceScope::WholeProject, agent_names);
     let subjects = propose(profile, &whole);
     let subject = match &input.subject_id {
@@ -125,6 +143,7 @@ pub fn compose(
         round: input.round,
         exclude: &input.exclude,
         domain_gap: input.domain_gap.as_deref(),
+        tutorial,
         corpus_map: &map,
         anchor_files: &anchor_text,
         agent_files: &agent_text,
@@ -351,7 +370,17 @@ mod tests {
 
     fn composed(root: &Path, input: QuizGenerationInput, resume: Option<String>) -> Composed {
         let (profile, walk) = build(root, &[], &AtomicBool::new(false));
-        compose(root, &profile, &walk, &[], input, Some("m".into()), resume).unwrap()
+        compose(
+            root,
+            &profile,
+            &walk,
+            &[],
+            input,
+            None,
+            Some("m".into()),
+            resume,
+        )
+        .unwrap()
     }
 
     fn question(id: &str, path: &str, first: u32, last: u32, text: &str) -> Value {
@@ -420,6 +449,56 @@ mod tests {
     }
 
     #[test]
+    fn a_quiz_on_a_tutorial_is_limited_to_its_cited_files_and_tests_understanding() {
+        let dir = project();
+        let (profile, walk) = build(dir.path(), &[], &AtomicBool::new(false));
+        let mut t = crate::learning::tutorial::markdown::tests::sample();
+        // The sample cites src/index/watcher.rs only.
+        t.title = "Orbit's watcher".into();
+        let c = compose(
+            dir.path(),
+            &profile,
+            &walk,
+            &[],
+            QuizGenerationInput {
+                subject_id: Some("concept:security".into()),
+                ..QuizGenerationInput::default()
+            },
+            Some(&t),
+            None,
+            None,
+        )
+        .unwrap();
+        let p = &c.request.prompt;
+        assert!(p.contains("the tutorial \"Orbit's watcher\" about"));
+        assert!(
+            p.contains("Sources are limited to these files; cite them only: src/index/watcher.rs.")
+        );
+        assert!(p.contains("Question style: test understanding, not memory."));
+        assert!(!p.contains("Question style: a code check."));
+        assert!(p.contains("- The watcher: Explain how src/index/watcher.rs debounces."));
+        assert!(p.contains("a quiz on a tutorial they took"));
+        // A tutorial without a written chapter has nothing to quiz on.
+        let mut empty = t.clone();
+        for c in &mut empty.chapters {
+            c.steps.clear();
+        }
+        assert!(matches!(
+            compose(
+                dir.path(),
+                &profile,
+                &walk,
+                &[],
+                QuizGenerationInput::default(),
+                Some(&empty),
+                None,
+                None
+            ),
+            Err(AppError::ChapterNotWritten(_))
+        ));
+    }
+
+    #[test]
     fn an_unknown_subject_is_refused() {
         let dir = project();
         let (profile, walk) = build(dir.path(), &[], &AtomicBool::new(false));
@@ -432,6 +511,7 @@ mod tests {
                 subject_id: Some("module:gone".into()),
                 ..QuizGenerationInput::default()
             },
+            None,
             None,
             None,
         );
@@ -572,7 +652,17 @@ mod tests {
             ..QuizGenerationInput::default()
         };
         let model = var("IGRASP_QUIZ_MODEL").unwrap_or_else(|| "sonnet".into());
-        let composed = compose(&root, &profile, &walk, &names, input, Some(model), None).unwrap();
+        let composed = compose(
+            &root,
+            &profile,
+            &walk,
+            &names,
+            input,
+            None,
+            Some(model),
+            None,
+        )
+        .unwrap();
         println!(
             "PROMPT {} bytes, inlined {:?}",
             composed.prompt_bytes,

@@ -241,6 +241,7 @@ fn no_ai_operation_starts_without_a_user_action() {
                 crate::learning::quiz::QuizGenerationInput::default(),
                 None,
                 None,
+                None,
             )
             .map(|_| ())
         })

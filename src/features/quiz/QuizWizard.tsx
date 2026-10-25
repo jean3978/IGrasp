@@ -13,7 +13,6 @@ import { AiMark } from '../../components/AiMark';
 import { Button } from '../../components/ui/Button';
 import type {
   ProjectProfile,
-  QuizCategory,
   QuizMode,
   QuizScopeSetting,
   RoleFamily,
@@ -27,7 +26,14 @@ import { ModelPicker } from '../ai/ModelPicker';
 import { StatusLine } from '../ai/StatusLine';
 import { Segmented } from '../settings/fields';
 import { roundsOf } from './quizEngine';
-import { checksCode, kindDescription, kindsFor, roleFamily, rolesFor } from './quizRoles';
+import {
+  checksCode,
+  kindDescription,
+  kindsFor,
+  roleFamily,
+  rolesFor,
+  type WizardKind,
+} from './quizRoles';
 import { CodeToCheck, CustomSubjectField, SubjectChoices } from './SubjectPicker';
 import { useSubjects } from './useSubjects';
 
@@ -50,7 +56,7 @@ interface KindInfo {
 }
 
 /** The kinds' titles; their descriptions follow the role (`kindDescription`). */
-const KINDS: Record<QuizCategory, KindInfo> = {
+const KINDS: Record<WizardKind, KindInfo> = {
   global: { title: 'Global concepts', icon: Layers },
   feature: { title: 'A feature', icon: Puzzle },
   code: { title: 'Check specific code', icon: FileCode },
@@ -228,7 +234,8 @@ export function QuizWizard() {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const moved = useRef(false);
   const headingId = useId();
-  const kind = setup.category;
+  // A quiz on a tutorial is set up by the Academy, not here.
+  const kind: WizardKind = setup.category === 'tutorial' ? 'global' : setup.category;
   const family = roleFamily(setup.role);
   const kinds = kindsFor(family);
 
@@ -258,7 +265,7 @@ export function QuizWizard() {
     setStep(next);
   };
 
-  const choose = (next: QuizCategory) => {
+  const choose = (next: WizardKind) => {
     if (next === 'code') setSetup({ category: next, target: 'paths' });
     else {
       const list = next === 'global' ? global : features;

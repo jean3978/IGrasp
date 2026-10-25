@@ -31,6 +31,7 @@ const record = (id: string, finishedMs: number | null): QuizRecord => ({
   materialNote: null,
   docsNote: null,
   suggestedSubjects: [],
+  tutorial: null,
 });
 
 beforeEach(async () => {

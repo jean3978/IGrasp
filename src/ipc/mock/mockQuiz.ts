@@ -3,11 +3,13 @@
 // validator that accepts, repairs or gives up on each attempt with the same cap as Rust, and the
 // scripted answers of the mock AI (`MockQuizScript`, chosen with `__igraspMock.state.ai`).
 
+import { tutorialCitations } from '../../lib/tutorial';
 import type {
   AiInlinedDocument,
   JsonValue,
   ProjectProfile,
   QuizGenerationInput,
+  Tutorial,
   QuizResult,
   Subject,
 } from '../types';
@@ -150,8 +152,21 @@ export function composeMockQuiz(
   deps: ComposeDeps,
   raw: QuizGenerationInput,
   resumeId: string | undefined,
+  tutorial: Tutorial | null = null,
 ): MockQuizComposed {
-  const input = normalizedInput(raw);
+  let input = normalizedInput(raw);
+  // "Quiz me on this tutorial": its cited files are the sources (like Rust's `compose`).
+  if (tutorial) {
+    const cited = [...new Set(tutorialCitations(tutorial).map((c) => c.path))].sort();
+    input = {
+      ...input,
+      scope: { type: 'paths', paths: cited },
+      subjectId: null,
+      customSubject: null,
+      category: 'tutorial',
+      domainGap: input.domainGap ?? tutorial.domainGap ?? null,
+    };
+  }
   const subject =
     input.subjectId === null ? null : deps.subjects.find((s) => s.id === input.subjectId);
   if (subject === undefined) {
@@ -191,13 +206,15 @@ export function composeMockQuiz(
     .map((n, i) => (n > 0 ? `${String(n)} of difficulty ${String(i + 1)}` : ''))
     .filter(Boolean)
     .join(', ');
-  const about = subject
-    ? `${deps.profile.name}'s "${subject.title}" (${subject.focus})`
-    : paths
-      ? `the code of ${deps.profile.name} in ${paths.join(', ')}`
-      : input.customSubject
-        ? `"${input.customSubject}" in ${deps.profile.name} (${input.category === 'feature' ? 'a feature of the project' : input.category === 'global' ? 'a concept across the project' : 'a subject'} that the player typed)`
-        : `${deps.profile.name} as a whole`;
+  const about = tutorial
+    ? `the tutorial "${tutorial.title}" about ${deps.profile.name} (${tutorial.subject}), which the player just took`
+    : subject
+      ? `${deps.profile.name}'s "${subject.title}" (${subject.focus})`
+      : paths
+        ? `the code of ${deps.profile.name} in ${paths.join(', ')}`
+        : input.customSubject
+          ? `"${input.customSubject}" in ${deps.profile.name} (${input.category === 'feature' ? 'a feature of the project' : input.category === 'global' ? 'a concept across the project' : 'a subject'} that the player typed)`
+          : `${deps.profile.name} as a whole`;
   const lines = [
     resumeId === undefined
       ? `You are Hoot, the quiz master of IGrasp, writing a quiz about ONE specific software project.`
@@ -207,6 +224,12 @@ export function composeMockQuiz(
       : '',
     `Write ${String(input.count)} questions about ${about}, with these difficulties: ${planText}.`,
     input.scope.type === 'documentationOnly' ? 'Sources are limited to the documentation.' : '',
+    tutorial
+      ? `Question style: test understanding, not memory. The tutorial "${tutorial.title}" taught: ${tutorial.chapters
+          .filter((c) => c.steps.length > 0)
+          .map((c) => `${c.title}: ${c.goal}`)
+          .join(' | ')}`
+      : '',
     input.role ? `Audience: ${input.role} on this project.` : 'Audience: developers.',
     input.category ? `Kind of quiz: ${input.category}.` : '',
     input.exclude.length > 0

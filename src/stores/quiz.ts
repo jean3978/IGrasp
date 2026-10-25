@@ -20,6 +20,7 @@ import type {
   QuizScopeSetting,
   QuizSummary,
   SourceScope,
+  TutorialRef,
   Subject,
 } from '../ipc/types';
 import { BackendError } from '../ipc/types';
@@ -132,6 +133,11 @@ interface QuizState {
   setSetup: (patch: Partial<QuizSetup>) => void;
   /** Estimates the new quiz and shows the confirmation card (spends nothing). */
   prepare: () => Promise<void>;
+  /**
+   * "Quiz me on this tutorial": estimates a quiz limited to the tutorial's cited files and shows
+   * the confirmation card (spends nothing; the card's Start is the user action).
+   */
+  prepareForTutorial: (tutorial: TutorialRef, title: string) => Promise<void>;
   /** Estimates more questions at the level reached and shows the card (spends nothing). */
   keepGoing: () => Promise<void>;
   cancelConfirm: () => void;
@@ -230,6 +236,14 @@ export const targetReady = (setup: QuizSetup) =>
 
 export const scopeOf = (scope: QuizScopeSetting): SourceScope =>
   scope === 'documentationOnly' ? { type: 'documentationOnly' } : { type: 'wholeProject' };
+
+/** What a quiz on a tutorial keeps of it: the private id, or the shared README's path. */
+const tutorialKey = (input: QuizGenerationInput): string | null =>
+  input.tutorial
+    ? input.tutorial.type === 'private'
+      ? input.tutorial.id
+      : input.tutorial.relPath
+    : null;
 
 export const newQuizId = () =>
   `quiz-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -454,6 +468,7 @@ export const useQuiz = create<QuizState>()((set, get) => {
         materialNote: result.materialNote,
         docsNote: result.docsNote,
         suggestedSubjects: result.suggestedSubjects,
+        tutorial: tutorialKey(r.input),
       };
       const engine = engineNext(initialEngine(record.startLevel), record.questions);
       set({ record, engine, screen: 'question', generation: null, saved: null });
@@ -553,6 +568,37 @@ export const useQuiz = create<QuizState>()((set, get) => {
         set({ estimate, pending: { kind: 'new', input, count: setup.count }, screen: 'confirm' });
       } catch (err) {
         set({ failure: { message: errorMessage(err), suggestedSubjects: [] } });
+      }
+    },
+
+    async prepareForTutorial(tutorial, title) {
+      if (get().operationId !== null || get().starting) return;
+      const { setup } = get();
+      const input: QuizGenerationInput = {
+        subjectId: null,
+        customSubject: title,
+        category: 'tutorial',
+        role: setup.role.trim() || null,
+        count: setup.count,
+        mode: 'fixed',
+        round: null,
+        startLevel: START_LEVEL,
+        exclude: [],
+        scope: { type: 'wholeProject' },
+        domainGap: null,
+        tutorial,
+      };
+      set({ record: null, engine: null, failure: null });
+      try {
+        const estimate = await backend.aiEstimate({
+          promptBytes: 0,
+          contextPaths: [],
+          images: 0,
+          quiz: input,
+        });
+        set({ estimate, pending: { kind: 'new', input, count: setup.count }, screen: 'confirm' });
+      } catch (err) {
+        set({ screen: 'home', failure: { message: errorMessage(err), suggestedSubjects: [] } });
       }
     },
 
