@@ -245,6 +245,15 @@ The full flow of a message, with the estimate and the history save, is in
 The frontend never builds a provider's tool input: it sends the neutral `updatedEdit` (the
 accepted hunks, or the composed content of a whole-file write) and the provider maps it.
 
+**Beyond the chat** (0.4.0): the quiz ([quiz.md](quiz.md)) uses the same gateway with the user
+action `quizGeneration`. Two neutral events serve it: `structuredOutput` (an answer that follows
+the request's JSON schema; the Claude provider maps the CLI's `result.structured_output` and hides
+its internal tool call) and `attempt` (a validated run retries, with the reason). A quiz runs
+read-only, its request is composed in Rust from a `QuizGenerationInput`, and the ai events of a
+quiz operation go to the quiz store instead of the chat (`eventBridge.ts` routes by operation
+id). The Learn menu and the owl button of the AI tools are its entry points; the controls that
+spend tokens carry the AI marker.
+
 In the browser dev mode (`npm run dev`), the mock provider ("Mock AI") answers by words of the
 prompt: `edit README.md` proposes one change to it, `edit twice README.md` two changes in
 different paragraphs, `rewrite README.md` a rewrite, `create notes/new.md` a new file,

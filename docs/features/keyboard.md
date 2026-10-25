@@ -25,6 +25,7 @@ IGrasp can be used entirely from the keyboard. Press **F1** for the full list of
 | `Enter` / `Shift+Enter` (message box) | Send / new line |
 | `Escape` (AI chat panel) | Stop the running answer; pressed again, close the panel |
 | `Alt+Shift+A` / `Alt+Shift+R` | Accept all / Reject all proposed changes (while an AI edit is shown in review mode) |
+| `Ctrl+Alt+Q` | Quiz Me: open the Quiz tab (free; only the confirmation card's Start spends tokens) |
 | `Ctrl+T` | Search everything: files and headings |
 | `Alt+←` / `Alt+→`, mouse back / forward | Back / forward through the documents read |
 | `F4` / `Shift+F4` | Next / previous search result |
@@ -33,7 +34,7 @@ IGrasp can be used entirely from the keyboard. Press **F1** for the full list of
 | `Ctrl+Tab`, `Ctrl+PageDown` / `Ctrl+Shift+Tab`, `Ctrl+PageUp` | Next / previous tab |
 | `Alt+1` … `Alt+9` | Go to a tab (9 = last) |
 | `Ctrl+Shift+PageUp` / `PageDown` | Move the tab left / right |
-| `Alt+F`, `Alt+E`, `Alt+V`, `Alt+H` | Open a menu |
+| `Alt+F`, `Alt+E`, `Alt+V`, `Alt+L`, `Alt+H` | Open a menu (L: Learn) |
 | `F10` or `Alt` | Focus the menu bar |
 | `Esc` | Close menus, dialogs and full-screen views |
 
@@ -45,6 +46,7 @@ In a view or dialog:
 | Ctrl+T dialog | ↑ / ↓, PageUp / PageDown; Enter opens, `Ctrl+Enter` keeps the tab open, `Alt+Enter` opens and keeps searching |
 | Code viewer | `Ctrl+G` go to line |
 | Review mode (an AI edit in the preview) | `Tab` moves between the changes and their buttons; `A` / `R` on a focused change accepts / rejects it |
+| Quiz question | `1`–`4` choose, `T` / `F` true / false, `H` hint, `Enter` next (after the answer; the Next button has the focus), `Esc` back to the quiz home (the quiz is kept). The focus starts on the first choice; the verdict, level and streak are announced; the results screen takes the focus on its heading, which reads the score |
 | Region selection | Arrows move a 200 × 120 rectangle from the centre, `Shift+arrows` resize it, `Enter` captures, `Esc` cancels (a mouse drag works too) |
 | Links, results, backlinks | `Ctrl+click`, middle click, double click or `Ctrl+Enter` open in a kept tab |
 

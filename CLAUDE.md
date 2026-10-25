@@ -21,6 +21,7 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 | End-to-end smoke tests | `npm run test:e2e` (Playwright, production build, mock backend) |
 | Rust tests | `npm run rust:test` (also regenerates `src/ipc/generated`) |
 | Performance tests (10k documents) | `cargo test --release --manifest-path src-tauri/Cargo.toml -- --ignored --nocapture` |
+| A real quiz (spends tokens) | `IGRASP_QUIZ_ROOT=<folder> cargo test --manifest-path src-tauri/Cargo.toml real_quiz -- --ignored --nocapture` |
 | Large project to open in the app | `node scripts/gen-large-project.mjs [folder]` |
 | Lint / format | `npm run lint`, `npm run format`, `npm run rust:fmt`, `npm run rust:clippy` |
 
@@ -34,7 +35,12 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   operation; `policy.rs` permission kind → Ask / Allow / Deny, `context.rs` instruction files and
   current file read through the root guard, `estimate.rs` size classes, `no_start.rs` the test
   that only `ai_start` starts an operation; `providers/claude_cli/` spawns the `claude` CLI,
-  `providers/mock.rs` is the Rust test provider), `paths.rs` (root guard), `state.rs`,
+  `providers/mock.rs` is the Rust test provider; `run.rs` validated runs: one operation, capped
+  retries announced by `attempt`), `profile/` (the project profile from a marker table, local),
+  `learning/` (corpus and agent files, subjects, Hoot's tone, `save.rs` the save dialog behind a
+  trait, `quiz/` schema, difficulty, prompt with a snapshot, validator with shared fixtures,
+  `compose.rs` the quiz request built in `ai_start`, `file.rs` quiz files), `appdata/learning.rs`
+  (corrections, quiz in progress, history per folder), `paths.rs` (root guard), `state.rs`,
   `error.rs`, `perf.rs` (ignored performance tests).
 - `src/ipc/`: `types.ts` (the `Backend` interface), `tauri.ts` (the only module that calls
   `invoke`/`listen` or imports `@tauri-apps/*`), `mock/` (in-memory backend + fixture project),
@@ -44,12 +50,16 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   capabilities, model), `aiConversation.ts` (items, operation, permissions, history) and
   `aiPanel.ts` (floating panel, draft, context bar, attachment, placement next to a
   selection); `capture.ts` holds the region overlay, the text mode and the selection highlight.
+  Learning is `projectProfile.ts` and `quiz.ts` (its `start` is the only quiz call to `aiStart`).
 - `src/features/<area>/`: UI by feature, with its CSS next to it. Sidebar views and right-panel
   sections build on `src/components/VirtualRows.tsx` (virtualized rows, keyboard focus).
   `features/ai` is the chat, the AI tools toolbar over the view, the quick actions and the
   inline review; `features/diff` the rendered block diff (two markdown strings in, reused by
   later phases); `features/capture` the text and region selections (source lines, narrowing to
   the highlighted text, highlight). Selections go to the AI as text, never as images.
+  `features/quiz` is the Quiz tab (engine, cards, results, `quizMarkdown.ts`, `quizFile.ts`,
+  `effects/`), `features/hoot` the owl (`?hoot=1` shows its states), `features/profile` the
+  profile card and dialog.
 - `src/features/titlebar/menuActions.ts`: every user action. Menus, toolbar buttons and
   shortcuts (`features/shortcuts/keymap.ts`) dispatch through it.
 - `e2e/`: Playwright smoke tests. `scripts/`: the large-project generator. `docs/`:
@@ -111,5 +121,12 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   `docs/`), so the context bar can be tested without a provider name.
 - Quiz and tutorials (ADR 0016) are grounded in the whole project: every item cites project
   files, nothing generic, written for developers.
+- Learning prompts and schemas live in Rust (`learning/`); the frontend never sends a prompt for a
+  quiz, only a `QuizGenerationInput`. Agent instruction files are context, never cited. Hoot's
+  lines are local (`hootLines.ts`). The validator's rules exist twice (`validate.rs` and
+  `mockQuizValidate.ts`) and must agree on `src/test/fixtures/quiz/`. Replays (Play again, quiz
+  files) never call the AI. The quiz file format (ADR 0024) is shared with Phase 5's tutorials.
+- Writes in the opened folder from the learning features go only through
+  `save_quiz_markdown` after the save dialog; the frontend never passes a path.
 - Keep docs current: `docs/architecture.md`, the `docs/features/` page of the area you touch, an
   ADR in `docs/decisions/` for significant choices, and `CHANGELOG.md` under `[Unreleased]`.

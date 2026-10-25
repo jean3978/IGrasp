@@ -20,6 +20,10 @@ itself stays visible (`Ctrl+B` also hides the sidebar). The bar is one tab stop:
 between views, Enter or Space opens one. The views are also in the View menu. The current view
 is saved with the folder's session.
 
+The **Learn** menu (`Alt+L`) holds Quiz Me… (`Ctrl+Alt+Q`, the Quiz tab in the main view, never
+a sidebar view), Open Quiz File… and Project Profile… ([quiz.md](quiz.md)). The owl button of the
+AI tools over the view opens the Quiz tab too.
+
 ## Back and forward (`Alt+←` / `Alt+→`)
 
 Every time the active document changes — a click in the Explorer, a tab, a link, a search result,

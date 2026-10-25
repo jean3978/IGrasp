@@ -7,6 +7,59 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-25
+
+Phase 4 — Quiz Me: Hoot the owl asks you questions about how the open project is made, written by
+the AI from the project's own files, each citing the lines that prove its answer. Built for
+developers on any kind of project (games, web, tools, libraries), with nothing generic.
+
+### Added
+
+- **Project profile** detected locally, without AI, from a marker table: kinds, engines with
+  versions (Unreal, Unity, Godot, Bevy, ...), frameworks, languages, modules, build, tests, CI
+  and a one-line summary, with the files that justify each value. Correct it (remove, add, notes
+  for the generators) and the corrections are kept per folder in app data
+  ([ADR 0021](docs/decisions/0021-project-profile-from-a-marker-table.md)).
+- **Quiz Me** (Learn menu, `Ctrl+Alt+Q`): a Quiz tab with subjects proposed from the profile,
+  5 to 30 questions, **Fixed** (one AI call) or **Adaptive** (rounds of 5 at your level, each
+  round started by your Next round), **Whole project** or **Documentation only** sources, the
+  model, and the confirmation card before anything is sent. Multiple choice and true/false
+  cards played with the keyboard, a hint, the explanation, and **Read more →** opening the cited
+  file at its lines. Five flames show your level; the order follows it.
+- **Grounded generation**: the prompt and JSON schema belong to the app; every question is
+  checked (a real file of the project, a line range inside it, never an agent instruction file
+  or a secret, the scope, no duplicate, a hint that does not give the answer, and a question
+  that names something of the project). Rejected questions are sent back with their reasons, at
+  most twice, inside the same operation, and the retry is shown
+  ([ADR 0022](docs/decisions/0022-grounded-generation-pipeline.md)).
+- **Hoot**, an original SVG owl with five animated states and local speech lines; still poses
+  under reduced motion ([ADR 0023](docs/decisions/0023-hoot-the-owl.md)).
+- **Effects**: confetti on a right answer, sparks for a streak, a ring on a level up (an
+  in-house particle system, off under reduced motion or with Settings → Learning → Effects).
+- **Results**: score, level reached, best streak, time, tokens and cost, every answer with its
+  sources; **Play again** (no AI), **Keep going** (more at your level) and **New quiz**. The quiz
+  in progress is saved after each answer and survives a restart; the last 20 quizzes are kept
+  per folder.
+- **Save results…**: a markdown report with front matter, a summary table and every question as
+  a task list, written where you choose in the save dialog (default `quiz-results/`).
+- **Shareable quiz files** (**Save quiz…**, default `quizzes/`): markdown with an
+  `igrasp: quiz` front matter and one `igrasp-quiz` block per question, readable on GitHub and
+  replayed by anyone **without the AI** from Saved quizzes, Learn → Open Quiz File… or the
+  preview's **Play this quiz** banner. Cited lines are hashed: a changed source shows a notice
+  on the reveal ([ADR 0024](docs/decisions/0024-shareable-learning-files-as-markdown.md)).
+- **Preview**: quiz files show the banner and their question blocks as cards with the answer
+  folded (parsed as YAML after sanitization, rendered as text).
+- **Settings → Learning**: questions per quiz, default mode and sources, effects, results and
+  quizzes folders, Forget this folder's quizzes, and the project profile with Reset to detected.
+- AI layer: `structuredOutput` and `attempt` events, validated runs with capped retries in the
+  gateway (`ai/run.rs`), and an ignored `real_quiz` test that runs a real generation.
+
+### Changed
+
+- The app writes inside the opened folder only what you save through a save dialog (results
+  and quiz files); it still writes nothing there on its own.
+- The Keyboard Shortcuts tab lists the Learn menu and the quiz keys.
+
 ## [0.3.0] - 2026-10-24
 
 Phase 3 — Claude: an AI chat that understands the open folder, edits you review in the rendered
