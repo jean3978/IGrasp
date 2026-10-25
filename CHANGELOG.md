@@ -15,6 +15,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **CI**: the performance budgets run in their own step, without coverage instrumentation, which
   made the 5 000-line diff test fail on CI runners.
 
+### Fixed
+
+- **Mermaid full screen**: a wide diagram no longer stretches the full-screen view past the
+  window, which hid the toolbar and its exit button; the toolbar stays in the top-right corner.
+- **Mermaid wheel zoom**: one wheel notch zooms by a small step instead of jumping straight to the
+  minimum or maximum zoom (full screen, and Ctrl + wheel inline).
+
 ## [0.3.0] - 2026-10-24
 
 Phase 3 — Claude: an AI chat that understands the open folder, edits you review in the rendered
