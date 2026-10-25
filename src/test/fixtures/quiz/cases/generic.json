@@ -1,0 +1,65 @@
+{
+  "description": "generic trivia and a failed self-check are rejected; a 'What does X' question about the project is not",
+  "count": 10,
+  "output": {
+    "insufficientMaterial": false,
+    "questions": [
+      {
+        "id": "q1",
+        "kind": "multipleChoice",
+        "question": "What does HTTP 404 mean in general?",
+        "choices": [
+          "The resource was not found",
+          "The server crashed",
+          "The request was redirected"
+        ],
+        "answer": 0,
+        "hint": "Think about status codes.",
+        "explanation": "A 404 status code means the requested resource was not found.",
+        "sources": [{ "path": "README.md", "firstLine": 1, "lastLine": 3 }],
+        "difficulty": 1,
+        "selfCheck": { "projectSpecific": true, "reason": "it is about the web" }
+      },
+      {
+        "id": "q2",
+        "kind": "multipleChoice",
+        "question": "Which field of WatchContext changes on every rescan in Orbit?",
+        "choices": ["generation", "timestamp", "checksum"],
+        "answer": 0,
+        "hint": "Look at the struct.",
+        "explanation": "WatchContext in src/index/watcher.rs keeps a generation per scan.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 6, "lastLine": 8 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": false, "reason": "every watcher has a generation" }
+      },
+      {
+        "id": "q3",
+        "kind": "multipleChoice",
+        "question": "What does WatchContext keep to drop the events of an older scan?",
+        "choices": ["A generation counter", "A timestamp", "A checksum"],
+        "answer": 0,
+        "hint": "Look at the struct's only field.",
+        "explanation": "WatchContext in src/index/watcher.rs keeps a generation; events of an older one are ignored.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 6, "lastLine": 8 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "names WatchContext" }
+      },
+      {
+        "id": "q4",
+        "kind": "trueFalse",
+        "question": "Is it best practice to debounce file system events in general?",
+        "choices": ["True", "False"],
+        "answer": 0,
+        "hint": "Think about bursts of events.",
+        "explanation": "Typically, debouncing avoids reacting to every single event of a burst.",
+        "sources": [{ "path": "docs/guide.md" }],
+        "difficulty": 1,
+        "selfCheck": { "projectSpecific": true, "reason": "debouncing" }
+      }
+    ]
+  },
+  "expected": {
+    "accepted": ["q3"],
+    "rejected": { "q1": "generic", "q2": "selfCheck", "q4": "generic" }
+  }
+}

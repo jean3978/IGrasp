@@ -1,0 +1,92 @@
+{
+  "description": "hints that give the answer, repeated questions and facts, excluded questions",
+  "count": 10,
+  "exclude": [{ "question": "Which file builds Orbit's index?", "source": null }],
+  "output": {
+    "insufficientMaterial": false,
+    "questions": [
+      {
+        "id": "q1",
+        "kind": "multipleChoice",
+        "question": "In Orbit's watcher, which type receives a debounced batch of disk events?",
+        "choices": ["WatchContext", "AiGateway", "IndexBuilder", "EventQueue"],
+        "answer": 0,
+        "hint": "Look at the impl block in the index module's watcher.",
+        "explanation": "WatchContext::handle in src/index/watcher.rs takes the batch and reindexes it.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 6, "lastLine": 14 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q2",
+        "kind": "multipleChoice",
+        "question": "Which method of AiGateway stops a running operation?",
+        "choices": ["cancel", "start", "next_id"],
+        "answer": 0,
+        "hint": "The method is cancel, near the end.",
+        "explanation": "AiGateway::cancel in src/ai/gateway.rs stops the slot's operation by id.",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 13, "lastLine": 15 }],
+        "difficulty": 3,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q3",
+        "kind": "multipleChoice",
+        "question": "In Orbit's watcher which type receives a debounced batch of disk events",
+        "choices": ["WatchContext", "AiGateway", "IndexBuilder"],
+        "answer": 0,
+        "hint": "Look at the impl block.",
+        "explanation": "WatchContext::handle in src/index/watcher.rs takes the batch.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 10, "lastLine": 14 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q4",
+        "kind": "multipleChoice",
+        "question": "Where does Orbit's index module handle a batch of disk events?",
+        "choices": ["WatchContext", "AiGateway", "Makefile"],
+        "answer": 0,
+        "hint": "Look at the impl block in the watcher.",
+        "explanation": "WatchContext::handle in src/index/watcher.rs takes the batch.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 6, "lastLine": 14 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q5",
+        "kind": "multipleChoice",
+        "question": "Which file builds Orbit's index?",
+        "choices": ["src/index/watcher.rs", "src/ai/gateway.rs", "Makefile"],
+        "answer": 0,
+        "hint": "Think of the index module.",
+        "explanation": "The watcher in src/index/watcher.rs reindexes on every batch.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 10, "lastLine": 14 }],
+        "difficulty": 1,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q6",
+        "kind": "trueFalse",
+        "question": "Orbit debounces disk events for 200 ms before updating its index.",
+        "choices": ["True", "False"],
+        "answer": 0,
+        "hint": "docs/architecture.md says batches are debounced for 200 ms.",
+        "explanation": "docs/architecture.md says batches are debounced for 200 ms.",
+        "sources": [{ "path": "docs/architecture.md", "firstLine": 7, "lastLine": 7 }],
+        "difficulty": 1,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      }
+    ]
+  },
+  "expected": {
+    "accepted": ["q1"],
+    "rejected": {
+      "q2": "hintGivesAnswer",
+      "q3": "duplicate",
+      "q4": "duplicate",
+      "q5": "duplicate",
+      "q6": "hintGivesAnswer"
+    }
+  }
+}

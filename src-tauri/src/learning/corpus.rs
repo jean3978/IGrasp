@@ -294,33 +294,43 @@ fn is_binary(root: &Path, f: &FileFact, sniffs: &mut usize) -> bool {
 impl Corpus {
     /// The corpus of `walk` for `scope`. `agent_names` are the provider's instruction files.
     pub fn build(root: &Path, walk: &Walk, scope: &SourceScope, agent_names: &[String]) -> Self {
+        let mut sniffs = 0usize;
+        let entries = walk
+            .files
+            .iter()
+            .filter(|f| !is_secret(&f.path) && !is_generated(&f.path))
+            .map(|f| {
+                let markdown = is_markdown_path(&f.path);
+                let binary = !markdown && is_binary(root, f, &mut sniffs);
+                let file = CorpusFile {
+                    path: f.path.clone(),
+                    size: f.size,
+                    binary,
+                    large: !binary && f.size > LARGE_TEXT_BYTES,
+                    language: language_of(f).map(|(l, _)| l),
+                    markdown,
+                };
+                (file, is_agent_file(&f.path, agent_names))
+            })
+            .collect();
+        let mut corpus = Self::from_entries(entries, scope);
+        corpus.truncated = walk.truncated;
+        corpus
+    }
+
+    /// The corpus of known files (`(file, is an agent file)`), partitioned by `scope`.
+    pub fn from_entries(entries: Vec<(CorpusFile, bool)>, scope: &SourceScope) -> Self {
         let mut corpus = Self {
             scope: scope.clone(),
-            truncated: walk.truncated,
             ..Self::default()
         };
         let wanted: Option<BTreeSet<&str>> = match scope {
             SourceScope::Paths { paths } => Some(paths.iter().map(String::as_str).collect()),
             _ => None,
         };
-        let mut sniffs = 0usize;
-        for f in &walk.files {
-            if is_secret(&f.path) || is_generated(&f.path) {
-                continue;
-            }
-            let markdown = is_markdown_path(&f.path);
-            let agent = is_agent_file(&f.path, agent_names);
-            let binary = !markdown && is_binary(root, f, &mut sniffs);
-            let file = CorpusFile {
-                path: f.path.clone(),
-                size: f.size,
-                binary,
-                large: !binary && f.size > LARGE_TEXT_BYTES,
-                language: language_of(f).map(|(l, _)| l),
-                markdown,
-            };
+        for (file, agent) in entries {
             if agent {
-                if !binary {
+                if !file.binary {
                     corpus.agent_files.push(file);
                 }
                 continue;
@@ -329,16 +339,18 @@ impl Corpus {
                 SourceScope::WholeProject => true,
                 // The README counts even when it is not named `.md`.
                 SourceScope::DocumentationOnly => {
-                    markdown || f.depth() == 0 && f.name.starts_with("readme")
+                    file.markdown
+                        || !file.path.contains('/')
+                            && file.path.to_lowercase().starts_with("readme")
                 }
-                SourceScope::Paths { .. } => {
-                    wanted.as_ref().is_some_and(|w| w.contains(f.path.as_str()))
-                }
+                SourceScope::Paths { .. } => wanted
+                    .as_ref()
+                    .is_some_and(|w| w.contains(file.path.as_str())),
             };
             if in_scope {
-                corpus.files.insert(f.path.clone(), file);
+                corpus.files.insert(file.path.clone(), file);
             } else {
-                corpus.outside_scope.insert(f.path.clone());
+                corpus.outside_scope.insert(file.path.clone());
             }
         }
         corpus

@@ -130,6 +130,15 @@ export type { ProjectProfile } from './generated/ProjectProfile';
 export type { Material } from './generated/Material';
 export type { SourceScope } from './generated/SourceScope';
 export type { Subject } from './generated/Subject';
+export type { QuestionKind } from './generated/QuestionKind';
+export type { QuizExclusion } from './generated/QuizExclusion';
+export type { QuizGenerationInput } from './generated/QuizGenerationInput';
+export type { QuizMode } from './generated/QuizMode';
+export type { QuizQuestion } from './generated/QuizQuestion';
+export type { QuizResult } from './generated/QuizResult';
+export type { QuizRound } from './generated/QuizRound';
+export type { QuizSource } from './generated/QuizSource';
+export type { QuizSourceKind } from './generated/QuizSourceKind';
 export type {
   AiCapabilities,
   AiEventEnvelope,

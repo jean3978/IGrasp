@@ -5,6 +5,7 @@
 pub mod difficulty;
 pub mod prompt;
 pub mod schema;
+pub mod validate;
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;

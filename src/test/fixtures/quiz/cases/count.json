@@ -1,0 +1,46 @@
+{
+  "description": "questions beyond the count are dropped, not rejected",
+  "count": 2,
+  "output": {
+    "insufficientMaterial": false,
+    "questions": [
+      {
+        "id": "q1",
+        "kind": "multipleChoice",
+        "question": "Which constant of the watcher holds the debounce delay in Orbit?",
+        "choices": ["DEBOUNCE_MS", "POLL_INTERVAL", "DELAY"],
+        "answer": 0,
+        "hint": "Top of the watcher file.",
+        "explanation": "DEBOUNCE_MS in src/index/watcher.rs is 200.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 4, "lastLine": 4 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q2",
+        "kind": "multipleChoice",
+        "question": "Which method of AiGateway stops a running operation?",
+        "choices": ["cancel", "start", "next_id"],
+        "answer": 0,
+        "hint": "Read the second method of the gateway's impl block.",
+        "explanation": "AiGateway::cancel in src/ai/gateway.rs stops the slot's operation by id.",
+        "sources": [{ "path": "src/ai/gateway.rs", "firstLine": 13, "lastLine": 15 }],
+        "difficulty": 3,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q3",
+        "kind": "trueFalse",
+        "question": "Orbit debounces disk events for 200 ms before updating its index.",
+        "choices": ["True", "False"],
+        "answer": 0,
+        "hint": "The architecture page has an Index section.",
+        "explanation": "docs/architecture.md says batches are debounced for 200 ms.",
+        "sources": [{ "path": "docs/architecture.md", "firstLine": 7, "lastLine": 7 }],
+        "difficulty": 1,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      }
+    ]
+  },
+  "expected": { "accepted": ["q1", "q2"], "rejected": {} }
+}

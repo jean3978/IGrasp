@@ -1,0 +1,171 @@
+{
+  "description": "every citation rule: agent, secret, unknown, ranges, binaries, no source",
+  "count": 20,
+  "output": {
+    "insufficientMaterial": false,
+    "questions": [
+      {
+        "id": "q1",
+        "kind": "multipleChoice",
+        "question": "Question one about the Orbit rules?",
+        "choices": ["alpha one", "beta two", "gamma three"],
+        "answer": 0,
+        "hint": "Look around.",
+        "explanation": "Explained in detail here for Orbit.",
+        "sources": [{ "path": "CLAUDE.md", "firstLine": 1, "lastLine": 3 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q2",
+        "kind": "multipleChoice",
+        "question": "Question two about the Orbit token?",
+        "choices": ["alpha one", "beta two", "gamma three"],
+        "answer": 0,
+        "hint": "Look around.",
+        "explanation": "Explained in detail here for Orbit.",
+        "sources": [{ "path": ".env", "firstLine": 1, "lastLine": 1 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q3",
+        "kind": "multipleChoice",
+        "question": "Question three about Orbit's scheduler?",
+        "choices": ["alpha one", "beta two", "gamma three"],
+        "answer": 0,
+        "hint": "Look around.",
+        "explanation": "Explained in detail here for Orbit.",
+        "sources": [{ "path": "src/scheduler/nope.rs", "firstLine": 1, "lastLine": 4 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q4",
+        "kind": "multipleChoice",
+        "question": "Question four about the Orbit policy?",
+        "choices": ["alpha one", "beta two", "gamma three"],
+        "answer": 0,
+        "hint": "Look around.",
+        "explanation": "Explained in detail here for Orbit.",
+        "sources": [{ "path": "src/ai/policy.rs", "firstLine": 400, "lastLine": 420 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q5",
+        "kind": "multipleChoice",
+        "question": "Question five about the Orbit policy?",
+        "choices": ["alpha one", "beta two", "gamma three"],
+        "answer": 0,
+        "hint": "Look around.",
+        "explanation": "Explained in detail here for Orbit.",
+        "sources": [{ "path": "src/ai/policy.rs", "firstLine": 1, "lastLine": 200 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q6",
+        "kind": "multipleChoice",
+        "question": "Question six about the Orbit policy?",
+        "choices": ["alpha one", "beta two", "gamma three"],
+        "answer": 0,
+        "hint": "Look around.",
+        "explanation": "Explained in detail here for Orbit.",
+        "sources": [{ "path": "src/ai/policy.rs" }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q7",
+        "kind": "multipleChoice",
+        "question": "Question seven about the Orbit logo?",
+        "choices": ["alpha one", "beta two", "gamma three"],
+        "answer": 0,
+        "hint": "Look around.",
+        "explanation": "Explained in detail here for Orbit.",
+        "sources": [{ "path": "assets/logo.png" }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q8",
+        "kind": "multipleChoice",
+        "question": "Question eight about the Orbit logo?",
+        "choices": ["alpha one", "beta two", "gamma three"],
+        "answer": 0,
+        "hint": "Look around.",
+        "explanation": "Explained in detail here for Orbit.",
+        "sources": [
+          { "path": "src/index/watcher.rs", "firstLine": 1, "lastLine": 2 },
+          { "path": "assets/logo.png", "firstLine": 1, "lastLine": 5 }
+        ],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q9",
+        "kind": "multipleChoice",
+        "question": "Question nine about the Orbit policy?",
+        "choices": ["alpha one", "beta two", "gamma three"],
+        "answer": 0,
+        "hint": "Look around.",
+        "explanation": "Explained in detail here for Orbit.",
+        "sources": [{ "path": "src/ai/policy.rs", "firstLine": 10, "lastLine": 5 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q10",
+        "kind": "multipleChoice",
+        "question": "Question ten about Orbit, without sources?",
+        "choices": ["alpha one", "beta two", "gamma three"],
+        "answer": 0,
+        "hint": "Look around.",
+        "explanation": "Explained in detail here for Orbit.",
+        "sources": [],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "q11",
+        "kind": "multipleChoice",
+        "question": "Which constant of the watcher holds the debounce delay in Orbit?",
+        "choices": ["DEBOUNCE_MS", "POLL_INTERVAL", "DELAY"],
+        "answer": 0,
+        "hint": "Top of the watcher file.",
+        "explanation": "DEBOUNCE_MS in src/index/watcher.rs is 200, read by the watcher.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 4, "lastLine": 4 }],
+        "difficulty": 2,
+        "selfCheck": { "projectSpecific": true, "reason": "names DEBOUNCE_MS" }
+      },
+      {
+        "id": "q12",
+        "kind": "multipleChoice",
+        "question": "How short is the Orbit guide's open command?",
+        "choices": ["One line", "Two lines", "Three lines"],
+        "answer": 0,
+        "hint": "Read the guide.",
+        "explanation": "docs/guide.md shows `orbit open <path>` on one line; a short file needs no range.",
+        "sources": [{ "path": "./docs/guide.md" }],
+        "difficulty": 1,
+        "selfCheck": { "projectSpecific": true, "reason": "the guide" }
+      }
+    ]
+  },
+  "expected": {
+    "accepted": ["q11", "q12"],
+    "rejected": {
+      "q1": "agentFile",
+      "q2": "secretFile",
+      "q3": "unknownPath",
+      "q4": "beyondEnd",
+      "q5": "rangeTooLong",
+      "q6": "missingRange",
+      "q7": "binaryOnly",
+      "q8": "binaryRange",
+      "q9": "badRange",
+      "q10": "noSource"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "description": "an unknown field rejects the whole answer",
+  "count": 10,
+  "output": { "insufficientMaterial": false, "questions": [], "surprise": 1 },
+  "expected": { "shapeError": true }
+}
