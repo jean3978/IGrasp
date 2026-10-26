@@ -4,6 +4,18 @@
 
 /* --- The hub --------------------------------------------------------------------------- */
 
+/* The hub's panels, one under the other with room between them. */
+.academy-home {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.academy-home > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 .academy-hub-head {
   display: flex;
   flex-wrap: wrap;
@@ -48,39 +60,35 @@
   height: 18px;
 }
 
+/* The board across the whole wall; the teacher and the students on the floor in front of it. */
 .academy-classroom {
   overflow: hidden;
   border: var(--border-width) solid var(--quiz-card-border);
   border-radius: 16px;
-  background: linear-gradient(180deg, var(--academy-wall) 0 76%, var(--academy-floor) 76% 100%);
+  background: var(--academy-wall);
 }
 
-.academy-classroom-front {
-  display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  align-items: end;
-  gap: 8px 16px;
-  padding: 20px 20px 0;
+.academy-floor {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  padding: 16px 20px 0;
+  background: var(--academy-floor);
 }
 
 .academy-teacher {
-  display: flex;
-  justify-content: center;
-  padding-bottom: 6px;
+  flex: none;
+  padding-bottom: 8px;
 }
 
-/* The speech bubble above the teacher, not beside it (the board is there). */
 .academy-teacher .hoot {
-  flex-direction: column-reverse;
   align-items: center;
-  gap: 4px;
 }
 
 .academy-teacher .hoot-bubble {
-  max-width: 176px;
+  max-width: 200px;
   margin: 0;
   font-size: var(--font-size-small);
-  text-align: center;
 }
 
 /* --- The blackboard -------------------------------------------------------------------- */
@@ -89,6 +97,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  margin: 20px 20px 0;
   padding: 14px 16px 0;
   border: 10px solid var(--academy-board-frame);
   border-bottom-width: 0;
@@ -132,38 +141,134 @@
   scrollbar-color: var(--academy-chalk-muted) transparent;
 }
 
-.academy-board .academy-row-main {
-  background: var(--academy-board-row);
-  color: var(--academy-chalk);
-}
-
-.academy-board .academy-row-main:hover {
-  background: var(--academy-board-row-hover);
-}
-
-.academy-board .academy-row-title {
-  color: var(--academy-chalk);
-}
-
-.academy-row-meta {
-  grid-column: 2;
+.academy-board-hint {
+  margin-left: auto;
   color: var(--academy-chalk-muted);
   font-size: var(--font-size-small);
 }
 
-.academy-board .academy-row-icon {
+/* One concise line per tutorial: progress | title over role · subject | marks. */
+.academy-board .academy-row {
+  gap: 6px;
+}
+
+.academy-board .academy-row-main {
+  grid-template-areas:
+    'icon title marks'
+    'icon sub marks';
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  padding: 7px 10px;
+  background: var(--academy-board-row);
+  color: var(--academy-chalk);
+}
+
+.academy-board .academy-row-main:hover,
+.academy-board .academy-row-main:focus-visible {
+  background: var(--academy-board-row-hover);
+}
+
+.academy-board .academy-row-title {
+  grid-area: title;
+  overflow: hidden;
+  color: var(--academy-chalk);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.academy-row-sub {
+  grid-area: sub;
+  overflow: hidden;
+  color: var(--academy-chalk-muted);
+  font-size: var(--font-size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.academy-row-marks {
+  display: flex;
+  grid-area: marks;
+  align-items: center;
+  gap: 10px;
+}
+
+.academy-progress-icon {
+  display: inline-flex;
+  grid-area: icon;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
   color: var(--academy-chalk-accent);
 }
 
-.academy-board .academy-tag,
-.academy-board .academy-tag-done {
-  border-color: var(--academy-chalk-muted);
+.academy-progress-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.academy-progress-icon[data-done='true'] {
+  color: var(--academy-chalk);
+}
+
+.academy-ring-track,
+.academy-ring-value {
+  fill: none;
+  stroke-width: 3;
+}
+
+.academy-ring-track {
+  stroke: var(--academy-chalk-muted);
+  opacity: 0.35;
+}
+
+.academy-ring-value {
+  stroke: var(--academy-chalk-accent);
+  stroke-linecap: round;
+}
+
+.academy-difficulty {
+  width: 16px;
+  height: 16px;
+}
+
+.academy-difficulty rect {
+  fill: var(--academy-chalk-muted);
+  opacity: 0.35;
+}
+
+.academy-difficulty rect[data-on='true'] {
+  fill: var(--academy-chalk);
+  opacity: 1;
+}
+
+.academy-row-warn {
+  width: 16px;
+  height: 16px;
+  color: var(--academy-chalk-accent);
+}
+
+/* The actions, packed together. */
+.academy-row-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0;
+}
+
+.academy-board .icon-button {
   color: var(--academy-chalk-muted);
 }
 
-.academy-board .academy-tag-warn {
-  border-color: var(--academy-chalk-accent);
-  color: var(--academy-chalk-accent);
+.academy-board .icon-button:hover:not(:disabled) {
+  background: var(--academy-board-row-hover);
+  color: var(--academy-chalk);
+}
+
+.academy-board .icon-button svg {
+  width: 15px;
+  height: 15px;
 }
 
 .academy-board .button-ghost {
@@ -173,6 +278,39 @@
 .academy-board .button-ghost:hover:not(:disabled) {
   background: var(--academy-board-row-hover);
   color: var(--academy-chalk);
+}
+
+/* A tutorial's details, on hover or focus. */
+.tooltip.academy-row-card {
+  display: block;
+  max-width: 380px;
+  padding: 10px 12px;
+}
+
+.academy-details-title {
+  margin: 0 0 6px;
+  color: var(--fg-strong);
+  font-weight: 600;
+}
+
+.academy-details dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 12px;
+  margin: 0;
+}
+
+.academy-details dl > div {
+  display: contents;
+}
+
+.academy-details dt {
+  color: var(--fg-muted);
+}
+
+.academy-details dd {
+  margin: 0;
+  color: var(--fg);
 }
 
 .academy-board-empty {
@@ -220,9 +358,9 @@
 
 .academy-desks {
   display: flex;
-  justify-content: center;
-  gap: clamp(24px, 8vw, 96px);
-  padding: 14px 20px 0;
+  flex: 1;
+  justify-content: space-evenly;
+  gap: 16px;
 }
 
 .academy-seat {
@@ -297,11 +435,7 @@
 }
 
 @media (max-width: 720px) {
-  .academy-classroom-front {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .academy-teacher {
+  .academy-teacher .hoot-bubble {
     display: none;
   }
 }

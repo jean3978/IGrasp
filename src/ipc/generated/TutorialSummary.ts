@@ -9,7 +9,11 @@ import type { Verification } from "./Verification";
 /**
  * A row of the Academy's library: a private tutorial or a tutorial shared in the folder.
  */
-export type TutorialSummary = { reference: TutorialRef, id: string, title: string, subject: string, familiarity: Familiarity, length: Length, domainGap: string | null, chapters: number, chaptersWritten: number, stepsTotal: number, generated: string, model: string, verified: Verification | null, 
+export type TutorialSummary = { reference: TutorialRef, id: string, title: string, subject: string, familiarity: Familiarity, length: Length, domainGap: string | null, 
+/**
+ * Who it was written for (null: a developer).
+ */
+role: string | null, chapters: number, chaptersWritten: number, stepsTotal: number, generated: string, model: string, verified: Verification | null, 
 /**
  * A private tutorial's shared copy (root-relative README).
  */

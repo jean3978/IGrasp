@@ -22,10 +22,15 @@ a tutorial on its own and never marks it verified.
   head, "Welcome to Hoot's Academy", and the screen fades into the hub after about two seconds.
   A click or any key skips it; switching back to an open Academy tab does not replay it, and it
   is not shown when the learning effects are off or the system asks for reduced motion.
-- **The hub** is a classroom: Hoot in a mortarboard in front of the blackboard, three owls at
-  their desks (one thinks, one raises a wing now and then), and **Your tutorials** on the
-  blackboard (title, tags, progress, Share, Save as…, Delete). Many tutorials scroll inside the
-  board, which stays short enough to keep the whole classroom in view. Above it, **New
+- **The hub** is a classroom: **Your tutorials** on a blackboard across the wall, and in front of
+  it Hoot in a mortarboard and three owls at their desks (one thinks, one raises a wing now and
+  then). The board stays concise: per tutorial, a progress ring (a cap once graduated, a list for
+  an outline), the title, who it is for and its subject, the difficulty as one to three bars, a
+  warning mark when a source changed or steps were updated since read, and compact Share, Save
+  as… and Delete buttons. Hovering or focusing a tutorial shows the rest: level, length,
+  chapters, progress and XP, where it lives (private, shared, shared as), its sources' freshness,
+  verification and when it changed. Many tutorials scroll inside the board, which stays short
+  enough to keep the whole classroom in view. Above it, **New
   tutorial** (the wizard below) and **Continue where you left off** (the last tutorial in
   progress, its chapter and step); under it, the project profile with **Edit** (the Phase 4
   dialog; a correction rebuilds the cards).

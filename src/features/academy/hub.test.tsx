@@ -118,7 +118,24 @@ describe('the hub', () => {
     });
     const list = within(board).getByRole('list', { name: 'Tutorials' });
     expect(within(list).getAllByRole('listitem')).toHaveLength(1);
-    expect(list).toHaveTextContent(t.title);
+    // Concise: the title, who it is for and its subject; progress and difficulty as icons.
+    const row = within(list).getByRole('button', { name: new RegExp(`^${t.title}`) });
+    expect(row).toHaveTextContent(`${t.role ?? 'Developer'} · ${t.subject}`);
+    expect(within(row).getByRole('img', { name: /^Difficulty \d of 3: / })).toBeInTheDocument();
+    expect(
+      within(row).getByRole('img', { name: /steps done$|^Graduated$|^Outline only/ }),
+    ).toBeInTheDocument();
+    expect(row).not.toHaveTextContent('private');
+    // The rest on hover: where it lives, freshness, verification.
+    await userEvent.hover(row);
+    const card = await screen.findByRole('tooltip');
+    expect(card).toHaveTextContent('Where');
+    expect(card).toHaveTextContent('Verified');
+    await userEvent.unhover(row);
+    // The actions are compact icon buttons with names.
+    expect(within(list).getByRole('button', { name: `Delete ${t.title}` })).toHaveClass(
+      'icon-button',
+    );
 
     // New tutorial: step 1, the subject.
     await userEvent.click(screen.getByRole('button', { name: 'New tutorial' }));

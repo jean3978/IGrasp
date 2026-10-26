@@ -68,6 +68,8 @@ pub struct TutorialSummary {
     pub familiarity: Familiarity,
     pub length: Length,
     pub domain_gap: Option<String>,
+    /// Who it was written for (null: a developer).
+    pub role: Option<String>,
     pub chapters: u32,
     pub chapters_written: u32,
     pub steps_total: u32,
@@ -100,6 +102,7 @@ impl TutorialSummary {
             familiarity: t.familiarity,
             length: t.length,
             domain_gap: t.domain_gap.clone(),
+            role: t.role.clone(),
             chapters: count(t.chapters.len()),
             chapters_written: count(t.chapters.iter().filter(|c| c.is_written()).count()),
             steps_total: count(t.chapters.iter().map(|c| c.steps.len()).sum()),

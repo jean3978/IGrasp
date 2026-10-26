@@ -103,6 +103,7 @@ export function summaryOf(
     familiarity: t.familiarity,
     length: t.length,
     domainGap: t.domainGap ?? null,
+    role: t.role ?? null,
     chapters: t.chapters.length,
     chaptersWritten: t.chapters.filter((c) => c.steps.length > 0).length,
     stepsTotal: t.chapters.reduce((n, c) => n + c.steps.length, 0),
