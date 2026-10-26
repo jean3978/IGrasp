@@ -86,7 +86,11 @@ test('sharing writes the listed files, which the preview shows with its banner',
   const banner = docBody(page).getByRole('region', { name: 'Tutorial file' });
   await expect(banner).toContainText('4 chapters');
   await banner.getByRole('button', { name: /Take it in the Academy/ }).click();
-  await expect(page.getByText(/Shared · docs\/tutorials\//)).toBeVisible();
+  // Your own shared copy, unchanged, opens as the private row the board shows.
+  await expect(page.getByText('Private tutorial', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: /^How igrasp-demo starts/ }),
+  ).toBeVisible();
 });
 
 test('a changed cited line: the local check, then the AI review applied after confirmations', async ({
