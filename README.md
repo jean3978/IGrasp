@@ -74,14 +74,17 @@ No Confluence, no editor plugin, no note-taking vault — just the project's own
 - **Share a quiz.** Save results as a readable report, or save the quiz itself as a markdown file
   your teammates replay **without the AI**; it tells them when the cited code has changed.
 - **Hoot's Academy.** `Ctrl+Alt+A`: tutorials about **this** project, written by the AI from its
-  files and taken one step at a time. Pick a subject card built from the project (The Big
-  Picture, Trace It, a feature, the engine's or framework's concepts as the project uses them…)
-  or type one, say what you are new to ("Godot shaders", "FastAPI, I know Express"), review the
+  files and taken one step at a time. Your tutorials hang on a classroom blackboard; **New
+  tutorial** asks your role first (a developer, a level designer, a tester…), then a subject:
+  type one, ask Hoot for subjects tied to your role's work, or pick a card built from the
+  project (The Big Picture, Trace It, a feature, the engine's or framework's concepts as the
+  project uses them…), ranked for your role. Say what you are new to ("Godot shaders", "FastAPI, I know Express"), review the
   outline, then the chapters arrive one by one. Ten kinds of steps: explanations, concept
   bridges, diagrams, **code tours** over the real files, spot the line, put in order, match,
   quick checks, and things to try yourself (shown, never run), all with the keyboard, with XP, a
-  streak and a graduation. Every step cites the project's lines and is checked before you see
-  it. Tutorials stay private until you **share them with the project** as markdown (after a
+  streak, a recap at the end of each chapter and a graduation. Every step cites the project's
+  lines and is checked before you see it. **Ask about a step** in the chat and save the question
+  and answer on it for the next readers, anonymously. Tutorials stay private until you **share them with the project** as markdown (after a
   confirmation that lists every file); opening one checks its cited lines locally, **Check with
   the AI** proposes updates you accept or reject, and only you can mark it verified.
 - **Themes.** Light, Dark, High Contrast and Follow System.
@@ -221,7 +224,9 @@ type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
       outline you edit then chapters written one by one, ten step types with the keyboard, XP
       and graduation, saved privately with your progress, shared with the team as markdown after
       a confirmation, checked for freshness locally, reviewed by the AI only when you ask, and
-      verified only by you.
+      verified only by you. Since 0.5.0 (unreleased): a classroom hub and a New tutorial wizard
+      that starts from your role (subjects found for it), questions asked about a step saved on
+      it anonymously, a richer chapter recap, and render errors kept inside their tab.
 - [ ] **Phase 6 — Editing**: WYSIWYG editing with lossless round-trip, file management, edit
       conflicts.
 - [ ] **Phase 7 — Git**: branch graph, commit details, status panel, stash, beginner-friendly

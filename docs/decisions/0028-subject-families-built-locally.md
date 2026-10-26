@@ -1,6 +1,6 @@
 # 0028 — Subject families built locally from the profile
 
-- Status: Accepted
+- Status: Accepted (amended in 0.5.x: subjects for the reader's role)
 - Date: 2026-10-25
 
 ## Context
@@ -55,6 +55,18 @@ material).
   recommended; the family's focus says the commit history is not available. **Question 13**
   (the Academy as its own tab beside the Quiz tab): answered as recommended; the two link to
   each other through Quiz me on this tutorial.
+
+## Amendment: subjects for the reader's role (0.5.x)
+
+- The New tutorial wizard asks for the **role first**. The local cards stay built without the
+  role (the families above); the frontend ranks them for it (`tutorialRoles.ts`: the families a
+  role's craft reaches first, the others behind **More subjects**).
+- **Suggest more subjects** takes the role (`TutorialRequest::Suggest { role }`). For a role of
+  the developer family the task keeps the developer wording; for any other family it asks for
+  subjects deeply tied to that role's own work in the project (its craft from `learning/role.rs`)
+  and leaves out the code internals the role never meets. Each accepted card is stamped with
+  `forRole`, and the wizard shows the suggestions kept for the chosen role. Suggestions made
+  before roles have none and count as a developer's.
 
 ## Consequences
 

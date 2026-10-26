@@ -31,5 +31,5 @@ are never deleted; a decision that changes gets a new record that supersedes the
 | [0024](0024-shareable-learning-files-as-markdown.md) | Shareable learning files as markdown with fenced `igrasp-*` blocks, replayed without AI | Accepted |
 | [0025](0025-tutorial-format-json-schema-and-shared-markdown.md) | Tutorial format: a typed JSON schema and a shared markdown folder, owned by Rust | Accepted, amended in Phase 5 |
 | [0026](0026-staged-runs.md) | Staged runs: several validated runs under one user action (a tutorial's chapters) | Accepted |
-| [0027](0027-tutorial-storage-sharing-and-verification.md) | Tutorial storage, sharing through a confirmed write plan, freshness and verification by the user | Accepted |
-| [0028](0028-subject-families-built-locally.md) | The Academy's subject families built locally from the project profile | Accepted |
+| [0027](0027-tutorial-storage-sharing-and-verification.md) | Tutorial storage, sharing through a confirmed write plan, freshness and verification by the user | Accepted, amended in 0.5.x |
+| [0028](0028-subject-families-built-locally.md) | The Academy's subject families built locally from the project profile | Accepted, amended in 0.5.x |

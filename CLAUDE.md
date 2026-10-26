@@ -83,7 +83,8 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   `OutlineReview`, `TutorialView`, `CourseMap`, `ChapterPlayer`, `steps/` the ten step types (`Recap.tsx` the end of a chapter),
   `FreshnessPanel`, `ReviewScreen`, `WriteConfirmDialog`, `GraduationScreen`, `StepQuestions`; `academyEngine.ts`
   the XP rules; `tutorialBlocks.ts` the preview's block parser). `src/components/CodeView.tsx`
-  is the read-only code view of Look it up, code tours and Spot it.
+  is the read-only code view of Look it up, code tours and Spot it; `src/components/ErrorBoundary.tsx`
+  keeps a render error inside its tab (`TabContent.tsx`) instead of blanking the window.
 - `src/features/titlebar/menuActions.ts`: every user action. Menus, toolbar buttons and
   shortcuts (`features/shortcuts/keymap.ts`) dispatch through it.
 - `e2e/`: Playwright smoke tests. `scripts/`: the large-project generator. `docs/`:

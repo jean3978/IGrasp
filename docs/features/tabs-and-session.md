@@ -22,10 +22,16 @@ Tabs behave like VS Code:
 The tab bar follows the WAI-ARIA tabs pattern with manual activation: ← / → move the focus,
 Enter or Space activates.
 
-Besides files, three special tabs open once each: Settings, Keyboard Shortcuts and **Quiz**
-(Learn → Quiz Me…, `Ctrl+Alt+Q`; see [quiz.md](quiz.md)). Special tabs are not part of the
-session; the quiz in progress is kept in app data (`learning/`) after each answer, and the Quiz
-tab offers to continue it when it opens again, even after a restart.
+Besides files, four special tabs open once each: Settings, Keyboard Shortcuts, **Quiz**
+(Learn → Quiz Me…, `Ctrl+Alt+Q`; see [quiz.md](quiz.md)) and **Academy** (Learn → Academy…,
+`Ctrl+Alt+A`; see [academy.md](academy.md)). Special tabs are not part of the session; the quiz
+in progress is kept in app data (`learning/`) after each answer, and the Quiz tab offers to
+continue it when it opens again, even after a restart; the Academy keeps each tutorial's
+progress the same way.
+
+A render error stays inside its tab (`ErrorBoundary` around each tab's view): the tab shows what
+went wrong and **Try again**, and the rest of the window (tabs, sidebar, menus) keeps working,
+instead of the whole window going blank.
 
 ## Session restore
 

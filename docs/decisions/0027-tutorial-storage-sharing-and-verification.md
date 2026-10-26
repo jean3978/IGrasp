@@ -1,6 +1,6 @@
 # 0027 — Tutorial storage, sharing and verification
 
-- Status: Accepted
+- Status: Accepted (amended in 0.5.x: questions saved on a step, your own shared copy in the library)
 - Date: 2026-10-25
 
 ## Context
@@ -116,6 +116,25 @@ the AI never changes a tutorial or vouches for it on its own.
   shared tutorial.
 - Caps: 1,000 characters for a question and for the text pointed at, 20,000 for an answer, 50
   questions per chapter.
+
+## Amendment: your own shared copy in the library (0.5.x)
+
+- A tutorial you shared was listed twice: the private copy and the shared README the graph
+  found. The library (`commands/tutorials.rs::library`, mirrored by the mock) now lists **one
+  row, the private one**, when a shared README is the private tutorial's `sharedAs`, holds the
+  same id (from the graph, not read again) and its files are **exactly what sharing the private
+  copy writes** (`share::in_sync`: the write plan has nothing to change; bytes compared, nothing
+  parsed).
+- Matching on the id alone was rejected: a shared copy changed since (a teammate's accepted
+  review, pulled) would be hidden behind an older private row, with no way to reach it or the
+  actions only a shared reference has (the relocation fix, verifying and reviewing the shared
+  files), and Share would replace it silently. Such a copy keeps its own row, and the private
+  one is marked `sharedDiffers`; its badge and Share tooltip say so, and the write confirmation
+  lists the files that would change.
+- The preview's **Take it in the Academy** on a hidden copy opens the private row
+  (`openSharedFile` in `stores/academy.ts`), so an open tutorial always has its row.
+- **Delete** of a private tutorial keeps the progress when its shared copy still holds the
+  tutorial: the progress is keyed by id, so it is the shared copy's too.
 
 ## Consequences
 
