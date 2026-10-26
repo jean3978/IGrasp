@@ -1,0 +1,200 @@
+{
+  "folder": "docs/tutorials/orbit-s-watcher",
+  "tutorial": {
+    "id": "orbit-the-watcher-20261025",
+    "title": "Orbit's watcher",
+    "intro": "You will follow a file change from the disk to the toast.",
+    "project": "orbit",
+    "subject": "How the watcher works",
+    "familiarity": "newHere",
+    "domainGap": "I'm new to file watchers",
+    "length": "standard",
+    "generated": "2026-10-25T10:00:00Z",
+    "provider": "mock",
+    "model": "m",
+    "generationCommit": "abc1234",
+    "docsNote": "Nothing documents the poll fallback.",
+    "chapters": [
+      {
+        "id": "c1",
+        "title": "The watcher",
+        "goal": "Explain how src/index/watcher.rs debounces.",
+        "minutes": 5,
+        "hootIntro": "Let us follow a change.",
+        "steps": [
+          {
+            "type": "explain",
+            "title": "The watcher debounces",
+            "body": "The watcher of Orbit waits `DEBOUNCE_MS` before it re-walks.\n\nThen it classifies.",
+            "sources": [
+              {
+                "path": "src/index/watcher.rs",
+                "firstLine": 2,
+                "lastLine": 6,
+                "why": "the debounce"
+              }
+            ]
+          },
+          {
+            "type": "conceptBridge",
+            "title": "Debouncing",
+            "concept": "Debouncing merges a burst of events into one.",
+            "applied": "Here `WatchContext` keeps the generation so a late batch is dropped.",
+            "docsUrl": "https://docs.rs/notify-debouncer-full",
+            "sources": [
+              {
+                "path": "src/index/watcher.rs",
+                "firstLine": 2,
+                "lastLine": 6,
+                "why": "the debounce"
+              }
+            ]
+          },
+          {
+            "type": "codeTour",
+            "title": "From event to batch",
+            "stops": [
+              {
+                "path": "src/index/watcher.rs",
+                "firstLine": 2,
+                "lastLine": 2,
+                "annotation": "The debounce constant."
+              },
+              {
+                "path": "src/index/watcher.rs",
+                "firstLine": 4,
+                "lastLine": 6,
+                "annotation": "The context carries the generation."
+              }
+            ]
+          },
+          {
+            "type": "diagram",
+            "title": "The flow",
+            "mermaid": "flowchart LR\n  W[watcher.rs] --> G[graph]",
+            "caption": "Events reach the graph after the index.",
+            "sources": [
+              {
+                "path": "src/index/watcher.rs",
+                "firstLine": 2,
+                "lastLine": 6,
+                "why": "the debounce"
+              }
+            ]
+          },
+          {
+            "type": "putInOrder",
+            "title": "A file changes",
+            "prompt": "Put the watcher's steps in order.",
+            "items": ["debounce", "classify", "re-walk"],
+            "explanation": "watcher.rs debounces, classifies, then re-walks.",
+            "sources": [
+              {
+                "path": "src/index/watcher.rs",
+                "firstLine": 2,
+                "lastLine": 6,
+                "why": "the debounce"
+              }
+            ]
+          },
+          {
+            "type": "match",
+            "title": "Who does what",
+            "prompt": "Match each module to its job.",
+            "pairs": [
+              {
+                "left": "watcher.rs",
+                "right": "debounces events"
+              },
+              {
+                "left": "model.rs",
+                "right": "keeps the index"
+              },
+              {
+                "left": "scanner.rs",
+                "right": "walks the folder"
+              }
+            ],
+            "explanation": "Each file of src/index has one job.",
+            "sources": [
+              {
+                "path": "src/index/watcher.rs",
+                "firstLine": 2,
+                "lastLine": 6,
+                "why": "the debounce"
+              }
+            ]
+          },
+          {
+            "type": "spotIt",
+            "title": "Find the debounce",
+            "prompt": "Click the line that sets the debounce.",
+            "path": "src/index/watcher.rs",
+            "firstLine": 1,
+            "lastLine": 6,
+            "answerLine": 2,
+            "explanation": "DEBOUNCE_MS on line 2 of watcher.rs."
+          },
+          {
+            "type": "quickCheck",
+            "kind": "multipleChoice",
+            "question": "Which constant sets Orbit's debounce?",
+            "choices": ["DEBOUNCE_MS", "POLL_MS", "DELAY"],
+            "answer": 0,
+            "hint": "Top of the watcher.",
+            "explanation": "DEBOUNCE_MS in src/index/watcher.rs is 200.",
+            "sources": [
+              {
+                "path": "src/index/watcher.rs",
+                "firstLine": 2,
+                "lastLine": 6,
+                "why": "the debounce"
+              }
+            ]
+          },
+          {
+            "type": "tryIt",
+            "title": "Watch it happen",
+            "instruction": "Open the folder in Orbit, then touch a file and watch the toast.",
+            "command": "touch README.md",
+            "where": "terminal",
+            "expected": "One toast, after 200 ms.",
+            "sources": [
+              {
+                "path": "src/index/watcher.rs",
+                "firstLine": 2,
+                "lastLine": 6,
+                "why": "the debounce"
+              }
+            ]
+          },
+          {
+            "type": "recap",
+            "takeaways": [
+              "watcher.rs debounces for 200 ms.",
+              "WatchContext carries the generation.",
+              "Late batches are dropped."
+            ],
+            "sources": []
+          }
+        ],
+        "questions": []
+      },
+      {
+        "id": "c2",
+        "title": "The graph",
+        "goal": "Explain how the graph applies a batch.",
+        "minutes": 6,
+        "steps": [],
+        "questions": []
+      }
+    ],
+    "sources": [
+      {
+        "path": "src/index/watcher.rs",
+        "lines": "2-6",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ]
+  }
+}

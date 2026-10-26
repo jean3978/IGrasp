@@ -3,6 +3,8 @@ import type { AiCapture } from "./AiCapture";
 import type { AiImage } from "./AiImage";
 import type { AiPolicy } from "./AiPolicy";
 import type { QuizGenerationInput } from "./QuizGenerationInput";
+import type { TutorialRequest } from "./TutorialRequest";
+import type { TutorialStepContext } from "./TutorialStepContext";
 import type { JsonValue } from "./serde_json/JsonValue";
 
 /**
@@ -18,4 +20,14 @@ contextPaths: Array<string>, capture?: AiCapture, images: Array<AiImage>, policy
  * For `QuizGeneration`: what the user chose. The backend composes the prompt and the schema
  * and ignores `prompt`, `context_paths`, `capture`, `images`, `policy` and `output_schema`.
  */
-quiz?: QuizGenerationInput, };
+quiz?: QuizGenerationInput, 
+/**
+ * For `TutorialGeneration`, `TutorialReview` and `SubjectSuggestion`: what the user chose;
+ * the backend composes everything else and ignores the same fields as for a quiz.
+ */
+tutorial?: TutorialRequest, 
+/**
+ * For a `ChatMessage` about a step of a tutorial (highlighted or framed on its card): the
+ * backend adds the step to the prompt and its cited files to the context.
+ */
+tutorialStep?: TutorialStepContext, };

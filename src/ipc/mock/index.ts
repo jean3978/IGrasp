@@ -15,6 +15,9 @@ import {
 } from '../defaults';
 import { BackendError } from '../types';
 import type {
+  Tutorial,
+  TutorialRef,
+  WriteTarget,
   AppInfo,
   AppWindow,
   Backend,
@@ -28,7 +31,14 @@ import type {
   ProfileCorrections,
   Settings,
 } from '../types';
-import { FIXTURE_FILES, FIXTURE_NAME, FIXTURE_ROOT, FIXTURE_SIZES, fixtureMtimes } from './fixture';
+import {
+  FIXTURE_FILES,
+  FIXTURE_NAME,
+  FIXTURE_ROOT,
+  FIXTURE_SHARED_TUTORIAL,
+  FIXTURE_SIZES,
+  fixtureMtimes,
+} from './fixture';
 import { checkOpenable, readText } from './mockFiles';
 import { backlinksOf, brokenCount, brokenDocs, buildGraph } from './mockGraph';
 import type { MockDoc } from './mockGraph';
@@ -45,6 +55,34 @@ import {
   normalizeCorrections,
 } from './mockProfile';
 import { fixtureSubjects } from './mockSubjects';
+import { fixtureTutorialSubjects } from './mockFamilies';
+import {
+  addSuggested,
+  emptyTutorials,
+  recordUsage,
+  normalizedProgress,
+  prepared,
+  privateSummaries,
+  saveStored,
+  validTutorialId,
+} from './mockTutorialStore';
+import type { FolderTutorials } from './mockTutorialStore';
+import {
+  exportPlan,
+  filesFor,
+  folderOf,
+  holds,
+  inSync,
+  joinPath,
+  planWrite,
+  shareFolder,
+  tutorialFileInfo,
+  tutorialSlug,
+} from './mockTutorialShare';
+import { MOCK_HEAD, MOCK_USER, summaryOf as tutorialSummaryOf } from './mockTutorialStore';
+import { mergeSourceHashes } from '../../lib/tutorial';
+import { checkFreshness, freshnessReport } from './mockTutorialFreshness';
+import { withQuestion, withoutQuestion } from './mockTutorialQuestion';
 import { emptyQuizzes, saveCurrent, summaryOf as quizSummaryOf } from './mockLearning';
 import type { FolderQuizzes } from './mockLearning';
 import { isQuizMarkdown, safeFileName } from './mockSave';
@@ -83,11 +121,20 @@ export interface MockState {
   learning: Map<string, ProfileCorrections>;
   /** The quiz in progress and the history by root path (app data). */
   quizzes: Map<string, FolderQuizzes>;
+  /** The Academy's data by root path (app data): suggested subjects, tutorials, progress. */
+  tutorials: Map<string, FolderTutorials>;
   /** What the next save dialog returns (root-relative): null = the suggested name in the folder
    * of the kind, '' = dismissed. */
   saveDialogResult: string | null;
   /** Files written by Save results… / Save quiz…, in order. */
   saved: SavedMarkdown[];
+  /** The JSON of each shared tutorial the mock knows, by README path (it has no reader). */
+  sharedTutorials: Map<string, Tutorial>;
+  /** What the next "Save the tutorial in…" folder dialog returns: an absolute folder, or root-
+   * relative inside the open folder; '' = dismissed. */
+  exportFolderResult: string;
+  /** Tutorials written by Save as… outside the open folder: the folder and the file names. */
+  exported: { folder: string; files: string[] }[];
   /** What the next Open quiz file… dialog returns (root-relative), null = dismissed. */
   openQuizFileResult: string | null;
   /** The mock AI provider: installed, logged in, speed, operations started. */
@@ -103,6 +150,11 @@ export interface MockControls {
   writeFiles(files: Record<string, string>): void;
   deleteFiles(paths: string[]): void;
   renameFile(from: string, to: string): void;
+  /**
+   * Writes a shared tutorial's files on the fake disk (the fixture's by default) through the
+   * writer that mirrors Rust's, and keeps its JSON; returns the README path.
+   */
+  addSharedTutorial(tutorial?: Tutorial, folder?: string): string;
   /** Delays the next graph builds (to test the "indexing headings and links" states). */
   setGraphDelay(ms: number): void;
 }
@@ -136,7 +188,11 @@ function initialState(): MockState {
     pickFolderResult: FIXTURE_ROOT,
     learning: new Map(),
     quizzes: new Map(),
+    tutorials: new Map(),
     saveDialogResult: null,
+    sharedTutorials: new Map(),
+    exportFolderResult: '/elsewhere/exports',
+    exported: [],
     saved: [],
     openQuizFileResult: null,
     ai: { ...DEFAULT_MOCK_AI, starts: [], conversations: new Map() },
@@ -152,6 +208,75 @@ export function createMockBackend(): Backend & { controls: MockControls } {
   let searchId = 0;
   const cancelled = new Set<number>();
   const handlers = new Map<EventName, Set<Handler>>();
+
+  /** The open folder's path; throws `NoRootOpen` like the Rust commands. */
+  const requireRootPath = (): string => {
+    if (!state.root) throw new BackendError('NoRootOpen', 'No folder is open.');
+    return state.root.path;
+  };
+  /** A shared tutorial (Rust `share::read_shared`): the README must still declare it. */
+  const readShared = (readme: string): Tutorial => {
+    const text = state.files.get(readme);
+    if (text === undefined)
+      throw new BackendError('TutorialNotFound', `This tutorial no longer exists: ${readme}`);
+    const info = tutorialFileInfo(text);
+    const t = state.sharedTutorials.get(readme);
+    if (!info || info.chapter !== null || !t || t.id !== info.id)
+      throw new BackendError('NotATutorialFile', `Not a tutorial: ${readme}`);
+    return t;
+  };
+
+  /** A tutorial to change (Rust `read_tutorial`). */
+  const tutorialOf = (reference: TutorialRef): Tutorial => {
+    if (reference.type === 'shared') return readShared(reference.relPath);
+    const found = tutorialsOf().stored.get(reference.id)?.tutorial;
+    if (!found)
+      throw new BackendError('TutorialNotFound', `This tutorial no longer exists: ${reference.id}`);
+    return found;
+  };
+
+  /** A private tutorial is saved, a shared one returned (Rust `saved_or_returned`). */
+  const savedOrReturned = (reference: TutorialRef, t: Tutorial): Tutorial =>
+    reference.type === 'private' ? saveStored(tutorialsOf(), t, Date.now()).tutorial : t;
+
+  /** The folder and the tutorial of a write (Rust `write_input`). */
+  const writeInput = (target: WriteTarget, tutorial: Tutorial | undefined): [string, Tutorial] => {
+    if (!state.root) throw new BackendError('NoRootOpen', 'No folder is open.');
+    if (target.type === 'shared') {
+      const onDisk = readShared(target.relPath);
+      if (tutorial && tutorial.id !== onDisk.id)
+        throw new BackendError(
+          'NotATutorialFile',
+          `Not a tutorial: ${target.relPath} holds another tutorial`,
+        );
+      const t = tutorial
+        ? prepared(tutorial, state.settings.ai.provider, (p) => state.files.get(p))
+        : structuredClone(onDisk);
+      return [folderOf(target.relPath), t];
+    }
+    const stored = tutorialsOf().stored.get(target.id);
+    if (!stored)
+      throw new BackendError('TutorialNotFound', `This tutorial no longer exists: ${target.id}`);
+    if (target.type === 'export') return ['', structuredClone(stored.tutorial)];
+    const folder = shareFolder(
+      state.files,
+      state.settings.learning.tutorialsFolder,
+      stored.tutorial,
+      stored.sharedAs,
+    );
+    return [folder, structuredClone(stored.tutorial)];
+  };
+
+  /** The Academy's app data of the open folder. */
+  const tutorialsOf = (): FolderTutorials => {
+    const root = requireRootPath();
+    let folder = state.tutorials.get(root);
+    if (!folder) {
+      folder = emptyTutorials();
+      state.tutorials.set(root, folder);
+    }
+    return folder;
+  };
 
   const emit: MockControls['emit'] = (event, payload) => {
     for (const h of handlers.get(event) ?? []) (h as (p: typeof payload) => void)(payload);
@@ -249,6 +374,19 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         (state.root && state.learning.get(state.root.path)) ?? EMPTY_CORRECTIONS,
       ),
     subjects: () => fixtureSubjects(state.files),
+    tutorial: (id) => tutorialsOf().stored.get(id)?.tutorial,
+    sharedTutorial: (relPath) => {
+      try {
+        return readShared(relPath);
+      } catch {
+        return undefined;
+      }
+    },
+    tutorialCards: () => fixtureTutorialSubjects(state.files, tutorialsOf().suggested).cards,
+    tutorialUsage: () => tutorialsOf().usage,
+    recordUsage: (usage) => {
+      recordUsage(tutorialsOf(), usage);
+    },
   });
 
   // Strictly increasing, so two writes in the same millisecond still count as a change.
@@ -269,6 +407,15 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         state.mtimes.set(rel, tick());
       }
       diskChanged();
+    },
+    addSharedTutorial(
+      tutorial = FIXTURE_SHARED_TUTORIAL.tutorial,
+      folder = FIXTURE_SHARED_TUTORIAL.folder,
+    ) {
+      const readme = joinPath(folder, 'README.md');
+      state.sharedTutorials.set(readme, structuredClone(tutorial));
+      controls.writeFiles(filesFor(folder, tutorial));
+      return readme;
     },
     setGraphDelay(ms) {
       state.graphDelayMs = ms;
@@ -640,6 +787,10 @@ export function createMockBackend(): Backend & { controls: MockControls } {
         next.learning.quizzesFolder,
         DEFAULT_LEARNING_SETTINGS.quizzesFolder,
       );
+      next.learning.tutorialsFolder = relativeFolder(
+        next.learning.tutorialsFolder,
+        DEFAULT_LEARNING_SETTINGS.tutorialsFolder,
+      );
       state.settings = next;
       return Promise.resolve(structuredClone(next));
     },
@@ -724,6 +875,194 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     listSubjects: () => {
       if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
       return Promise.resolve(fixtureSubjects(state.files));
+    },
+    listTutorialSubjects: () => {
+      if (!state.root) return Promise.reject(new BackendError('NoRootOpen', 'No folder is open.'));
+      const folder = state.tutorials.get(state.root.path) ?? emptyTutorials();
+      return Promise.resolve(fixtureTutorialSubjects(state.files, folder.suggested));
+    },
+    // The Academy's app data, like `commands/tutorials.rs` (no provider involved).
+    // eslint-disable-next-line @typescript-eslint/require-await
+    listTutorials: async () => {
+      const folder = tutorialsOf();
+      const privates = privateSummaries(folder);
+      const shared = [...(state.graph ?? new Map<string, MockDoc>())].flatMap(([relPath, doc]) => {
+        if (!doc.tutorial || doc.tutorial.chapter !== null) return [];
+        // A shared copy of a private tutorial (its "shared as", same id): listed once, as the
+        // private one, when its files are what sharing it writes; else both, marked.
+        const id = doc.tutorial.id;
+        const own = privates.find(
+          (p) => p.reference.type === 'private' && p.reference.id === id && p.sharedAs === relPath,
+        );
+        const stored = folder.stored.get(id);
+        if (own && stored) {
+          if (inSync(state.files, state.sharedTutorials, relPath, stored.tutorial)) return [];
+          own.sharedDiffers = true;
+        }
+        const t = state.sharedTutorials.get(relPath);
+        if (!t || t.id !== id) return [];
+        return [
+          tutorialSummaryOf(
+            { type: 'shared', relPath },
+            t,
+            null,
+            state.mtimes.get(relPath) ?? 0,
+            folder.progress.get(t.id),
+          ),
+        ];
+      });
+      shared.sort((a, b) => b.updatedMs - a.updatedMs);
+      const read = (p: string) => state.files.get(p);
+      return [...privates, ...shared].map((s) => {
+        const t =
+          s.reference.type === 'private'
+            ? folder.stored.get(s.reference.id)?.tutorial
+            : state.sharedTutorials.get(s.reference.relPath);
+        return t ? { ...s, freshness: checkFreshness(t, read).badge } : s;
+      });
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getTutorial: async (reference) => {
+      const folder = tutorialsOf();
+      if (reference.type === 'shared') return structuredClone(readShared(reference.relPath));
+      const found = folder.stored.get(reference.id);
+      if (!found)
+        throw new BackendError(
+          'TutorialNotFound',
+          `This tutorial no longer exists: ${reference.id}`,
+        );
+      return structuredClone(found.tutorial);
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    saveTutorial: async (tutorial) => {
+      const folder = tutorialsOf();
+      const t = prepared(tutorial, state.settings.ai.provider, (p) => state.files.get(p));
+      return saveStored(folder, t, Date.now());
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    deleteTutorial: async (id) => {
+      const folder = tutorialsOf();
+      if (!validTutorialId(id))
+        throw new BackendError('InvalidPath', `Invalid path: invalid tutorial id "${id}"`);
+      // The progress stays when the shared copy, which stays, still holds the tutorial.
+      const sharedAs = folder.stored.get(id)?.sharedAs ?? null;
+      const sharedStays = sharedAs !== null && holds(state.files, sharedAs, id) === true;
+      folder.stored.delete(id);
+      if (!sharedStays) folder.progress.delete(id);
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    forgetTutorials: async () => {
+      const root = requireRootPath();
+      state.tutorials.set(root, emptyTutorials());
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    getTutorialProgress: async (id) => structuredClone(tutorialsOf().progress.get(id) ?? null),
+    // eslint-disable-next-line @typescript-eslint/require-await
+    saveTutorialProgress: async (progress) => {
+      if (!validTutorialId(progress.tutorialId))
+        throw new BackendError('InvalidPath', 'Invalid path: invalid tutorial id');
+      tutorialsOf().progress.set(progress.tutorialId, normalizedProgress(progress));
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    saveSuggestedSubjects: async (subjects) => {
+      const folder = tutorialsOf();
+      addSuggested(folder, structuredClone(subjects));
+      return structuredClone(folder.suggested);
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    checkTutorialFreshness: async (reference) => {
+      const folder = tutorialsOf();
+      const t =
+        reference.type === 'shared'
+          ? readShared(reference.relPath)
+          : folder.stored.get(reference.id)?.tutorial;
+      if (!t)
+        throw new BackendError(
+          'TutorialNotFound',
+          `This tutorial no longer exists: ${reference.type === 'shared' ? reference.relPath : reference.id}`,
+        );
+      return freshnessReport(
+        t,
+        (p) => state.files.get(p),
+        (copy) => {
+          if (reference.type === 'shared') return false;
+          saveStored(folder, copy, Date.now());
+          return true;
+        },
+      );
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    markTutorialVerified: async (reference) => {
+      const folder = tutorialsOf();
+      const found =
+        reference.type === 'shared'
+          ? readShared(reference.relPath)
+          : folder.stored.get(reference.id)?.tutorial;
+      if (!found)
+        throw new BackendError(
+          'TutorialNotFound',
+          `This tutorial no longer exists: ${reference.type === 'shared' ? reference.relPath : reference.id}`,
+        );
+      const t = structuredClone(found);
+      t.verified = {
+        date: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        commit: MOCK_HEAD,
+        by: MOCK_USER,
+      };
+      // Hashed again: the freshness check starts from now.
+      t.sources = mergeSourceHashes({ ...t, sources: [] }, (p) => state.files.get(p));
+      if (reference.type === 'private') return saveStored(folder, t, Date.now()).tutorial;
+      return t;
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    saveStepQuestion: async (reference, chapter, question) =>
+      savedOrReturned(reference, withQuestion(tutorialOf(reference), chapter, question)),
+    // eslint-disable-next-line @typescript-eslint/require-await
+    removeStepQuestion: async (reference, chapter, index) =>
+      savedOrReturned(reference, withoutQuestion(tutorialOf(reference), chapter, index)),
+    // eslint-disable-next-line @typescript-eslint/require-await
+    planTutorialWrite: async (target, tutorial) => {
+      const [folder, t] = writeInput(target, tutorial);
+      if (target.type === 'export') return exportPlan(t);
+      return planWrite(state.files, state.sharedTutorials, folder, t);
+    },
+    // eslint-disable-next-line @typescript-eslint/require-await
+    writeTutorial: async (target, tutorial) => {
+      const root = state.root;
+      if (!root) throw new BackendError('NoRootOpen', 'No folder is open.');
+      const [folder, t] = writeInput(target, tutorial);
+      if (target.type === 'export') {
+        const chosen = state.exportFolderResult;
+        if (chosen === '') throw new BackendError('SaveCancelled', 'The save was cancelled.');
+        const plan = exportPlan(t);
+        const name = tutorialSlug(t.title);
+        if (chosen.startsWith('/')) {
+          state.exported.push({
+            folder: `${chosen}/${name}`,
+            files: plan.files.map((f) => f.name),
+          });
+          return { folder: `${chosen}/${name}`, readme: null, plan };
+        }
+        const inside = joinPath(chosen, name);
+        const readme = joinPath(inside, 'README.md');
+        state.sharedTutorials.set(readme, structuredClone(t));
+        controls.writeFiles(filesFor(inside, t));
+        return { folder: `${root.path}/${inside}`, readme, plan: { ...plan, folder: inside } };
+      }
+      const plan = planWrite(state.files, state.sharedTutorials, folder, t);
+      const readme = joinPath(folder, 'README.md');
+      state.sharedTutorials.set(readme, structuredClone(t));
+      const changed = Object.fromEntries(
+        Object.entries(filesFor(folder, t)).filter(([rel, text]) => state.files.get(rel) !== text),
+      );
+      if (Object.keys(changed).length > 0) controls.writeFiles(changed);
+      if (plan.removed.length > 0)
+        controls.deleteFiles(plan.removed.map((n) => joinPath(folder, n)));
+      if (target.type === 'share') {
+        const stored = tutorialsOf().stored.get(target.id);
+        if (stored) stored.sharedAs = readme;
+      }
+      return { folder: `${root.path}/${folder}`, readme, plan };
     },
     saveQuizMarkdown: (kind, markdown, suggestedName) => {
       const root = state.root;

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::learning::quiz::QuizMode;
+use crate::learning::tutorial::{Familiarity, Length};
 
 pub const MIN_FONT_SIZE: u32 = 12;
 pub const MAX_FONT_SIZE: u32 = 24;
@@ -168,8 +169,10 @@ pub const MIN_QUIZ_QUESTIONS: u32 = 5;
 pub const MAX_QUIZ_QUESTIONS: u32 = 30;
 pub const DEFAULT_QUIZ_RESULTS_FOLDER: &str = "quiz-results";
 pub const DEFAULT_QUIZZES_FOLDER: &str = "quizzes";
+/// Where "Share with the project" writes a tutorial (`<folder>/<slug>/`).
+pub const DEFAULT_TUTORIALS_FOLDER: &str = "docs/tutorials";
 
-/// The learning features (quiz now, tutorials later).
+/// The learning features: the quiz and the Academy's tutorials.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
 #[ts(export)]
@@ -183,6 +186,11 @@ pub struct LearningSettings {
     /// Where "Save results…" and "Save quiz…" open, relative to the opened folder.
     pub quiz_results_folder: String,
     pub quizzes_folder: String,
+    /// The defaults of a new tutorial.
+    pub tutorial_familiarity: Familiarity,
+    pub tutorial_length: Length,
+    /// Where "Share with the project" writes tutorials, relative to the opened folder.
+    pub tutorials_folder: String,
 }
 
 impl Default for LearningSettings {
@@ -194,6 +202,9 @@ impl Default for LearningSettings {
             effects: true,
             quiz_results_folder: DEFAULT_QUIZ_RESULTS_FOLDER.to_owned(),
             quizzes_folder: DEFAULT_QUIZZES_FOLDER.to_owned(),
+            tutorial_familiarity: Familiarity::NewHere,
+            tutorial_length: Length::Standard,
+            tutorials_folder: DEFAULT_TUTORIALS_FOLDER.to_owned(),
         }
     }
 }
@@ -227,6 +238,9 @@ pub struct LearningSettingsPatch {
     pub effects: Option<bool>,
     pub quiz_results_folder: Option<String>,
     pub quizzes_folder: Option<String>,
+    pub tutorial_familiarity: Option<Familiarity>,
+    pub tutorial_length: Option<Length>,
+    pub tutorials_folder: Option<String>,
 }
 
 impl LearningSettingsPatch {
@@ -248,6 +262,15 @@ impl LearningSettingsPatch {
         }
         if let Some(v) = self.quizzes_folder {
             s.quizzes_folder = v;
+        }
+        if let Some(v) = self.tutorial_familiarity {
+            s.tutorial_familiarity = v;
+        }
+        if let Some(v) = self.tutorial_length {
+            s.tutorial_length = v;
+        }
+        if let Some(v) = self.tutorials_folder {
+            s.tutorials_folder = v;
         }
     }
 }
@@ -324,6 +347,8 @@ impl Settings {
         learning.quiz_results_folder =
             relative_folder(&learning.quiz_results_folder, DEFAULT_QUIZ_RESULTS_FOLDER);
         learning.quizzes_folder = relative_folder(&learning.quizzes_folder, DEFAULT_QUIZZES_FOLDER);
+        learning.tutorials_folder =
+            relative_folder(&learning.tutorials_folder, DEFAULT_TUTORIALS_FOLDER);
     }
 }
 
@@ -480,6 +505,9 @@ mod tests {
                 "effects": true,
                 "quizResultsFolder": "quiz-results",
                 "quizzesFolder": "quizzes",
+                "tutorialFamiliarity": "newHere",
+                "tutorialLength": "standard",
+                "tutorialsFolder": "docs/tutorials",
             })
         );
         let mut s = Settings::default();
@@ -494,6 +522,15 @@ mod tests {
         assert_eq!(s.learning.quizzes_folder, "docs/quizzes");
         assert_eq!(s.learning.quiz_results_folder, DEFAULT_QUIZ_RESULTS_FOLDER);
         assert!(s.learning.effects, "untouched");
+        let patch: SettingsPatch = serde_json::from_str(
+            r#"{ "learning": { "tutorialFamiliarity": "maintainer", "tutorialLength": "deep", "tutorialsFolder": "../tutorials" } }"#,
+        )
+        .unwrap();
+        patch.apply(&mut s);
+        s.normalize();
+        assert_eq!(s.learning.tutorial_familiarity, Familiarity::Maintainer);
+        assert_eq!(s.learning.tutorial_length, Length::Deep);
+        assert_eq!(s.learning.tutorials_folder, DEFAULT_TUTORIALS_FOLDER);
         for bad in ["/abs", "C:/x", "a/../b", "", "  "] {
             assert_eq!(relative_folder(bad, "d"), "d", "{bad:?}");
         }

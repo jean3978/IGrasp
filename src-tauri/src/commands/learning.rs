@@ -189,8 +189,8 @@ pub async fn read_quiz_file(app: AppHandle, rel_path: Option<String>) -> AppResu
 }
 
 /// The system's save dialog.
-struct NativeSaveDialog<'a> {
-    app: &'a AppHandle,
+pub(crate) struct NativeSaveDialog<'a> {
+    pub(crate) app: &'a AppHandle,
 }
 
 impl SaveDialog for NativeSaveDialog<'_> {
@@ -203,6 +203,16 @@ impl SaveDialog for NativeSaveDialog<'_> {
             .set_file_name(file_name)
             .add_filter("Markdown", &["md"])
             .blocking_save_file()
+            .and_then(|p| p.into_path().ok())
+    }
+
+    fn pick_folder(&self, directory: &Path) -> Option<PathBuf> {
+        self.app
+            .dialog()
+            .file()
+            .set_title("Save the tutorial in…")
+            .set_directory(directory)
+            .blocking_pick_folder()
             .and_then(|p| p.into_path().ok())
     }
 }

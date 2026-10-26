@@ -120,6 +120,25 @@ export const tauriBackend: Backend = {
   getProjectProfile: (force) => invoke('get_project_profile', { force: force ?? false }),
   setProfileCorrections: (corrections) => invoke('set_profile_corrections', { corrections }),
   listSubjects: () => invoke('list_subjects'),
+  listTutorialSubjects: () => invoke('list_tutorial_subjects'),
+  listTutorials: () => invoke('list_tutorials'),
+  getTutorial: (reference) => invoke('get_tutorial', { reference }),
+  saveTutorial: (tutorial) => invoke('save_tutorial', { tutorial }),
+  deleteTutorial: (id) => invoke('delete_tutorial', { id }),
+  forgetTutorials: () => invoke('forget_tutorials'),
+  getTutorialProgress: (id) => invoke('get_tutorial_progress', { id }),
+  saveTutorialProgress: (progress) => invoke('save_tutorial_progress', { progress }),
+  planTutorialWrite: (target, tutorial) =>
+    invoke('plan_tutorial_write', { target, tutorial: tutorial ?? null }),
+  writeTutorial: (target, tutorial) =>
+    invoke('write_tutorial', { target, tutorial: tutorial ?? null }),
+  checkTutorialFreshness: (reference) => invoke('check_tutorial_freshness', { reference }),
+  markTutorialVerified: (reference) => invoke('mark_tutorial_verified', { reference }),
+  saveStepQuestion: (reference, chapter, question) =>
+    invoke('save_step_question', { reference, chapter, question }),
+  removeStepQuestion: (reference, chapter, index) =>
+    invoke('remove_step_question', { reference, chapter, index }),
+  saveSuggestedSubjects: (subjects) => invoke('save_suggested_subjects', { subjects }),
   getCurrentQuiz: () => invoke('get_current_quiz'),
   saveCurrentQuiz: (record) => invoke('save_current_quiz', { record }),
   clearCurrentQuiz: () => invoke('clear_current_quiz'),

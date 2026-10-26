@@ -1,0 +1,117 @@
+/* The shared read-only code view (CodeView.tsx): the quiz's Look it up, the Academy's code tours
+   and Spot it. */
+
+.code-view {
+  overflow: auto;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--bg-editor);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  user-select: text;
+}
+
+.code-view:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: -1px;
+}
+
+.code-view-line {
+  display: flex;
+  width: 100%;
+  min-width: max-content;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 20px;
+  text-align: left;
+}
+
+button.code-view-line {
+  cursor: pointer;
+}
+
+button.code-view-line:hover {
+  background: var(--bg-hover);
+}
+
+.code-view-ln {
+  position: sticky;
+  left: 0;
+  flex: none;
+  width: calc(var(--gutter-chars, 3) * 1ch + 28px);
+  padding-right: 16px;
+  background: var(--bg-editor);
+  color: var(--fg-muted);
+  text-align: right;
+  user-select: none;
+}
+
+.code-view-text {
+  padding-right: 24px;
+  white-space: pre;
+  tab-size: 4;
+}
+
+/* A tour stop: the cited lines, with a bar in the gutter. */
+.code-view-range {
+  background: var(--ai-accent-soft);
+}
+
+.code-view-range .code-view-ln {
+  background: var(--ai-accent-soft);
+  box-shadow: inset 3px 0 0 var(--ai-accent);
+  color: var(--fg-strong);
+}
+
+/* The keyboard cursor of Spot it. */
+.code-view-cursor {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: -1px;
+}
+
+.code-view-line[data-mark='picked'] {
+  background: var(--bg-selection);
+}
+
+.code-view-line[data-mark='right'] {
+  background: var(--quiz-good-bg);
+  box-shadow: inset 3px 0 0 var(--quiz-good);
+}
+
+.code-view-line[data-mark='wrong'] {
+  background: var(--quiz-bad-bg);
+  box-shadow: inset 3px 0 0 var(--quiz-bad);
+  animation: code-view-shake 300ms ease-in-out;
+}
+
+.code-view-status {
+  margin: 12px;
+  color: var(--fg-muted);
+}
+
+@keyframes code-view-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .code-view-line[data-mark='wrong'] {
+    animation: none;
+  }
+}
+
+[data-motion='off'] .code-view-line[data-mark='wrong'] {
+  animation: none;
+}

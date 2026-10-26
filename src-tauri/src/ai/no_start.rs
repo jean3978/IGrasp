@@ -241,6 +241,7 @@ fn no_ai_operation_starts_without_a_user_action() {
                 crate::learning::quiz::QuizGenerationInput::default(),
                 None,
                 None,
+                None,
             )
             .map(|_| ())
         })
@@ -279,6 +280,74 @@ fn no_ai_operation_starts_without_a_user_action() {
         0,
         "profile, corrections, subjects and quiz estimate"
     );
+
+    // The Academy: the cards, the library, a private tutorial saved, read and deleted, the
+    // progress, the AI's suggestions kept, forgetting.
+    state
+        .with_workspace(|ws| {
+            let cards = crate::learning::tutorial_subjects(ws, &state.appdata, &names)?;
+            let mut t = crate::learning::tutorial::markdown::tests::sample();
+            t.id = String::new();
+            let t = crate::commands::tutorials::prepared(ws.guard.root(), "mock", t);
+            state
+                .appdata
+                .save_private_tutorial(&key_of(root), t.clone())?;
+            crate::commands::tutorials::library(ws, &state.appdata)?;
+            crate::commands::tutorials::read_tutorial(
+                ws,
+                &state.appdata,
+                &crate::learning::tutorial::TutorialRef::Private { id: t.id.clone() },
+            )?;
+            state.appdata.save_tutorial_progress(
+                &key_of(root),
+                crate::learning::tutorial::progress::TutorialProgress {
+                    tutorial_id: t.id.clone(),
+                    ..Default::default()
+                },
+            )?;
+            state.appdata.tutorial_progress(&key_of(root), &t.id)?;
+            // Sharing: the plan, the write, the shared copy read back and planned again.
+            let share = crate::learning::tutorial::share::WriteTarget::Share { id: t.id.clone() };
+            let (folder, shared) =
+                crate::commands::tutorials::write_input(ws, &state.appdata, "mock", &share, None)?;
+            crate::learning::tutorial::share::plan(&ws.guard, &folder, &shared)?;
+            let written = crate::learning::tutorial::share::write(&ws.guard, &folder, &shared)?;
+            let readme = written.readme.unwrap_or_default();
+            crate::commands::tutorials::read_tutorial(
+                ws,
+                &state.appdata,
+                &crate::learning::tutorial::TutorialRef::Shared {
+                    rel_path: readme.clone(),
+                },
+            )?;
+            crate::commands::tutorials::write_input(
+                ws,
+                &state.appdata,
+                "mock",
+                &crate::learning::tutorial::share::WriteTarget::Shared {
+                    rel_path: readme.clone(),
+                },
+                None,
+            )?;
+            // The freshness check and "Mark as verified", private and shared.
+            for reference in [
+                crate::learning::tutorial::TutorialRef::Private { id: t.id.clone() },
+                crate::learning::tutorial::TutorialRef::Shared { rel_path: readme },
+            ] {
+                crate::commands::tutorials::check_freshness(ws, &state.appdata, &reference)?;
+                crate::commands::tutorials::verified(ws, &state.appdata, &reference)?;
+            }
+            state.appdata.save_suggested_subjects(
+                &key_of(root),
+                cards.cards.into_iter().take(1).collect(),
+            )?;
+            state
+                .appdata
+                .delete_private_tutorial(&key_of(root), &t.id, false)?;
+            state.appdata.forget_tutorials(&key_of(root))
+        })
+        .unwrap();
+    assert_eq!(starts(&state), 0, "the Academy's local commands");
 
     // Closing the folder.
     state.ai.cancel_all();
@@ -407,4 +476,33 @@ fn only_the_gateway_starts_a_provider() {
         callers,
         vec!["ai/gateway.rs".to_owned(), "ai/run.rs".to_owned()]
     );
+}
+
+/// Validated and staged runs are started by the gateway only (a staged run starts its stages'
+/// validated runs itself, inside the one operation).
+#[test]
+fn only_the_gateway_starts_a_run() {
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut files = Vec::new();
+    sources(&src, &src, &mut files);
+    let mut callers: Vec<String> = Vec::new();
+    for (rel, text) in &files {
+        if rel == "ai/no_start.rs" {
+            continue;
+        }
+        let code: String = text
+            .split("#[cfg(test)]\nmod ")
+            .next()
+            .unwrap_or(text)
+            .lines()
+            .filter(|l| !l.trim_start().starts_with("//"))
+            .flat_map(|l| l.chars().filter(|c| !c.is_whitespace()))
+            .collect();
+        let code = code.replace("fnstart_staged(", "");
+        if code.contains("run::start(") || code.contains("start_staged(") {
+            callers.push(rel.clone());
+        }
+    }
+    callers.sort();
+    assert_eq!(callers, vec!["ai/gateway.rs".to_owned()]);
 }

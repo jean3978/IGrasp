@@ -1,0 +1,95 @@
+{
+  "affectedSteps": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      0,
+      3
+    ],
+    [
+      0,
+      4
+    ]
+  ],
+  "afterRelocation": {
+    "badge": "sourcesMissing",
+    "missing": 3,
+    "of": 10
+  },
+  "modified": {
+    "changed": "backend/app/core/config.py",
+    "missing": "backend/app/core/security.py",
+    "moved": "backend/app/api/routes/login.py"
+  },
+  "relocatedCitations": 4,
+  "report": {
+    "badge": {
+      "badge": "sourcesMissing",
+      "missing": 3,
+      "of": 10
+    },
+    "checks": [
+      {
+        "firstLine": 28,
+        "lastLine": 47,
+        "lines": "23-42",
+        "path": "backend/app/api/routes/login.py",
+        "state": "moved"
+      },
+      {
+        "lines": "11-36",
+        "path": "backend/app/core/security.py",
+        "state": "missing"
+      },
+      {
+        "lines": "45-60",
+        "path": "backend/app/crud.py",
+        "state": "upToDate"
+      },
+      {
+        "lines": "22-25",
+        "path": "backend/app/core/config.py",
+        "state": "changed"
+      },
+      {
+        "lines": "19-26",
+        "path": "backend/app/core/security.py",
+        "state": "missing"
+      },
+      {
+        "firstLine": 42,
+        "lastLine": 47,
+        "lines": "37-42",
+        "path": "backend/app/api/routes/login.py",
+        "state": "moved"
+      },
+      {
+        "lines": "11-16",
+        "path": "backend/app/core/security.py",
+        "state": "missing"
+      },
+      {
+        "lines": "52-60",
+        "path": "backend/app/crud.py",
+        "state": "upToDate"
+      },
+      {
+        "lines": "68-88",
+        "path": "backend/app/core/config.py",
+        "state": "upToDate"
+      },
+      {
+        "lines": "129-162",
+        "path": "backend/tests/api/routes/test_login.py",
+        "state": "upToDate"
+      }
+    ],
+    "moved": 2
+  }
+}

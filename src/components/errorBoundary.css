@@ -1,0 +1,31 @@
+.error-boundary {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  max-width: 640px;
+  margin: 48px auto;
+  padding: 0 24px;
+  color: var(--fg);
+}
+
+.error-boundary h2 {
+  margin: 0;
+  color: var(--fg-strong);
+  font-size: var(--font-size-ui);
+}
+
+.error-boundary p {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.error-boundary-message {
+  max-width: 100%;
+  margin: 0;
+  padding: 8px 12px;
+  overflow-x: auto;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--bg-code);
+  white-space: pre-wrap;
+}

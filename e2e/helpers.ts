@@ -231,3 +231,57 @@ export async function capture(page: Page, rect: Region): Promise<void> {
   await page.mouse.up();
   await expect(overlay).toHaveCount(0);
 }
+
+/** The mock backend's Academy state, as far as the tests read or set it. */
+export interface AcademyMock {
+  state: {
+    files: Map<string, string>;
+    ai: { stepMs: number; starts: string[] };
+  };
+  writeFiles(files: Record<string, string>): void;
+  addSharedTutorial(): string;
+}
+
+export const academyMock = <T = void>(page: Page, fn: (mock: AcademyMock) => T): Promise<T> =>
+  page.evaluate((body) => {
+    const mock = (window as MockWindow).__igraspMock as unknown as AcademyMock;
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval -- runs in the page
+    return (new Function('mock', `return ${body}`) as (m: AcademyMock) => T)(mock);
+  }, `(${fn.toString()})(mock)`);
+
+/** Opens the fixture project, then the Academy with its shortcut (free: nothing is sent). */
+export async function openAcademy(page: Page): Promise<void> {
+  await openFixture(page);
+  await academyMock(page, (m) => {
+    m.state.ai.stepMs = 5;
+  });
+  await page.keyboard.press('Control+Alt+a');
+  await expect(page.locator('.academy-home')).toBeVisible();
+  // Hoot's welcome plays for under four seconds over the tab, then goes.
+  await expect(page.locator('.academy-welcome')).toHaveCount(0, { timeout: 5000 });
+}
+
+/** The first step of "New tutorial": the first proposed role, then Next. */
+export async function pickTutorialRole(page: Page): Promise<void> {
+  await page.getByRole('radiogroup', { name: 'Roles' }).getByRole('radio').first().click();
+  await page.getByRole('button', { name: /^Next/ }).click();
+}
+
+/**
+ * Writes a tutorial with the mock AI: the first proposed role, a typed subject, its options, the
+ * outline's card and Start, then every chapter's card and Start. Ends on the course map.
+ */
+export async function writeTutorial(page: Page, subject = 'How igrasp-demo starts'): Promise<void> {
+  await page.getByRole('button', { name: 'New tutorial' }).click();
+  await pickTutorialRole(page);
+  await page.getByPlaceholder(/How does a file change/).fill(subject);
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: /Plan the outline/ }).click();
+  await page.getByRole('button', { name: /^Start/ }).click();
+  await expect(page.locator('.academy-outline')).toBeVisible();
+  await page.getByRole('button', { name: /^Write \d+ chapters/ }).click();
+  await page.getByRole('button', { name: /^Start/ }).click();
+  await expect(
+    page.getByRole('list', { name: 'Chapters' }).getByRole('button', { name: /Chapter 1:/ }),
+  ).toBeVisible();
+}

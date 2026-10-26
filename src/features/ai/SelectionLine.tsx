@@ -2,7 +2,7 @@
 // Start of the text…". It shows the attached selection, or the one already sent while it is
 // still highlighted. ✕ drops it (and its highlight).
 
-import { SquareDashedMousePointer, TextCursor, X } from 'lucide-react';
+import { MessageCircleQuestion, SquareDashedMousePointer, TextCursor, X } from 'lucide-react';
 import type { AiCapture } from '../../ipc/types';
 import { useAiPanel } from '../../stores/aiPanel';
 import { useCapture } from '../../stores/capture';
@@ -15,9 +15,49 @@ const linesLabel = (c: AiCapture) =>
 
 export function SelectionLine() {
   const capture = useSelectionCapture();
+  const step = useAiPanel((s) => s.attachment?.step ?? null);
   const sent = useAiPanel((s) => s.attachment === null);
   const setAttachment = useAiPanel((s) => s.setAttachment);
   const setHighlight = useCapture((s) => s.setHighlight);
+  if (step) {
+    const excerpt = step.quote ? selectionExcerpt({ text: step.quote }) : '';
+    return (
+      <div className="ai-selection-line" role="group" aria-label={`About ${step.label}`}>
+        {step.kind === 'text' ? (
+          <TextCursor aria-hidden />
+        ) : step.kind === 'region' ? (
+          <SquareDashedMousePointer aria-hidden />
+        ) : (
+          <MessageCircleQuestion aria-hidden />
+        )}
+        <span className="ai-selection-kind">Step</span>
+        <span className="ai-selection-dot" aria-hidden>
+          ·
+        </span>
+        <span className="ai-selection-lines">{step.label}</span>
+        {excerpt && (
+          <>
+            <span className="ai-selection-dot" aria-hidden>
+              ·
+            </span>
+            <span className="ai-selection-excerpt">{excerpt}</span>
+          </>
+        )}
+        <button
+          type="button"
+          className="ai-selection-remove"
+          aria-label="Remove the step"
+          title="Leave it out"
+          onClick={() => {
+            setAttachment(null);
+            setHighlight(null);
+          }}
+        >
+          <X aria-hidden />
+        </button>
+      </div>
+    );
+  }
   if (!capture) return null;
   const isText = capture.selection !== undefined;
   const excerpt = selectionExcerpt(capture);

@@ -4,6 +4,7 @@ import type { QuizExclusion } from "./QuizExclusion";
 import type { QuizMode } from "./QuizMode";
 import type { QuizRound } from "./QuizRound";
 import type { SourceScope } from "./SourceScope";
+import type { TutorialRef } from "./TutorialRef";
 
 /**
  * What the user chose for a quiz generation. The frontend sends this; the backend writes the
@@ -41,4 +42,9 @@ startLevel: number, exclude: Array<QuizExclusion>, scope: SourceScope,
 /**
  * "I'm new to …" (optional, reused by the tutorials).
  */
-domainGap: string | null, };
+domainGap: string | null, 
+/**
+ * "Quiz me on this tutorial": the backend limits the sources to the tutorial's cited files
+ * and asks what a reader of it should now understand.
+ */
+tutorial?: TutorialRef, };

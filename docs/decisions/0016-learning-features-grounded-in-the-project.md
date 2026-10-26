@@ -86,3 +86,24 @@ programmed. Generic lessons about a technology are everywhere online; what is mi
   undocumented project is a finding, not a reason for generic questions.
 - The first write in the folder is Phase 4's "Save results…" and "Save quiz…", each through the
   system save dialog (ADR 0024).
+
+## As implemented in Phase 5 (0.5.0)
+
+- Tutorials are **Hoot's Academy**, a tab of its own beside the Quiz tab
+  ([academy.md](../features/academy.md)). The format is ADR 0025 (amended), the chapters are a
+  staged run (ADR 0026), storage, sharing and verification are ADR 0027, and the subject cards
+  are built locally (ADR 0028).
+- The grounding rule is enforced by the tutorial validator on every outline chapter and every
+  step, as for the quiz: citable files, real line ranges, never an agent or secret file, a text
+  that names something of the project, and each step type's own rules. A concept bridge is the
+  "one or two sentences" bridge of this ADR, applied to cited lines in the same step.
+- The audience is the quiz's: developers by default, the role typed in the options otherwise;
+  the familiarity (new here, already contributing, deep dive for maintainers) and the "I'm new
+  to…" domain reach the prompt.
+- Sharing is not the first write in the project (Phase 4's Save results… and Save quiz… were),
+  but it is the first one planned and confirmed file by file. The AI never changes a tutorial or
+  marks it verified: its review proposes replacements that the user accepts or rejects.
+- **Plan review, question 10** ("Quiz me on this tutorial" uses the understanding style, limited
+  to the tutorial's cited files, tagged `QuizCategory::Tutorial`, through the Quiz tab's card):
+  answered as recommended; the scope is a code check's, the style a concept quiz's, and the tag
+  keeps the history sortable.

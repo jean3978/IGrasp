@@ -534,9 +534,27 @@ pub fn format_size(bytes: u64) -> String {
     }
 }
 
-/// Reads a text file of the project (at most 8 MB).
+/// The file of `path` under `root`, when it exists and resolves inside it. `path` may come
+/// from a model's output or a hand-edited file (a tutorial's citations): only a plain relative
+/// path is accepted, and symlinks may not lead out.
+pub fn inside(root: &Path, path: &str) -> Option<std::path::PathBuf> {
+    let plain = !path.is_empty()
+        && !path.starts_with(['/', '\\'])
+        && !path.contains(':')
+        && path
+            .split(['/', '\\'])
+            .all(|s| !s.is_empty() && s != "." && s != "..");
+    if !plain {
+        return None;
+    }
+    let full = dunce::canonicalize(root.join(path)).ok()?;
+    full.starts_with(dunce::canonicalize(root).ok()?)
+        .then_some(full)
+}
+
+/// Reads a text file of the project (at most 8 MB), only inside `root` (`inside`).
 pub fn read_text(root: &Path, path: &str) -> Option<String> {
-    let full = root.join(path);
+    let full = inside(root, path)?;
     let meta = std::fs::metadata(&full).ok()?;
     if meta.len() > 8 * 1024 * 1024 {
         return None;
@@ -631,6 +649,23 @@ mod tests {
 
     use super::*;
     use crate::profile::tests::tree;
+
+    #[test]
+    fn reads_only_inside_the_root() {
+        let outer = tree(&[("secret.txt", "s\n"), ("p/a.txt", "a\n")]);
+        let root = outer.path().join("p");
+        assert_eq!(read_text(&root, "a.txt").as_deref(), Some("a\n"));
+        for path in [
+            "../secret.txt",
+            "/etc/passwd",
+            "C:/x",
+            "./a.txt",
+            "",
+            "a//b",
+        ] {
+            assert!(read_text(&root, path).is_none(), "{path}");
+        }
+    }
     use crate::profile::walk::walk;
 
     fn corpus(files: &[(&str, &str)], scope: SourceScope) -> (tempfile::TempDir, Corpus) {

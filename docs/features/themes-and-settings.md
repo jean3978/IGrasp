@@ -65,6 +65,10 @@ folder (`settings.json`), never in the opened folder.
 | | Effects | Confetti, sparks and Hoot's animations; always off under reduced motion. |
 | | Results folder / Quizzes folder | Where Save results… and Save quiz… open, inside the open folder (`quiz-results`, `quizzes`); an invalid folder is shown and not saved. |
 | | Forget this folder's quizzes | Deletes the quiz history and the quiz in progress kept for the open folder (app data); asks first. Saved files stay. |
+| | Tutorials: Default familiarity | New here, Already contributing or Deep dive for maintainers: who a new tutorial is written for (each tutorial's options can change it). |
+| | Tutorials: Default length | Quick, Standard (default) or Deep. |
+| | Tutorials: Tutorials folder | Where Share with the project writes a tutorial, one folder per tutorial, inside the open folder (default `docs/tutorials`, created only when you share); an invalid folder is shown and not saved. |
+| | Forget this folder's tutorials | Deletes the folder's private tutorials, your progress in every tutorial and the suggested subjects (app data); asks first. Tutorials shared in the folder stay. See [academy.md](academy.md). |
 | | Profile corrections / Project profile | The profile of the open folder, Edit, Detect again, and Reset to detected. See [project-profile.md](project-profile.md). |
 | Data | App data folder | Shows the folder and opens it in the file manager. |
 | | Reset settings | Restores every default. |

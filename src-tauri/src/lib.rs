@@ -117,6 +117,21 @@ pub fn run() {
             commands::learning::save_quiz_markdown,
             commands::learning::list_quiz_files,
             commands::learning::read_quiz_file,
+            commands::tutorials::list_tutorial_subjects,
+            commands::tutorials::list_tutorials,
+            commands::tutorials::get_tutorial,
+            commands::tutorials::save_tutorial,
+            commands::tutorials::delete_tutorial,
+            commands::tutorials::forget_tutorials,
+            commands::tutorials::get_tutorial_progress,
+            commands::tutorials::save_tutorial_progress,
+            commands::tutorials::save_suggested_subjects,
+            commands::tutorials::plan_tutorial_write,
+            commands::tutorials::write_tutorial,
+            commands::tutorials::check_tutorial_freshness,
+            commands::tutorials::mark_tutorial_verified,
+            commands::tutorials::save_step_question,
+            commands::tutorials::remove_step_question,
         ])
         .build(tauri::generate_context!())
         .expect("error while building IGrasp")

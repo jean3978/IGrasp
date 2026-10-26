@@ -3,21 +3,35 @@ import { useEffect, useRef, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { MermaidBlock } from '../../mermaid/MermaidBlock';
 import { QuizBlock } from './QuizBlock';
+import { TutorialBlock } from './TutorialBlock';
+import { isTutorialBlockKind } from '../../academy/tutorialBlocks';
 
 type PreProps = ComponentProps<'pre'> & {
   'data-language'?: string;
   'data-mermaid'?: string;
   'data-quiz'?: string;
+  'data-tutorial-step'?: string;
+  'data-tutorial-source'?: string;
 };
 
 /**
  * A code block with a language badge and a copy button; Mermaid blocks become diagrams, and
- * `igrasp-quiz` blocks question cards.
+ * `igrasp-quiz` blocks question cards, a tutorial's `igrasp-*` steps folded step cards.
  */
-export function CodeBlock({ 'data-mermaid': mermaid, 'data-quiz': quiz, ...props }: PreProps) {
+export function CodeBlock({
+  'data-mermaid': mermaid,
+  'data-quiz': quiz,
+  'data-tutorial-step': step,
+  'data-tutorial-source': stepSource,
+  ...props
+}: PreProps) {
   if (mermaid !== undefined) return <MermaidBlock source={mermaid} />;
   if (quiz !== undefined)
     return <QuizBlock source={quiz} fallback={<HighlightedCode {...props} />} />;
+  if (step !== undefined && stepSource !== undefined && isTutorialBlockKind(step))
+    return (
+      <TutorialBlock kind={step} source={stepSource} fallback={<HighlightedCode {...props} />} />
+    );
   return <HighlightedCode {...props} />;
 }
 

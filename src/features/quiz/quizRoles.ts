@@ -100,7 +100,10 @@ export function checksCode(family: RoleFamily): boolean {
 }
 
 /** The kinds of quiz offered to a family, in order. */
-export function kindsFor(family: RoleFamily): QuizCategory[] {
+/** The kinds of quiz the wizard offers (a quiz on a tutorial starts from the Academy). */
+export type WizardKind = Exclude<QuizCategory, 'tutorial'>;
+
+export function kindsFor(family: RoleFamily): WizardKind[] {
   return checksCode(family) ? ['global', 'feature', 'code'] : ['global', 'feature'];
 }
 
@@ -113,7 +116,7 @@ const SEEN_FROM_YOUR_WORK: Partial<Record<RoleFamily, string>> = {
 };
 
 /** What a kind of quiz means for a family, under its title. */
-export function kindDescription(kind: QuizCategory, family: RoleFamily): string {
+export function kindDescription(kind: WizardKind, family: RoleFamily): string {
   const seen = SEEN_FROM_YOUR_WORK[family];
   switch (kind) {
     case 'global':

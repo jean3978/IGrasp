@@ -86,6 +86,7 @@ const record: QuizRecord = {
   materialNote: null,
   docsNote: null,
   suggestedSubjects: [],
+  tutorial: null,
 };
 
 describe('resultsMarkdown', () => {

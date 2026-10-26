@@ -31,6 +31,7 @@ const record = (id: string, finishedMs: number | null): QuizRecord => ({
   materialNote: null,
   docsNote: null,
   suggestedSubjects: [],
+  tutorial: null,
 });
 
 beforeEach(async () => {
@@ -69,6 +70,8 @@ describe('mock quiz storage', () => {
         quizMode: 'adaptive',
         quizzesFolder: ' docs\\quizzes/ ',
         quizResultsFolder: '../out',
+        tutorialLength: 'deep',
+        tutorialsFolder: '/abs',
       },
     });
     expect(s.learning).toEqual({
@@ -78,6 +81,9 @@ describe('mock quiz storage', () => {
       effects: true,
       quizResultsFolder: 'quiz-results',
       quizzesFolder: 'docs/quizzes',
+      tutorialFamiliarity: 'newHere',
+      tutorialLength: 'deep',
+      tutorialsFolder: 'docs/tutorials',
     });
     expect(s.ai.historyLimit).toBe(100);
   });

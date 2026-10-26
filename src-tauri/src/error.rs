@@ -21,6 +21,10 @@ pub enum ErrorCode {
     Ai,
     SaveCancelled,
     NotAQuizFile,
+    TutorialNotFound,
+    NotATutorialFile,
+    TutorialFolderTaken,
+    ChapterNotWritten,
 }
 
 /// Shape of every error returned by a command.
@@ -61,6 +65,14 @@ pub enum AppError {
     SaveCancelled,
     #[error("Not a quiz file: {0}")]
     NotAQuizFile(String),
+    #[error("This tutorial no longer exists: {0}")]
+    TutorialNotFound(String),
+    #[error("Not a tutorial: {0}")]
+    NotATutorialFile(String),
+    #[error("{0} already holds another tutorial.")]
+    TutorialFolderTaken(String),
+    #[error("This chapter is not written yet: {0}")]
+    ChapterNotWritten(String),
 }
 
 impl AppError {
@@ -80,6 +92,10 @@ impl AppError {
             Self::Ai(_) => ErrorCode::Ai,
             Self::SaveCancelled => ErrorCode::SaveCancelled,
             Self::NotAQuizFile(_) => ErrorCode::NotAQuizFile,
+            Self::TutorialNotFound(_) => ErrorCode::TutorialNotFound,
+            Self::NotATutorialFile(_) => ErrorCode::NotATutorialFile,
+            Self::TutorialFolderTaken(_) => ErrorCode::TutorialFolderTaken,
+            Self::ChapterNotWritten(_) => ErrorCode::ChapterNotWritten,
         }
     }
 }

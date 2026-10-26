@@ -314,7 +314,10 @@ export function parseQuizFile(text: string): ParsedQuizFile {
     level: Number.isInteger(level) ? Math.min(5, Math.max(1, level)) : 2,
     generated: str(data.generated),
     category:
-      data.category === 'global' || data.category === 'feature' || data.category === 'code'
+      data.category === 'global' ||
+      data.category === 'feature' ||
+      data.category === 'code' ||
+      data.category === 'tutorial'
         ? data.category
         : null,
     role: str(data.role),
@@ -377,6 +380,7 @@ export function recordFromFile(file: ParsedQuizFile, path: string): QuizRecord {
     subject: null,
     subjectTitle: file.subject ?? file.title,
     category: file.category,
+    tutorial: null,
     role: file.role,
     mode: 'fixed',
     scope: file.scope,

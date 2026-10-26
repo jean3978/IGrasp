@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::ai::context::{self, Caps};
 use crate::ai::estimate::estimate;
-use crate::ai::run::OutputValidator;
+use crate::ai::run::RunPlan;
 use crate::ai::types::{
     AiCapabilities, AiContextDocument, AiEstimateInput, AiEventEnvelope, AiInlinedDocument,
     AiProviderInfo, AiProviderStatus, AiRequest, AiSizeEstimate, AiStartRequest, AiUserAction,
@@ -19,6 +19,11 @@ use crate::error::{AppError, AppResult};
 use crate::learning;
 use crate::learning::quiz::QuizGenerationInput;
 use crate::learning::quiz::compose::compose;
+use crate::learning::tutorial::TutorialRequest;
+use crate::learning::tutorial::cost;
+use crate::learning::tutorial::operation::compose_operation;
+use crate::learning::tutorial::progress::TutorialUsage;
+use crate::learning::tutorial::question;
 use crate::state::{AppState, Workspace};
 
 pub const EVENT_AI: &str = "ai://event";
@@ -75,7 +80,17 @@ fn quiz_estimate(
     input: QuizGenerationInput,
 ) -> AppResult<AiSizeEstimate> {
     let (profile, walk) = learning::corrected_profile(ws, appdata, false)?;
-    let composed = compose(ws.guard.root(), &profile, &walk, names, input, None, None)?;
+    let tutorial = quiz_tutorial(ws, appdata, &input)?;
+    let composed = compose(
+        ws.guard.root(),
+        &profile,
+        &walk,
+        names,
+        input,
+        tutorial.as_ref(),
+        None,
+        None,
+    )?;
     // The prompt already holds the inlined documents: they are not counted twice.
     let mut size = estimate(composed.prompt_bytes, &[], 0);
     size.documents = u32::try_from(composed.inlined.len()).unwrap_or(u32::MAX);
@@ -91,8 +106,54 @@ fn quiz_estimate(
     Ok(size)
 }
 
-/// The approximate size of a message, from file metadata (nothing is read), or of a quiz
-/// generation (composed locally). Never calls the provider.
+/// The size of a tutorial operation (its first call's composed prompt and what it inlines), the
+/// calls it makes and its cost line. Composing is local.
+fn tutorial_estimate(
+    ws: &Workspace,
+    appdata: &AppData,
+    names: &[String],
+    request: &TutorialRequest,
+) -> AppResult<AiSizeEstimate> {
+    let action = match request {
+        TutorialRequest::Review { .. } => AiUserAction::TutorialReview,
+        TutorialRequest::Suggest { .. } => AiUserAction::SubjectSuggestion,
+        _ => AiUserAction::TutorialGeneration,
+    };
+    let op = compose_operation(ws, appdata, names, action, request, None)?;
+    let mut size = estimate(op.prompt_bytes, &[], 0);
+    size.documents = u32::try_from(op.inlined.len()).unwrap_or(u32::MAX);
+    size.inlined = op
+        .inlined
+        .into_iter()
+        .map(|i| AiInlinedDocument {
+            path: i.path,
+            bytes: i.bytes,
+            context_only: i.agent,
+        })
+        .collect();
+    size.calls = op.calls;
+    let usage = appdata
+        .folder_learning(&crate::learning::root_key(ws))?
+        .tutorial_usage;
+    size.cost_hint = Some(cost::hint(&usage, op.kind, op.length, op.calls));
+    Ok(size)
+}
+
+/// The tutorial of "Quiz me on this tutorial", when the quiz is about one.
+fn quiz_tutorial(
+    ws: &Workspace,
+    appdata: &AppData,
+    input: &QuizGenerationInput,
+) -> AppResult<Option<crate::learning::tutorial::schema::Tutorial>> {
+    input
+        .tutorial
+        .as_ref()
+        .map(|r| crate::commands::tutorials::read_tutorial(ws, appdata, r))
+        .transpose()
+}
+
+/// The approximate size of a message, from file metadata (nothing is read), or of a quiz or a
+/// tutorial operation (composed locally). Never calls the provider.
 #[tauri::command]
 pub async fn ai_estimate(app: AppHandle, input: AiEstimateInput) -> AppResult<AiSizeEstimate> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -101,6 +162,9 @@ pub async fn ai_estimate(app: AppHandle, input: AiEstimateInput) -> AppResult<Ai
         state.with_workspace(|ws| {
             if let Some(quiz) = input.quiz {
                 return quiz_estimate(ws, &state.appdata, &names, quiz);
+            }
+            if let Some(tutorial) = &input.tutorial {
+                return tutorial_estimate(ws, &state.appdata, &names, tutorial);
             }
             let documents = context::documents(
                 &ws.guard,
@@ -116,35 +180,146 @@ pub async fn ai_estimate(app: AppHandle, input: AiEstimateInput) -> AppResult<Ai
     .map_err(|e| AppError::Ai(format!("The estimate failed: {e}")))?
 }
 
+/// What a tutorial operation records when it completes (its cost line next time).
+pub struct UsageNote {
+    pub kind: &'static str,
+    pub length: crate::learning::tutorial::Length,
+    pub calls: u32,
+}
+
 /// What `ai_start` sends for `action`: a chat message with its context documents read through
-/// the root guard, or a quiz composed here, read-only, with its validator (the frontend's
-/// prompt, context, capture, images, policy and schema are ignored for a quiz: the frontend
-/// never writes a quiz prompt). Spends nothing.
+/// the root guard, or a quiz or a tutorial operation composed here, read-only, with its
+/// validator or its stages (the frontend's prompt, context, capture, images, policy and schema
+/// are ignored for them: the frontend never writes a learning prompt). Spends nothing.
 pub fn operation_request(
     ws: &Workspace,
     appdata: &AppData,
     names: &[String],
     action: AiUserAction,
     request: AiStartRequest,
-) -> AppResult<(AiRequest, Option<Box<dyn OutputValidator>>)> {
+) -> AppResult<(AiRequest, Option<RunPlan>)> {
     match action {
         AiUserAction::QuizGeneration => {
             let input = request.quiz.ok_or_else(|| {
                 AppError::Ai("A quiz generation needs the quiz's options.".to_owned())
             })?;
             let (profile, walk) = learning::corrected_profile(ws, appdata, false)?;
+            let tutorial = quiz_tutorial(ws, appdata, &input)?;
             let composed = compose(
                 ws.guard.root(),
                 &profile,
                 &walk,
                 names,
                 input,
+                tutorial.as_ref(),
                 request.model,
                 request.resume_id,
             )?;
-            Ok((composed.request, Some(Box::new(composed.validator))))
+            Ok((
+                composed.request,
+                Some(RunPlan::Validated(Box::new(composed.validator))),
+            ))
         }
-        _ => Ok((context::request_from(&ws.guard, names, request)?, None)),
+        AiUserAction::TutorialGeneration
+        | AiUserAction::TutorialReview
+        | AiUserAction::SubjectSuggestion => {
+            let (request, plan, _) = tutorial_request(ws, appdata, names, action, request)?;
+            Ok((request, Some(plan)))
+        }
+        _ => {
+            let mut request = request;
+            if let Some(step) = request.tutorial_step.take() {
+                // A question about a step of a tutorial: the step and its cited files.
+                let t = crate::commands::tutorials::read_tutorial(ws, appdata, &step.tutorial)?;
+                let (prompt, paths) = question::step_context(&t, &step, &request.prompt)?;
+                request.prompt = prompt;
+                for p in paths {
+                    if !request.context_paths.contains(&p)
+                        && crate::learning::corpus::inside(ws.guard.root(), &p).is_some()
+                    {
+                        request.context_paths.push(p);
+                    }
+                }
+            }
+            Ok((context::request_from(&ws.guard, names, request)?, None))
+        }
+    }
+}
+
+/// A tutorial operation for `ai_start`, with what to record when it completes.
+fn tutorial_request(
+    ws: &Workspace,
+    appdata: &AppData,
+    names: &[String],
+    action: AiUserAction,
+    request: AiStartRequest,
+) -> AppResult<(AiRequest, RunPlan, UsageNote)> {
+    let tutorial = request.tutorial.ok_or_else(|| {
+        AppError::Ai("A tutorial operation needs what the user chose.".to_owned())
+    })?;
+    let op = compose_operation(ws, appdata, names, action, &tutorial, request.model)?;
+    let note = UsageNote {
+        kind: op.kind,
+        length: op.length,
+        calls: op.calls,
+    };
+    Ok((op.request, op.plan, note))
+}
+
+/// Sums the usage of a tutorial operation and records it in app data when it completes.
+struct UsageRecorder {
+    note: UsageNote,
+    model: String,
+    input_tokens: u64,
+    output_tokens: u64,
+    cost_usd: Option<f64>,
+}
+
+impl UsageRecorder {
+    fn see(&mut self, event: &crate::ai::types::AiEvent, app: &AppHandle) {
+        use crate::ai::types::{AiEvent, AiOutcome};
+        match event {
+            AiEvent::Session { model, .. } if !model.is_empty() => {
+                model.clone_into(&mut self.model)
+            }
+            AiEvent::Usage {
+                input_tokens,
+                output_tokens,
+                cost_usd,
+                ..
+            } => {
+                self.input_tokens += input_tokens;
+                self.output_tokens += output_tokens;
+                if let Some(c) = cost_usd {
+                    self.cost_usd = Some(self.cost_usd.unwrap_or(0.0) + c);
+                }
+            }
+            AiEvent::Done {
+                outcome: AiOutcome::Completed,
+                ..
+            } => {
+                let state = app.state::<AppState>();
+                let usage = TutorialUsage {
+                    kind: self.note.kind.to_owned(),
+                    length: self.note.length,
+                    model: self.model.clone(),
+                    input_tokens: self.input_tokens,
+                    output_tokens: self.output_tokens,
+                    cost_usd: self.cost_usd,
+                    calls: self.note.calls,
+                    at_ms: crate::appdata::now_ms(),
+                };
+                let recorded = state.with_workspace(|ws| {
+                    state
+                        .appdata
+                        .record_tutorial_usage(&crate::learning::root_key(ws), usage)
+                });
+                if let Err(e) = recorded {
+                    log::warn!("cannot record the usage of a tutorial operation: {e}");
+                }
+            }
+            _ => {}
+        }
     }
 }
 
@@ -160,12 +335,29 @@ pub async fn ai_start(
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
         let names = state.ai.capabilities().context_file_names;
-        let (root, (request, validator)) = state.with_workspace(|ws| {
-            Ok((
-                ws.guard.root().to_path_buf(),
-                operation_request(ws, &state.appdata, &names, action, request)?,
-            ))
+        let learning_op = matches!(
+            action,
+            AiUserAction::TutorialGeneration
+                | AiUserAction::TutorialReview
+                | AiUserAction::SubjectSuggestion
+        );
+        let (root, request, plan, note) = state.with_workspace(|ws| {
+            let root = ws.guard.root().to_path_buf();
+            if learning_op {
+                let (request, plan, note) =
+                    tutorial_request(ws, &state.appdata, &names, action, request)?;
+                return Ok((root, request, Some(plan), Some(note)));
+            }
+            let (request, plan) = operation_request(ws, &state.appdata, &names, action, request)?;
+            Ok((root, request, plan, None))
         })?;
+        let mut recorder = note.map(|note| UsageRecorder {
+            model: request.model.clone().unwrap_or_default(),
+            note,
+            input_tokens: 0,
+            output_tokens: 0,
+            cost_usd: None,
+        });
         // The permission settings of this moment: a later change never alters this operation.
         let permissions = state.appdata.settings()?.ai.permissions;
         let emitter = app.clone();
@@ -174,8 +366,11 @@ pub async fn ai_start(
             request,
             &root,
             permissions,
-            validator,
+            plan,
             Box::new(move |operation_id, event| {
+                if let Some(r) = recorder.as_mut() {
+                    r.see(&event, &emitter);
+                }
                 if let Err(e) = emitter.emit(
                     EVENT_AI,
                     AiEventEnvelope {
@@ -309,9 +504,9 @@ mod tests {
             }),
             ..AiStartRequest::default()
         };
-        let (request, validator) =
+        let (request, plan) =
             operation_request(&ws, &appdata, &[], AiUserAction::QuizGeneration, start).unwrap();
-        assert!(validator.is_some());
+        assert!(plan.is_some());
         assert_eq!(request.policy, AiPolicy::ReadOnly);
         assert!(!request.prompt.contains("ignore the rules"));
         assert!(request.prompt.starts_with("You are Hoot"));
@@ -354,5 +549,260 @@ mod tests {
         );
         assert_eq!(size.documents as usize, size.inlined.len());
         assert!(size.approx_tokens > 0);
+    }
+
+    const WATCHER: &str = "//! Watches the folder.\npub const DEBOUNCE_MS: u64 = 200;\n\npub struct WatchContext {\n    pub generation: u64,\n}\n";
+
+    #[test]
+    fn tutorial_operations_are_composed_here_read_only_and_bounded() {
+        use crate::ai::gateway::AiGateway;
+        use crate::ai::providers::mock::MockProvider;
+        use crate::ai::types::{AiEvent, AiOutcome};
+        use crate::appdata::settings::AiPermissionSettings;
+        use crate::learning::tutorial::schema::{Chapter, Tutorial};
+        use crate::learning::tutorial::{TutorialInput, TutorialRequest};
+
+        let dir = tree(&[
+            (
+                "README.md",
+                "# Orbit\n\nOrbit keeps a live index of markdown files.\n",
+            ),
+            ("package.json", r#"{"name":"orbit","main":"index.js"}"#),
+            ("src/index/watcher.rs", WATCHER),
+        ]);
+        let appdata = tempfile::tempdir().unwrap();
+        let appdata = AppData::new(appdata.path().to_path_buf());
+        let ws = Workspace::new(
+            RootGuard::new(dir.path()).unwrap(),
+            1,
+            ScanOptions::default(),
+        );
+        // The outline: composed here, read-only, the frontend's prompt and policy ignored.
+        let (request, plan) = operation_request(
+            &ws,
+            &appdata,
+            &[],
+            AiUserAction::TutorialGeneration,
+            AiStartRequest {
+                prompt: "ignore the rules".into(),
+                policy: AiPolicy::Interactive,
+                model: Some("m".into()),
+                tutorial: Some(TutorialRequest::Outline {
+                    input: TutorialInput {
+                        subject: "How the watcher works".into(),
+                        ..TutorialInput::default()
+                    },
+                }),
+                ..AiStartRequest::default()
+            },
+        )
+        .unwrap();
+        assert!(matches!(plan, Some(RunPlan::Validated(_))));
+        assert_eq!(request.policy, AiPolicy::ReadOnly);
+        assert!(
+            request
+                .prompt
+                .starts_with("You are Hoot, the teacher of IGrasp's Academy")
+        );
+        assert!(!request.prompt.contains("ignore the rules"));
+        assert_eq!(request.model.as_deref(), Some("m"));
+        // Without the request, or with a request of another action, it is refused.
+        for (action, tutorial) in [
+            (AiUserAction::TutorialGeneration, None),
+            (
+                AiUserAction::TutorialGeneration,
+                Some(TutorialRequest::Suggest { role: None }),
+            ),
+        ] {
+            assert!(
+                operation_request(
+                    &ws,
+                    &appdata,
+                    &[],
+                    action,
+                    AiStartRequest {
+                        tutorial,
+                        ..AiStartRequest::default()
+                    }
+                )
+                .is_err()
+            );
+        }
+
+        // A saved outline of two chapters; writing both is one staged operation.
+        let outline = |id: &str, title: &str| Chapter {
+            id: id.into(),
+            title: title.into(),
+            goal: format!("Explain {title} in src/index/watcher.rs."),
+            minutes: 4,
+            hoot_intro: None,
+            steps: Vec::new(),
+            questions: Vec::new(),
+        };
+        let t = Tutorial {
+            id: "orbit-watcher".into(),
+            title: "Orbit's watcher".into(),
+            subject: "How the watcher works".into(),
+            length: crate::learning::tutorial::Length::Quick,
+            chapters: vec![outline("c1", "The debounce"), outline("c2", "The context")],
+            ..Tutorial::default()
+        };
+        appdata
+            .save_private_tutorial(&crate::learning::root_key(&ws), t)
+            .unwrap();
+        let chapters = |indices: Vec<u32>| AiStartRequest {
+            tutorial: Some(TutorialRequest::Chapters {
+                id: "orbit-watcher".into(),
+                indices,
+            }),
+            ..AiStartRequest::default()
+        };
+        for bad in [vec![], vec![0, 0], vec![2], (0..9).collect()] {
+            assert!(
+                operation_request(
+                    &ws,
+                    &appdata,
+                    &[],
+                    AiUserAction::TutorialGeneration,
+                    chapters(bad.clone())
+                )
+                .is_err(),
+                "{bad:?}"
+            );
+        }
+        let size = tutorial_estimate(
+            &ws,
+            &appdata,
+            &[],
+            &TutorialRequest::Chapters {
+                id: "orbit-watcher".into(),
+                indices: vec![0, 1],
+            },
+        )
+        .unwrap();
+        assert_eq!(size.calls, 2);
+        assert!(size.cost_hint.unwrap().contains("for 2"));
+        let (request, plan) = operation_request(
+            &ws,
+            &appdata,
+            &[],
+            AiUserAction::TutorialGeneration,
+            chapters(vec![1, 0]),
+        )
+        .unwrap();
+        assert_eq!(request.policy, AiPolicy::ReadOnly);
+        assert!(matches!(plan, Some(RunPlan::Staged(_))));
+
+        // Run it: two stages, two accepted chapters, one operation, every attempt read-only.
+        let mock = MockProvider::default();
+        let steps = crate::learning::tutorial::schema::tests::every_step();
+        for id in ["c2", "c1"] {
+            mock.outputs.lock().unwrap().push_back(serde_json::json!({
+                "id": id, "title": "Orbit's watcher", "hootIntro": "Follow a change in Orbit.",
+                "steps": steps
+            }));
+        }
+        let gateway = AiGateway::new(Box::new(mock.clone()));
+        let (tx, rx) = std::sync::mpsc::channel();
+        gateway
+            .start(
+                AiUserAction::TutorialGeneration,
+                request,
+                dir.path(),
+                AiPermissionSettings::default(),
+                plan,
+                Box::new(move |_, e| {
+                    let _ = tx.send(e);
+                }),
+            )
+            .unwrap();
+        let mut events = Vec::new();
+        while let Ok(e) = rx.recv_timeout(std::time::Duration::from_secs(5)) {
+            let done = matches!(e, AiEvent::Done { .. });
+            events.push(e);
+            if done {
+                break;
+            }
+        }
+        let stages: Vec<String> = events
+            .iter()
+            .filter_map(|e| match e {
+                AiEvent::Stage { label, .. } => Some(label.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(stages, vec!["The context", "The debounce"]);
+        let outputs = events
+            .iter()
+            .filter(|e| matches!(e, AiEvent::StructuredOutput { .. }))
+            .count();
+        assert_eq!(outputs, 2);
+        assert!(matches!(
+            events.last(),
+            Some(AiEvent::Done {
+                outcome: AiOutcome::Completed,
+                ..
+            })
+        ));
+        assert_eq!(gateway.starts(), 1);
+        let requests = mock.requests.lock().unwrap().clone();
+        assert_eq!(requests.len(), 2);
+        assert!(requests.iter().all(|r| r.policy == AiPolicy::ReadOnly));
+        // The second chapter's prompt knows the first one's recap.
+        assert!(requests[1].prompt.contains("Chapters already written"));
+        assert!(
+            requests[0]
+                .prompt
+                .contains("chapter 2 of 2: \"The context\"")
+        );
+    }
+
+    #[test]
+    fn a_question_about_a_step_carries_the_step_and_its_cited_files() {
+        use crate::learning::tutorial::TutorialRef;
+        use crate::learning::tutorial::question::TutorialStepContext;
+
+        let dir = tree(&[("src/index/watcher.rs", WATCHER)]);
+        let appdata = tempfile::tempdir().unwrap();
+        let appdata = AppData::new(appdata.path().to_path_buf());
+        let ws = Workspace::new(
+            RootGuard::new(dir.path()).unwrap(),
+            1,
+            ScanOptions::default(),
+        );
+        let t = crate::commands::tutorials::prepared(
+            ws.guard.root(),
+            "mock",
+            crate::learning::tutorial::markdown::tests::sample(),
+        );
+        appdata
+            .save_private_tutorial(&crate::learning::root_key(&ws), t.clone())
+            .unwrap();
+        let start = AiStartRequest {
+            prompt: "Why does it wait?".into(),
+            tutorial_step: Some(TutorialStepContext {
+                tutorial: TutorialRef::Private { id: t.id.clone() },
+                chapter: 0,
+                step: 0,
+                quote: Some("waits DEBOUNCE_MS".into()),
+            }),
+            ..AiStartRequest::default()
+        };
+        let (request, plan) =
+            operation_request(&ws, &appdata, &[], AiUserAction::ChatMessage, start).unwrap();
+        assert!(plan.is_none());
+        assert!(request.prompt.contains(&t.title));
+        assert!(request.prompt.contains("> waits DEBOUNCE_MS"));
+        assert!(
+            request
+                .prompt
+                .ends_with("Their question: Why does it wait?")
+        );
+        assert!(
+            request
+                .context
+                .iter()
+                .any(|d| d.path == "src/index/watcher.rs")
+        );
     }
 }

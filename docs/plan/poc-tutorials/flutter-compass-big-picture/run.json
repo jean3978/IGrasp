@@ -1,0 +1,67 @@
+{
+  "chapter": {
+    "attemptReasons": [
+      "1 rejected: 1 had an unusable quiz question"
+    ],
+    "attempts": 2,
+    "costUsd": 0.23845369999999996,
+    "error": null,
+    "inputTokens": 229559,
+    "outcome": "Completed",
+    "outputTokens": 5990,
+    "promptBytes": 59815,
+    "providerDurationMs": 44643,
+    "rejectedCount": 1,
+    "sessionCostUsd": 0.23845369999999996,
+    "toolUses": 7,
+    "tools": {
+      "Glob": 1,
+      "Read": 6
+    },
+    "wallMs": 47433
+  },
+  "chapterIndex": 1,
+  "chapterSteps": [
+    "explain",
+    "match",
+    "codeTour",
+    "explain",
+    "spotIt",
+    "quickCheck",
+    "recap"
+  ],
+  "freshPrompt": true,
+  "input": {
+    "domainGap": null,
+    "familiarity": "newHere",
+    "length": "standard",
+    "role": null,
+    "subject": "The big picture: how the app is layered and how a screen gets its data"
+  },
+  "insufficientMaterial": false,
+  "model": "sonnet",
+  "outline": {
+    "attemptReasons": [],
+    "attempts": 1,
+    "costUsd": 0.2786818,
+    "error": null,
+    "inputTokens": 270765,
+    "outcome": "Completed",
+    "outputTokens": 3601,
+    "promptBytes": 57293,
+    "providerDurationMs": 37894,
+    "rejectedCount": 0,
+    "sessionCostUsd": 0.2786818,
+    "toolUses": 19,
+    "tools": {
+      "Glob": 3,
+      "Read": 16
+    },
+    "wallMs": 39267
+  },
+  "outlineChapters": 4,
+  "profile": "compass_app: a Flutter mobile app in Dart (Android), tested with flutter test.",
+  "root": "<samples>/flutter/compass_app",
+  "roundTripLossless": true,
+  "suggestedSubjects": []
+}

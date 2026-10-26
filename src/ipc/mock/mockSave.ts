@@ -5,7 +5,7 @@
 import type { QuizCategory, QuizSaveKind } from '../types';
 
 const categoryOf = (v: string | null): QuizCategory | null =>
-  v === 'global' || v === 'feature' || v === 'code' ? v : null;
+  v === 'global' || v === 'feature' || v === 'code' || v === 'tutorial' ? v : null;
 
 export interface SavedMarkdown {
   kind: QuizSaveKind;

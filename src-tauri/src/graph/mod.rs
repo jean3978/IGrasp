@@ -23,6 +23,7 @@ use crate::commands::files::{MAX_MARKDOWN_BYTES, decode_text};
 use crate::index::SharedIndex;
 use crate::index::model::{Changes, Index};
 use crate::learning::quiz::file::QuizFileInfo;
+use crate::learning::tutorial::markdown::TutorialFileInfo;
 use crate::paths::RootGuard;
 use links::{LinkStatus, LinkTarget, TargetLookup};
 use parse::{Heading, ParsedDoc};
@@ -57,6 +58,7 @@ pub struct DocMeta {
     pub anchors: BTreeSet<String>,
     pub links: Vec<LinkInfo>,
     pub quiz: Option<QuizFileInfo>,
+    pub tutorial: Option<TutorialFileInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -311,6 +313,7 @@ impl Graph {
                 anchors: parsed.anchors,
                 links,
                 quiz: parsed.quiz,
+                tutorial: parsed.tutorial,
             },
         );
         self.register(rel);

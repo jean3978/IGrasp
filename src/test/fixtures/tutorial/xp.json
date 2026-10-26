@@ -1,0 +1,28 @@
+{
+  "description": "The XP rules of the Academy (plan §4.10), pinned: a change here is a design change.",
+  "read": {
+    "explain": 5,
+    "conceptBridge": 5,
+    "diagram": 5,
+    "recap": 5,
+    "codeTour": 10,
+    "tryIt": 10
+  },
+  "interactive": { "firstTry": 20, "helped": 10, "explained": 5 },
+  "chapter": 25,
+  "streak": { "from": 3, "bonus": 1.5 },
+  "sequence": {
+    "comment": "A chapter of explain, quickCheck (right first try), spotIt (right first try), putInOrder (right first try, the third in a row), match (wrong twice), recap.",
+    "outcomes": [
+      { "kind": "read" },
+      { "kind": "answered", "right": true, "tries": 1, "usedHint": false },
+      { "kind": "answered", "right": true, "tries": 1, "usedHint": false },
+      { "kind": "answered", "right": true, "tries": 1, "usedHint": false },
+      { "kind": "answered", "right": false, "tries": 2, "usedHint": true },
+      { "kind": "read" }
+    ],
+    "gained": [5, 20, 20, 30, 5, 30],
+    "streaks": [0, 1, 2, 3, 0, 0],
+    "xp": 110
+  }
+}

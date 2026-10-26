@@ -8,6 +8,7 @@ import { create } from 'zustand';
 import {
   applyEvent,
   captureItem,
+  stepItem,
   decisionItem,
   finishStreaming,
   fromStoredItems,
@@ -124,6 +125,10 @@ export interface AiConversationState {
   id: string | null;
   createdMs: number;
   items: ChatItem[];
+  /** A question about a step was saved on it (its item says so). */
+  markStepSaved: (itemId: string) => void;
+  /** The user declined (or, with false, reconsidered) keeping a question on its step. */
+  setStepDeclined: (itemId: string, declined: boolean) => void;
   /** What continues the conversation with the provider. */
   resumeId: string | null;
   /** The model the provider reported running this conversation with; empty until known. */
@@ -317,8 +322,25 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
     const { model } = useAiProvider.getState();
     // The selection the message is about shows in the transcript right after the message.
     const attached = useAiPanel.getState().attachment;
-    if (attached && showUserItem) {
-      set((s) => ({ items: [...s.items, captureItem(attached.capture)] }));
+    if (attached?.capture && showUserItem) {
+      const { capture } = attached;
+      set((s) => ({ items: [...s.items, captureItem(capture)] }));
+    }
+    if (attached?.step && showUserItem) {
+      const { step } = attached;
+      set((s) => ({
+        items: [
+          ...s.items,
+          stepItem({
+            tutorial: step.tutorial,
+            chapter: step.chapter,
+            step: step.step,
+            label: step.label,
+            quote: step.quote,
+            question: (label ?? prompt).trim(),
+          }),
+        ],
+      }));
     }
     try {
       // What the context bar lists for the current file, minus what the user dropped (listed
@@ -337,7 +359,17 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
         prompt,
         contextPaths,
         images: [],
-        ...(attachment ? { capture: attachment.capture } : {}),
+        ...(attachment?.capture ? { capture: attachment.capture } : {}),
+        ...(attachment?.step
+          ? {
+              tutorialStep: {
+                tutorial: attachment.step.tutorial,
+                chapter: attachment.step.chapter,
+                step: attachment.step.step,
+                ...(attachment.step.quote === null ? {} : { quote: attachment.step.quote }),
+              },
+            }
+          : {}),
         policy: 'interactive',
         ...(model ? { model } : {}),
         ...(resumeId ? { resumeId } : {}),
@@ -443,6 +475,18 @@ export const useAiConversation = create<AiConversationState>()((set, get) => {
 
   return {
     ...EMPTY,
+    markStepSaved(itemId) {
+      set((st) => ({
+        items: st.items.map((i) =>
+          i.id === itemId && i.kind === 'step' ? { ...i, saved: true } : i,
+        ),
+      }));
+    },
+    setStepDeclined(itemId, declined) {
+      set((st) => ({
+        items: st.items.map((i) => (i.id === itemId && i.kind === 'step' ? { ...i, declined } : i)),
+      }));
+    },
     history: null,
 
     async send(text, label) {

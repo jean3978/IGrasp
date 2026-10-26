@@ -27,6 +27,30 @@ import {
   scriptedAnswer,
 } from './mockQuiz';
 import type { MockQuizComposed, MockQuizScript } from './mockQuiz';
+import { MockReviewValidator, composeMockReview, scriptedReview } from './mockTutorialReview';
+import { stepContext } from './mockTutorialQuestion';
+import type { MockReviewComposed } from './mockTutorialReview';
+import {
+  MOCK_TUTORIAL_RULES_BYTES,
+  MOCK_TUTORIAL_SCHEMA,
+  MockChapterValidator,
+  MockOutlineValidator,
+  MockSuggestValidator,
+  composeMockChapters,
+  composeMockSuggest,
+  scriptedSuggest,
+  composeMockOutline,
+  costHint,
+  scriptedChapter,
+  scriptedOutline,
+} from './mockTutorial';
+import type {
+  MockChapterStage,
+  MockOutlineComposed,
+  MockSuggestComposed,
+  MockTutorialScript,
+  MockVerdict,
+} from './mockTutorial';
 import type {
   AiCapabilities,
   AiEvent,
@@ -56,6 +80,12 @@ import type {
   QuizGenerationInput,
   Subject,
   Settings,
+  ChapterResult,
+  Length,
+  Tutorial,
+  TutorialRequest,
+  TutorialSubject,
+  TutorialUsage,
 } from '../types';
 
 export interface MockAiState {
@@ -73,6 +103,8 @@ export interface MockAiState {
   conversations: Map<string, Conversation[]>;
   /** What the mock AI answers to a quiz generation (`mockQuiz.ts`). */
   quizScript: MockQuizScript;
+  /** What the mock AI answers to a tutorial outline or chapter (`mockTutorial.ts`). */
+  tutorialScript: MockTutorialScript;
 }
 
 export const DEFAULT_MOCK_AI: MockAiState = {
@@ -84,6 +116,7 @@ export const DEFAULT_MOCK_AI: MockAiState = {
   statusChecks: 0,
   conversations: new Map(),
   quizScript: 'valid',
+  tutorialScript: 'valid',
 };
 
 export const MOCK_PROVIDER_ID = 'mock';
@@ -149,6 +182,13 @@ interface Deps {
   /** The project profile and the subjects of the open folder (`mockProfile`, `mockSubjects`). */
   profile: () => ProjectProfile;
   subjects: () => Subject[];
+  /** A private tutorial of the open folder, and the Academy's cards (`mockTutorialStore`). */
+  tutorial: (id: string) => Tutorial | undefined;
+  /** A shared tutorial of the open folder, by its README (undefined when it is not one). */
+  sharedTutorial: (relPath: string) => Tutorial | undefined;
+  tutorialCards: () => TutorialSubject[];
+  tutorialUsage: () => TutorialUsage[];
+  recordUsage: (usage: TutorialUsage) => void;
 }
 
 /** Like the Rust gateway: a markdown edit is reviewed only with its edit, inside the folder. */
@@ -317,6 +357,11 @@ export function createMockAi({
   files,
   profile,
   subjects,
+  tutorial,
+  sharedTutorial,
+  tutorialCards,
+  tutorialUsage,
+  recordUsage,
 }: Deps) {
   let nextId = 0;
   let sessions = 0;
@@ -643,6 +688,21 @@ export function createMockAi({
 
   /** Composes a quiz generation (throws a `BackendError` for a subject no longer proposed). */
   const compose = (input: QuizGenerationInput, resumeId: string | undefined): MockQuizComposed => {
+    let about: Tutorial | null = null;
+    if (input.tutorial) {
+      const ref = input.tutorial;
+      about = ref.type === 'private' ? (tutorial(ref.id) ?? null) : null;
+      if (!about)
+        throw new BackendError(
+          'TutorialNotFound',
+          `This tutorial no longer exists: ${ref.type === 'private' ? ref.id : ref.relPath}`,
+        );
+      if (!about.chapters.some((c) => c.steps.length > 0))
+        throw new BackendError(
+          'ChapterNotWritten',
+          `This chapter is not written yet: ${about.title}`,
+        );
+    }
     try {
       return composeMockQuiz(
         {
@@ -653,6 +713,7 @@ export function createMockAi({
         },
         input,
         resumeId,
+        about,
       );
     } catch (err) {
       throw new BackendError('Ai', err instanceof Error ? err.message : String(err));
@@ -750,6 +811,284 @@ export function createMockAi({
     return [session, ...attemptSteps()];
   };
 
+  /** A chat message about a step: the step in the prompt, its cited files in the context. */
+  const withStep = (start: AiStartRequest): AiStartRequest => {
+    const { tutorialStep, ...rest } = start;
+    if (!tutorialStep) return start;
+    const ref = tutorialStep.tutorial;
+    const t = ref.type === 'private' ? tutorial(ref.id) : sharedTutorial(ref.relPath);
+    if (!t)
+      throw new BackendError(
+        'TutorialNotFound',
+        `This tutorial no longer exists: ${ref.type === 'private' ? ref.id : ref.relPath}`,
+      );
+    const { prompt, paths } = stepContext(t, tutorialStep, start.prompt);
+    const contextPaths = [...start.contextPaths];
+    for (const p of paths) if (!contextPaths.includes(p) && files().has(p)) contextPaths.push(p);
+    return { ...rest, prompt, contextPaths };
+  };
+
+  /** A composed tutorial operation, like Rust's `compose_operation`. */
+  type TutorialOp =
+    | { kind: 'outline'; length: Length; calls: 1; outline: MockOutlineComposed }
+    | { kind: 'suggest'; length: Length; calls: 1; suggest: MockSuggestComposed }
+    | { kind: 'review'; length: Length; calls: 1; review: MockReviewComposed }
+    | {
+        kind: 'chapters';
+        length: Length;
+        calls: number;
+        stages: (accepted: ChapterResult[]) => MockChapterStage[];
+      };
+
+  const composeTutorial = (action: AiUserAction, request: TutorialRequest): TutorialOp => {
+    const deps = { files: files(), profile: profile(), agentNames: MOCK_CONTEXT_FILE_NAMES };
+    if (action === 'subjectSuggestion') {
+      if (request.kind !== 'suggest')
+        throw new BackendError('Ai', 'This tutorial request does not match its action.');
+      return {
+        kind: 'suggest',
+        length: 'standard',
+        calls: 1,
+        suggest: composeMockSuggest(deps, tutorialCards(), request.role),
+      };
+    }
+    if (action === 'tutorialReview') {
+      if (request.kind !== 'review')
+        throw new BackendError('Ai', 'This tutorial request does not match its action.');
+      const ref = request.tutorial;
+      const t = ref.type === 'private' ? tutorial(ref.id) : sharedTutorial(ref.relPath);
+      if (!t)
+        throw new BackendError(
+          'TutorialNotFound',
+          `This tutorial no longer exists: ${ref.type === 'private' ? ref.id : ref.relPath}`,
+        );
+      if (!t.chapters.some((c) => c.steps.length > 0))
+        throw new BackendError(
+          'ChapterNotWritten',
+          'This chapter is not written yet: this tutorial has no written chapter to check',
+        );
+      return { kind: 'review', length: t.length, calls: 1, review: composeMockReview(deps, t) };
+    }
+    if (action !== 'tutorialGeneration')
+      throw new BackendError('Ai', 'This tutorial operation is not available yet.');
+    switch (request.kind) {
+      case 'outline': {
+        const card =
+          request.input.subjectId === null
+            ? null
+            : (tutorialCards().find((c) => c.id === request.input.subjectId) ?? null);
+        return {
+          kind: 'outline',
+          length: request.input.length,
+          calls: 1,
+          outline: composeMockOutline(deps, request.input, card),
+        };
+      }
+      case 'chapters':
+      case 'chapter': {
+        const t = tutorial(request.id);
+        if (!t)
+          throw new BackendError(
+            'TutorialNotFound',
+            `This tutorial no longer exists: ${request.id}`,
+          );
+        const c =
+          request.kind === 'chapters'
+            ? composeMockChapters(deps, t, request.indices, null)
+            : composeMockChapters(deps, t, [request.index], request.goal);
+        return { kind: 'chapters', length: t.length, calls: c.indices.length, stages: c.stages };
+      }
+      default:
+        throw new BackendError('Ai', 'This tutorial request does not match its action.');
+    }
+  };
+
+  /** A read action of the mock model while it plans (shown in the activity line). */
+  const readStep = (path: string, delay: number | undefined): Step => {
+    const step: Step = (op) => {
+      const toolId = uid('tool');
+      send(op, {
+        type: 'toolUse',
+        toolId,
+        tool: 'Read',
+        summary: `Read ${path}`,
+        input: { file_path: `/mock/${path}` },
+      });
+      send(op, { type: 'toolResult', toolId, content: 'ok', isError: false });
+    };
+    return delay === undefined ? step : after(delay, step);
+  };
+
+  /**
+   * One validated run of the mock (an outline, or one stage of a staged run): the attempts of the
+   * script, each checked by `check`, at most `1 + MOCK_MAX_RETRIES`, each retry announced; then
+   * `onAccept` with the accepted value, or the failure.
+   */
+  const validatedSteps = (
+    reads: string[],
+    answer: (attempt: number) => unknown,
+    validator: { check: (v: unknown) => MockVerdict; onExhausted: () => MockVerdict },
+    onAccept: (op: ScriptedOperation, value: unknown) => void,
+    usageFor: (attempt: number) => { input: number; output: number; cost: number },
+  ): Step[] => {
+    const kind = ai().tutorialScript;
+    const delay = kind === 'slow' ? MOCK_QUIZ_SLOW_STEP_MS : undefined;
+    let attempt = 0;
+    const attemptSteps = (): Step[] => {
+      attempt += 1;
+      const n = attempt;
+      const steps: Step[] = n === 1 ? reads.slice(0, 4).map((r) => readStep(r, delay)) : [];
+      steps.push((op) => {
+        const output = answer(n);
+        let value: unknown = output;
+        if (kind === 'textOnly') {
+          const text = `Here it is:\n\`\`\`json\n${JSON.stringify(output)}\n\`\`\``;
+          send(op, { type: 'text', text });
+          value = jsonOfText(text);
+        }
+        const u = usageFor(n);
+        send(op, {
+          type: 'usage',
+          inputTokens: u.input,
+          outputTokens: u.output,
+          costUsd: u.cost,
+          durationMs: 9000,
+        });
+        let verdict = validator.check(value);
+        if (verdict.type === 'retry' && n >= 1 + MOCK_MAX_RETRIES)
+          verdict = validator.onExhausted();
+        if (verdict.type === 'accept') {
+          send(op, { type: 'structuredOutput', value: verdict.value as JsonValue });
+          onAccept(op, verdict.value);
+        } else if (verdict.type === 'fail') {
+          send(op, { type: 'error', message: verdict.message });
+          end(op, 'Failed', null);
+        } else {
+          send(op, {
+            type: 'attempt',
+            number: n + 1,
+            of: 1 + MOCK_MAX_RETRIES,
+            reason: verdict.reason,
+          });
+          op.extend(attemptSteps());
+        }
+      });
+      return steps;
+    };
+    return attemptSteps();
+  };
+
+  /** A tutorial operation of the mock: one validated run, or a staged run of chapters. */
+  const tutorialScript = (request: AiRequest, op: TutorialOp): Step[] => {
+    const session: Step = (o) => {
+      send(o, { type: 'session', resumeId: o.resumeId, model: request.model ?? 'mock-default' });
+    };
+    if (!ai().loggedIn) {
+      return [
+        session,
+        (o) => {
+          send(o, { type: 'error', message: MOCK_LATE_LOGIN_ERROR });
+        },
+        finish(true),
+      ];
+    }
+    const script = ai().tutorialScript;
+    const usage = { input: 0, output: 0, cost: 0 };
+    const usageFor = (n: number) => {
+      const u =
+        n === 1
+          ? { input: 30000, output: 4000, cost: 0.25 }
+          : { input: 8000, output: 3000, cost: 0.08 };
+      usage.input += u.input;
+      usage.output += u.output;
+      usage.cost += u.cost;
+      return u;
+    };
+    const completed = (o: ScriptedOperation) => {
+      recordUsage({
+        kind: op.kind,
+        length: op.length,
+        model: request.model ?? 'mock-default',
+        inputTokens: usage.input,
+        outputTokens: usage.output,
+        costUsd: Math.round(usage.cost * 100) / 100,
+        calls: op.calls,
+        atMs: Date.now(),
+      });
+      end(o, 'Completed', null);
+    };
+    if (op.kind === 'suggest') {
+      const composed = op.suggest;
+      return [
+        session,
+        ...validatedSteps(
+          composed.inlined.filter((d) => !d.contextOnly).map((d) => d.path),
+          (n) => scriptedSuggest(script, n),
+          new MockSuggestValidator(composed),
+          (o) => {
+            completed(o);
+          },
+          usageFor,
+        ),
+      ];
+    }
+    if (op.kind === 'review') {
+      const composed = op.review;
+      return [
+        session,
+        ...validatedSteps(
+          composed.tutorial.sources.map((s) => s.path),
+          (n) => scriptedReview(script, composed, n),
+          new MockReviewValidator(composed),
+          (o) => {
+            completed(o);
+          },
+          usageFor,
+        ),
+      ];
+    }
+    if (op.kind === 'outline') {
+      const composed = op.outline;
+      const validator = new MockOutlineValidator(composed);
+      return [
+        session,
+        ...validatedSteps(
+          composed.inlined.filter((d) => !d.contextOnly).map((d) => d.path),
+          (n) => scriptedOutline(script, composed, n),
+          validator,
+          (o) => {
+            completed(o);
+          },
+          usageFor,
+        ),
+      ];
+    }
+    // A staged run: one validated run per chapter, the next one built from the accepted ones.
+    const accepted: ChapterResult[] = [];
+    const stageSteps = (i: number): Step[] => {
+      const stages = op.stages(accepted);
+      const stage = stages[i];
+      if (!stage) return [];
+      return [
+        (o) => {
+          send(o, { type: 'stage', number: i + 1, of: stages.length, label: stage.chapter.title });
+        },
+        ...validatedSteps(
+          stage.inlined.filter((d) => !d.contextOnly).map((d) => d.path),
+          (n) => scriptedChapter(script, stage, i + 1, n),
+          new MockChapterValidator(stage),
+          (o, value) => {
+            accepted.push(value as ChapterResult);
+            if (i + 1 < stages.length) o.extend(stageSteps(i + 1));
+            else completed(o);
+          },
+          usageFor,
+        ),
+      ];
+    };
+    return [session, ...stageSteps(0)];
+  };
+
   /** The last status check, reused for a minute like the Rust gateway's. */
   let statusCache: { at: number; status: AiProviderStatus } | null = null;
 
@@ -819,6 +1158,38 @@ export function createMockAi({
     // eslint-disable-next-line @typescript-eslint/require-await
     aiEstimate: async (input: AiEstimateInput): Promise<AiSizeEstimate> => {
       requireRoot();
+      if (input.tutorial) {
+        // Like `tutorial_estimate`: the first call's composed prompt, the calls, the cost line.
+        const action: AiUserAction =
+          input.tutorial.kind === 'review'
+            ? 'tutorialReview'
+            : input.tutorial.kind === 'suggest'
+              ? 'subjectSuggestion'
+              : 'tutorialGeneration';
+        const op = composeTutorial(action, input.tutorial);
+        const first =
+          op.kind === 'outline'
+            ? op.outline
+            : op.kind === 'suggest'
+              ? op.suggest
+              : op.kind === 'review'
+                ? op.review
+                : op.stages([])[0];
+        const inlined = first?.inlined ?? [];
+        const inlinedBytes = inlined.reduce((n, d) => n + d.bytes, 0);
+        const size = estimateSize(
+          MOCK_TUTORIAL_RULES_BYTES + (first?.prompt.length ?? 0) + inlinedBytes,
+          [],
+          0,
+        );
+        return {
+          ...size,
+          documents: inlined.length,
+          inlined,
+          calls: op.calls,
+          costHint: costHint(tutorialUsage(), op.kind, op.length, op.calls),
+        };
+      }
       if (input.quiz) {
         // Like `quiz_estimate`: the composed prompt, which inlines its documents.
         const composed = compose(input.quiz, undefined);
@@ -840,23 +1211,53 @@ export function createMockAi({
       if (quiz && !start.quiz) {
         throw new BackendError('Ai', "A quiz generation needs the quiz's options.");
       }
+      // Like `compose_operation`: a tutorial operation is composed here, read-only.
+      const learning =
+        action === 'tutorialGeneration' ||
+        action === 'tutorialReview' ||
+        action === 'subjectSuggestion';
+      let tutorialOp: TutorialOp | null = null;
+      if (learning) {
+        if (!start.tutorial)
+          throw new BackendError('Ai', 'A tutorial operation needs what the user chose.');
+        tutorialOp = composeTutorial(action, start.tutorial);
+      }
       // Like `operation_request`: a quiz is composed here, read-only; what the frontend sent as a
       // prompt, context, capture, images or schema is ignored.
       let composed: MockQuizComposed | null = null;
       if (quiz && start.quiz) {
         composed = compose(start.quiz, start.resumeId);
       }
-      const request: AiRequest = composed
+      const firstPrompt =
+        tutorialOp === null
+          ? ''
+          : tutorialOp.kind === 'outline'
+            ? tutorialOp.outline.prompt
+            : tutorialOp.kind === 'suggest'
+              ? tutorialOp.suggest.prompt
+              : tutorialOp.kind === 'review'
+                ? tutorialOp.review.prompt
+                : (tutorialOp.stages([])[0]?.prompt ?? '');
+      const request: AiRequest = tutorialOp
         ? {
-            prompt: composed.prompt,
+            prompt: firstPrompt,
             ...(start.model === undefined ? {} : { model: start.model }),
-            ...(start.resumeId === undefined ? {} : { resumeId: start.resumeId }),
             context: [],
             images: [],
             policy: 'readOnly',
-            outputSchema: MOCK_QUIZ_SCHEMA,
+            outputSchema: MOCK_TUTORIAL_SCHEMA,
           }
-        : requestFrom(file, MOCK_CONTEXT_FILE_NAMES, start);
+        : composed
+          ? {
+              prompt: composed.prompt,
+              ...(start.model === undefined ? {} : { model: start.model }),
+              ...(start.resumeId === undefined ? {} : { resumeId: start.resumeId }),
+              context: [],
+              images: [],
+              policy: 'readOnly',
+              outputSchema: MOCK_QUIZ_SCHEMA,
+            }
+          : requestFrom(file, MOCK_CONTEXT_FILE_NAMES, withStep(start));
       if (!ai().installed) throw new BackendError('Ai', MOCK_NOT_INSTALLED);
       if (running) {
         throw new BackendError('Ai', 'An AI operation is still running; stop it first.');
@@ -876,7 +1277,13 @@ export function createMockAi({
         structuredClone(settings().ai.permissions),
       );
       running = op;
-      op.start(composed ? quizScript(request, composed) : script(request));
+      op.start(
+        tutorialOp
+          ? tutorialScript(request, tutorialOp)
+          : composed
+            ? quizScript(request, composed)
+            : script(request),
+      );
       return op.id;
     },
     aiRespondPermission: (

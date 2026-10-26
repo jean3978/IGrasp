@@ -15,7 +15,18 @@ export type HootMoment =
   | 'levelUp'
   | 'resultsHigh'
   | 'resultsLow'
-  | 'replay';
+  | 'replay'
+  | 'academyHome'
+  | 'outline'
+  | 'writing'
+  | 'checkingSteps'
+  | 'chapterIntro'
+  | 'chapterDone'
+  | 'recap'
+  | 'graduation'
+  | 'outdated'
+  | 'verified'
+  | 'shared';
 
 /** `{file}` is replaced by the file being read, `{n}` by a number. */
 export const HOOT_LINES: Record<HootMoment, string[]> = {
@@ -48,6 +59,37 @@ export const HOOT_LINES: Record<HootMoment, string[]> = {
     'Every answer comes with a file to open. Worth a second round.',
   ],
   replay: ['Same questions, no AI call. Show me what stuck.'],
+  academyHome: [
+    'What shall we learn about this project today?',
+    'Pick a card, or tell me what puzzles you. I will find it in the code.',
+    'Every step I write cites a file of this project. Bring your curiosity.',
+  ],
+  outline: [
+    'Here is the plan. Move things around, I do not mind.',
+    'A first sketch. Trim it, rename it, then I write.',
+  ],
+  writing: ['Writing the chapter. Citations included.', 'Turning the code into steps.'],
+  checkingSteps: [
+    'Some steps did not check out. Rewriting them.',
+    'A citation was off. Fixing it before you see it.',
+  ],
+  chapterIntro: ['Ready? This one is about the code.', 'Glasses on. Let us read.'],
+  chapterDone: ['Chapter done. Onward.', 'That one is yours now.', 'Well read. Next stop?'],
+  recap: [
+    'Before we move on: the part worth keeping.',
+    'If you remember three things, make it these.',
+    'The whole chapter, folded small.',
+  ],
+  graduation: [
+    'You graduated. The project has fewer secrets now.',
+    'Diploma earned. Hoot is proud.',
+  ],
+  outdated: [
+    'Some cited lines changed since this was written. Read with an eye open.',
+    'The code moved on a little. The marks show where.',
+  ],
+  verified: ['Verified by you. That is the only stamp that counts.'],
+  shared: ['Shared with the project. Your teammates get it with a pull.'],
 };
 
 /** The Hoot state that goes with a moment. */
@@ -63,6 +105,17 @@ export const MOMENT_STATE: Record<HootMoment, HootState> = {
   resultsHigh: 'cheering',
   resultsLow: 'encouraging',
   replay: 'idle',
+  academyHome: 'idle',
+  outline: 'explaining',
+  writing: 'thinking',
+  checkingSteps: 'thinking',
+  chapterIntro: 'explaining',
+  chapterDone: 'cheering',
+  recap: 'explaining',
+  graduation: 'cheering',
+  outdated: 'encouraging',
+  verified: 'cheering',
+  shared: 'cheering',
 };
 
 const last = new Map<HootMoment, string>();

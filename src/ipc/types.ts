@@ -53,6 +53,18 @@ import type { QuizSaveKind } from './generated/QuizSaveKind';
 import type { SavedQuizFile } from './generated/SavedQuizFile';
 import type { QuizFileSummary } from './generated/QuizFileSummary';
 import type { QuizFileText } from './generated/QuizFileText';
+import type { TutorialSubjects } from './generated/TutorialSubjects';
+import type { TutorialSubject } from './generated/TutorialSubject';
+import type { TutorialSummary } from './generated/TutorialSummary';
+import type { Tutorial } from './generated/Tutorial';
+import type { TutorialRef } from './generated/TutorialRef';
+import type { StoredTutorial } from './generated/StoredTutorial';
+import type { WritePlan } from './generated/WritePlan';
+import type { FreshnessReport } from './generated/FreshnessReport';
+import type { StepQuestion } from './generated/StepQuestion';
+import type { WriteTarget } from './generated/WriteTarget';
+import type { WrittenTutorial } from './generated/WrittenTutorial';
+import type { TutorialProgress } from './generated/TutorialProgress';
 
 export type {
   AppInfo,
@@ -160,6 +172,60 @@ export type { QuizFileText } from './generated/QuizFileText';
 export type { LearningSettings } from './generated/LearningSettings';
 export type { LearningSettingsPatch } from './generated/LearningSettingsPatch';
 export type { QuizScopeSetting } from './generated/QuizScopeSetting';
+export type { Familiarity } from './generated/Familiarity';
+export type { Length } from './generated/Length';
+export type { TutorialInput } from './generated/TutorialInput';
+export type { TutorialRef } from './generated/TutorialRef';
+export type { TutorialRequest } from './generated/TutorialRequest';
+export type { Tutorial } from './generated/Tutorial';
+export type { Chapter } from './generated/Chapter';
+export type { Step } from './generated/Step';
+export type { Citation } from './generated/Citation';
+export type { SelfCheck } from './generated/SelfCheck';
+export type { SourceHash } from './generated/SourceHash';
+export type { Verification } from './generated/Verification';
+export type { ExplainStep } from './generated/ExplainStep';
+export type { ConceptBridgeStep } from './generated/ConceptBridgeStep';
+export type { CodeTourStep } from './generated/CodeTourStep';
+export type { TourStop } from './generated/TourStop';
+export type { DiagramStep } from './generated/DiagramStep';
+export type { PutInOrderStep } from './generated/PutInOrderStep';
+export type { MatchStep } from './generated/MatchStep';
+export type { MatchPair } from './generated/MatchPair';
+export type { SpotItStep } from './generated/SpotItStep';
+export type { QuickCheckStep } from './generated/QuickCheckStep';
+export type { TryItStep } from './generated/TryItStep';
+export type { RecapStep } from './generated/RecapStep';
+export type { OutlineResult } from './generated/OutlineResult';
+export type { ChapterResult } from './generated/ChapterResult';
+export type { FamilyKind } from './generated/FamilyKind';
+export type { SubjectPick } from './generated/SubjectPick';
+export type { TutorialSubject } from './generated/TutorialSubject';
+export type { TutorialSubjects } from './generated/TutorialSubjects';
+export type { TutorialSummary } from './generated/TutorialSummary';
+export type { ProgressSummary } from './generated/ProgressSummary';
+export type { StoredTutorial } from './generated/StoredTutorial';
+export type { PlannedFile } from './generated/PlannedFile';
+export type { PlannedState } from './generated/PlannedState';
+export type { WritePlan } from './generated/WritePlan';
+export type { Badge } from './generated/Badge';
+export type { FreshnessReport } from './generated/FreshnessReport';
+export type { SourceCheck } from './generated/SourceCheck';
+export type { SourceState } from './generated/SourceState';
+export type { StepRef } from './generated/StepRef';
+export type { StepQuestion } from './generated/StepQuestion';
+export type { TutorialStepContext } from './generated/TutorialStepContext';
+export type { ChapterReview } from './generated/ChapterReview';
+export type { ChapterVerdict } from './generated/ChapterVerdict';
+export type { MissingTopic } from './generated/MissingTopic';
+export type { StepProposal } from './generated/StepProposal';
+export type { TutorialReview } from './generated/TutorialReview';
+export type { WriteTarget } from './generated/WriteTarget';
+export type { WrittenTutorial } from './generated/WrittenTutorial';
+export type { TutorialProgress } from './generated/TutorialProgress';
+export type { StepAnswer } from './generated/StepAnswer';
+export type { TutorialUsage } from './generated/TutorialUsage';
+export type { SuggestResult } from './generated/SuggestResult';
 export type {
   AiCapabilities,
   AiEventEnvelope,
@@ -372,6 +438,70 @@ export interface Backend {
    * for a file without the quiz front matter.
    */
   readQuizFile(relPath?: string): Promise<QuizFileText>;
+
+  /**
+   * The Academy's subject cards and the domains for "I'm new to…" of the open folder (local: the
+   * profile and the corpus, no AI), followed by the subjects the AI suggested earlier.
+   */
+  listTutorialSubjects(): Promise<TutorialSubjects>;
+  /**
+   * The Academy's library: the private tutorials of the open folder (newest first), then the
+   * shared ones found in the folder, with the progress. Local.
+   */
+  listTutorials(): Promise<TutorialSummary[]>;
+  /** A tutorial to take, private or shared (`TutorialNotFound` when it is gone). Local. */
+  getTutorial(reference: TutorialRef): Promise<Tutorial>;
+  /**
+   * Saves a private tutorial in app data (after its outline, each chapter, accepted proposals).
+   * A new one (empty id) gets its id, date, provider and generation commit; the cited ranges are
+   * hashed (a citation already recorded keeps its hash). Never writes in the folder.
+   */
+  saveTutorial(tutorial: Tutorial): Promise<StoredTutorial>;
+  /** Deletes a private tutorial and the progress in it. */
+  deleteTutorial(id: string): Promise<void>;
+  /** Forgets the private tutorials, every progress, the suggestions and the usage of the folder. */
+  forgetTutorials(): Promise<void>;
+  getTutorialProgress(id: string): Promise<TutorialProgress | null>;
+  /** Saves the reader's progress (after each step). */
+  saveTutorialProgress(progress: TutorialProgress): Promise<void>;
+  /** Keeps the AI's subject suggestions with the folder; resolves to all of them. */
+  saveSuggestedSubjects(subjects: TutorialSubject[]): Promise<TutorialSubject[]>;
+  /**
+   * What writing a tutorial in the folder would do (its files, new, changed or unchanged, and the
+   * chapter files removed), for the confirmation. Writes nothing. `tutorial` is the new version
+   * of a shared one (`Shared` target); a private one is written as stored.
+   */
+  planTutorialWrite(target: WriteTarget, tutorial?: Tutorial): Promise<WritePlan>;
+  /**
+   * Writes a tutorial after the user confirmed its plan: Share with the project (records where on
+   * the private copy), an update of a shared one, or Save as… (the folder dialog runs here;
+   * `SaveCancelled` when dismissed). `TutorialFolderTaken` when another tutorial is there.
+   */
+  writeTutorial(target: WriteTarget, tutorial?: Tutorial): Promise<WrittenTutorial>;
+  /**
+   * The local freshness check of a tutorial (no token): every cited range against the files.
+   * Moved citations of a private tutorial are relocated and saved; for a shared one the
+   * relocated version is returned (`relocated`), to write only after a confirmation.
+   */
+  checkTutorialFreshness(reference: TutorialRef): Promise<FreshnessReport>;
+  /**
+   * "Mark as verified": the user states the tutorial is correct for the project as it is now.
+   * Stamps the date, the HEAD commit and the git user name and hashes the cited ranges again. A
+   * private tutorial is saved; a shared one is returned stamped, to write after a confirmation.
+   */
+  markTutorialVerified(reference: TutorialRef): Promise<Tutorial>;
+  /**
+   * Saves a reader's question and its answer on a step (no author, no date: anonymous once
+   * shared). A private tutorial is saved; a shared one is returned, to write after a
+   * confirmation. Local.
+   */
+  saveStepQuestion(
+    reference: TutorialRef,
+    chapter: number,
+    question: StepQuestion,
+  ): Promise<Tutorial>;
+  /** Removes the `index`-th saved question of a chapter (same rules as saving). */
+  removeStepQuestion(reference: TutorialRef, chapter: number, index: number): Promise<Tutorial>;
 
   listen<E extends EventName>(
     event: E,

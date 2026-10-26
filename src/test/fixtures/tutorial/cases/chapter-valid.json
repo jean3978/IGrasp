@@ -1,0 +1,84 @@
+{
+  "description": "a chapter of every interactive type, kept in order with the recap last",
+  "kind": "chapter",
+  "length": "quick",
+  "output": {
+    "id": "c1",
+    "title": "The debounce",
+    "hootIntro": "Hoot follows a batch through Orbit's watcher.",
+    "steps": [
+      {
+        "type": "recap",
+        "takeaways": [
+          "DEBOUNCE_MS in src/index/watcher.rs is 200.",
+          "WatchContext carries the generation of a scan.",
+          "handle() reindexes a whole batch in Orbit."
+        ],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "explain",
+        "title": "Why Orbit waits",
+        "body": "Orbit's watcher waits `DEBOUNCE_MS` (200 ms) so a burst of disk events becomes one batch.",
+        "sources": [
+          { "path": "src/index/watcher.rs", "firstLine": 4, "lastLine": 4, "why": "the constant" }
+        ],
+        "selfCheck": { "projectSpecific": true, "reason": "names DEBOUNCE_MS" }
+      },
+      {
+        "type": "codeTour",
+        "title": "From event to batch",
+        "stops": [
+          {
+            "path": "./src/index/watcher.rs",
+            "firstLine": 6,
+            "lastLine": 8,
+            "annotation": "WatchContext keeps the generation."
+          },
+          {
+            "path": "src/index/watcher.rs",
+            "firstLine": 10,
+            "lastLine": 14,
+            "annotation": "handle() reindexes the batch."
+          }
+        ],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "spotIt",
+        "title": "Find the reindex",
+        "prompt": "Click the line that reindexes the batch.",
+        "path": "src/index/watcher.rs",
+        "firstLine": 10,
+        "lastLine": 14,
+        "answerLine": 12,
+        "explanation": "self.reindex(batch) on line 12 of watcher.rs.",
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "quickCheck",
+        "kind": "multipleChoice",
+        "question": "How long does Orbit's watcher wait before a batch?",
+        "choices": ["200 ms", "50 ms", "1 second"],
+        "answer": 0,
+        "hint": "Look at the constant near the top of watcher.rs.",
+        "explanation": "DEBOUNCE_MS in src/index/watcher.rs is 200.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 4, "lastLine": 4 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "putInOrder",
+        "title": "A batch in order",
+        "prompt": "Put Orbit's steps in order.",
+        "items": ["debounce for DEBOUNCE_MS", "handle the batch", "reindex"],
+        "explanation": "watcher.rs waits, then handle() calls reindex.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 4, "lastLine": 14 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      }
+    ]
+  },
+  "expected": {
+    "accepted": ["explain", "codeTour", "spotIt", "quickCheck", "putInOrder", "recap"],
+    "rejected": {}
+  }
+}

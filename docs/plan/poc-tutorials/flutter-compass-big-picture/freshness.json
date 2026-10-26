@@ -1,0 +1,85 @@
+{
+  "affectedSteps": [
+    [
+      0,
+      2
+    ],
+    [
+      0,
+      5
+    ]
+  ],
+  "afterRelocation": {
+    "badge": "sourcesMissing",
+    "missing": 1,
+    "of": 10
+  },
+  "modified": {
+    "changed": "app/lib/data/repositories/booking/booking_repository.dart",
+    "missing": "app/lib/data/repositories/booking/booking_repository_remote.dart",
+    "moved": "README.md"
+  },
+  "relocatedCitations": 1,
+  "report": {
+    "badge": {
+      "badge": "sourcesMissing",
+      "missing": 1,
+      "of": 10
+    },
+    "checks": [
+      {
+        "firstLine": 8,
+        "lastLine": 13,
+        "lines": "3-8",
+        "path": "README.md",
+        "state": "moved"
+      },
+      {
+        "lines": "10-15",
+        "path": "app/lib/ui/home/view_models/home_viewmodel.dart",
+        "state": "upToDate"
+      },
+      {
+        "lines": "19-33",
+        "path": "app/lib/ui/home/widgets/home_screen.dart",
+        "state": "upToDate"
+      },
+      {
+        "lines": "17-34",
+        "path": "app/lib/ui/home/view_models/home_viewmodel.dart",
+        "state": "upToDate"
+      },
+      {
+        "lines": "10-34",
+        "path": "app/lib/domain/models/booking/booking_summary.dart",
+        "state": "upToDate"
+      },
+      {
+        "lines": "9-21",
+        "path": "app/lib/data/repositories/booking/booking_repository.dart",
+        "state": "changed"
+      },
+      {
+        "lines": "49-62",
+        "path": "app/lib/data/services/local/local_data_service.dart",
+        "state": "upToDate"
+      },
+      {
+        "lines": "16-95",
+        "path": "app/lib/domain/use_cases/booking/booking_create_use_case.dart",
+        "state": "upToDate"
+      },
+      {
+        "lines": "112-133",
+        "path": "app/lib/data/services/api/api_client.dart",
+        "state": "upToDate"
+      },
+      {
+        "lines": "14-38",
+        "path": "app/lib/data/repositories/booking/booking_repository_remote.dart",
+        "state": "missing"
+      }
+    ],
+    "moved": 1
+  }
+}

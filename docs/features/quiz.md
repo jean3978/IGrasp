@@ -122,6 +122,25 @@ parameter's name) is reserved for *Check specific code*.
 `IGRASP_SUBJECTS_ROOT=<folder> cargo test --manifest-path src-tauri/Cargo.toml print_subjects
 -- --ignored --nocapture` prints the subjects of any folder without AI.
 
+## Quiz me on this tutorial
+
+From a tutorial of the [Academy](academy.md) (its header, or the graduation screen), **Quiz me on
+this tutorial** opens the Quiz tab on the quiz's own confirmation card; nothing is spent before
+its Start. The frontend sends a `QuizGenerationInput` that names the tutorial
+(`tutorial: TutorialRef`, private or shared); the backend loads it and:
+
+- tags the quiz with the category **`tutorial`** (`QuizCategory::Tutorial`, shown as a tag and
+  kept in the record and the history with the tutorial's id, and in saved quiz files);
+- limits the sources to the **tutorial's cited files**, as a code check limits them to the picked
+  paths;
+- adds the chapters' goals and recaps to the prompt and uses the **understanding style** of the
+  concept quizzes ("what a reader who took this tutorial should now understand"), not the code
+  check's line-level questions;
+- refuses a tutorial with no written chapter (`ChapterNotWritten`).
+
+It is a fixed quiz with your usual number of questions; Play again and Save quiz… work as for any
+quiz.
+
 ## Modes and sources
 
 - **Fixed**: every question is written in one AI call; your level only changes their order.

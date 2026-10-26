@@ -246,3 +246,56 @@ fn perf_reference_project() {
         );
     }
 }
+
+/// The Academy on the reference project: the subject cards (the corpus, the subject detection
+/// and the families; the profile has its own check) and the freshness check of a tutorial citing
+/// 20 ranges, the check run when a tutorial opens and when the library lists it.
+#[test]
+#[ignore = "performance check; run in release with --ignored"]
+fn perf_tutorials() {
+    use crate::learning::tutorial::schema::{SourceHash, Tutorial};
+    use crate::learning::tutorial::{families, freshness};
+    use crate::learning::{corpus, subjects};
+
+    let p = project();
+    let none = AtomicBool::new(false);
+    let (profile, walk) = crate::profile::build(p.guard.root(), &[], &none);
+    let cards = timed("tutorial cards", Duration::from_secs(1), || {
+        let corpus = corpus::Corpus::build(
+            p.guard.root(),
+            &walk,
+            &corpus::SourceScope::WholeProject,
+            &[],
+        );
+        let detected = subjects::propose(&profile, &corpus);
+        families::build(&profile, &corpus, &detected)
+    });
+    println!("  {} cards", cards.cards.len());
+    // 20 ranges of 10 lines, hashed as when the tutorial was written.
+    let t = Tutorial {
+        sources: (0..20)
+            .map(|i| {
+                let path = doc_path(i * 397);
+                let text = std::fs::read_to_string(p.guard.root().join(&path)).unwrap();
+                let lines: Vec<String> = text.lines().map(str::to_owned).collect();
+                SourceHash {
+                    path,
+                    lines: Some(format!("{}-{}", 3 + i, 12 + i)),
+                    sha256: Some(freshness::hash_lines(&lines[2 + i..12 + i])),
+                }
+            })
+            .collect(),
+        ..Tutorial::default()
+    };
+    let report = timed(
+        "freshness check, 20 sources",
+        Duration::from_millis(200),
+        || freshness::check(p.guard.root(), &t),
+    );
+    assert!(
+        report
+            .checks
+            .iter()
+            .all(|c| c.state == freshness::SourceState::UpToDate)
+    );
+}

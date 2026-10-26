@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import type { AiCapture } from '../ipc/types';
 import { selectActiveTab, useTabs } from './tabs';
+import { useTutorialPlayer } from './tutorialPlayer';
 import { useWorkspace } from './workspace';
 
 /** A box in the scroll container's content coordinates (it scrolls with the document). */
@@ -21,8 +22,8 @@ export interface ContentRect {
 export interface SelectionHighlight {
   tabId: string;
   kind: 'text' | 'region';
-  /** The lines and their source (what the chat attaches). */
-  capture: AiCapture;
+  /** The lines and their source (what the chat attaches); null for a step of a tutorial. */
+  capture: AiCapture | null;
   /** The line boxes of the selected text. */
   rects: ContentRect[];
   /** The dragged rectangle (a region only). */
@@ -60,17 +61,25 @@ export const useCapture = create<CaptureStore>()((set) => ({
   },
 }));
 
-const isCapturable = (s: Parameters<typeof selectActiveTab>[0]): boolean => {
-  const tab = selectActiveTab(s);
-  return tab !== undefined && (tab.kind === 'document' || tab.kind === 'code');
+/** The active tab's kind when it can be selected: a document, a code file, the Academy. */
+const capturableKind = (s: Parameters<typeof selectActiveTab>[0]) => {
+  const kind = selectActiveTab(s)?.kind;
+  return kind === 'document' || kind === 'code' || kind === 'academy' ? kind : null;
 };
 
-/** A folder is open and its active tab is a document or a code file. */
-export const canCapture = (): boolean =>
-  useWorkspace.getState().root !== null && isCapturable(useTabs.getState());
+/** In the Academy, only a step on screen can be selected (to ask about it). */
+const stepShown = (s: { chapter: number | null }) => s.chapter !== null;
+
+/** A folder is open and its active tab is a document, a code file, or a step of a tutorial. */
+export const canCapture = (): boolean => {
+  const kind = capturableKind(useTabs.getState());
+  if (useWorkspace.getState().root === null || kind === null) return false;
+  return kind !== 'academy' || stepShown(useTutorialPlayer.getState());
+};
 
 export const useCanCapture = (): boolean => {
   const hasRoot = useWorkspace((s) => s.root !== null);
-  const capturable = useTabs(isCapturable);
-  return hasRoot && capturable;
+  const kind = useTabs(capturableKind);
+  const step = useTutorialPlayer(stepShown);
+  return hasRoot && kind !== null && (kind !== 'academy' || step);
 };

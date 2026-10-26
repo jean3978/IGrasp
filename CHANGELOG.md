@@ -7,12 +7,143 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-25
+
+Phase 5 — Hoot's Academy: tutorials about the open project, written by the AI from the project's
+own files, taken one step at a time with Hoot, kept privately, shared with the team as markdown
+when you choose, checked locally for freshness, reviewed by the AI only when you ask, and
+verified only by you ([academy.md](docs/features/academy.md)).
+
+### Added
+
+- **Hoot's Academy** (Learn → Academy…, `Ctrl+Alt+A`, or the graduation-cap button over the
+  view): a tab with the tutorial to continue, "What do you want to learn?", the subject cards,
+  "I'm new to…", the library of private and shared tutorials, and the project profile. Opening
+  it spends nothing.
+- **Subject cards built locally** from the project profile, without AI: twelve universal
+  families (The Big Picture to Glossary, with a pick for Feature Deep Dive and Trace It) and
+  domain families for games, web, mobile, services, libraries / CLIs / desktop apps and data /
+  ML / infrastructure / embedded, each phrased about the project and offered only with enough
+  material; "I'm new to…" domains from the engines, frameworks and topics found
+  ([ADR 0028](docs/decisions/0028-subject-families-built-locally.md)). **Suggest more subjects**
+  asks the AI for others, kept as cards.
+- **Options and confirmation**: familiarity (new here, already contributing, deep dive for
+  maintainers), the domain you are new to, length (quick, standard, deep), role and model; every
+  AI operation shows its confirmation card (what is inlined, the size, the number of calls, the
+  cost of the last comparable operation in this folder) and spends nothing before its Start.
+- **Outline, then chapters**: one call writes the outline, which you reorder (drag or
+  `Shift+↑/↓`), rename, trim and tick; the ticked chapters are written as one **staged run**
+  (one checked call per chapter under one operation, a fresh prompt per chapter with the recaps
+  of the chapters before it, at most 8, Stop at any moment), each readable as soon as it is
+  accepted ([ADR 0026](docs/decisions/0026-staged-runs.md)). Every step is validated (real
+  files and lines, nothing generic, each type's rules), with at most two visible repairs per
+  call.
+- **Taking a tutorial**: the course map, the chapter player and ten step types (explain, concept
+  bridge, diagram, code tour, spot it, put in order, match, quick check, try it yourself, recap),
+  each with its keyboard; two tries on interactive steps; XP, streak, confetti and a graduation
+  screen; progress saved after every step and resumed. Nothing in a tutorial is ever run.
+- **Quiz me on this tutorial**: a quiz limited to the tutorial's cited files, about what its
+  reader should now understand (`QuizCategory::Tutorial`), through the quiz's confirmation card.
+- **Private storage and sharing**: private tutorials in app data, one JSON file each; **Share
+  with the project** writes a `README.md` and one file per chapter under the tutorials folder
+  (default `docs/tutorials`) after a confirmation listing every file (new, changed, unchanged,
+  removed); **Save as…** writes a copy into a folder you choose; shared tutorials are found by
+  the scan and listed with the private ones ([ADR 0027](docs/decisions/0027-tutorial-storage-sharing-and-verification.md)).
+- **Freshness**: opening a tutorial checks every cited range locally (*Up to date*, *Maybe
+  outdated (n of m changed)*, *Sources missing*), marks the affected steps and chapters, and
+  follows lines that only moved (saved for a private tutorial, offered as a confirmed write for
+  a shared one); steps changed since you completed them are marked "updated since you read it".
+- **Check with the AI**: one read-only call rereads the tutorial against the project and
+  proposes replacements for outdated steps, shown as rendered diffs you accept or reject (`A` /
+  `R`), and the topics it misses, which can become a new chapter. **Mark as verified** records
+  the date, the HEAD commit and your git name, read from the `.git` files; the AI never sets it.
+- **Preview**: a tutorial's README and chapter files show a **Take it in the Academy** banner,
+  and their interactive blocks render as cards with the answers folded.
+- **Settings → Learning → Tutorials**: default familiarity and length, the tutorials folder, and
+  Forget this folder's tutorials.
+- **Hoot**: Academy moments (home, outline, writing, chapter done, graduation, outdated,
+  verified, shared), shown in the `?hoot=1` gallery.
+- AI layer: staged runs in the gateway (`RunPlan::Staged`, `StageBuilder`, `MAX_STAGES`,
+  `AiEvent::Stage`); an ignored `real_academy` test that drives a whole tutorial through the
+  app's calls, and an ignored `perf_tutorials` test (the cards in 253 ms and a 20-range
+  freshness check in 3.3 ms on the 10k-document project, debug build).
+- The proof of concept that preceded the phase (schema, prompts, validator, shared format,
+  freshness, six real tutorials on five projects; [report](docs/plan/poc-tutorials.md)).
+- Ask about a step of a tutorial: **Ask about this step** (the whole step), or highlight its text
+  or frame part of it with the AI tools, and ask in the chat (the step and its cited files go
+  with the message). The card says how; the chat about a step wears the Academy's look, with
+  Hoot perched on it holding a question mark. Under the answer, the chat asks whether to save the
+  question and the answer for other readers, recalling that the name is not shown. Saved
+  questions show on the step card and travel with a shared tutorial, anonymously (no name, no
+  date), at the end of the chapter's file; a shared tutorial changes only after the write
+  confirmation.
+
 ### Changed
 
+- The gateway's `start` takes a `RunPlan` (a validated or a staged run) instead of a validator;
+  only the gateway starts either.
+- The tutorial format stays owned by Rust; the frontend parses one block for the preview and the
+  mock mirrors the writer byte for byte on shared fixtures
+  ([ADR 0025](docs/decisions/0025-tutorial-format-json-schema-and-shared-markdown.md), amended).
+  A tutorial id is now `<subject slug>-<yyyymmdd>-<4 hex>`.
+- The read-only code view of the quiz's Look it up is a shared `CodeView` component, also used
+  by code tours and Spot it.
+- The app writes in the opened folder only what you save through a dialog and the tutorial
+  files you confirmed after seeing their list.
+- The Learn menu gains Academy… above Quiz Me…; the Keyboard Shortcuts tab gains an Academy
+  section.
+- The recap at the end of a chapter: Hoot, how the chapter went (steps done, answers right, the
+  chapter bonus to come), the takeaways as numbered cards, the steps still to do with a way back
+  to the first one, and what comes next.
+- The Academy's hub is a classroom: your tutorials on a blackboard across the wall (one concise
+  line each: progress ring with a private or shared badge, title, role and subject, difficulty
+  bars with tooltips, a **Details** pill that opens a card with the progress, where it lives, its
+  freshness and verification, then compact actions; scrolled when there are many), and in front
+  of it Hoot in a mortarboard and owls at their desks. A clear **New tutorial** button, clear of
+  the AI tools, opens a four-step wizard: **Role** first (proposed for the project, or typed),
+  then the **Subject** in three numbered ways (type it; **subjects found by Hoot for your role**,
+  deeply tied to its work, kept with the role; the **ready-made** cards, those that fit the role
+  first and the others behind **More subjects**), the **Options** and **Confirm**. Opening the
+  Academy tab plays a short welcome by Hoot over the whole tab (under four seconds, skipped by a
+  click or a key, not shown when the effects are off or with reduced motion).
 - **Roadmap**: two phases after Editing, Phase 7 — Images and videos (drop and paste into a
   document, import with compression, unused media) and Phase 8 — Media annotations (rectangles,
   arrows, labels and steps drawn on screenshots and videos, saved in the markdown). Git moves to
   Phase 9 and the Mermaid visual editor to Phase 10.
+
+### Fixed
+
+- **Cited files stay inside the folder**: a tutorial citation (from the model or a hand-edited
+  shared file) with `..`, an absolute path or a link leading out of the opened folder is neither
+  read nor sent in a prompt (`corpus::read_text` resolves inside the root), and counts as
+  missing in the freshness check.
+- **Line fragments into markdown files**: a GitHub line fragment such as `guide.md#L3-L8` is no
+  longer reported as a broken anchor.
+- A tutorial shared in the project was missing from the Academy's board the first time the
+  Academy opened (before the document graph was ready); it appears as soon as the graph is.
+- A tutorial you shared was listed twice on the Academy's board (your private copy and the
+  shared one); it is one row now, the private one with the shared badge, as long as the shared
+  files are unchanged. A shared copy changed since (by a teammate) keeps its own row, and the
+  private one says so before Share would replace it. Deleting the private copy keeps your
+  progress in the shared one. Share and Save as… explain in their tooltips how they differ.
+- A code tour went back to its first stop after **Open in the code viewer** and a return to the
+  Academy; it keeps its stop while the tutorial is open.
+- The app went blank at the end of every chapter of a tutorial written by the AI: the backend
+  left out the recap's empty list of sources, which the reader expects. It is always sent now
+  (tutorials saved before are fixed when read).
+- A render error now stays inside its tab, with the message and "Try again", instead of
+  blanking the whole window.
+
+### Known limitations
+
+- The freshness check is not cached per disk revision: it runs on open and on each library
+  listing, which reads every shared README again.
+- Review decisions are per proposed step, not per change inside a step.
+- A review that finds nothing to change leaves *Maybe outdated* until you mark the tutorial
+  verified.
+- The mock's fixture project has no shared tutorial by default;
+  `window.__igraspMock.addSharedTutorial()` writes one.
+- No GIF of a code tour in the README yet.
 
 ## [0.4.0] - 2026-10-25
 

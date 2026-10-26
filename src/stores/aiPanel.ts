@@ -5,7 +5,13 @@
 
 import { create } from 'zustand';
 import { backend } from '../ipc/client';
-import type { AiCapture, AiContextDocument, AiPanelState, PanelRect } from '../ipc/types';
+import type {
+  AiCapture,
+  AiContextDocument,
+  AiPanelState,
+  PanelRect,
+  TutorialRef,
+} from '../ipc/types';
 
 export const PANEL_MIN_WIDTH = 360;
 export const PANEL_MIN_HEIGHT = 320;
@@ -136,10 +142,28 @@ export function rectNear(
   return defaultRect(viewport);
 }
 
-/** What the user attached to the next message: a text selection or a region, as text. */
-export interface PanelAttachment {
-  capture: AiCapture;
+/**
+ * A step of a tutorial in the Academy the next message is about: highlighted, framed, or the
+ * whole step ("Ask about this step").
+ */
+export interface StepAttachment {
+  tutorial: TutorialRef;
+  /** Chapter and step indices. */
+  chapter: number;
+  step: number;
+  /** "Chapter 2, step 3: The watcher debounces", for the chat. */
+  label: string;
+  /** The text the user highlighted, or the text of the framed part; null when none. */
+  quote: string | null;
+  kind: 'text' | 'region' | 'whole';
 }
+
+/**
+ * What the user attached to the next message: a text selection or a region of a file (its
+ * lines, as text), or a step of a tutorial.
+ */
+export type PanelAttachment =
+  { capture: AiCapture; step?: never } | { step: StepAttachment; capture?: never };
 
 /** The documents the next message carries, as `ai_context` listed them for `currentPath`. */
 export interface PanelContext {

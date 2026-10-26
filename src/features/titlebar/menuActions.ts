@@ -51,6 +51,7 @@ export type ActionId =
   | 'ai.history'
   | 'ai.acceptAllChanges'
   | 'ai.rejectAllChanges'
+  | 'learn.academy'
   | 'learn.quiz'
   | 'learn.openQuizFile'
   | 'learn.profile'
@@ -87,7 +88,7 @@ interface ActionDef {
   /** The action can start an AI operation (spends tokens): its controls show the AI marker. */
   usesAi?: boolean;
   /** The action opens the AI feature without spending anything: its controls show the marker. */
-  aiFeature?: boolean | 'quiz';
+  aiFeature?: boolean | 'quiz' | 'academy';
   run(): void | Promise<void>;
 }
 
@@ -253,6 +254,15 @@ export const actions: Record<ActionId, ActionDef> = {
     shortcut: 'Alt+Shift+R',
     run: () => {
       if (reviewShown()) return useAiConversation.getState().rejectAllChanges();
+    },
+  },
+  'learn.academy': {
+    label: 'Academy…',
+    shortcut: 'Ctrl+Alt+A',
+    aiFeature: 'academy',
+    run: () => {
+      // Opens the Academy tab, which is free; its Start buttons spend tokens.
+      if (useWorkspace.getState().root) useTabs.getState().openSpecial('academy');
     },
   },
   'learn.quiz': {
@@ -441,6 +451,7 @@ export function markOf(id: ActionId): AiMarkVariant | null {
   const action = actions[id];
   if (action.usesAi) return 'uses';
   if (action.aiFeature === 'quiz') return 'quiz';
+  if (action.aiFeature === 'academy') return 'academy';
   return action.aiFeature ? 'feature' : null;
 }
 

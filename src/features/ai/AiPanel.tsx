@@ -17,8 +17,11 @@ import {
   useAiPanel,
   windowViewport,
 } from '../../stores/aiPanel';
-import type { ResizeEdge } from '../../stores/aiPanel';
+import type { PanelAttachment, ResizeEdge } from '../../stores/aiPanel';
 import { activeFilePath } from '../../stores/aiConversation';
+import { useSettings } from '../../stores/settings';
+import { Hoot } from '../hoot/Hoot';
+import type { ChatItem } from './timeline';
 import { useTabs } from '../../stores/tabs';
 import { Composer } from './Composer';
 import { ContextBar } from './ContextBar';
@@ -32,6 +35,9 @@ import { Transcript } from './Transcript';
 import './ai.css';
 
 const EDGES: ResizeEdge[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
+
+/** Room above the panel Hoot needs to perch on its top edge (CSS pixels). */
+const HOOT_PERCH = 66;
 
 /**
  * Where the focus goes when the panel closes: the AI Chat button over the view, else the
@@ -66,8 +72,35 @@ function track(e: ReactPointerEvent<HTMLElement>, onMove: (dx: number, dy: numbe
   target.addEventListener('pointercancel', end);
 }
 
-function PanelHeader({ titleId, onClose }: { titleId: string; onClose: () => void }) {
+/**
+ * The chat is about a step of a tutorial: a step is attached to the next message, or the
+ * conversation asked about one. The panel then wears the Academy's look, with Hoot on it.
+ */
+const selectAboutStep = (attachment: PanelAttachment | null, items: readonly ChatItem[]) =>
+  attachment?.step !== undefined || items.some((i) => i.kind === 'step');
+
+/** Hoot perched on the panel with a question mark, while the chat is about a step. */
+function StepHoot({ busy }: { busy: boolean }) {
+  const motion = useSettings((s) => s.settings.learning.effects);
+  return (
+    <span className="ai-step-hoot" aria-hidden>
+      <Hoot size={56} state={busy ? 'thinking' : 'idle'} motion={motion} label="" />
+      <span className="ai-step-hoot-mark">?</span>
+    </span>
+  );
+}
+
+function PanelHeader({
+  titleId,
+  onClose,
+  aboutStep,
+}: {
+  titleId: string;
+  onClose: () => void;
+  aboutStep: boolean;
+}) {
   const providerName = useAiProvider(selectProviderName);
+  const busy = useAiConversation(selectBusy);
   const newConversation = useAiConversation((s) => s.newConversation);
   const historyOpen = useAiPanel((s) => s.historyOpen);
   const toggleHistory = useAiPanel((s) => s.toggleHistory);
@@ -103,10 +136,15 @@ function PanelHeader({ titleId, onClose }: { titleId: string; onClose: () => voi
 
   return (
     <header className="ai-header" onPointerDown={onPointerDown}>
-      <span className="ai-avatar" aria-hidden>
-        <Sparkles />
-      </span>
+      {aboutStep ? (
+        <StepHoot busy={busy} />
+      ) : (
+        <span className="ai-avatar" aria-hidden>
+          <Sparkles />
+        </span>
+      )}
       <div className="ai-heading">
+        {aboutStep && <p className="ai-step-eyebrow">About a step</p>}
         <h2
           id={titleId}
           className="ai-title ai-drag-handle"
@@ -166,6 +204,9 @@ export function AiPanel() {
   const panelRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [viewport, setViewport] = useState(windowViewport);
+  const attachment = useAiPanel((s) => s.attachment);
+  const items = useAiConversation((s) => s.items);
+  const aboutStep = selectAboutStep(attachment, items);
 
   useEffect(() => {
     if (open && !status && !checking) void checkStatus();
@@ -265,6 +306,9 @@ export function AiPanel() {
     <section
       ref={panelRef}
       className="ai-panel"
+      data-mode={aboutStep ? 'step' : undefined}
+      // Hoot perches above the panel when there is room, inside its header at the window's top.
+      data-perch={aboutStep ? (shown.y >= HOOT_PERCH ? 'above' : 'inside') : undefined}
       role="dialog"
       aria-modal="false"
       aria-labelledby={titleId}
@@ -280,7 +324,7 @@ export function AiPanel() {
         if (next instanceof Node && !e.currentTarget.contains(next)) lastFocus.current = null;
       }}
     >
-      <PanelHeader titleId={titleId} onClose={close} />
+      <PanelHeader titleId={titleId} onClose={close} aboutStep={aboutStep} />
       <StatusLine part="problem" />
       <SelectionLine />
       {historyOpen ? <HistoryList /> : <Transcript />}

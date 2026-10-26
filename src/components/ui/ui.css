@@ -59,6 +59,8 @@
 /* Above every floating layer (the AI chat is 4400, the about dialog 4500), below the splash. */
 .tooltip {
   z-index: 4800;
+  /* A sentence of explanation wraps instead of crossing the window. */
+  max-width: 320px;
   display: flex;
   gap: 8px;
   align-items: center;

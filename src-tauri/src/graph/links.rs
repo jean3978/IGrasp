@@ -203,11 +203,27 @@ pub fn has_anchor(anchors: &BTreeSet<String>, fragment: &str) -> bool {
     anchors.contains(fragment) || anchors.iter().any(|a| a.eq_ignore_ascii_case(fragment))
 }
 
+/// A GitHub line fragment: `L12` or `L12-L30` (a tutorial's citations use them, also into
+/// markdown files).
+pub fn is_line_fragment(fragment: &str) -> bool {
+    let line = |s: &str| {
+        s.strip_prefix('L')
+            .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+    };
+    match fragment.split_once('-') {
+        Some((a, b)) => line(a) && line(b),
+        None => line(fragment),
+    }
+}
+
 fn fragment_status(anchors: Option<&BTreeSet<String>>, fragment: Option<&str>) -> LinkStatus {
     match (fragment, anchors) {
         (None, _) => LinkStatus::Ok,
         // Line ranges (#L10-L20) and fragments of files that are not parsed are not checked.
         (Some(_), None) => LinkStatus::NotChecked,
+        (Some(f), Some(set)) if is_line_fragment(f) && !has_anchor(set, f) => {
+            LinkStatus::NotChecked
+        }
         (Some(f), Some(set)) if has_anchor(set, f) => LinkStatus::Ok,
         (Some(_), Some(_)) => LinkStatus::MissingAnchor,
     }
@@ -433,6 +449,8 @@ mod tests {
         assert_eq!(check("a.md", "#here").1, LinkStatus::Ok);
         assert_eq!(check("a.md", "#HERE").1, LinkStatus::Ok);
         assert_eq!(check("a.md", "#gone").1, LinkStatus::MissingAnchor);
+        assert!(is_line_fragment("L3") && is_line_fragment("L3-L8"));
+        assert!(!is_line_fragment("L") && !is_line_fragment("l3") && !is_line_fragment("L3-8"));
     }
 
     #[test]

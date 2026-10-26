@@ -14,6 +14,8 @@ use crate::error::{AppError, AppResult};
 use crate::learning::corpus::SourceScope;
 use crate::learning::quiz::schema::QuizQuestion;
 use crate::learning::quiz::{QuizCategory, QuizMode};
+use crate::learning::tutorial::families::TutorialSubject;
+use crate::learning::tutorial::progress::{TutorialProgress, TutorialUsage};
 use crate::profile::ProfileCorrections;
 
 pub const LEARNING_DIR: &str = "learning";
@@ -98,6 +100,8 @@ pub struct QuizRecord {
     /// What the project's documentation lacks for this quiz, as the generation reported it.
     pub docs_note: Option<String>,
     pub suggested_subjects: Vec<String>,
+    /// The tutorial a "Quiz me on this tutorial" was about (its id).
+    pub tutorial: Option<String>,
 }
 
 /// A line of the history.
@@ -129,6 +133,12 @@ pub struct FolderLearning {
     pub current_quiz: Option<QuizRecord>,
     /// Finished quizzes, newest first, at most [`MAX_HISTORY`].
     pub history: Vec<QuizRecord>,
+    /// The Academy's subject cards the AI suggested ("Suggest more subjects"), kept as cards.
+    pub suggested_subjects: Vec<TutorialSubject>,
+    /// The reader's progress in each tutorial (private or shared), by tutorial id.
+    pub tutorial_progress: BTreeMap<String, TutorialProgress>,
+    /// The last tutorial operations and what they cost (the confirmation card's cost line).
+    pub tutorial_usage: Vec<TutorialUsage>,
 }
 
 fn valid_record_id(id: &str) -> bool {
@@ -170,11 +180,11 @@ fn valid_file_id(id: &str) -> bool {
 }
 
 impl AppData {
-    fn learning_dir(&self) -> std::path::PathBuf {
+    pub(super) fn learning_dir(&self) -> std::path::PathBuf {
         self.dir.join(LEARNING_DIR)
     }
 
-    fn read_learning_json<T: serde::de::DeserializeOwned + Default>(
+    pub(super) fn read_learning_json<T: serde::de::DeserializeOwned + Default>(
         &self,
         cache: &mut Cache,
         name: &str,
@@ -186,7 +196,7 @@ impl AppData {
         Ok(value)
     }
 
-    fn learning_file_id(
+    pub(super) fn learning_file_id(
         &self,
         cache: &mut Cache,
         root: &str,

@@ -1,6 +1,6 @@
 [package]
 name = "igrasp"
-version = "0.4.0"
+version = "0.5.0"
 description = "Read the markdown documentation of a project and grasp what AI agents are writing."
 authors = ["Jean-Rene Choiniere"]
 license = "MIT"
@@ -40,6 +40,9 @@ grep-matcher = "0.1.9"
 globset = "0.4.20"
 which = "8.0.6"
 toml = { version = "1.1.8", default-features = false, features = ["parse", "serde", "std"] }
+# Phase 5 proof of concept (tutorials): YAML blocks of the shared markdown and SHA-256 of cited lines.
+serde_yaml = "0.9.34"
+sha2 = "0.10.9"
 
 [target.'cfg(windows)'.dependencies]
 # Job object that kills AI subprocesses with the app (ADR 0015).

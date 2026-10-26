@@ -1,0 +1,89 @@
+{
+  "description": "an outline: two chapters kept, one on an agent file, one generic, one on a secret, one repeated, one beyond the length",
+  "kind": "outline",
+  "length": "quick",
+  "output": {
+    "insufficientMaterial": false,
+    "docsNote": "Nothing documents the debounce.",
+    "title": "Orbit's watcher",
+    "intro": "Follow a file change through Orbit.",
+    "chapters": [
+      {
+        "id": "c1",
+        "title": "The debounce",
+        "goal": "Explain why DEBOUNCE_MS is 200 in src/index/watcher.rs.",
+        "minutes": 4,
+        "keySources": ["src/index/watcher.rs"],
+        "selfCheck": { "projectSpecific": true, "reason": "names the watcher" }
+      },
+      {
+        "id": "c2",
+        "title": "The rules",
+        "goal": "Explain the rules the agents follow in Orbit.",
+        "minutes": 3,
+        "keySources": ["CLAUDE.md"],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "c3",
+        "title": "What a debounce is",
+        "goal": "Explain debouncing in general terms for any program.",
+        "minutes": 3,
+        "keySources": ["docs/guide.md"],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "c4",
+        "title": "The token",
+        "goal": "Explain where Orbit keeps its token.",
+        "minutes": 3,
+        "keySources": [".env"],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "c5",
+        "title": "The gateway",
+        "goal": "Explain how AiGateway::start hands out an operation id.",
+        "minutes": 40,
+        "keySources": ["src/ai/gateway.rs", "nowhere.rs"],
+        "selfCheck": { "projectSpecific": true, "reason": "names the gateway" }
+      },
+      {
+        "id": "c6",
+        "title": "The debounce",
+        "goal": "Explain DEBOUNCE_MS again in src/index/watcher.rs.",
+        "minutes": 3,
+        "keySources": ["src/index/watcher.rs"],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "c7",
+        "title": "Starting Orbit",
+        "goal": "Explain how src/main.ts calls startOrbit.",
+        "minutes": 3,
+        "keySources": ["src/main.ts"],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "id": "c8",
+        "title": "The Makefile",
+        "goal": "Explain the dev target of the Makefile in Orbit.",
+        "minutes": 3,
+        "keySources": ["Makefile"],
+        "selfCheck": { "projectSpecific": false, "reason": "generic" }
+      }
+    ]
+  },
+  "expected": {
+    "accepted": ["The debounce", "The gateway", "Starting Orbit"],
+    "minutes": [4, 15, 3],
+    "dropped": 0,
+    "rejected": {
+      "c2": "agentFile",
+      "c3": "generic",
+      "c4": "secretFile",
+      "c6": "duplicate",
+      "c8": "selfCheck"
+    }
+  }
+}

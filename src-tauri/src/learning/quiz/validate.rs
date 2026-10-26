@@ -251,6 +251,18 @@ fn stem(path: &str) -> String {
 /// Whether `text` names something of the project: a path or file name of the corpus, a module,
 /// the project's name, a distinctive file stem, or a word of the cited lines.
 fn names_the_project(text: &str, cited_words: &BTreeSet<String>, ctx: &Context<'_>) -> bool {
+    names_project(text, cited_words, ctx.corpus, ctx.project_name, ctx.modules)
+}
+
+/// The generic-content check shared with the tutorials: whether `text` names something of the
+/// project (see [`names_the_project`]).
+pub fn names_project(
+    text: &str,
+    cited_words: &BTreeSet<String>,
+    corpus: &Corpus,
+    project_name: &str,
+    modules: &[String],
+) -> bool {
     let lower = text.to_lowercase();
     let text_words = words(text);
     let all_words: BTreeSet<String> = text
@@ -262,23 +274,18 @@ fn names_the_project(text: &str, cited_words: &BTreeSet<String>, ctx: &Context<'
     if text_words.iter().any(|w| cited_words.contains(w)) {
         return true;
     }
-    let name = ctx.project_name.to_lowercase();
+    let name = project_name.to_lowercase();
     if name.chars().count() >= MIN_WORD_CHARS && all_words.contains(&name) {
         return true;
     }
-    for m in ctx.modules {
+    for m in modules {
         let last = m.rsplit('/').next().unwrap_or(m).to_lowercase();
         if last.chars().count() >= MIN_WORD_CHARS && all_words.contains(&last) {
             return true;
         }
     }
     // A path or a file name of the project (with its extension), or a distinctive stem.
-    for path in ctx
-        .corpus
-        .files
-        .keys()
-        .chain(ctx.corpus.outside_scope.iter())
-    {
+    for path in corpus.files.keys().chain(corpus.outside_scope.iter()) {
         let p = path.to_lowercase();
         let file = p.rsplit('/').next().unwrap_or(&p);
         if (file.contains('.') && file.len() >= 4 && lower.contains(file)) || lower.contains(&p) {

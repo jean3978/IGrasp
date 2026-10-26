@@ -1,0 +1,268 @@
+{
+  "id": "fastapi-full-stack-template-authentication-and-authorization-end-to-end-from-the-login-form-to-a-protected-api-route-2026-10-25",
+  "title": "fastapi-full-stack-template: authentication and authorization from login form to protected route",
+  "intro": "You will follow one login through fastapi-full-stack-template: the React form in frontend/src/routes/login.tsx, the OAuth2 password endpoint, the JWT, the Authorization header, and the FastAPI dependencies that guard routes. Afterwards you can trace a request through both halves, explain who may see what, and add a protected route correctly.",
+  "project": "fastapi-full-stack-template",
+  "subject": "Authentication and authorization, end to end: from the login form to a protected API route",
+  "familiarity": "newHere",
+  "length": "standard",
+  "generated": "2026-10-25T16:00:54Z",
+  "provider": "claude-cli",
+  "model": "sonnet",
+  "generationCommit": "b1125d8",
+  "docsNote": "The READMEs only list \"JWT authentication\" and \"secure password hashing\"; no page describes the token flow, the localStorage choice, or the superuser/owner rules. A short auth section in backend/README.md would help.",
+  "chapters": [
+    {
+      "id": "c1",
+      "title": "Credentials in: the login endpoint and password hashing",
+      "goal": "Explain how POST /login/access-token in backend/app/api/routes/login.py verifies credentials via crud.authenticate, hashes with pwdlib (Argon2 plus legacy Bcrypt) and issues an HS256 JWT from security.create_access_token.",
+      "minutes": 9,
+      "hootIntro": "Every session in this template starts at one endpoint, POST /login/access-token, so let's follow a password from the form post to a signed JWT.",
+      "steps": [
+        {
+          "type": "explain",
+          "title": "Four files, one login",
+          "body": "The backend lives in `backend/app`. The login route is `api/routes/login.py`; it delegates the password check to `crud.authenticate` in `crud.py`, which uses the hashing helpers in `core/security.py`. The signing key and token lifetime come from `Settings` in `core/config.py`. The route itself stays thin: it only turns a result into an HTTP answer.",
+          "sources": [
+            {
+              "path": "backend/app/api/routes/login.py",
+              "firstLine": 23,
+              "lastLine": 42,
+              "why": "The endpoint that ties the other files together"
+            },
+            {
+              "path": "backend/app/core/security.py",
+              "firstLine": 11,
+              "lastLine": 36,
+              "why": "Hashing and token helpers"
+            }
+          ]
+        },
+        {
+          "type": "codeTour",
+          "title": "Walking the login path",
+          "stops": [
+            {
+              "path": "backend/app/api/routes/login.py",
+              "firstLine": 23,
+              "lastLine": 42,
+              "annotation": "`OAuth2PasswordRequestForm` reads form fields `username` and `password`. In this project `username` carries the email. A bad login or an inactive user gives a 400; otherwise a `Token` is returned."
+            },
+            {
+              "path": "backend/app/crud.py",
+              "firstLine": 45,
+              "lastLine": 60,
+              "annotation": "`authenticate` looks the user up by email, verifies the password, and returns the `User` or `None`. If the hasher says the stored hash is outdated, it saves the new one."
+            },
+            {
+              "path": "backend/app/core/security.py",
+              "firstLine": 11,
+              "lastLine": 36,
+              "annotation": "`password_hash` is a pwdlib `PasswordHash` with Argon2 first and Bcrypt second. `verify_password` calls `verify_and_update`, returning `(ok, new_hash_or_None)`. `create_access_token` signs `exp` and `sub` with `SECRET_KEY` using HS256."
+            },
+            {
+              "path": "backend/app/core/config.py",
+              "firstLine": 22,
+              "lastLine": 25,
+              "annotation": "`SECRET_KEY` has no default, so it must come from the environment. `ACCESS_TOKEN_EXPIRE_MINUTES` defaults to 8 days, which login.py turns into a `timedelta`."
+            }
+          ]
+        },
+        {
+          "type": "spotIt",
+          "title": "Same work for unknown emails",
+          "prompt": "Click the line that runs a password verification even though no user was found.",
+          "path": "backend/app/crud.py",
+          "firstLine": 45,
+          "lastLine": 60,
+          "answerLine": 50,
+          "explanation": "Line 50 verifies the submitted password against `DUMMY_HASH` when the email is unknown. Response time then looks the same whether or not the account exists, which the comment calls timing attack prevention."
+        },
+        {
+          "type": "conceptBridge",
+          "title": "What the token carries: a signed JWT",
+          "concept": "A JWT is a signed, base64-encoded set of claims. With HS256 the same secret signs and verifies it, so anyone holding the secret can mint valid tokens, and nobody else can alter one undetected.",
+          "applied": "`create_access_token` in `security.py` puts two claims in the token: `exp` (now plus `expires_delta`) and `sub` (the user id as a string). It signs them with `settings.SECRET_KEY` and `ALGORITHM = \"HS256\"`. The server stores no session: the token is the session, and later requests are checked by decoding it.",
+          "docsUrl": "https://pyjwt.readthedocs.io/en/stable/usage.html",
+          "sources": [
+            {
+              "path": "backend/app/core/security.py",
+              "firstLine": 19,
+              "lastLine": 26,
+              "why": "Claims and signing"
+            },
+            {
+              "path": "backend/app/api/routes/login.py",
+              "firstLine": 37,
+              "lastLine": 42,
+              "why": "Subject is user.id and lifetime comes from settings"
+            }
+          ]
+        },
+        {
+          "type": "explain",
+          "title": "Hashing: Argon2 now, Bcrypt tolerated",
+          "body": "`PasswordHash((Argon2Hasher(), BcryptHasher()))` makes Argon2 the hasher for new passwords and keeps Bcrypt only to verify old ones. When someone with a Bcrypt hash logs in, `verify_and_update` returns a fresh Argon2 hash and `authenticate` writes it back. So legacy users migrate silently, with no reset campaign. Settings also refuse the `changethis` placeholder for `SECRET_KEY` outside development.",
+          "sources": [
+            {
+              "path": "backend/app/core/security.py",
+              "firstLine": 11,
+              "lastLine": 16,
+              "why": "Hasher order"
+            },
+            {
+              "path": "backend/app/crud.py",
+              "firstLine": 52,
+              "lastLine": 60,
+              "why": "Rehash on login"
+            },
+            {
+              "path": "backend/app/core/config.py",
+              "firstLine": 68,
+              "lastLine": 88,
+              "why": "Default-secret guard"
+            }
+          ]
+        },
+        {
+          "type": "quickCheck",
+          "kind": "multipleChoice",
+          "question": "A user whose stored hash starts with `$2` (Bcrypt) logs in with the right password. What does the test suite expect afterwards?",
+          "choices": [
+            "The stored hash now starts with `$argon2` and the login still returns 200",
+            "The login fails with 400 until the user resets the password",
+            "The stored hash stays Bcrypt, since only new users get Argon2",
+            "The user is marked inactive until an admin approves the change"
+          ],
+          "answer": 0,
+          "hint": "Read the two tests near the end of test_login.py that compare `user.hashed_password` before and after.",
+          "explanation": "`test_login_with_bcrypt_password_upgrades_to_argon2` asserts a 200, then that the hash starts with `$argon2` and that verifying again needs no further update. The Argon2 counterpart test asserts the hash is unchanged.",
+          "sources": [
+            {
+              "path": "backend/tests/api/routes/test_login.py",
+              "firstLine": 129,
+              "lastLine": 162,
+              "why": "The upgrade test"
+            }
+          ]
+        },
+        {
+          "type": "putInOrder",
+          "title": "Order of a successful login",
+          "prompt": "Put the server-side steps of POST /login/access-token in order.",
+          "items": [
+            "`OAuth2PasswordRequestForm` delivers `username` and `password`",
+            "`crud.authenticate` fetches the user by email",
+            "`verify_password` checks the hash and may return an upgraded one",
+            "`login_access_token` rejects inactive users with a 400",
+            "`security.create_access_token` signs `sub` and `exp` with `SECRET_KEY`",
+            "The route returns a `Token` holding `access_token`"
+          ],
+          "explanation": "The route receives the form, authenticate verifies (and may rehash), the route checks `is_active`, then the JWT is signed and wrapped in `Token`. The activity check lives in the route, not in `authenticate`.",
+          "sources": [
+            {
+              "path": "backend/app/api/routes/login.py",
+              "firstLine": 23,
+              "lastLine": 42,
+              "why": "The sequence in code"
+            },
+            {
+              "path": "backend/app/crud.py",
+              "firstLine": 45,
+              "lastLine": 60,
+              "why": "authenticate"
+            }
+          ]
+        },
+        {
+          "type": "recap",
+          "takeaways": [
+            "POST /login/access-token in login.py takes form fields, delegates to crud.authenticate, and returns a Token with a JWT signed with SECRET_KEY (HS256, sub and exp).",
+            "crud.authenticate runs verify_password against DUMMY_HASH for unknown emails, so timing does not reveal which accounts exist.",
+            "security.py hashes with Argon2 and still verifies Bcrypt, upgrading old hashes on successful login."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "title": "Guarding routes: OAuth2PasswordBearer and the deps chain",
+      "goal": "Trace how backend/app/api/deps.py turns a Bearer token into a User through reusable_oauth2, get_current_user and the CurrentUser alias, and name the status codes each failure produces (403, 404, 400).",
+      "minutes": 9,
+      "steps": []
+    },
+    {
+      "id": "c3",
+      "title": "Authorization: superusers, ownership and the Items rules",
+      "goal": "Distinguish authentication from the two authorization patterns used here: get_current_active_superuser as a route dependency (users.py, utils.py) and the is_superuser/owner_id checks inside backend/app/api/routes/items.py.",
+      "minutes": 9,
+      "steps": []
+    },
+    {
+      "id": "c4",
+      "title": "The browser side: form, token storage and route guards",
+      "goal": "Follow the React flow: the zod-validated form in frontend/src/routes/login.tsx, useAuth.login storing access_token in localStorage, client.setConfig in main.tsx attaching it, and beforeLoad guards in _layout.tsx and admin.tsx plus the 401/403 logout handler.",
+      "minutes": 10,
+      "steps": []
+    },
+    {
+      "id": "c5",
+      "title": "Proving it: token reset flow and the tests that exercise auth",
+      "goal": "Explain how the password-reset JWT (generate_password_reset_token in utils.py, /reset-password/) reuses the SECRET_KEY, and how pytest (user_authentication_headers) and Playwright (auth.setup.ts storageState) log in to test protected routes.",
+      "minutes": 8,
+      "steps": []
+    }
+  ],
+  "sources": [
+    {
+      "path": "backend/app/api/routes/login.py",
+      "lines": "23-42",
+      "sha256": "af826c280a9f8cd792cb396775cb50b1a374fd56105aec68c1d4dec778c619fd"
+    },
+    {
+      "path": "backend/app/core/security.py",
+      "lines": "11-36",
+      "sha256": "ebfd5a61c0123b315bfd8b33d1bb43d38de9bd9fd626cffb42cf49eecef04aa4"
+    },
+    {
+      "path": "backend/app/crud.py",
+      "lines": "45-60",
+      "sha256": "0ac10e6a4154806be220bd2b8d390a6c61061f330b1432d924cd59bb5a69520d"
+    },
+    {
+      "path": "backend/app/core/config.py",
+      "lines": "22-25",
+      "sha256": "5d1a272537fc2513b96c9bd51afe3917c9b7473020c9ede1b2b0e22218ff1dbf"
+    },
+    {
+      "path": "backend/app/core/security.py",
+      "lines": "19-26",
+      "sha256": "f544cbd79e94c91022bda1d9e9cbe491636aea23111d159c0c16266540e63723"
+    },
+    {
+      "path": "backend/app/api/routes/login.py",
+      "lines": "37-42",
+      "sha256": "9289bc07e0a782518f1d99979bfe8b733266e4a14090832c63d42e6ec9b5fd4b"
+    },
+    {
+      "path": "backend/app/core/security.py",
+      "lines": "11-16",
+      "sha256": "729c991eb6a3f4026cbc275e457e6bbd62a668beba5c61e3d554635260f47590"
+    },
+    {
+      "path": "backend/app/crud.py",
+      "lines": "52-60",
+      "sha256": "7fb0dd311f037a5c0ffe790eabd4a4ff675491248d8b446f1375b0ef86f864c1"
+    },
+    {
+      "path": "backend/app/core/config.py",
+      "lines": "68-88",
+      "sha256": "8a255d640c8b2cfa40ca52a9c4c027c0a654f0771d75c690a3257b27e472d8df"
+    },
+    {
+      "path": "backend/tests/api/routes/test_login.py",
+      "lines": "129-162",
+      "sha256": "7abd27863f8f4653d8f6f7b6f0cec6cc0fe69be7fe0d035722da602c33dd93a2"
+    }
+  ]
+}

@@ -4,4 +4,4 @@
  * The kind of quiz chosen in the wizard: kept with the quiz (record, history, quiz files) so
  * quizzes can be sorted by it, and sent with a typed subject so the prompt knows what it is.
  */
-export type QuizCategory = "global" | "feature" | "code";
+export type QuizCategory = "global" | "feature" | "code" | "tutorial";

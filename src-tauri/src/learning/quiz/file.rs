@@ -111,6 +111,7 @@ pub fn info(text: &str) -> Option<QuizFileInfo> {
             "global" => Some(QuizCategory::Global),
             "feature" => Some(QuizCategory::Feature),
             "code" => Some(QuizCategory::Code),
+            "tutorial" => Some(QuizCategory::Tutorial),
             _ => None,
         }),
         role: field(fm, "role"),

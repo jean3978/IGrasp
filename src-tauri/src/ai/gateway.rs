@@ -11,7 +11,7 @@ use super::policy::{
     AiPermissionSettings, DENIED_BY_SETTINGS, DENIED_READ_ONLY, PermissionRule,
     REASON_ALLOWED_BY_SETTINGS, REASON_DENIED_BY_SETTINGS, REASON_READ_ONLY, decide,
 };
-use super::run::{self, OutputValidator};
+use super::run::{self, RunPlan};
 use super::types::{
     AiCapabilities, AiEvent, AiPermissionKind, AiPolicy, AiProviderStatus, AiRequest, AiUserAction,
     PermissionDecision, ProposedEdit,
@@ -184,7 +184,7 @@ impl AiGateway {
         request: AiRequest,
         root: &Path,
         permissions: AiPermissionSettings,
-        validator: Option<Box<dyn OutputValidator>>,
+        plan: Option<RunPlan>,
         mut sink: Box<dyn FnMut(u32, AiEvent) + Send + 'static>,
     ) -> AppResult<u32> {
         let mut slot = lock(&self.running);
@@ -270,9 +270,16 @@ impl AiGateway {
             }
         });
         // With a validator, the operation is a validated run: up to `1 + MAX_RETRIES` provider
-        // attempts under this one id, the slot freed by the run's final `Done` only.
-        let operation = match validator {
-            Some(validator) => run::start(provider.clone(), request, root, validator, gate)?,
+        // attempts under this one id; with stages, a staged run of validated runs (at most
+        // `MAX_STAGES`, each stage composing its own request). The slot is freed by the run's
+        // final `Done` only.
+        let operation = match plan {
+            Some(RunPlan::Validated(validator)) => {
+                run::start(provider.clone(), request, root, validator, gate)?
+            }
+            Some(RunPlan::Staged(builder)) => {
+                run::start_staged(provider.clone(), root, builder, gate)?
+            }
             None => provider.start(request, root, gate)?,
         };
         self.starts.fetch_add(1, Ordering::SeqCst);

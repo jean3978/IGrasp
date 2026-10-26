@@ -7,6 +7,8 @@ import type { PreviewContextValue } from './previewContext';
 import { FrontMatterCard } from './components/FrontMatterCard';
 import { QuizFileBanner } from './components/QuizFileBanner';
 import type { QuizFileFacts } from './components/QuizFileBanner';
+import { TutorialFileBanner } from './components/TutorialFileBanner';
+import type { TutorialFileFacts } from './components/TutorialFileBanner';
 import { countQuizBlocks } from './pipeline/quizBlocks';
 import type { RenderedMarkdown } from './pipeline/processor';
 import './markdown.css';
@@ -26,6 +28,34 @@ function quizFacts(rendered: RenderedMarkdown): QuizFileFacts | null {
     subject: text(fields.subject),
     questions: countQuizBlocks(rendered.hast),
   };
+}
+
+/** A shared tutorial's README or chapter file (ADR 0025), recognised by its front matter. */
+function tutorialFacts(rendered: RenderedMarkdown): TutorialFileFacts | null {
+  const data = rendered.frontMatter?.data;
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) return null;
+  const fields = data as Record<string, unknown>;
+  if (fields.igrasp === 'tutorial') {
+    const verified = fields.verified as Record<string, unknown> | null | undefined;
+    return {
+      title: text(fields.title),
+      chapter: null,
+      chapters: Array.isArray(fields.chapters) ? fields.chapters.length : 0,
+      verified: text(verified?.date),
+    };
+  }
+  if (fields.igrasp === 'tutorial-chapter') {
+    // The chapter's title is its first heading (`# 2. Debounce`).
+    let heading: string | null = null;
+    for (const node of rendered.hast.children) {
+      if (node.type === 'element' && node.tagName === 'h1') {
+        heading = node.children.map((c) => (c.type === 'text' ? c.value : '')).join('');
+        break;
+      }
+    }
+    return { title: null, chapter: heading ?? 'A chapter', chapters: 0, verified: null };
+  }
+  return null;
 }
 
 interface MarkdownPreviewProps {
@@ -53,11 +83,14 @@ export const MarkdownPreview = memo(function MarkdownPreview({
     [relPath, rootPath, getScrollContainer],
   );
   const quiz = useMemo(() => quizFacts(rendered), [rendered]);
+  const tutorial = useMemo(() => tutorialFacts(rendered), [rendered]);
   return (
     <PreviewContext.Provider value={context}>
       <article className="markdown-body">
         {quiz ? (
           <QuizFileBanner relPath={relPath} facts={quiz} />
+        ) : tutorial ? (
+          <TutorialFileBanner relPath={relPath} facts={tutorial} />
         ) : (
           rendered.frontMatter && <FrontMatterCard frontMatter={rendered.frontMatter} />
         )}

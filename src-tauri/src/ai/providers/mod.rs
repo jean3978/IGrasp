@@ -1,5 +1,6 @@
-//! Provider implementations. Private to `ai`: only the gateway constructs them.
+//! Provider implementations. Private to `ai`: only the gateway constructs them (the test-only
+//! mock is visible to the crate's tests).
 
 pub(super) mod claude_cli;
 #[cfg(test)]
-pub(super) mod mock;
+pub(crate) mod mock;

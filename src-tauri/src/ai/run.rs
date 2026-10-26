@@ -294,6 +294,203 @@ impl Drop for ValidatedRun {
     }
 }
 
+// ---------------------------------------------------------------------------------------------
+// Staged runs (ADR 0026): several validated runs under one operation id, one after the other,
+// all authorized by the same user action (the chapters of a tutorial the user ticked). The
+// number of stages is fixed when the run starts and capped by `MAX_STAGES`; each stage has the
+// validated run's own capped retries; a stage that fails ends the run; cancel stops it between
+// stages as well as inside one; exactly one `Done` ends it.
+
+/// Stages of a staged run at most (a tutorial outline's chapters at most).
+pub const MAX_STAGES: u32 = 8;
+
+/// Builds the stages of a staged run, one at a time, from what the earlier stages produced.
+pub trait StageBuilder: Send {
+    /// How many stages the run has (fixed when it starts).
+    fn stages(&self) -> u32;
+    /// The request, the validator and a label (shown to the user) of stage `n` (1-based), given
+    /// the accepted outputs of the stages before it.
+    fn next(
+        &mut self,
+        n: u32,
+        accepted: &[Value],
+    ) -> AppResult<(AiRequest, Box<dyn OutputValidator>, String)>;
+}
+
+/// How the gateway runs an operation with a structured answer.
+pub enum RunPlan {
+    /// One validated run.
+    Validated(Box<dyn OutputValidator>),
+    /// A staged run: one validated run per stage.
+    Staged(Box<dyn StageBuilder>),
+}
+
+struct StagedInner {
+    provider: Arc<dyn AiProvider>,
+    root: PathBuf,
+    builder: Mutex<Box<dyn StageBuilder>>,
+    stages: u32,
+    sink: Mutex<EventSink>,
+    current: Mutex<Option<Box<dyn AiOperation>>>,
+    retired: Mutex<Vec<Box<dyn AiOperation>>>,
+    accepted: Mutex<Vec<Value>>,
+    /// The accepted answer of the stage running now.
+    output: Mutex<Option<Value>>,
+    stage: AtomicU32,
+    cancelled: AtomicBool,
+    done: AtomicBool,
+}
+
+/// The running operation the gateway keeps for a staged run.
+pub struct StagedRun {
+    inner: Arc<StagedInner>,
+}
+
+impl StagedInner {
+    fn emit(&self, event: AiEvent) {
+        (lock(&self.sink))(event);
+    }
+
+    fn finish(&self, outcome: AiOutcome, detail: Option<String>) {
+        if self.done.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let mut ops: Vec<Box<dyn AiOperation>> = lock(&self.retired).drain(..).collect();
+        ops.extend(lock(&self.current).take());
+        std::thread::spawn(move || drop(ops));
+        self.emit(AiEvent::Done { outcome, detail });
+    }
+
+    /// Starts the next stage, or finishes the run when every stage is done.
+    fn start_next(self: &Arc<Self>) -> AppResult<()> {
+        let mut current = lock(&self.current);
+        if self.cancelled.load(Ordering::SeqCst) || self.done.load(Ordering::SeqCst) {
+            drop(current);
+            self.finish(AiOutcome::Cancelled, None);
+            return Ok(());
+        }
+        let n = self.stage.load(Ordering::SeqCst) + 1;
+        if n > self.stages {
+            drop(current);
+            self.finish(AiOutcome::Completed, None);
+            return Ok(());
+        }
+        let accepted = lock(&self.accepted).clone();
+        let (request, validator, label) = lock(&self.builder).next(n, &accepted)?;
+        self.stage.store(n, Ordering::SeqCst);
+        *lock(&self.output) = None;
+        self.emit(AiEvent::Stage {
+            number: n,
+            of: self.stages,
+            label,
+        });
+        let me = self.clone();
+        let op = start(
+            self.provider.clone(),
+            request,
+            &self.root,
+            validator,
+            Box::new(move |e| me.on_event(e)),
+        )?;
+        if let Some(previous) = current.replace(op) {
+            lock(&self.retired).push(previous);
+        }
+        Ok(())
+    }
+
+    fn on_event(self: &Arc<Self>, event: AiEvent) {
+        if self.done.load(Ordering::SeqCst) {
+            return;
+        }
+        match event {
+            AiEvent::Done { outcome, detail } => match outcome {
+                AiOutcome::Completed => {
+                    match lock(&self.output).take() {
+                        Some(value) => lock(&self.accepted).push(value),
+                        None => {
+                            return self.finish(
+                                AiOutcome::Failed,
+                                Some("A stage ended without an answer.".to_owned()),
+                            );
+                        }
+                    }
+                    if let Err(e) = self.start_next() {
+                        self.emit(AiEvent::Error {
+                            message: e.to_string(),
+                        });
+                        self.finish(AiOutcome::Failed, None);
+                    }
+                }
+                AiOutcome::Cancelled => self.finish(AiOutcome::Cancelled, detail),
+                AiOutcome::Failed => self.finish(AiOutcome::Failed, detail),
+            },
+            AiEvent::StructuredOutput { value } => {
+                *lock(&self.output) = Some(value.clone());
+                self.emit(AiEvent::StructuredOutput { value });
+            }
+            event => self.emit(event),
+        }
+    }
+}
+
+/// Starts a staged run: the stages of `builder` one after the other, at most [`MAX_STAGES`].
+/// Called by the gateway only.
+pub fn start_staged(
+    provider: Arc<dyn AiProvider>,
+    root: &Path,
+    builder: Box<dyn StageBuilder>,
+    sink: EventSink,
+) -> AppResult<Box<dyn AiOperation>> {
+    let stages = builder.stages();
+    if stages == 0 || stages > MAX_STAGES {
+        return Err(AppError::Ai(format!(
+            "An operation has between 1 and {MAX_STAGES} stages ({stages} asked)."
+        )));
+    }
+    let inner = Arc::new(StagedInner {
+        provider,
+        root: root.to_path_buf(),
+        builder: Mutex::new(builder),
+        stages,
+        sink: Mutex::new(sink),
+        current: Mutex::new(None),
+        retired: Mutex::new(Vec::new()),
+        accepted: Mutex::new(Vec::new()),
+        output: Mutex::new(None),
+        stage: AtomicU32::new(0),
+        cancelled: AtomicBool::new(false),
+        done: AtomicBool::new(false),
+    });
+    inner.start_next()?;
+    Ok(Box::new(StagedRun { inner }))
+}
+
+impl AiOperation for StagedRun {
+    fn respond(&self, request_id: &str, decision: &PermissionDecision) -> AppResult<()> {
+        match lock(&self.inner.current).as_ref() {
+            Some(op) => op.respond(request_id, decision),
+            None => Err(AppError::Ai("The operation is over.".to_owned())),
+        }
+    }
+
+    fn cancel(&self) {
+        self.inner.cancelled.store(true, Ordering::SeqCst);
+        if let Some(op) = lock(&self.inner.current).as_ref() {
+            op.cancel();
+        }
+    }
+
+    fn is_done(&self) -> bool {
+        self.inner.done.load(Ordering::SeqCst)
+    }
+}
+
+impl Drop for StagedRun {
+    fn drop(&mut self) {
+        self.cancel();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::VecDeque;
@@ -306,6 +503,7 @@ mod tests {
     use super::super::policy::{AiPermissionSettings, PermissionRule, REASON_READ_ONLY};
     use super::super::providers::mock::MockProvider;
     use super::super::types::{AiPolicy, AiUserAction};
+    use super::RunPlan;
     use super::*;
 
     /// Answers with the scripted verdicts, records what it was given.
@@ -384,11 +582,11 @@ mod tests {
                 },
                 Path::new("."),
                 allow_all,
-                Some(Box::new(Script {
+                Some(RunPlan::Validated(Box::new(Script {
                     verdicts: verdicts.into(),
                     exhausted,
                     seen: seen.clone(),
-                })),
+                }))),
                 Box::new(move |_, e| {
                     let _ = tx.send(e);
                 }),
@@ -617,6 +815,203 @@ mod tests {
             !e.iter()
                 .any(|e| matches!(e, AiEvent::PermissionRequest { .. }))
         );
+    }
+
+    /// Stages that accept what the provider answers, or fail at `fail_at`; records what each
+    /// stage was given.
+    struct Stages {
+        count: u32,
+        prompt: &'static str,
+        fail_at: Option<u32>,
+        seen: Arc<Mutex<Vec<(u32, usize)>>>,
+    }
+
+    struct AcceptAll {
+        fail: bool,
+    }
+
+    impl OutputValidator for AcceptAll {
+        fn check(&mut self, _attempt: u32, output: &Value) -> Verdict {
+            if self.fail {
+                Verdict::Fail {
+                    message: "not enough material".into(),
+                }
+            } else {
+                Verdict::Accept(json!({ "stage": output.clone() }))
+            }
+        }
+        fn on_exhausted(&mut self) -> Verdict {
+            Verdict::Fail {
+                message: "x".into(),
+            }
+        }
+    }
+
+    impl StageBuilder for Stages {
+        fn stages(&self) -> u32 {
+            self.count
+        }
+        fn next(
+            &mut self,
+            n: u32,
+            accepted: &[Value],
+        ) -> AppResult<(AiRequest, Box<dyn OutputValidator>, String)> {
+            lock(&self.seen).push((n, accepted.len()));
+            Ok((
+                AiRequest {
+                    prompt: format!("{} {n}", self.prompt),
+                    policy: AiPolicy::ReadOnly,
+                    output_schema: Some(json!({ "type": "object" })),
+                    ..AiRequest::default()
+                },
+                Box::new(AcceptAll {
+                    fail: self.fail_at == Some(n),
+                }),
+                format!("Chapter {n}"),
+            ))
+        }
+    }
+
+    struct Staged {
+        mock: MockProvider,
+        gateway: AiGateway,
+        rx: mpsc::Receiver<AiEvent>,
+        seen: Arc<Mutex<Vec<(u32, usize)>>>,
+        id: u32,
+    }
+
+    fn staged(count: u32, prompt: &'static str, fail_at: Option<u32>) -> AppResult<Staged> {
+        let mock = MockProvider::default();
+        lock(&mock.outputs).extend((1..=count).map(|n| json!({ "n": n })));
+        let gateway = AiGateway::new(Box::new(mock.clone()));
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let (tx, rx) = mpsc::channel();
+        let id = gateway.start(
+            AiUserAction::TutorialGeneration,
+            AiRequest::default(),
+            Path::new("."),
+            AiPermissionSettings::default(),
+            Some(RunPlan::Staged(Box::new(Stages {
+                count,
+                prompt,
+                fail_at,
+                seen: seen.clone(),
+            }))),
+            Box::new(move |_, e| {
+                let _ = tx.send(e);
+            }),
+        )?;
+        Ok(Staged {
+            mock,
+            gateway,
+            rx,
+            seen,
+            id,
+        })
+    }
+
+    fn staged_events(r: &Staged) -> Vec<AiEvent> {
+        let mut out = Vec::new();
+        while let Ok(e) = r.rx.recv_timeout(Duration::from_secs(5)) {
+            let done = matches!(e, AiEvent::Done { .. });
+            out.push(e);
+            if done {
+                break;
+            }
+        }
+        out
+    }
+
+    fn stages_of(events: &[AiEvent]) -> Vec<(u32, u32, String)> {
+        events
+            .iter()
+            .filter_map(|e| match e {
+                AiEvent::Stage { number, of, label } => Some((*number, *of, label.clone())),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_staged_run_writes_its_stages_in_order_under_one_operation() {
+        let r = staged(3, "write chapter", None).unwrap();
+        let e = staged_events(&r);
+        assert_eq!(outcome(&e), AiOutcome::Completed);
+        assert_eq!(
+            stages_of(&e),
+            vec![
+                (1, 3, "Chapter 1".into()),
+                (2, 3, "Chapter 2".into()),
+                (3, 3, "Chapter 3".into())
+            ]
+        );
+        assert_eq!(
+            structured(&e),
+            vec![
+                json!({ "stage": { "n": 1 } }),
+                json!({ "stage": { "n": 2 } }),
+                json!({ "stage": { "n": 3 } })
+            ],
+            "each stage's accepted answer, once"
+        );
+        // Each stage sees the accepted answers of the ones before it.
+        assert_eq!(*lock(&r.seen), vec![(1, 0), (2, 1), (3, 2)]);
+        assert_eq!(
+            e.iter()
+                .filter(|e| matches!(e, AiEvent::Done { .. }))
+                .count(),
+            1
+        );
+        assert_eq!(r.mock.provider_starts.load(Ordering::SeqCst), 3);
+        assert_eq!(r.gateway.starts(), 1, "one operation, one user action");
+        let requests = lock(&r.mock.requests).clone();
+        assert!(requests.iter().all(|q| q.policy == AiPolicy::ReadOnly));
+        assert!(
+            requests.iter().all(|q| q.resume_id.is_none()),
+            "fresh prompts"
+        );
+    }
+
+    #[test]
+    fn a_failed_stage_ends_the_run() {
+        let r = staged(3, "write chapter", Some(2)).unwrap();
+        let e = staged_events(&r);
+        assert_eq!(outcome(&e), AiOutcome::Failed);
+        assert_eq!(stages_of(&e).len(), 2, "no stage after the failed one");
+        assert_eq!(structured(&e).len(), 1, "the first chapter was kept");
+        std::thread::sleep(Duration::from_millis(100));
+        assert_eq!(r.mock.provider_starts.load(Ordering::SeqCst), 2);
+        assert!(
+            e.iter()
+                .any(|e| matches!(e, AiEvent::Error { message } if message.contains("material")))
+        );
+    }
+
+    #[test]
+    fn cancel_stops_a_staged_run_without_another_stage() {
+        let r = staged(3, "slow chapter", None).unwrap();
+        loop {
+            match r.rx.recv_timeout(Duration::from_secs(5)).unwrap() {
+                AiEvent::TextDelta { .. } => break,
+                AiEvent::Done { .. } => panic!("ended early"),
+                _ => {}
+            }
+        }
+        r.gateway.cancel(r.id);
+        let e = staged_events(&r);
+        assert_eq!(outcome(&e), AiOutcome::Cancelled);
+        std::thread::sleep(Duration::from_millis(100));
+        assert_eq!(r.mock.provider_starts.load(Ordering::SeqCst), 1);
+        assert_eq!(lock(&r.seen).len(), 1);
+    }
+
+    #[test]
+    fn a_staged_run_is_bounded() {
+        assert!(matches!(
+            staged(MAX_STAGES + 1, "write", None),
+            Err(AppError::Ai(_))
+        ));
+        assert!(matches!(staged(0, "write", None), Err(AppError::Ai(_))));
     }
 
     #[test]

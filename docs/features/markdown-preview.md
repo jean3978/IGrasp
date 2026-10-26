@@ -13,6 +13,7 @@ Clicking a file in the Explorer shows it rendered, with a GitHub-like reading st
 | Mermaid | See [mermaid.md](mermaid.md). |
 | Front matter | YAML front matter is shown as a card above the document: fields, lists as chips, nested objects collapsed, a YAML toggle, and a message for invalid YAML. |
 | Quiz files | A file whose front matter says `igrasp: quiz` ([ADR 0024](../decisions/0024-shareable-learning-files-as-markdown.md)) shows a **Play this quiz** banner instead of the front matter card (it opens the Quiz tab and replays the quiz without the AI), and its ` ```igrasp-quiz ` blocks show as question cards with the choices and the answer, hint, explanation and sources folded. A block that does not parse stays a code block. See [quiz.md](quiz.md). |
+| Tutorial files | A shared tutorial's `README.md` (`igrasp: tutorial`) or chapter file (`igrasp: tutorial-chapter`, [ADR 0025](../decisions/0025-tutorial-format-json-schema-and-shared-markdown.md)) shows a banner instead of the front matter card: the tutorial's title and number of chapters (or the chapter's title), its verification date, and **Take it in the Academy**, which opens the tutorial in the Academy (reading it there spends nothing). The ` ```igrasp-code-tour `, `igrasp-spot-it`, `igrasp-put-in-order`, `igrasp-match` and `igrasp-try-it` blocks show as cards: what the step asks and its sources (each opens the cited file at its lines), with the answer (the order, the pairs, the line, what to expect) folded. Quick checks are `igrasp-quiz` blocks and reuse the quiz card. Nothing in them runs: a try-it command is shown, never run. A block that does not parse stays a code block. See [academy.md](academy.md). |
 | Inline HTML | Allowed after sanitization (`details`, `summary`, `kbd`, `sup`, `sub`, `video`, …). |
 | Images and videos | Relative paths are resolved from the document's folder (a leading `/` means the opened folder). Remote media must use `https:`. |
 
@@ -32,7 +33,7 @@ AI agents write these files, so the preview treats them as untrusted (see
 - The webview never navigates: every link click is handled by the app.
 - `igrasp-quiz` blocks are tagged after sanitization, like Mermaid blocks; the card reads the
   block's text as YAML and renders every value as text, so a quiz file cannot inject markup or
-  run code.
+  run code. The tutorial blocks follow the same rule (`features/academy/tutorialBlocks.ts`).
 
 ## Links
 
@@ -43,7 +44,9 @@ AI agents write these files, so the preview treats them as untrusted (see
 | `other.md`, `../docs/a.md`, `other.md#part` | Opens the file in a tab (scrolled to the heading). |
 | `src/main.rs#L10-L20`, folders, media | Code viewer, Explorer, system viewer. |
 
-Broken links are flagged with a wavy underline. The full rules, broken links, backlinks and the
+Broken links are flagged with a wavy underline. A GitHub line fragment into a markdown file
+(`guide.md#L3-L8`, as a shared tutorial's `Sources:` lines write them) is not reported as a
+missing heading. The full rules, broken links, backlinks and the
 outline are described in [links-and-graph.md](links-and-graph.md).
 
 ## Review mode (an AI edit)

@@ -22,6 +22,7 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 | Rust tests | `npm run rust:test` (also regenerates `src/ipc/generated`) |
 | Performance tests (10k documents) | `cargo test --release --manifest-path src-tauri/Cargo.toml -- --ignored --nocapture` |
 | A real quiz (spends tokens) | `IGRASP_QUIZ_ROOT=<folder> cargo test --manifest-path src-tauri/Cargo.toml real_quiz -- --ignored --nocapture` (also `IGRASP_QUIZ_SUBJECT`, `IGRASP_QUIZ_CUSTOM`, `IGRASP_QUIZ_PATHS`) |
+| A real Academy tutorial (spends tokens; may write in the folder) | `IGRASP_ACADEMY_ROOT=<temporary clone> IGRASP_ACADEMY_OUT=<folder> cargo test --manifest-path src-tauri/Cargo.toml real_academy -- --ignored --nocapture` (also `IGRASP_ACADEMY_SUBJECT`, `_FAMILIARITY`, `_LENGTH`, `_GAP`, `_MODEL`, `_SHARE=1`) |
 | The quiz subjects of a folder (no AI) | `IGRASP_SUBJECTS_ROOT=<folder> cargo test --manifest-path src-tauri/Cargo.toml print_subjects -- --ignored --nocapture` |
 | Large project to open in the app | `node scripts/gen-large-project.mjs [folder]` |
 | Lint / format | `npm run lint`, `npm run format`, `npm run rust:fmt`, `npm run rust:clippy` |
@@ -37,12 +38,23 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   current file read through the root guard, `estimate.rs` size classes, `no_start.rs` the test
   that only `ai_start` starts an operation; `providers/claude_cli/` spawns the `claude` CLI,
   `providers/mock.rs` is the Rust test provider; `run.rs` validated runs: one operation, capped
-  retries announced by `attempt`), `profile/` (the project profile from a marker table, local),
-  `learning/` (corpus and agent files, subjects, Hoot's tone, `role.rs` the player's role read as a
+  retries announced by `attempt`, and staged runs: several validated runs under one operation,
+  `RunPlan::Staged`, `StageBuilder`, `MAX_STAGES`, `AiEvent::Stage`), `profile/` (the project
+  profile from a marker table, local),
+  `learning/` (corpus and agent files (`corpus::read_text` reads only inside the root), subjects,
+  Hoot's tone, `role.rs` the player's role read as a
   family of crafts, `save.rs` the save dialog behind a trait, `quiz/` schema, difficulty, prompt with a snapshot, validator with shared fixtures,
-  `compose.rs` the quiz request built in `ai_start`, `file.rs` quiz files), `appdata/learning.rs`
-  (corrections, quiz in progress, history per folder), `paths.rs` (root guard), `state.rs`,
-  `error.rs`, `perf.rs` (ignored performance tests).
+  `compose.rs` the quiz request built in `ai_start`, `file.rs` quiz files; `tutorial/` Hoot's
+  Academy: `schema.rs`, `prompt.rs`, `validate.rs`, `compose.rs` (outline, `ChapterStages`),
+  `operation.rs` (`compose_operation` for `ai_estimate` and `ai_start`), `cost.rs`,
+  `families.rs` (subject cards), `suggest.rs`, `review.rs` (Check with the AI), `markdown.rs`
+  (the shared format, owned by Rust), `share.rs` (write plans and atomic writes), `freshness.rs`,
+  `progress.rs` (`step_hash`), `repo.rs` (`.git` read as files), `real.rs` (the ignored
+  `real_academy` test)), `commands/tutorials.rs` (the Academy's local commands),
+  `appdata/learning.rs` (corrections, quiz in progress, history, tutorial progress, suggested
+  subjects, tutorial usage per folder), `appdata/tutorials.rs` (one JSON file per private
+  tutorial), `paths.rs` (root guard), `state.rs`, `error.rs`, `perf.rs` (ignored performance
+  tests).
 - `src/ipc/`: `types.ts` (the `Backend` interface), `tauri.ts` (the only module that calls
   `invoke`/`listen` or imports `@tauri-apps/*`), `mock/` (in-memory backend + fixture project),
   `generated/` (ts-rs output: never edit by hand).
@@ -51,17 +63,28 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   capabilities, model), `aiConversation.ts` (items, operation, permissions, history) and
   `aiPanel.ts` (floating panel, draft, context bar, attachment, placement next to a
   selection); `capture.ts` holds the region overlay, the text mode and the selection highlight.
-  Learning is `projectProfile.ts` and `quiz.ts` (its `start` is the only quiz call to `aiStart`).
+  Learning is `projectProfile.ts`, `quiz.ts` (its `start` is the only quiz call to `aiStart`),
+  `academy.ts` (home, cards, library, options, confirmation, generations, review; its `start` is
+  the only tutorial call to `aiStart`), `tutorialPlayer.ts` (the open tutorial and the progress)
+  and `tutorialWrite.ts` (write plan, confirmation, write), `stepQuestions.ts` (questions saved
+  on a step: asked in the chat about a step card, anonymous).
 - `src/features/<area>/`: UI by feature, with its CSS next to it. Sidebar views and right-panel
   sections build on `src/components/VirtualRows.tsx` (virtualized rows, keyboard focus).
   `features/ai` is the chat, the AI tools toolbar over the view, the quick actions and the
   inline review; `features/diff` the rendered block diff (two markdown strings in, reused by
   later phases); `features/capture` the text and region selections (source lines, narrowing to
-  the highlighted text, highlight). Selections go to the AI as text, never as images.
+  the highlighted text, highlight; `stepCapture.ts` a step card of the Academy, pointed at or
+  asked about as a whole). Selections go to the AI as text, never as images.
   `features/quiz` is the Quiz tab (the new-quiz wizard `QuizWizard.tsx` with `SubjectPicker.tsx`
   and `quizRoles.ts`, engine, cards, `LookUpDialog.tsx`, results, `quizMarkdown.ts`,
-  `quizFile.ts`, `effects/`), `features/hoot` the owl (`?hoot=1` shows its states), `features/profile` the
-  profile card and dialog.
+  `quizFile.ts`, `effects/`), `features/hoot` the owl (`?hoot=1` shows its states and moments),
+  `features/profile` the profile card and dialog. `features/academy` is the Academy tab
+  (`AcademyTab`, `AcademyWelcome`, `AcademyHome` the hub with `TutorialBoard` (the blackboard), `AcademyRole` + `AcademyCreate` (cards ranked for the role by `tutorialRoles.ts`) + `TutorialOptions` + `AcademyConfirm` the wizard with `WizardSteps`, `AcademyGeneration`,
+  `OutlineReview`, `TutorialView`, `CourseMap`, `ChapterPlayer`, `steps/` the ten step types (`Recap.tsx` the end of a chapter),
+  `FreshnessPanel`, `ReviewScreen`, `WriteConfirmDialog`, `GraduationScreen`, `StepQuestions`; `academyEngine.ts`
+  the XP rules; `tutorialBlocks.ts` the preview's block parser). `src/components/CodeView.tsx`
+  is the read-only code view of Look it up, code tours and Spot it; `src/components/ErrorBoundary.tsx`
+  keeps a render error inside its tab (`TabContent.tsx`) instead of blanking the window.
 - `src/features/titlebar/menuActions.ts`: every user action. Menus, toolbar buttons and
   shortcuts (`features/shortcuts/keymap.ts`) dispatch through it.
 - `e2e/`: Playwright smoke tests. `scripts/`: the large-project generator. `docs/`:
@@ -78,7 +101,10 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 - Every scan has a generation; events and listings of an older generation are ignored.
 - When adding a command, implement it in Rust, in `ipc/tauri.ts` and in `ipc/mock/` (the mock
   must behave like Rust: it powers the browser dev mode and all frontend tests). The mock's
-  graph, symbol search and text search live in `mockGraph.ts`, `mockSymbols.ts`, `mockText.ts`.
+  graph, symbol search and text search live in `mockGraph.ts`, `mockSymbols.ts`, `mockText.ts`;
+  the Academy's in `mockFamilies.ts` and `mockTutorial*.ts` (generation, pool, validator, store,
+  markdown writer, freshness, review, share). `window.__igraspMock.addSharedTutorial()` writes a
+  shared tutorial to the fake disk (none by default).
 - Heading anchors must stay identical between Rust and the preview: `src/test/fixtures/slugs.json`
   and `src/test/fixtures/markdown/headings.json` are asserted by both `cargo test` and Vitest.
   When a markdown fixture changes, update `headings.json` with what the Vitest test receives.
@@ -106,9 +132,9 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
 - One branch per delivery phase (`phase-1-mvp`, …), merged into `main` and tagged when the phase
   is done. Never push, merge, tag or publish a release without the maintainer asking.
 - Nothing the app does on its own may write inside the opened folder; app state lives in the OS
-  app-data folder. Only explicit user actions on files (later phases: editing, accepted AI
-  edits, quiz "Save as…", sharing a tutorial, importing media by drop or paste, annotating
-  media) write there.
+  app-data folder. Only explicit user actions on files (accepted AI edits, quiz "Save as…",
+  sharing, saving or updating a tutorial after its confirmation; later phases: editing,
+  importing media by drop or paste, annotating media) write there.
 - AI (from Phase 3): no token without a user action. Every AI call goes through the
   single backend gateway, triggered by an explicit IPC request from a user action; never from
   watchers, timers, startup or event handlers. Features use the provider-neutral `AiProvider`
@@ -131,8 +157,18 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   quiz, only a `QuizGenerationInput`. Agent instruction files are context, never cited. Hoot's
   lines are local (`hootLines.ts`). The validator's rules exist twice (`validate.rs` and
   `mockQuizValidate.ts`) and must agree on `src/test/fixtures/quiz/`. Replays (Play again, quiz
-  files) never call the AI. The quiz file format (ADR 0024) is shared with Phase 5's tutorials.
+  files) never call the AI. The quiz file conventions (ADR 0024) are shared with the tutorials.
+- Tutorials: the frontend sends only a `TutorialRequest`; Rust owns the tutorial format
+  (`markdown.rs`, ADR 0025) and the mock's writer (`mockTutorialMarkdown.ts`) must produce the
+  same bytes on `src/test/fixtures/tutorial/format/<case>/` (`IGRASP_UPDATE_FIXTURES=1 cargo test`
+  regenerates them from Rust). The validators agree on `src/test/fixtures/tutorial/cases/`, the
+  step hashes (`stepHash` in `src/lib/tutorial.ts`, `progress::step_hash`) on `step-hashes.json`,
+  and the XP rules (`academyEngine.ts`) are pinned by `xp.json`. Chapters are one staged run;
+  reading, freshness, sharing and verifying never call the AI, and the AI never sets the
+  verification.
 - Writes in the opened folder from the learning features go only through
-  `save_quiz_markdown` after the save dialog; the frontend never passes a path.
+  `save_quiz_markdown` after the save dialog, and, for the Academy, through `write_tutorial`
+  after `plan_tutorial_write` and the write confirmation that lists the files; the frontend never
+  passes a path (only the `relPath` of an existing shared README).
 - Keep docs current: `docs/architecture.md`, the `docs/features/` page of the area you touch, an
   ADR in `docs/decisions/` for significant choices, and `CHANGELOG.md` under `[Unreleased]`.

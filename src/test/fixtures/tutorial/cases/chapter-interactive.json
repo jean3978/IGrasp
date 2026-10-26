@@ -1,0 +1,53 @@
+{
+  "description": "a long chapter of explain cards only is asked for an interactive step",
+  "kind": "chapter",
+  "length": "standard",
+  "output": {
+    "id": "c1",
+    "title": "The watcher",
+    "hootIntro": "Hoot reads Orbit's watcher.",
+    "steps": [
+      {
+        "type": "explain",
+        "title": "The constant",
+        "body": "DEBOUNCE_MS in Orbit is 200.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 4, "lastLine": 4 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "explain",
+        "title": "The context",
+        "body": "WatchContext keeps the generation.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 6, "lastLine": 8 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "explain",
+        "title": "The handler",
+        "body": "handle() reindexes the batch in watcher.rs.",
+        "sources": [{ "path": "src/index/watcher.rs", "firstLine": 10, "lastLine": 14 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "explain",
+        "title": "The doc",
+        "body": "docs/architecture.md says the watcher in src/index feeds the index.",
+        "sources": [{ "path": "docs/architecture.md", "firstLine": 3, "lastLine": 3 }],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      },
+      {
+        "type": "recap",
+        "takeaways": [
+          "DEBOUNCE_MS is 200 in watcher.rs.",
+          "WatchContext keeps the generation.",
+          "handle() reindexes a batch."
+        ],
+        "selfCheck": { "projectSpecific": true, "reason": "r" }
+      }
+    ]
+  },
+  "expected": {
+    "accepted": ["explain", "explain", "explain", "explain", "recap"],
+    "rejected": { "interactive": "interactive" }
+  }
+}

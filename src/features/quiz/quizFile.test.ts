@@ -88,6 +88,7 @@ const record: QuizRecord = {
   materialNote: null,
   docsNote: null,
   suggestedSubjects: [],
+  tutorial: null,
 };
 
 async function written(): Promise<string> {

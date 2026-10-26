@@ -1,0 +1,12 @@
+{
+  "description": "a step of an unknown type rejects the whole answer",
+  "kind": "chapter",
+  "length": "quick",
+  "output": {
+    "id": "c1",
+    "title": "The debounce",
+    "hootIntro": "Hoot.",
+    "steps": [{ "type": "poem", "title": "Ode to Orbit" }]
+  },
+  "expected": { "shapeError": true }
+}

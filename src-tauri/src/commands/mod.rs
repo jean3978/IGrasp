@@ -6,4 +6,5 @@ pub mod files;
 pub mod graph;
 pub mod learning;
 pub mod search;
+pub mod tutorials;
 pub mod workspace;
