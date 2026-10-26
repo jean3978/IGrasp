@@ -343,7 +343,7 @@ fn no_ai_operation_starts_without_a_user_action() {
             )?;
             state
                 .appdata
-                .delete_private_tutorial(&key_of(root), &t.id)?;
+                .delete_private_tutorial(&key_of(root), &t.id, false)?;
             state.appdata.forget_tutorials(&key_of(root))
         })
         .unwrap();

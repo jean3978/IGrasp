@@ -46,9 +46,8 @@ export function TutorialFileBanner({
         <Button
           variant="primary"
           onClick={() => {
-            useAcademy
-              .getState()
-              .openTutorial({ type: 'shared', relPath: tutorialReadme(relPath) });
+            // Your own unchanged shared copy opens as your private tutorial, its row on the board.
+            void useAcademy.getState().openSharedFile(tutorialReadme(relPath));
             useTabs.getState().openSpecial('academy');
           }}
         >

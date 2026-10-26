@@ -170,13 +170,18 @@ A tutorial is private (in the app's data) until you share it
   confirmation first lists the folder and every file, each **new**, **changed** or
   **unchanged**, and the chapter files that would be **removed**; nothing is written before its
   button. A tutorial shared before is updated where it is; a folder that holds another tutorial
-  is refused. The private copy stays, tagged "shared as …", and the board lists the two as one
-  row (the private one, with the shared badge), not twice.
+  is refused. The private copy stays, tagged "shared as …". While the shared files are exactly
+  what sharing the private copy writes, the board lists the two as one row (the private one,
+  with the shared badge), and the preview's **Take it in the Academy** opens that row. Once the
+  shared copy changed (a teammate's accepted review, pulled), it is another version: it gets its
+  own row (with its relocation fix, verification and review), and the private row's badge and
+  Share tooltip say the shared copy changed and that updating it replaces it.
 - **Save as…** writes a copy into a folder you choose in a dialog (`<chosen>/<slug>/`): a
   one-off snapshot, not linked, never updated by a later share. The two buttons' tooltips say
   so (the title is beside them, so the tooltips leave it out).
 - **Delete** (a private tutorial, after a confirmation) removes it and your progress in it; a
-  shared copy stays.
+  shared copy stays, and so does the progress when that copy still holds the tutorial (the same
+  id: the progress is the shared copy's too).
 - **Shared tutorials** (yours or a teammate's, after a pull) are found by the scan and listed
   beside the private ones, tagged with their path. Your progress in a shared tutorial is yours,
   in app data.

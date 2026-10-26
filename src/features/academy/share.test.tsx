@@ -146,7 +146,80 @@ describe('shared tutorial files in the preview', () => {
     expect(within(tryIt).getByText('make test')).toBeInTheDocument();
     expect(container.querySelector('script')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: /Take it in the Academy/ }));
-    expect(useAcademy.getState().open).toEqual({ type: 'shared', relPath: readme });
+    await waitFor(() => {
+      expect(useAcademy.getState().open).toEqual({ type: 'shared', relPath: readme });
+    });
     expect(useTabs.getState().tabs.some((tab) => tab.kind === 'academy')).toBe(true);
+  });
+
+  it('opens your own unchanged shared copy as your private tutorial, its row on the board', async () => {
+    const t = await savedPrivately();
+    const readme = await sharedWithTheProject(t);
+    render(
+      <MarkdownPreview
+        rendered={await renderMarkdown(mock().state.files.get(readme) ?? '')}
+        relPath={readme}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: /Take it in the Academy/ }));
+    await waitFor(() => {
+      expect(useAcademy.getState().open).toEqual({ type: 'private', id: t.id });
+    });
+  });
+});
+
+/** Shares `t` (no dialog) and waits for the graph to know the README. */
+async function sharedWithTheProject(t: Tutorial): Promise<string> {
+  const written = await backend.writeTutorial({ type: 'share', id: t.id });
+  const readme = written.readme ?? '';
+  await waitFor(() => {
+    expect(mock().state.graph?.has(readme)).toBe(true);
+  });
+  return readme;
+}
+
+describe('your shared copy on the board', () => {
+  it('is listed on its own once it changed since, and the private one says so', async () => {
+    const t = await savedPrivately();
+    const readme = await sharedWithTheProject(t);
+    expect((await backend.listTutorials())[0]?.sharedDiffers).toBe(false);
+    // A teammate changed the shared copy (an accepted review), and it was pulled.
+    const theirs = { ...normalizeTutorial(t), intro: 'A better intro, from a teammate.' };
+    mock().addSharedTutorial(theirs);
+    await waitFor(async () => {
+      const list = await backend.listTutorials();
+      expect(list.map((s) => s.reference)).toEqual([
+        { type: 'private', id: t.id },
+        { type: 'shared', relPath: readme },
+      ]);
+      expect(list.map((s) => s.sharedDiffers)).toEqual([true, false]);
+    });
+    // Updating it from the private one would replace their README: the plan says so.
+    const plan = await backend.planTutorialWrite({ type: 'share', id: t.id });
+    expect(plan.files.find((f) => f.name === 'README.md')?.state).toBe('changed');
+  });
+
+  it('keeps your progress when you delete the private copy', async () => {
+    const t = await savedPrivately();
+    const readme = await sharedWithTheProject(t);
+    await backend.saveTutorialProgress({
+      tutorialId: t.id,
+      startedMs: 1,
+      lastOpenedMs: 2,
+      finishedMs: null,
+      chapter: 0,
+      step: 1,
+      completed: {},
+      answers: {},
+      xp: 25,
+      streak: 0,
+      bestStreak: 0,
+      chaptersDone: [],
+      graduated: false,
+    });
+    await backend.deleteTutorial(t.id);
+    const list = await backend.listTutorials();
+    expect(list.map((s) => s.reference)).toEqual([{ type: 'shared', relPath: readme }]);
+    expect(list[0]?.progress?.xp).toBe(25);
   });
 });

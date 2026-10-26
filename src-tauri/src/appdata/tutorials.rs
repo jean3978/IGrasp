@@ -78,6 +78,9 @@ pub struct TutorialSummary {
     pub verified: Option<Verification>,
     /// A private tutorial's shared copy (root-relative README).
     pub shared_as: Option<String>,
+    /// The shared copy (`shared_as`) holds this tutorial with other content (changed since it was
+    /// shared, maybe by a teammate): it is listed on its own, and updating it replaces it.
+    pub shared_differs: bool,
     /// When it last changed (a private tutorial's save, a shared README's modification).
     pub updated_ms: i64,
     pub progress: Option<ProgressSummary>,
@@ -110,6 +113,7 @@ impl TutorialSummary {
             model: t.model.clone(),
             verified: t.verified.clone(),
             shared_as,
+            shared_differs: false,
             updated_ms,
             progress: progress.map(|p| ProgressSummary {
                 steps_done: count(p.completed.len()),
@@ -239,8 +243,14 @@ impl AppData {
         write_json(&dir, &format!("{id}.json"), &stored)
     }
 
-    /// Deletes a private tutorial of `root` and the progress in it.
-    pub fn delete_private_tutorial(&self, root: &str, id: &str) -> AppResult<()> {
+    /// Deletes a private tutorial of `root` and, unless `keep_progress` (its shared copy, which has
+    /// the same id, stays in the folder), the progress in it.
+    pub fn delete_private_tutorial(
+        &self,
+        root: &str,
+        id: &str,
+        keep_progress: bool,
+    ) -> AppResult<()> {
         check_id(id)?;
         if let Some(dir) = self.tutorials_dir(root, false)? {
             match fs::remove_file(dir.join(format!("{id}.json"))) {
@@ -249,9 +259,11 @@ impl AppData {
                 Err(e) => return Err(AppError::AppData(format!("cannot delete {id}: {e}"))),
             }
         }
-        self.update_folder_learning(root, |l| {
-            l.tutorial_progress.remove(id);
-        })?;
+        if !keep_progress {
+            self.update_folder_learning(root, |l| {
+                l.tutorial_progress.remove(id);
+            })?;
+        }
         Ok(())
     }
 
@@ -378,14 +390,14 @@ mod tests {
         )
         .unwrap();
         assert_eq!(data.tutorial_progress("/r", &t.id).unwrap().unwrap().xp, 25);
-        data.delete_private_tutorial("/r", &t.id).unwrap();
+        data.delete_private_tutorial("/r", &t.id, false).unwrap();
         assert!(matches!(
             data.private_tutorial("/r", &t.id),
             Err(AppError::TutorialNotFound(_))
         ));
         assert!(data.tutorial_progress("/r", &t.id).unwrap().is_none());
         // Deleting twice is fine; a bad id is refused.
-        data.delete_private_tutorial("/r", &t.id).unwrap();
+        data.delete_private_tutorial("/r", &t.id, false).unwrap();
         let mut bad = sample();
         bad.id = "../escape".into();
         assert!(data.save_private_tutorial("/r", bad).is_err());

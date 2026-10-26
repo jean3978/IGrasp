@@ -3,7 +3,6 @@
 //! folder, the freshness check, sharing and verifying. The generations (outline, chapters,
 //! review, suggestions) go through `ai_start` like every AI operation.
 
-use std::collections::BTreeSet;
 use std::path::Path;
 
 use tauri::{AppHandle, Manager, State};
@@ -46,15 +45,17 @@ pub async fn list_tutorial_subjects(app: AppHandle) -> AppResult<TutorialSubject
 
 /// The library of the open folder: its private tutorials (newest first), then the shared ones
 /// the graph found (each README read again, chapters included), with the progress. A shared copy
-/// of one of the private tutorials (its "shared as", holding the same id) is that tutorial: it is
-/// listed once, as the private one.
+/// of one of the private tutorials (its "shared as", holding the same id) whose files are exactly
+/// what sharing it writes is that tutorial: it is listed once, as the private one, without being
+/// parsed. A copy that differs (changed since, maybe by a teammate) is listed too, and the
+/// private one is marked `shared_differs`.
 pub fn library(ws: &Workspace, appdata: &AppData) -> AppResult<Vec<TutorialSummary>> {
     let key = root_key(ws);
     let progress = appdata.folder_learning(&key)?.tutorial_progress;
     let root = ws.guard.root();
-    let mut list: Vec<TutorialSummary> = appdata
-        .private_tutorials(&key)?
-        .into_iter()
+    let stored = appdata.private_tutorials(&key)?;
+    let mut list: Vec<TutorialSummary> = stored
+        .iter()
         .map(|s| {
             let mut summary = TutorialSummary::of(
                 TutorialRef::Private {
@@ -69,19 +70,17 @@ pub fn library(ws: &Workspace, appdata: &AppData) -> AppResult<Vec<TutorialSumma
             summary
         })
         .collect();
-    let own_copies: BTreeSet<(String, String)> = list
-        .iter()
-        .filter_map(|s| match &s.reference {
-            TutorialRef::Private { id } => s.shared_as.clone().map(|rel| (rel, id.clone())),
-            TutorialRef::Shared { .. } => None,
-        })
-        .collect();
-    let readmes: Vec<String> = {
+    // README → id, as the graph read them.
+    let readmes: Vec<(String, String)> = {
         let graph = ws.graph.read().unwrap_or_else(|e| e.into_inner());
         graph
             .docs()
-            .filter(|(_, doc)| doc.tutorial.as_ref().is_some_and(|t| t.chapter.is_none()))
-            .map(|(rel, _)| rel.clone())
+            .filter_map(|(rel, doc)| {
+                doc.tutorial
+                    .as_ref()
+                    .filter(|t| t.chapter.is_none())
+                    .map(|t| (rel.clone(), t.id.clone()))
+            })
             .collect()
     };
     let modified = |rel: &str| {
@@ -92,9 +91,18 @@ pub fn library(ws: &Workspace, appdata: &AppData) -> AppResult<Vec<TutorialSumma
             .map_or(0, |f| f.modified_ms)
     };
     let mut shared = Vec::new();
-    for rel in readmes {
+    for (rel, id) in readmes {
+        let own = stored
+            .iter()
+            .position(|s| s.tutorial.id == id && s.shared_as.as_deref() == Some(rel.as_str()));
+        if let Some(i) = own {
+            match share::in_sync(&ws.guard, &rel, &stored[i].tutorial) {
+                Ok(true) => continue,
+                Ok(false) => list[i].shared_differs = true,
+                Err(e) => log::warn!("{rel}: {e}"),
+            }
+        }
         match share::read_shared(&ws.guard, &rel) {
-            Ok(t) if own_copies.contains(&(rel.clone(), t.id.clone())) => {}
             Ok(t) => {
                 let mut summary = TutorialSummary::of(
                     TutorialRef::Shared {
@@ -286,10 +294,21 @@ pub fn save_tutorial(state: State<'_, AppState>, tutorial: Tutorial) -> AppResul
     })
 }
 
-/// Deletes a private tutorial and the progress in it (its shared copy, if any, stays).
+/// Deletes a private tutorial. Its shared copy, if any, stays, and so does the progress when that
+/// copy still holds the tutorial (the same id: the progress is the shared copy's too).
+pub fn delete(ws: &Workspace, appdata: &AppData, id: &str) -> AppResult<()> {
+    let key = root_key(ws);
+    let shared_stays = appdata
+        .private_tutorial(&key, id)
+        .ok()
+        .and_then(|s| s.shared_as)
+        .is_some_and(|readme| share::holds(&ws.guard, &readme, id).ok().flatten() == Some(true));
+    appdata.delete_private_tutorial(&key, id, shared_stays)
+}
+
 #[tauri::command]
 pub fn delete_tutorial(state: State<'_, AppState>, id: String) -> AppResult<()> {
-    state.with_workspace(|ws| state.appdata.delete_private_tutorial(&root_key(ws), &id))
+    state.with_workspace(|ws| delete(ws, &state.appdata, &id))
 }
 
 /// Settings → "Forget tutorials and progress" of the open folder (shared tutorials stay).
@@ -551,6 +570,35 @@ mod tests {
         assert_eq!(list.len(), 1, "{list:?}");
         assert_eq!(list[0].reference, TutorialRef::Private { id: t.id.clone() });
         assert_eq!(list[0].shared_as.as_deref(), Some(readme.as_str()));
+        assert!(!list[0].shared_differs);
+        // The shared copy changed since (a teammate's accepted review, pulled): it is another
+        // version of the tutorial, listed on its own; the private one says it differs.
+        share::write(&guard, &folder, &next).unwrap();
+        let list = library(&ws, &appdata).unwrap();
+        assert_eq!(
+            list.iter().map(|s| &s.reference).collect::<Vec<_>>(),
+            [&TutorialRef::Private { id: t.id.clone() }, &shared],
+            "{list:?}"
+        );
+        assert!(list[0].shared_differs);
+        assert!(!list[1].shared_differs);
+        // Deleting the private copy keeps the progress: the shared copy, which stays, has it.
+        appdata
+            .save_tutorial_progress(
+                &key,
+                TutorialProgress {
+                    tutorial_id: t.id.clone(),
+                    xp: 25,
+                    ..TutorialProgress::default()
+                },
+            )
+            .unwrap();
+        delete(&ws, &appdata, &t.id).unwrap();
+        let list = library(&ws, &appdata).unwrap();
+        assert_eq!(list.len(), 1, "{list:?}");
+        assert_eq!(list[0].reference, shared);
+        assert_eq!(list[0].progress.as_ref().map(|p| p.xp), Some(25));
+        appdata.save_private_tutorial(&key, t.clone()).unwrap();
         // A copy that holds another tutorial (another id) is not this one: both are listed.
         let mut other = t.clone();
         other.id = "another-tutorial".to_owned();

@@ -71,6 +71,8 @@ import {
   exportPlan,
   filesFor,
   folderOf,
+  holds,
+  inSync,
   joinPath,
   planWrite,
   shareFolder,
@@ -884,15 +886,21 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     listTutorials: async () => {
       const folder = tutorialsOf();
       const privates = privateSummaries(folder);
-      // A shared copy of a private tutorial (its "shared as", same id) is listed once, as it.
-      const ownCopy = (relPath: string, id: string) =>
-        privates.some(
-          (p) => p.reference.type === 'private' && p.reference.id === id && p.sharedAs === relPath,
-        );
       const shared = [...(state.graph ?? new Map<string, MockDoc>())].flatMap(([relPath, doc]) => {
         if (!doc.tutorial || doc.tutorial.chapter !== null) return [];
+        // A shared copy of a private tutorial (its "shared as", same id): listed once, as the
+        // private one, when its files are what sharing it writes; else both, marked.
+        const id = doc.tutorial.id;
+        const own = privates.find(
+          (p) => p.reference.type === 'private' && p.reference.id === id && p.sharedAs === relPath,
+        );
+        const stored = folder.stored.get(id);
+        if (own && stored) {
+          if (inSync(state.files, state.sharedTutorials, relPath, stored.tutorial)) return [];
+          own.sharedDiffers = true;
+        }
         const t = state.sharedTutorials.get(relPath);
-        if (!t || t.id !== doc.tutorial.id || ownCopy(relPath, t.id)) return [];
+        if (!t || t.id !== id) return [];
         return [
           tutorialSummaryOf(
             { type: 'shared', relPath },
@@ -936,8 +944,11 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       const folder = tutorialsOf();
       if (!validTutorialId(id))
         throw new BackendError('InvalidPath', `Invalid path: invalid tutorial id "${id}"`);
+      // The progress stays when the shared copy, which stays, still holds the tutorial.
+      const sharedAs = folder.stored.get(id)?.sharedAs ?? null;
+      const sharedStays = sharedAs !== null && holds(state.files, sharedAs, id) === true;
       folder.stored.delete(id);
-      folder.progress.delete(id);
+      if (!sharedStays) folder.progress.delete(id);
     },
     // eslint-disable-next-line @typescript-eslint/require-await
     forgetTutorials: async () => {

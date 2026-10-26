@@ -19,6 +19,11 @@ role: string | null, chapters: number, chaptersWritten: number, stepsTotal: numb
  */
 sharedAs: string | null, 
 /**
+ * The shared copy (`shared_as`) holds this tutorial with other content (changed since it was
+ * shared, maybe by a teammate): it is listed on its own, and updating it replaces it.
+ */
+sharedDiffers: boolean, 
+/**
  * When it last changed (a private tutorial's save, a shared README's modification).
  */
 updatedMs: number, progress: ProgressSummary | null, 

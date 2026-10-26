@@ -193,6 +193,11 @@ interface AcademyState {
   startAgain: (subject?: string) => void;
   /** Opens a tutorial in the reader. */
   openTutorial: (ref: TutorialRef) => void;
+  /**
+   * Opens a shared README from the preview as the board lists it: the private tutorial it is the
+   * unchanged shared copy of (not listed on its own), else the shared tutorial.
+   */
+  openSharedFile: (readme: string) => Promise<void>;
   /** Opens the outline review of a private tutorial that has unwritten chapters. */
   reviewOutline: (id: string) => Promise<void>;
   deleteTutorial: (id: string) => Promise<void>;
@@ -792,6 +797,18 @@ export const useAcademy = create<AcademyState>()((set, get) => {
 
     openTutorial(ref) {
       set({ open: ref, screen: 'tutorial', failure: get().failure, pending: null });
+    },
+
+    async openSharedFile(readme) {
+      await get().refreshLibrary();
+      const { library } = get();
+      const listed = library.some(
+        (s) => s.reference.type === 'shared' && s.reference.relPath === readme,
+      );
+      const own = listed
+        ? undefined
+        : library.find((s) => s.reference.type === 'private' && s.sharedAs === readme);
+      get().openTutorial(own?.reference ?? { type: 'shared', relPath: readme });
     },
 
     async reviewOutline(id) {

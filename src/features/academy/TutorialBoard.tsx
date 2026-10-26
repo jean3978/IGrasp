@@ -26,7 +26,6 @@ import { Button } from '../../components/ui/Button';
 import { IconButton } from '../../components/ui/IconButton';
 import type { Familiarity, TutorialSummary } from '../../ipc/types';
 import { selectAcademyBusy, useAcademy } from '../../stores/academy';
-import { useSettings } from '../../stores/settings';
 import { useTutorialWrite } from '../../stores/tutorialWrite';
 import { formatWhen } from '../quiz/quizFormat';
 import { badgeShort } from './freshnessView';
@@ -89,7 +88,6 @@ function BoardRow({ t }: { t: TutorialSummary }) {
   const deleteTutorial = useAcademy((s) => s.deleteTutorial);
   const prepareWrite = useTutorialWrite((s) => s.prepare);
   const busy = useAcademy(selectAcademyBusy);
-  const tutorialsFolder = useSettings((s) => s.settings.learning.tutorialsFolder);
   const [confirming, setConfirming] = useState(false);
   const key = keyOf(t);
   const written = t.chaptersWritten;
@@ -166,8 +164,10 @@ function BoardRow({ t }: { t: TutorialSummary }) {
             <IconButton
               label={
                 t.sharedAs
-                  ? `Update the shared copy in the project (${t.sharedAs}) with this version`
-                  : `Share with the team: writes it as markdown into ${tutorialsFolder}/ in this project, to commit. It stays linked: sharing again updates the same files.`
+                  ? t.sharedDiffers
+                    ? `The shared copy (${t.sharedAs}) changed since you shared it, maybe by a teammate: it is listed on its own. Updating replaces it with this version; the confirmation lists what changes.`
+                    : `Update the shared copy in the project (${t.sharedAs}) with this version`
+                  : "Share with the team: writes it as markdown into the project's tutorials folder, to commit (the confirmation lists the files). It stays linked: sharing again updates the same files."
               }
               aria-label={
                 t.sharedAs
@@ -212,7 +212,7 @@ function BoardRow({ t }: { t: TutorialSummary }) {
             <IconButton
               label={
                 t.sharedAs
-                  ? 'Delete your private copy and your progress (the shared copy stays)'
+                  ? 'Delete your private copy (the shared copy stays, with your progress)'
                   : 'Delete your private copy and your progress'
               }
               aria-label={`Delete ${t.title}`}
@@ -250,7 +250,9 @@ const sharingText = (t: TutorialSummary) =>
   t.reference.type === 'shared'
     ? `Shared in the project: ${t.reference.relPath}`
     : t.sharedAs
-      ? `Private, also shared as ${t.sharedAs}`
+      ? t.sharedDiffers
+        ? `Private, also shared as ${t.sharedAs}; the shared copy has changed since`
+        : `Private, also shared as ${t.sharedAs}`
       : "Private, in the app's data";
 
 /** A small badge on the progress ring: a lock for a private tutorial, people for a shared one. */

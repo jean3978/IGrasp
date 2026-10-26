@@ -111,6 +111,7 @@ export function summaryOf(
     model: t.model,
     verified: t.verified ?? null,
     sharedAs,
+    sharedDiffers: false,
     updatedMs,
     progress: progress
       ? {

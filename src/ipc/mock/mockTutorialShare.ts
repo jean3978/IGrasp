@@ -73,16 +73,10 @@ export function shareFolder(
   t: Tutorial,
   sharedAs: string | null,
 ): string {
-  const holds = (readme: string): boolean | null => {
-    const text = files.get(readme);
-    if (text === undefined) return null;
-    const info = tutorialFileInfo(text);
-    return info ? info.id === t.id : null;
-  };
-  if (sharedAs !== null && holds(sharedAs) === true) return folderOf(sharedAs);
+  if (sharedAs !== null && holds(files, sharedAs, t.id) === true) return folderOf(sharedAs);
   const folder = join(tutorialsFolder.replace(/^\/+|\/+$/g, ''), slugOf(t.title));
   const readme = join(folder, 'README.md');
-  const same = holds(readme);
+  const same = holds(files, readme, t.id);
   const taken = same === null ? files.has(readme) || files.has(folder) : !same;
   if (taken)
     throw new BackendError('TutorialFolderTaken', `${folder} already holds another tutorial.`);
@@ -123,6 +117,24 @@ export function planWrite(
         )
       : [];
   return { folder, files: planned, removed };
+}
+
+/** Whether the README holds the tutorial `id` (Rust `share::holds`; `null`: no tutorial there). */
+export function holds(files: Map<string, string>, readme: string, id: string): boolean | null {
+  const text = files.get(readme);
+  const info = text === undefined ? null : tutorialFileInfo(text);
+  return info ? info.id === id : null;
+}
+
+/** The files of `readme`'s folder are exactly what sharing `t` there writes (Rust `share::in_sync`). */
+export function inSync(
+  files: Map<string, string>,
+  written: Map<string, Tutorial>,
+  readme: string,
+  t: Tutorial,
+): boolean {
+  const plan = planWrite(files, written, folderOf(readme), t);
+  return plan.removed.length === 0 && plan.files.every((f) => f.state === 'unchanged');
 }
 
 /** The plan of a Save as…: every file new, the folder chosen in the dialog. */

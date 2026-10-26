@@ -64,7 +64,6 @@ pub struct WritePlan {
 
 impl WritePlan {
     /// Nothing would change on disk.
-    #[cfg(test)]
     pub fn is_noop(&self) -> bool {
         self.removed.is_empty()
             && self
@@ -136,6 +135,19 @@ pub fn read_shared(guard: &RootGuard, readme: &str) -> AppResult<Tutorial> {
     Ok(t)
 }
 
+/// Whether the README holds the tutorial `id` (`None`: no tutorial README there).
+pub fn holds(guard: &RootGuard, readme: &str, id: &str) -> AppResult<Option<bool>> {
+    Ok(read_text(guard, readme)?
+        .and_then(|text| markdown::info(&text))
+        .map(|info| info.id == id))
+}
+
+/// Whether the files of `readme`'s folder are exactly what sharing `t` there writes: the shared
+/// copy is `t`, unchanged since. Compares the bytes, parses nothing.
+pub fn in_sync(guard: &RootGuard, readme: &str, t: &Tutorial) -> AppResult<bool> {
+    Ok(plan(guard, folder_of(readme), t)?.is_noop())
+}
+
 /// The folder a private tutorial is shared to: where it was shared before when that README
 /// still holds it, else `<tutorials folder>/<slug of the title>`, refused when another
 /// tutorial is there (`TutorialFolderTaken`).
@@ -145,11 +157,7 @@ pub fn share_folder(
     t: &Tutorial,
     shared_as: Option<&str>,
 ) -> AppResult<String> {
-    let holds = |readme: &str| -> AppResult<Option<bool>> {
-        Ok(read_text(guard, readme)?
-            .and_then(|text| markdown::info(&text))
-            .map(|info| info.id == t.id))
-    };
+    let holds = |readme: &str| holds(guard, readme, &t.id);
     if let Some(readme) = shared_as
         && holds(readme)? == Some(true)
     {

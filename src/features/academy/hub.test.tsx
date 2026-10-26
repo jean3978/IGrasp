@@ -228,7 +228,7 @@ describe('the hub', () => {
       return text;
     };
     const share = await tip(`Share ${t.title} with the project`, /^Share with the team/);
-    expect(share).toMatch(/writes it as markdown into docs\/tutorials\/ in this project/);
+    expect(share).toContain("into the project's tutorials folder");
     expect(share).toContain('sharing again updates the same files');
     const saveAs = await tip(`Save ${t.title} as…`, /^Save a copy as markdown/);
     expect(saveAs).toMatch(/any folder you choose: a one-off snapshot, not linked/);
