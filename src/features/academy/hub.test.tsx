@@ -1,6 +1,6 @@
 // The Academy's hub: Hoot's welcome when the tab opens (once, skipped without motion), the
-// classroom with the tutorials on the blackboard, and "New tutorial" into the wizard (subject,
-// options, confirmation). None of it calls the AI.
+// classroom with the tutorials on the blackboard (details behind a button), and "New tutorial"
+// into the wizard (role, subject, options, confirmation). None of it calls the AI.
 
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -77,7 +77,8 @@ describe("Hoot's welcome", () => {
     });
     expect(academy().welcome).toBe(false);
     expect(mock().state.ai.starts).toEqual([]);
-  });
+    // The welcome plays in full: longer than the default test timeout allows for comfort.
+  }, 10_000);
 
   it('is skipped by a key, and not shown at all without motion', async () => {
     act(() => {
@@ -126,41 +127,59 @@ describe('the hub', () => {
       within(row).getByRole('img', { name: /steps done$|^Graduated$|^Outline only/ }),
     ).toBeInTheDocument();
     expect(row).not.toHaveTextContent('private');
-    // The rest on hover: where it lives, freshness, verification.
-    await userEvent.hover(row);
-    const card = await screen.findByRole('tooltip');
-    expect(card).toHaveTextContent('Where');
-    expect(card).toHaveTextContent('Verified');
-    await userEvent.unhover(row);
+    // Each mark explains itself on hover; hovering the row shows no card.
+    await userEvent.hover(within(row).getByRole('img', { name: /^Difficulty \d of 3: / }));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(/^Difficulty \d of 3: /);
+    await userEvent.unhover(within(row).getByRole('img', { name: /^Difficulty \d of 3: / }));
+    // The rest behind Details: progress, where it lives, freshness, verification.
+    await userEvent.click(within(list).getByRole('button', { name: `Details of ${t.title}` }));
+    const card = await screen.findByRole('dialog', { name: `Details of ${t.title}` });
+    expect(within(card).getByRole('progressbar', { name: 'Progress' })).toBeInTheDocument();
+    expect(card).toHaveTextContent(/Private, in the app's data|Shared in the project/);
+    expect(card).toHaveTextContent(/Sources up to date|updated since you read it|outdated/i);
+    expect(card).toHaveTextContent(/Verified on|Not verified yet/);
+    await userEvent.keyboard('{Escape}');
     // The actions are compact icon buttons with names.
     expect(within(list).getByRole('button', { name: `Delete ${t.title}` })).toHaveClass(
       'icon-button',
     );
 
-    // New tutorial: step 1, the subject.
+    const current = (label: string) =>
+      expect(
+        within(screen.getByRole('list', { name: 'New tutorial steps' }))
+          .getByText(label)
+          .closest('li'),
+      ).toHaveAttribute('aria-current', 'step');
+
+    // New tutorial: step 1, the role.
     await userEvent.click(screen.getByRole('button', { name: 'New tutorial' }));
+    expect(academy().screen).toBe('role');
+    current('Role');
+    const roles = screen.getByRole('radiogroup', { name: 'Roles' });
+    expect(screen.getByRole('button', { name: /^Next/ })).toBeDisabled();
+    await userEvent.type(screen.getByRole('textbox', { name: 'Other role' }), 'Level designer');
+    expect(within(roles).queryByRole('radio', { checked: true })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /^Next/ }));
+    // Step 2, the subject, for that role.
     expect(academy().screen).toBe('create');
-    const steps = screen.getByRole('list', { name: 'New tutorial steps' });
-    expect(within(steps).getByText('Subject').closest('li')).toHaveAttribute(
-      'aria-current',
-      'step',
-    );
+    expect(academy().setup.role).toBe('Level designer');
+    current('Subject');
+    expect(screen.getByText(/Choose what to learn as a Level designer/)).toBeInTheDocument();
     await userEvent.type(
       screen.getByRole('textbox', { name: 'What do you want to learn?' }),
       'How it starts{Enter}',
     );
-    // Step 2, the options: Back returns to the subject, as typed.
+    // Step 3, the options: Back returns to the subject, as typed, then to the role.
     expect(academy().screen).toBe('options');
-    expect(
-      within(screen.getByRole('list', { name: 'New tutorial steps' }))
-        .getByText('Options')
-        .closest('li'),
-    ).toHaveAttribute('aria-current', 'step');
+    current('Options');
     await userEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(academy().screen).toBe('create');
     expect(screen.getByRole('textbox', { name: 'What do you want to learn?' })).toHaveValue(
       'How it starts',
     );
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(academy().screen).toBe('role');
+    expect(screen.getByRole('textbox', { name: 'Other role' })).toHaveValue('Level designer');
     // And back to the hub.
     await userEvent.click(screen.getByRole('button', { name: 'Academy' }));
     expect(academy().screen).toBe('home');

@@ -261,12 +261,19 @@ export async function openAcademy(page: Page): Promise<void> {
   await expect(page.locator('.academy-welcome')).toHaveCount(0, { timeout: 5000 });
 }
 
+/** The first step of "New tutorial": the first proposed role, then Next. */
+export async function pickTutorialRole(page: Page): Promise<void> {
+  await page.getByRole('radiogroup', { name: 'Roles' }).getByRole('radio').first().click();
+  await page.getByRole('button', { name: /^Next/ }).click();
+}
+
 /**
- * Writes a tutorial with the mock AI: a typed subject, its options, the outline's card and Start,
- * then every chapter's card and Start. Ends on the course map.
+ * Writes a tutorial with the mock AI: the first proposed role, a typed subject, its options, the
+ * outline's card and Start, then every chapter's card and Start. Ends on the course map.
  */
 export async function writeTutorial(page: Page, subject = 'How igrasp-demo starts'): Promise<void> {
   await page.getByRole('button', { name: 'New tutorial' }).click();
+  await pickTutorialRole(page);
   await page.getByPlaceholder(/How does a file change/).fill(subject);
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: /Plan the outline/ }).click();

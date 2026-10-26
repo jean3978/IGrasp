@@ -19,25 +19,32 @@ a tutorial on its own and never marks it verified.
   the view, or **Take it in the Academy** on a shared tutorial in the preview. The Academy tab
   opens; opening it is free: the profile, the cards, the library and the badges are local.
 - **Welcome**: when the tab opens (it was not open), Hoot pops up, its mortarboard drops on its
-  head, "Welcome to Hoot's Academy", and the screen fades into the hub after about two seconds.
+  head, "Welcome to Hoot's Academy", and the screen fades into the hub after under four seconds
+  (long enough to read it).
   A click or any key skips it; switching back to an open Academy tab does not replay it, and it
   is not shown when the learning effects are off or the system asks for reduced motion.
 - **The hub** is a classroom: **Your tutorials** on a blackboard across the wall, and in front of
   it Hoot in a mortarboard and three owls at their desks (one thinks, one raises a wing now and
   then). The board stays concise: per tutorial, a progress ring (a cap once graduated, a list for
   an outline), the title, who it is for and its subject, the difficulty as one to three bars, a
-  warning mark when a source changed or steps were updated since read, and compact Share, Save
-  as… and Delete buttons. Hovering or focusing a tutorial shows the rest: level, length,
-  chapters, progress and XP, where it lives (private, shared, shared as), its sources' freshness,
-  verification and when it changed. Many tutorials scroll inside the board, which stays short
-  enough to keep the whole classroom in view. Above it, **New
-  tutorial** (the wizard below) and **Continue where you left off** (the last tutorial in
+  warning mark when a source changed or steps were updated since read (each mark explains itself
+  in a tooltip), and compact Details, Share, Save as… and Delete buttons. **Details** opens a
+  card with the rest: the progress as a bar with the XP, three statuses with an icon each (where
+  it lives: private, shared, shared as; its sources' freshness; its verification), then level,
+  length, chapters and when it changed. Many tutorials scroll inside the board, which stays short
+  enough to keep the whole classroom in view. Above it, **New tutorial** (the wizard below, set
+  below the AI tools of the tab's corner) and **Continue where you left off** (the last tutorial in
   progress, its chapter and step); under it, the project profile with **Edit** (the Phase 4
   dialog; a correction rebuilds the cards).
-- **New tutorial** is a wizard of three steps, shown at the top of each: **Subject**, **Options**,
-  **Confirm**. The subject step has **What do you want to learn?** (type a subject, Enter), the
-  **subject cards** grouped by family and **Suggest more subjects**; a failed outline comes back
-  to it with the subjects that may work better.
+- **New tutorial** is a wizard of four steps, shown at the top of each: **Role**, **Subject**,
+  **Options**, **Confirm**. The role comes first: the roles proposed for this kind of project
+  (the quiz's), or typed. It is read as a family of crafts (the quiz's role rules) and shapes the
+  subject step: the cards that fit the role first, under "For a Level designer", the others by
+  family, and those about what the role never touches (the dependency list for an artist) behind
+  **More subjects** (`tutorialRoles.ts`; developers see every card as proposed, and suggestions
+  are never hidden). The subject step has **What do you want to learn?** (type a subject,
+  Enter), the **subject cards** and **Suggest more subjects**; a failed outline comes back to it
+  with the subjects that may work better.
 - **Subject cards** are built locally from the project profile, without AI
   ([ADR 0028](../decisions/0028-subject-families-built-locally.md)). Twelve universal families
   (The Big Picture; Tech Stack, as used here; Architecture Tour; Feature Deep Dive; Trace It;
@@ -64,8 +71,7 @@ A card or a typed subject leads to the options:
   (how things are done here, where a change goes, the traps), *Deep dive for maintainers*
   (invariants, trade-offs, failure modes).
 - **I'm new to…** (optional), **Length** (*Quick* ~5 min, 2–3 chapters; *Standard* ~15 min, 3–5
-  chapters; *Deep* ~30 min, 5–8 chapters), **Your role** (a developer by default; the quiz's role
-  rules apply), and the **Model**.
+  chapters; *Deep* ~30 min, 5–8 chapters), and the **Model** (the role was step 1).
 - **Plan the outline** shows the **confirmation card**: what the AI will do, the provider and
   model, the files inlined (agent instruction files marked "context only"), the size class, the
   number of calls, the cost line (what the same kind of operation cost last time in this folder,

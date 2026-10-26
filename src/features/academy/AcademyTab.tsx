@@ -13,6 +13,7 @@ import { EffectsCanvas } from '../quiz/effects/EffectsCanvas';
 import { prefersReducedMotion } from '../quiz/effects/effects';
 import { AcademyConfirm } from './AcademyConfirm';
 import { AcademyCreate } from './AcademyCreate';
+import { AcademyRole } from './AcademyRole';
 import { AcademyGeneration } from './AcademyGeneration';
 import { AcademyHome } from './AcademyHome';
 import { AcademyWelcome } from './AcademyWelcome';
@@ -55,6 +56,7 @@ export function AcademyTab() {
           {screen === 'home' && (
             <AcademyHome hootLine={homeLine} motion={motion && !reducedMotion} />
           )}
+          {screen === 'role' && <AcademyRole />}
           {screen === 'create' && <AcademyCreate />}
           {screen === 'options' && <TutorialOptions />}
           {screen === 'confirm' && <AcademyConfirm />}

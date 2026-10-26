@@ -1,6 +1,6 @@
 // The Academy's hub: a classroom. The tutorials of this folder are on the blackboard (one concise
-// line each, details on hover, scrolled when there are many); in front of it, Hoot teaches and a
-// few owls listen at their desks. "New tutorial" opens the wizard (subject, options,
+// line each, details behind a button, scrolled when there are many); in front of it, Hoot teaches
+// and a few owls listen at their desks. "New tutorial" opens the wizard (role, subject, options,
 // confirmation); "Continue" resumes the last tutorial. Opening it spends nothing.
 
 import { Play, Plus } from 'lucide-react';
@@ -48,7 +48,7 @@ export function AcademyHome({ hootLine, motion }: { hootLine: string; motion: bo
             <Plus aria-hidden /> New tutorial
           </Button>
           <span id={helpId} className="quiz-muted">
-            Subject, options, then a confirmation: nothing is spent before you confirm.
+            Role, subject, options, then a confirmation: nothing is spent before you confirm.
           </span>
         </div>
       </header>

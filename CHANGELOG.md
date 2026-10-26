@@ -24,13 +24,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   chapter bonus to come), the takeaways as numbered cards, the steps still to do with a way back
   to the first one, and what comes next.
 - The Academy's hub is a classroom: your tutorials on a blackboard across the wall (one concise
-  line each: progress ring, title, role and subject, difficulty bars, compact actions; the
-  details on hover; scrolled when there are many), and in front of it Hoot in a mortarboard and
-  owls at their desks. A clear **New
-  tutorial** button opens a three-step wizard (Subject, Options, Confirm) with the subject cards
-  and the options as before. Opening the Academy tab plays a short welcome by Hoot (about two
-  seconds, skipped by a click or a key, not shown when the effects are off or with reduced
-  motion).
+  line each: progress ring, title, role and subject, difficulty bars with tooltips, compact
+  actions; a **Details** button opens a card with the progress, where it lives, its freshness and
+  verification; scrolled when there are many), and in front of it Hoot in a mortarboard and owls
+  at their desks. A clear **New tutorial** button, clear of the AI tools, opens a four-step
+  wizard: **Role** first (proposed for the project, or typed), then the **Subject** with the
+  cards that fit the role first and the others behind **More subjects**, the **Options** and
+  **Confirm**. Opening the Academy tab plays a short welcome by Hoot (under four seconds, skipped
+  by a click or a key, not shown when the effects are off or with reduced motion).
 
 ### Fixed
 

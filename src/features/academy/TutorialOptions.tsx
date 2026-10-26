@@ -1,6 +1,6 @@
-// "New tutorial", step 2 of the wizard: familiarity, "I'm new to…" (the project's domains as
-// chips), length, role and model, then "Plan the outline" (which shows the confirmation card:
-// nothing is spent before its own Start).
+// "New tutorial", step 3 of the wizard: familiarity, "I'm new to…" (the project's domains as
+// chips), length and model (the role is step 1), then "Plan the outline" (which shows the
+// confirmation card: nothing is spent before its own Start).
 
 import { ArrowLeft, Play } from 'lucide-react';
 import { useId } from 'react';
@@ -21,14 +21,13 @@ export function TutorialOptions() {
   const setup = useAcademy((s) => s.setup);
   const setSetup = useAcademy((s) => s.setSetup);
   const prepareOutline = useAcademy((s) => s.prepareOutline);
-  const startNew = useAcademy((s) => s.startNew);
+  const editSubject = useAcademy((s) => s.editSubject);
   const domains = useAcademy((s) => s.subjects?.domains ?? []);
   const failure = useAcademy((s) => s.failure);
   const busy = useAcademy(selectAcademyBusy);
   const ids = {
     subject: useId(),
     gap: useId(),
-    role: useId(),
     familiarity: useId(),
     length: useId(),
   };
@@ -36,7 +35,7 @@ export function TutorialOptions() {
   return (
     <div className="academy-options">
       <div className="academy-wizard-head">
-        <Button variant="ghost" onClick={startNew}>
+        <Button variant="ghost" onClick={editSubject}>
           <ArrowLeft aria-hidden /> Back
         </Button>
         <WizardSteps current="options" />
@@ -148,21 +147,6 @@ export function TutorialOptions() {
       </section>
 
       <section className="quiz-panel academy-options-row">
-        <div>
-          <label className="academy-field-label" htmlFor={ids.role}>
-            Your role <span className="quiz-muted">(optional: a developer by default)</span>
-          </label>
-          <input
-            id={ids.role}
-            className="academy-learn-input"
-            value={setup.role}
-            maxLength={80}
-            placeholder="Programmer, Level designer, QA…"
-            onChange={(e) => {
-              setSetup({ role: e.target.value });
-            }}
-          />
-        </div>
         <div>
           <span className="academy-field-label">Model</span>
           <ModelPicker />

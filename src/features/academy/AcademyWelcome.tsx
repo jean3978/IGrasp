@@ -1,5 +1,6 @@
 // Hoot's welcome when the Academy tab opens: Hoot pops up, its mortarboard drops on its head,
-// "Welcome to Hoot's Academy", then the screen fades into the hub (about two seconds). A click or
+// "Welcome to Hoot's Academy", then the screen fades into the hub (under four seconds, long
+// enough to read the words once they are all in, at 0.85 s). A click or
 // any key skips it. Not shown when the effects are off or the system asks for reduced motion,
 // nor when the tab opens on a tutorial (from a shared tutorial's banner). Decorative: the hub
 // under it is already there for assistive technologies.
@@ -9,7 +10,7 @@ import { useAcademy } from '../../stores/academy';
 import { Hoot } from '../hoot/Hoot';
 
 /** How long the welcome shows, then how long it takes to fade (ms). */
-export const WELCOME_MS = 1800;
+export const WELCOME_MS = 3400;
 export const WELCOME_FADE_MS = 450;
 
 export function AcademyWelcome({ motion }: { motion: boolean }) {

@@ -34,7 +34,15 @@ import { useToasts } from './toasts';
  * `create` (the subject), `options`, then `confirm` (the outline's confirmation card).
  */
 export type AcademyScreen =
-  'home' | 'create' | 'options' | 'confirm' | 'generating' | 'outline' | 'tutorial' | 'review';
+  | 'home'
+  | 'role'
+  | 'create'
+  | 'options'
+  | 'confirm'
+  | 'generating'
+  | 'outline'
+  | 'tutorial'
+  | 'review';
 
 /** Tool summaries kept for the activity line. */
 const ACTIVITY_LINES = 4;
@@ -50,7 +58,7 @@ export interface TutorialSetup {
   /** "I'm new to …" (empty: none). */
   domainGap: string;
   length: Length;
-  /** Who reads it (empty: a developer). */
+  /** Who reads it, chosen first (empty: a developer); it ranks the subject cards. */
   role: string;
 }
 
@@ -139,8 +147,14 @@ interface AcademyState {
   welcome: boolean;
 
   endWelcome: () => void;
-  /** "New tutorial": the wizard's first step, the subject (the setup chosen so far is kept). */
+  /** "New tutorial": the wizard's first step, the role (the setup chosen so far is kept). */
   startNew: () => void;
+  /** The role chosen: the subject step, its cards ranked for the role. */
+  chooseRole: (role: string) => void;
+  /** Back from the subject to the role. */
+  editRole: () => void;
+  /** Back from the options to the subject. */
+  editSubject: () => void;
   /** Loads what the home shows: the profile, the cards, the library (all local). */
   openHome: (root: string) => Promise<void>;
   refreshLibrary: () => Promise<void>;
@@ -456,7 +470,21 @@ export const useAcademy = create<AcademyState>()((set, get) => {
 
     startNew() {
       if (get().operationId !== null || get().starting) return;
-      set({ screen: 'create', failure: null, pending: null, open: null });
+      set({ screen: 'role', failure: null, pending: null, open: null });
+    },
+
+    chooseRole(role) {
+      const text = role.trim();
+      if (text === '') return;
+      set((s) => ({ screen: 'create', failure: null, setup: { ...s.setup, role: text } }));
+    },
+
+    editRole() {
+      set({ screen: 'role', failure: null });
+    },
+
+    editSubject() {
+      set({ screen: 'create', failure: null, pending: null });
     },
 
     async openHome(root) {

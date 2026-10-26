@@ -19,7 +19,7 @@
 .academy-hub-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px 24px;
 }
@@ -33,12 +33,14 @@
   margin-bottom: 0;
 }
 
+/* Below the AI tools floating in the tab's top-right corner, with room to breathe. */
 .academy-hub-cta {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: 8px;
   max-width: 300px;
+  margin-top: 24px;
   text-align: right;
 }
 
@@ -139,12 +141,6 @@
   padding-right: 4px;
   overflow-y: auto;
   scrollbar-color: var(--academy-chalk-muted) transparent;
-}
-
-.academy-board-hint {
-  margin-left: auto;
-  color: var(--academy-chalk-muted);
-  font-size: var(--font-size-small);
 }
 
 /* One concise line per tutorial: progress | title over role · subject | marks. */
@@ -280,37 +276,134 @@
   color: var(--academy-chalk);
 }
 
-/* A tutorial's details, on hover or focus. */
-.tooltip.academy-row-card {
-  display: block;
-  max-width: 380px;
-  padding: 10px 12px;
+/* The row's marks explain themselves in a tooltip. */
+.academy-hint {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* A tutorial's details, behind its "Details" button: a header, the progress as a bar, three
+   statuses with an icon each (where it lives, its sources, its verification), then the facts. */
+.academy-details-popover {
+  z-index: 4500;
+  width: 340px;
+  max-width: calc(100vw - 24px);
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-l);
+  background: var(--bg-overlay);
+  box-shadow: var(--shadow-dialog);
+  color: var(--fg);
+  font-size: var(--font-size-ui);
+}
+
+.academy-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.academy-details-head {
+  padding: 12px 14px 10px;
+  border-bottom: var(--border-width) solid var(--border);
 }
 
 .academy-details-title {
-  margin: 0 0 6px;
+  margin: 0;
   color: var(--fg-strong);
   font-weight: 600;
+  line-height: 1.3;
 }
 
-.academy-details dl {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 3px 12px;
+.academy-details-sub {
+  margin: 2px 0 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.academy-details-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 14px 4px;
+}
+
+.academy-details-bar {
+  overflow: hidden;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-active);
+}
+
+.academy-details-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.academy-details-progress-text {
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.academy-details-statuses {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
   margin: 0;
+  padding: 8px 14px 10px;
+  list-style: none;
 }
 
-.academy-details dl > div {
-  display: contents;
+.academy-details-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  overflow-wrap: anywhere;
 }
 
-.academy-details dt {
+.academy-details-status svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
   color: var(--fg-muted);
 }
 
-.academy-details dd {
+.academy-details-status[data-tone='good'] svg {
+  color: var(--success);
+}
+
+.academy-details-status[data-tone='warn'] svg {
+  color: var(--warning);
+}
+
+.academy-details-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 14px;
+  margin: 0;
+  padding: 10px 14px 12px;
+  border-top: var(--border-width) solid var(--border);
+  font-size: var(--font-size-small);
+}
+
+.academy-details-facts > div {
+  display: contents;
+}
+
+.academy-details-facts dt {
+  color: var(--fg-muted);
+}
+
+.academy-details-facts dd {
   margin: 0;
   color: var(--fg);
+}
+
+/* "More subjects": the cards about what the chosen role never touches, on request. */
+.button.academy-more-subjects {
+  align-self: flex-start;
+  margin-top: 4px;
 }
 
 .academy-board-empty {
@@ -493,7 +586,7 @@
 
 .academy-wizard-steps li[data-state='current'] .academy-wizard-number {
   background: var(--ai-accent);
-  color: var(--bg);
+  color: var(--fg-on-accent);
 }
 
 .academy-wizard-steps li[data-state='done'] {
@@ -503,7 +596,7 @@
 
 .academy-wizard-steps li[data-state='done'] .academy-wizard-number {
   background: var(--quiz-good);
-  color: var(--bg);
+  color: var(--fg-on-accent);
 }
 
 .academy-create {

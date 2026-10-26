@@ -1,11 +1,12 @@
-// Where the reader is in "New tutorial": Subject, Options, Confirm. Only the outline's
+// Where the reader is in "New tutorial": Role, Subject, Options, Confirm. Only the outline's
 // confirmation card spends tokens, on its Start; the steps before it are local.
 
 import { Check } from 'lucide-react';
 
-export type WizardStep = 'subject' | 'options' | 'confirm';
+export type WizardStep = 'role' | 'subject' | 'options' | 'confirm';
 
 const STEPS: { id: WizardStep; label: string }[] = [
+  { id: 'role', label: 'Role' },
   { id: 'subject', label: 'Subject' },
   { id: 'options', label: 'Options' },
   { id: 'confirm', label: 'Confirm' },

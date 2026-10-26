@@ -79,7 +79,7 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   and `quizRoles.ts`, engine, cards, `LookUpDialog.tsx`, results, `quizMarkdown.ts`,
   `quizFile.ts`, `effects/`), `features/hoot` the owl (`?hoot=1` shows its states and moments),
   `features/profile` the profile card and dialog. `features/academy` is the Academy tab
-  (`AcademyTab`, `AcademyWelcome`, `AcademyHome` the hub with `TutorialBoard` (the blackboard), `AcademyCreate` + `TutorialOptions` + `AcademyConfirm` the wizard with `WizardSteps`, `AcademyGeneration`,
+  (`AcademyTab`, `AcademyWelcome`, `AcademyHome` the hub with `TutorialBoard` (the blackboard), `AcademyRole` + `AcademyCreate` (cards ranked for the role by `tutorialRoles.ts`) + `TutorialOptions` + `AcademyConfirm` the wizard with `WizardSteps`, `AcademyGeneration`,
   `OutlineReview`, `TutorialView`, `CourseMap`, `ChapterPlayer`, `steps/` the ten step types (`Recap.tsx` the end of a chapter),
   `FreshnessPanel`, `ReviewScreen`, `WriteConfirmDialog`, `GraduationScreen`, `StepQuestions`; `academyEngine.ts`
   the XP rules; `tutorialBlocks.ts` the preview's block parser). `src/components/CodeView.tsx`
