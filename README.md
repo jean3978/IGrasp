@@ -218,20 +218,25 @@ type-ahead. More in [docs/features/keyboard.md](docs/features/keyboard.md).
       wizard that adapts to your role (kind of quiz, concepts, features or a code check),
       documentation gaps reported, Look it up, fixed and adaptive modes, effects, saved results,
       and shareable quiz files replayed without the AI.
-- [x] **Phase 5 — Tutorials** (0.5.0): Hoot's Academy, interactive tutorials generated about
-      the project from subject cards built locally (architecture, features, a request traced end
-      to end, dependencies, how things are built, any engine or stack, "I'm new to…"), an
-      outline you edit then chapters written one by one, ten step types with the keyboard, XP
-      and graduation, saved privately with your progress, shared with the team as markdown after
+- [x] **Phase 5 — Tutorials** (0.5.0): Hoot's Academy, a classroom of interactive tutorials
+      generated about the project. A New tutorial wizard starts from your role, then a subject:
+      found by Hoot for that role, or a card built locally (architecture, features, a request
+      traced end to end, dependencies, how things are built, any engine or stack, "I'm new
+      to…"). An outline you edit, then chapters written one by one, ten step types with the
+      keyboard, a recap per chapter, XP and graduation; questions asked about a step saved on it
+      anonymously; saved privately with your progress, shared with the team as markdown after
       a confirmation, checked for freshness locally, reviewed by the AI only when you ask, and
-      verified only by you. Since 0.5.0 (unreleased): a classroom hub and a New tutorial wizard
-      that starts from your role (subjects found for it), questions asked about a step saved on
-      it anonymously, a richer chapter recap, and render errors kept inside their tab.
+      verified only by you.
 - [ ] **Phase 6 — Editing**: WYSIWYG editing with lossless round-trip, file management, edit
       conflicts.
-- [ ] **Phase 7 — Git**: branch graph, commit details, status panel, stash, beginner-friendly
+- [ ] **Phase 7 — Images and videos**: drop images and videos from the file explorer where the
+      mouse points, paste screenshots from the clipboard, and import them next to the document
+      (with optional compression); an "Unused media" view.
+- [ ] **Phase 8 — Media annotations**: draw rectangles, arrows, labels and numbered steps on
+      screenshots and videos right in the preview, saved in the markdown, to write how-to guides.
+- [ ] **Phase 9 — Git**: branch graph, commit details, status panel, stash, beginner-friendly
       operations, and "what changed since I last looked".
-- [ ] **Phase 8 — Mermaid visual editor**: flowcharts first.
+- [ ] **Phase 10 — Mermaid visual editor**: flowcharts first.
 
 ## License
 

@@ -133,7 +133,8 @@ project. Rust backend in `src-tauri/`, React + TypeScript frontend in `src/`. Re
   is done. Never push, merge, tag or publish a release without the maintainer asking.
 - Nothing the app does on its own may write inside the opened folder; app state lives in the OS
   app-data folder. Only explicit user actions on files (accepted AI edits, quiz "Save as…",
-  sharing, saving or updating a tutorial after its confirmation; later, editing) write there.
+  sharing, saving or updating a tutorial after its confirmation; later phases: editing,
+  importing media by drop or paste, annotating media) write there.
 - AI (from Phase 3): no token without a user action. Every AI call goes through the
   single backend gateway, triggered by an explicit IPC request from a user action; never from
   watchers, timers, startup or event handlers. Features use the provider-neutral `AiProvider`

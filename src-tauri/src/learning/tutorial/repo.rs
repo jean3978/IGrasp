@@ -1,5 +1,5 @@
 //! Repository facts a tutorial records (its generation commit, who verified it), read from the
-//! `.git` files as text: no git process (the git layer arrives with Phase 7). Covers a `.git`
+//! `.git` files as text: no git process (the git layer arrives with Phase 9). Covers a `.git`
 //! folder and the `.git` file of a worktree or a submodule, a detached HEAD, a loose ref and a
 //! packed one.
 

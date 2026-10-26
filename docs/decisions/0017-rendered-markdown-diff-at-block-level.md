@@ -7,7 +7,7 @@
 
 Phase 3 lets the user review an agent's markdown edit inside the preview, as a rendered diff with
 Accept / Reject per change, instead of reading a line diff of source. The same view is wanted
-later for tutorials (freshness review) and Git (Phase 7). It must take only two markdown strings.
+later for tutorials (freshness review) and Git (Phase 9). It must take only two markdown strings.
 
 Options considered:
 

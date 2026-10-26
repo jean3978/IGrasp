@@ -59,12 +59,12 @@ user's own "Mark as verified"), each after the same confirmation. Nothing else w
 
 - **Editing a tutorial by hand in the app** (Phase 6, editing). Phase 5 changes a tutorial only
   through accepted proposals, relocations and the verification stamp.
-- **Authors and history from git** (Phase 7): the library shows the `generated` date and the
+- **Authors and history from git** (Phase 9): the library shows the `generated` date and the
   verification's `by` when the local `.git/config` names a user; the commit hashes come from
   `.git/HEAD` read as a file, never from the git CLI.
 - **Project Story from the git history**: the card is offered only when a repository is detected,
   and the generator works from what the files say (changelog, release notes, ADR dates); the
-  commit log itself arrives with Phase 7.
+  commit log itself arrives with Phase 9.
 - **Interactive `igrasp-*` blocks inside the preview.** As for quiz files, the preview renders the
   blocks as readable cards (answers folded) with a banner that opens the Academy; the tutorial is
   taken in the Academy tab, where the step components live.
@@ -492,7 +492,7 @@ shows the quiz's confirmation card in the Quiz tab.
 
 `head_commit(root) -> Option<String>`: `.git/HEAD` (a hash, or a `ref:` resolved through
 `.git/refs/...` or `.git/packed-refs`), also for a `.git` file of a worktree; `user_name(root)`:
-`[user] name` of `.git/config` only. No git CLI (Phase 7). Used for `generation_commit` and the
+`[user] name` of `.git/config` only. No git CLI (Phase 9). Used for `generation_commit` and the
 verification stamp.
 
 ### 4.14 Errors
@@ -1120,10 +1120,10 @@ the Explorer's tooltip; a `?academy=1` dev gallery of every step type on the fix
 | 5 | **Relocations applied silently to a private copy**, offered as a change for a shared one. | Yes, as the specification says; a relocation is the app's own bookkeeping of line numbers, not a change of content, and a shared file is the team's. |
 | 6 | **Private tutorials as one JSON file each** in app data versus inside the folder's learning file. | One file each: a deep tutorial is ~100 KB and progress saves happen on every step; the learning file stays small. |
 | 7 | **The review inlines the tutorial as markdown** (what a teammate reads) plus the freshness report, and asks for proposals only where the text is wrong now. | Yes: the model reviews the exact text the user sees; the freshness report focuses it on the changed ranges and keeps the cost down; style rewrites are refused by the prompt and would be noise in the diff. |
-| 8 | **Mark as verified records the commit from `.git/HEAD` read as a file** and the name from the local `.git/config`, no git CLI until Phase 7. | Yes: cheap, no subprocess, correct for the common case; Phase 7 replaces it with the git layer. |
+| 8 | **Mark as verified records the commit from `.git/HEAD` read as a file** and the name from the local `.git/config`, no git CLI until Phase 9. | Yes: cheap, no subprocess, correct for the common case; Phase 9 replaces it with the git layer. |
 | 9 | **XP rules fixed in a shared fixture** (Rust and TypeScript) rather than tuned per tutorial by the model. | Fixed: predictable, testable, no tokens; the model never sees XP. |
 | 10 | **"Quiz me on this tutorial" uses the understanding style** limited to the tutorial's cited files, tagged `QuizCategory::Tutorial`, through the Quiz tab's card. | Yes: the scope is the code check's, the style is a concept quiz's; the tag keeps the history sortable. |
 | 11 | **Subject cards are Rust-only** (`list_tutorial_subjects`), the mock hand-writes the fixture's. | Yes, as the quiz subjects; no detection logic in TypeScript. |
-| 12 | **Project Story is offered without the git log** (from the changelog, release notes and dated docs) when a repository is detected. | Yes, with the card's blurb saying so; the log arrives with Phase 7 and the prompt gains it then. |
+| 12 | **Project Story is offered without the git log** (from the changelog, release notes and dated docs) when a repository is detected. | Yes, with the card's blurb saying so; the log arrives with Phase 9 and the prompt gains it then. |
 | 13 | **The Academy is its own tab** beside the Quiz tab rather than one Learn tab with two modes. | Separate: the Quiz tab's screens and store stay untouched; the two link to each other (Quiz me on this tutorial, the graduation). |
 | 14 | **The preview keeps the tutorial blocks folded and non-interactive** (as quiz files), with a banner to the Academy. | Yes, as planned in Phase 4 (§1.2); the step components need the player's state and the Academy's layout. |

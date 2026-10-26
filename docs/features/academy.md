@@ -277,7 +277,7 @@ toggle and the model are shared with the quiz.
 - Review decisions are per proposed step, not per change inside a step as the plan intended.
 - The label is **Check with the AI** (provider-neutral); the plan said "Check with Claude".
 - Editing a tutorial by hand in the app comes with Phase 6; authors and history from git with
-  Phase 7 (until then the `generated` date and the verification's name). Project Story works
+  Phase 9 (until then the `generated` date and the verification's name). Project Story works
   from the changelog, release notes and dated decisions, not the commit log.
 - The mock's fixture project has no shared tutorial by default (its file lists stay unchanged):
   `window.__igraspMock.addSharedTutorial()` writes one to the fake disk.

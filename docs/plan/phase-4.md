@@ -818,7 +818,7 @@ sources:
   Replay`. The results of a replay can be saved like any other; the usage line shows "no AI
   call" instead of tokens.
 - Where quizzes come from: **Saved quizzes** on the home lists `list_quiz_files()` (newest first,
-  with title, subject, question count and the author from git when known: Phase 7 brings git,
+  with title, subject, question count and the author from git when known: Phase 9 brings git,
   so Phase 4 shows the file's `generated` date only), the preview banner, and **Open quiz
   file…** in the Learn menu (a file dialog; the file may be outside the root, in which case its
   citations are resolved against the open folder and flagged when they do not match).
@@ -1566,7 +1566,7 @@ builds, and passes `npm run check`. Rust commands land **with** their mock imple
 
 Optional if time allows (after 27): pupils following the pointer in `idle`; a "Copy this question
 as markdown" button on the reveal panel; a per-subject best score on the subject chips; the
-author of a saved quiz from git (otherwise Phase 7).
+author of a saved quiz from git (otherwise Phase 9).
 
 ---
 
@@ -1603,7 +1603,7 @@ author of a saved quiz from git (otherwise Phase 7).
 | 2 | **Adaptive order over a fixed pool** (one operation gives one quiz; the level changes the order; "Keep going" generates more) versus generating round by round at the current level (several operations per quiz). | Fixed pool: one user action, one card, one usage; strictly conforms to rule 1; the level still visibly adapts. Round-by-round would need a card per round or an "authorize up to N rounds" consent that the specification does not foresee. |
 | 3 | **Retries inside the gateway** (`ValidatedRun`, validator chosen by the action) versus a retry loop in `learning/` calling the provider. | Gateway: the cap and the "nothing starts a provider but the gateway" invariant stay enforceable by source scans and one test; Phase 5 reuses it unchanged. |
 | 4 | **Validation by typed deserialization plus rules** versus a JSON-schema crate. | Typed structs: no dependency, better error messages for the repair prompt, the schema sent to the provider is still the JSON of §4.4 (a test keeps both in step). |
-| 5 | **A new "Learn" menu** (Quiz…, Project Profile…, later Academy) versus putting Quiz under View. The specification lists File, Edit, View, Git, Help. | Add Learn: the quiz and the Academy are a feature family, not a view; Git arrives in Phase 7 at its planned place. |
+| 5 | **A new "Learn" menu** (Quiz…, Project Profile…, later Academy) versus putting Quiz under View. The specification lists File, Edit, View, Git, Help. | Add Learn: the quiz and the Academy are a feature family, not a view; Git arrives in Phase 9 at its planned place. |
 | 6 | **Agent files inlined as context** (capped) versus not sent at all. | Inline, capped at 48 KB: they describe conventions the questions should respect (e.g. "paths are root-relative"), and the validator guarantees they are never cited. |
 | 7 | **The profile walk includes dot-folders whatever the tree toggle**, and respects `.gitignore` and the user's ignore patterns. | Yes: `.github/workflows` is part of how the project is built; ignored output folders are not part of the project. |
 | 8 | **Secrets excluded from the corpus and forbidden in the prompt**, while the provider's own tools could still read them. | Yes, and document the limitation like the CLI allow rules in Phase 3; a strict sandbox is the provider's job and a later concern. |

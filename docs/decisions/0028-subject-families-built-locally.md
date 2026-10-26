@@ -78,4 +78,4 @@ material).
 - The cards are rebuilt from the cached profile on each listing: 253 ms on the 10k-document
   reference project (debug build; the budget is 1 s, `perf_tutorials`).
 - A new domain or topic is a table entry and a test, not new code.
-- Project Story gains the commit log when Phase 7 brings the git layer.
+- Project Story gains the commit log when Phase 9 brings the git layer.

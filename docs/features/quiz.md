@@ -258,7 +258,7 @@ project profile with **Reset to detected**.
 - The estimate on the card is a floor: the AI may open more files than the inlined ones.
 - A quiz runs read-only whatever the permission settings: the gateway refuses every permission
   prompt of the operation. What the provider can read on its own is decided by its sandbox.
-- The author of a shared quiz comes with Git (Phase 7); until then the `generated` date shows.
+- The author of a shared quiz comes with Git (Phase 9); until then the `generated` date shows.
 
 ## Testing
 

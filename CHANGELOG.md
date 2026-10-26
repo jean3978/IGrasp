@@ -7,51 +7,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Added
-
-- Ask about a step of a tutorial: **Ask about this step** (the whole step), or highlight its text
-  or frame part of it with the AI tools, and ask in the chat (the step and its cited files go
-  with the message). The card says how; the chat about a step wears the Academy's look, with
-  Hoot perched on it holding a question mark. Under the answer, the chat asks whether to save the
-  question and the answer for other readers, recalling that the name is not shown. Saved
-  questions show on the step card and travel with a shared tutorial, anonymously (no name, no
-  date), at the end of the chapter's file; a shared tutorial changes only after the write
-  confirmation.
-
-### Changed
-
-- The recap at the end of a chapter: Hoot, how the chapter went (steps done, answers right, the
-  chapter bonus to come), the takeaways as numbered cards, the steps still to do with a way back
-  to the first one, and what comes next.
-- The Academy's hub is a classroom: your tutorials on a blackboard across the wall (one concise
-  line each: progress ring with a private or shared badge, title, role and subject, difficulty
-  bars with tooltips, a **Details** pill that opens a card with the progress, where it lives, its
-  freshness and verification, then compact actions; scrolled when there are many), and in front
-  of it Hoot in a mortarboard and owls at their desks. A clear **New tutorial** button, clear of
-  the AI tools, opens a four-step wizard: **Role** first (proposed for the project, or typed),
-  then the **Subject** in three numbered ways (type it; **subjects found by Hoot for your role**,
-  deeply tied to its work, kept with the role; the **ready-made** cards, those that fit the role
-  first and the others behind **More subjects**), the **Options** and **Confirm**. Opening the
-  Academy tab plays a short welcome by Hoot over the whole tab (under four seconds, skipped by a
-  click or a key, not shown when the effects are off or with reduced motion).
-
-### Fixed
-
-- A tutorial shared in the project was missing from the Academy's board the first time the
-  Academy opened (before the document graph was ready); it appears as soon as the graph is.
-- A tutorial you shared was listed twice on the Academy's board (your private copy and the
-  shared one); it is one row now, the private one with the shared badge, as long as the shared
-  files are unchanged. A shared copy changed since (by a teammate) keeps its own row, and the
-  private one says so before Share would replace it. Deleting the private copy keeps your
-  progress in the shared one. Share and Save as… explain in their tooltips how they differ.
-- A code tour went back to its first stop after **Open in the code viewer** and a return to the
-  Academy; it keeps its stop while the tutorial is open.
-- The app went blank at the end of every chapter of a tutorial written by the AI: the backend
-  left out the recap's empty list of sources, which the reader expects. It is always sent now
-  (tutorials saved before are fixed when read).
-- A render error now stays inside its tab, with the message and "Try again", instead of
-  blanking the whole window.
-
 ## [0.5.0] - 2026-10-25
 
 Phase 5 — Hoot's Academy: tutorials about the open project, written by the AI from the project's
@@ -114,6 +69,14 @@ verified only by you ([academy.md](docs/features/academy.md)).
   freshness check in 3.3 ms on the 10k-document project, debug build).
 - The proof of concept that preceded the phase (schema, prompts, validator, shared format,
   freshness, six real tutorials on five projects; [report](docs/plan/poc-tutorials.md)).
+- Ask about a step of a tutorial: **Ask about this step** (the whole step), or highlight its text
+  or frame part of it with the AI tools, and ask in the chat (the step and its cited files go
+  with the message). The card says how; the chat about a step wears the Academy's look, with
+  Hoot perched on it holding a question mark. Under the answer, the chat asks whether to save the
+  question and the answer for other readers, recalling that the name is not shown. Saved
+  questions show on the step card and travel with a shared tutorial, anonymously (no name, no
+  date), at the end of the chapter's file; a shared tutorial changes only after the write
+  confirmation.
 
 ### Changed
 
@@ -129,6 +92,24 @@ verified only by you ([academy.md](docs/features/academy.md)).
   files you confirmed after seeing their list.
 - The Learn menu gains Academy… above Quiz Me…; the Keyboard Shortcuts tab gains an Academy
   section.
+- The recap at the end of a chapter: Hoot, how the chapter went (steps done, answers right, the
+  chapter bonus to come), the takeaways as numbered cards, the steps still to do with a way back
+  to the first one, and what comes next.
+- The Academy's hub is a classroom: your tutorials on a blackboard across the wall (one concise
+  line each: progress ring with a private or shared badge, title, role and subject, difficulty
+  bars with tooltips, a **Details** pill that opens a card with the progress, where it lives, its
+  freshness and verification, then compact actions; scrolled when there are many), and in front
+  of it Hoot in a mortarboard and owls at their desks. A clear **New tutorial** button, clear of
+  the AI tools, opens a four-step wizard: **Role** first (proposed for the project, or typed),
+  then the **Subject** in three numbered ways (type it; **subjects found by Hoot for your role**,
+  deeply tied to its work, kept with the role; the **ready-made** cards, those that fit the role
+  first and the others behind **More subjects**), the **Options** and **Confirm**. Opening the
+  Academy tab plays a short welcome by Hoot over the whole tab (under four seconds, skipped by a
+  click or a key, not shown when the effects are off or with reduced motion).
+- **Roadmap**: two phases after Editing, Phase 7 — Images and videos (drop and paste into a
+  document, import with compression, unused media) and Phase 8 — Media annotations (rectangles,
+  arrows, labels and steps drawn on screenshots and videos, saved in the markdown). Git moves to
+  Phase 9 and the Mermaid visual editor to Phase 10.
 
 ### Fixed
 
@@ -138,6 +119,20 @@ verified only by you ([academy.md](docs/features/academy.md)).
   missing in the freshness check.
 - **Line fragments into markdown files**: a GitHub line fragment such as `guide.md#L3-L8` is no
   longer reported as a broken anchor.
+- A tutorial shared in the project was missing from the Academy's board the first time the
+  Academy opened (before the document graph was ready); it appears as soon as the graph is.
+- A tutorial you shared was listed twice on the Academy's board (your private copy and the
+  shared one); it is one row now, the private one with the shared badge, as long as the shared
+  files are unchanged. A shared copy changed since (by a teammate) keeps its own row, and the
+  private one says so before Share would replace it. Deleting the private copy keeps your
+  progress in the shared one. Share and Save as… explain in their tooltips how they differ.
+- A code tour went back to its first stop after **Open in the code viewer** and a return to the
+  Academy; it keeps its stop while the tutorial is open.
+- The app went blank at the end of every chapter of a tutorial written by the AI: the backend
+  left out the recap's empty list of sources, which the reader expects. It is always sent now
+  (tutorials saved before are fixed when read).
+- A render error now stays inside its tab, with the message and "Try again", instead of
+  blanking the whole window.
 
 ### Known limitations
 

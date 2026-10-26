@@ -46,5 +46,5 @@ opened folder.
   or not. A file written on Windows replays on Linux (paths with `/`, LF endings).
 - Freshness is a cheap local signal, not a verification: a changed line may still make the
   question true. Phase 5 builds its "review with the AI" on top of the same hashes.
-- The git author of a shared quiz is shown from Phase 7 (Git); until then, the `generated` date.
+- The git author of a shared quiz is shown from Phase 9 (Git); until then, the `generated` date.
 - Phase 5 adds `igrasp: tutorial` and its blocks with the same rules.

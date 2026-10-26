@@ -96,7 +96,7 @@ the AI never changes a tutorial or vouches for it on its own.
   freshness report, and proposes changes only where the text is wrong now): answered as
   recommended; the prompt refuses rewrites for style.
 - **Question 8** (the commit from `.git/HEAD` read as a file and the name from the local
-  `.git/config`, no git CLI until Phase 7): answered as recommended.
+  `.git/config`, no git CLI until Phase 9): answered as recommended.
 - **Question 9** (XP rules fixed in a shared fixture rather than tuned by the model): answered
   as recommended, fixed (`src/test/fixtures/tutorial/xp.json`); the model never sees XP.
 
@@ -144,7 +144,7 @@ the AI never changes a tutorial or vouches for it on its own.
 - Progress survives an update of the tutorial and a teammate's pull; only steps whose content
   changed are marked.
 - A shared tutorial written on Windows reads on Linux (paths with `/`, LF).
-- Verification is a cheap, honest signal: a person said it was right at a commit. Phase 7's git
+- Verification is a cheap, honest signal: a person said it was right at a commit. Phase 9's git
   layer will replace the `.git` file reading.
 - The freshness check is not cached per disk revision, as the plan intended: it runs on open and
   on each library listing, which reads every shared README again. It is fast (3.3 ms for 20
