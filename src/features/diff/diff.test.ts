@@ -173,7 +173,8 @@ describe('splitBlocksFrom', () => {
       const before = mutate(i % 2 ? lines : [...lines, ...lines, ...lines], random(3));
       expectSame(before.join('\n'), mutate(before, 1 + random(4)).join('\n'));
     }
-  });
+    // 300 rounds take about 5 s on CI with coverage.
+  }, 30_000);
 
   it('keeps the blocks around an edit, and the same list for an unchanged text', () => {
     const newText = edit(6, 1, 'A changed paragraph');

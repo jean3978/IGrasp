@@ -140,7 +140,9 @@ describe('no token without a user action', () => {
     contextCalls.mockRestore();
 
     expect(starts()).toEqual([]);
-  });
+    // Every action with a settle after each, on the whole App: about 4 s locally, more on CI
+    // with coverage.
+  }, 30_000);
 
   it('starts nothing from the history, the context, the model and the permission settings', async () => {
     await useWorkspace.getState().openRoot(FIXTURE_ROOT);
