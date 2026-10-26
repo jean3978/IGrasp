@@ -39,6 +39,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - A tutorial shared in the project was missing from the Academy's board the first time the
   Academy opened (before the document graph was ready); it appears as soon as the graph is.
+- A tutorial you shared was listed twice on the Academy's board (your private copy and the
+  shared one); it is one row now, the private one with the shared badge. Share and Save as…
+  explain in their tooltips how they differ.
 - A code tour went back to its first stop after **Open in the code viewer** and a return to the
   Academy; it keeps its stop while the tutorial is open.
 - The app went blank at the end of every chapter of a tutorial written by the AI: the backend

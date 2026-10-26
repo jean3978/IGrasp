@@ -1,5 +1,5 @@
 // Sharing a tutorial with the project (plan §4.8): the plan lists the files before anything is
-// written, the write puts them on the (fake) disk, the library lists the shared copy, a shared
+// written, the write puts them on the (fake) disk, the library lists it once (shared as), a shared
 // tutorial reads back as it was written and updates in place; Save as… can be dismissed. Then the
 // preview of the shared files: the banner and the folded step cards. Nothing here calls the AI.
 
@@ -61,13 +61,14 @@ describe('sharing with the project', () => {
     expect(mock().state.files.get(`${folder}/README.md`)).toContain('igrasp: tutorial');
     expect(mock().state.files.has(`${folder}/02-build-and-test-with-the-makefile.md`)).toBe(true);
 
-    await waitFor(async () => {
-      const list = await backend.listTutorials();
-      expect(list.map((s) => s.reference.type)).toEqual(['private', 'shared']);
+    // Once the graph knows the shared copy, it is the same tutorial: one row, the private one,
+    // tagged "shared as".
+    await waitFor(() => {
+      expect(mock().state.graph?.has(`${folder}/README.md`)).toBe(true);
     });
-    const [own, shared] = await backend.listTutorials();
-    expect(own?.sharedAs).toBe(`${folder}/README.md`);
-    expect(shared?.reference).toEqual({ type: 'shared', relPath: `${folder}/README.md` });
+    const list = await backend.listTutorials();
+    expect(list.map((s) => s.reference)).toEqual([{ type: 'private', id: t.id }]);
+    expect(list[0]?.sharedAs).toBe(`${folder}/README.md`);
     const back = await backend.getTutorial({ type: 'shared', relPath: `${folder}/README.md` });
     expect(back).toEqual(normalizeTutorial(t));
     // Sharing again: the same folder, nothing to write.

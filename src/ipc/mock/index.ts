@@ -883,10 +883,16 @@ export function createMockBackend(): Backend & { controls: MockControls } {
     // eslint-disable-next-line @typescript-eslint/require-await
     listTutorials: async () => {
       const folder = tutorialsOf();
+      const privates = privateSummaries(folder);
+      // A shared copy of a private tutorial (its "shared as", same id) is listed once, as it.
+      const ownCopy = (relPath: string, id: string) =>
+        privates.some(
+          (p) => p.reference.type === 'private' && p.reference.id === id && p.sharedAs === relPath,
+        );
       const shared = [...(state.graph ?? new Map<string, MockDoc>())].flatMap(([relPath, doc]) => {
         if (!doc.tutorial || doc.tutorial.chapter !== null) return [];
         const t = state.sharedTutorials.get(relPath);
-        if (!t || t.id !== doc.tutorial.id) return [];
+        if (!t || t.id !== doc.tutorial.id || ownCopy(relPath, t.id)) return [];
         return [
           tutorialSummaryOf(
             { type: 'shared', relPath },
@@ -899,7 +905,7 @@ export function createMockBackend(): Backend & { controls: MockControls } {
       });
       shared.sort((a, b) => b.updatedMs - a.updatedMs);
       const read = (p: string) => state.files.get(p);
-      return [...privateSummaries(folder), ...shared].map((s) => {
+      return [...privates, ...shared].map((s) => {
         const t =
           s.reference.type === 'private'
             ? folder.stored.get(s.reference.id)?.tutorial

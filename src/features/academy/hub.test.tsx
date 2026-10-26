@@ -218,6 +218,21 @@ describe('the hub', () => {
     expect(within(list).getByRole('button', { name: `Details of ${t.title}` })).toHaveTextContent(
       'Details',
     );
+    // Share and Save as… explain how they differ, without the title (it is right beside them).
+    const tip = async (name: string, says: RegExp) => {
+      const button = within(list).getByRole('button', { name });
+      await userEvent.hover(button);
+      const text = (await screen.findByRole('tooltip', { name: says })).textContent;
+      await userEvent.unhover(button);
+      await userEvent.keyboard('{Escape}');
+      return text;
+    };
+    const share = await tip(`Share ${t.title} with the project`, /^Share with the team/);
+    expect(share).toMatch(/writes it as markdown into docs\/tutorials\/ in this project/);
+    expect(share).toContain('sharing again updates the same files');
+    const saveAs = await tip(`Save ${t.title} as…`, /^Save a copy as markdown/);
+    expect(saveAs).toMatch(/any folder you choose: a one-off snapshot, not linked/);
+    for (const text of [share, saveAs]) expect(text).not.toContain(t.title);
     expect(within(list).getByRole('button', { name: `Delete ${t.title}` })).toHaveClass(
       'icon-button',
     );

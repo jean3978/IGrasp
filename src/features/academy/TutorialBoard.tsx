@@ -26,6 +26,7 @@ import { Button } from '../../components/ui/Button';
 import { IconButton } from '../../components/ui/IconButton';
 import type { Familiarity, TutorialSummary } from '../../ipc/types';
 import { selectAcademyBusy, useAcademy } from '../../stores/academy';
+import { useSettings } from '../../stores/settings';
 import { useTutorialWrite } from '../../stores/tutorialWrite';
 import { formatWhen } from '../quiz/quizFormat';
 import { badgeShort } from './freshnessView';
@@ -88,6 +89,7 @@ function BoardRow({ t }: { t: TutorialSummary }) {
   const deleteTutorial = useAcademy((s) => s.deleteTutorial);
   const prepareWrite = useTutorialWrite((s) => s.prepare);
   const busy = useAcademy(selectAcademyBusy);
+  const tutorialsFolder = useSettings((s) => s.settings.learning.tutorialsFolder);
   const [confirming, setConfirming] = useState(false);
   const key = keyOf(t);
   const written = t.chaptersWritten;
@@ -159,8 +161,15 @@ function BoardRow({ t }: { t: TutorialSummary }) {
         )}
         {isPrivate && written > 0 && (
           <>
+            {/* The tooltips tell Share and Save as… apart; the names keep the title, for
+                assistive technologies that list every row's buttons together. */}
             <IconButton
               label={
+                t.sharedAs
+                  ? `Update the shared copy in the project (${t.sharedAs}) with this version`
+                  : `Share with the team: writes it as markdown into ${tutorialsFolder}/ in this project, to commit. It stays linked: sharing again updates the same files.`
+              }
+              aria-label={
                 t.sharedAs
                   ? `Update the shared copy of ${t.title} (${t.sharedAs})`
                   : `Share ${t.title} with the project`
@@ -170,7 +179,8 @@ function BoardRow({ t }: { t: TutorialSummary }) {
               <Share2 aria-hidden />
             </IconButton>
             <IconButton
-              label={`Save ${t.title} as…`}
+              label="Save a copy as markdown in any folder you choose: a one-off snapshot, not linked, never updated."
+              aria-label={`Save ${t.title} as…`}
               onClick={() => void prepareWrite({ type: 'export', id: key }, t.title)}
             >
               <Download aria-hidden />
@@ -200,7 +210,12 @@ function BoardRow({ t }: { t: TutorialSummary }) {
             </span>
           ) : (
             <IconButton
-              label={`Delete ${t.title}`}
+              label={
+                t.sharedAs
+                  ? 'Delete your private copy and your progress (the shared copy stays)'
+                  : 'Delete your private copy and your progress'
+              }
+              aria-label={`Delete ${t.title}`}
               disabled={busy}
               onClick={() => {
                 setConfirming(true);

@@ -3,6 +3,7 @@
 //! folder, the freshness check, sharing and verifying. The generations (outline, chapters,
 //! review, suggestions) go through `ai_start` like every AI operation.
 
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use tauri::{AppHandle, Manager, State};
@@ -44,7 +45,9 @@ pub async fn list_tutorial_subjects(app: AppHandle) -> AppResult<TutorialSubject
 }
 
 /// The library of the open folder: its private tutorials (newest first), then the shared ones
-/// the graph found (each README read again, chapters included), with the progress.
+/// the graph found (each README read again, chapters included), with the progress. A shared copy
+/// of one of the private tutorials (its "shared as", holding the same id) is that tutorial: it is
+/// listed once, as the private one.
 pub fn library(ws: &Workspace, appdata: &AppData) -> AppResult<Vec<TutorialSummary>> {
     let key = root_key(ws);
     let progress = appdata.folder_learning(&key)?.tutorial_progress;
@@ -66,6 +69,13 @@ pub fn library(ws: &Workspace, appdata: &AppData) -> AppResult<Vec<TutorialSumma
             summary
         })
         .collect();
+    let own_copies: BTreeSet<(String, String)> = list
+        .iter()
+        .filter_map(|s| match &s.reference {
+            TutorialRef::Private { id } => s.shared_as.clone().map(|rel| (rel, id.clone())),
+            TutorialRef::Shared { .. } => None,
+        })
+        .collect();
     let readmes: Vec<String> = {
         let graph = ws.graph.read().unwrap_or_else(|e| e.into_inner());
         graph
@@ -84,6 +94,7 @@ pub fn library(ws: &Workspace, appdata: &AppData) -> AppResult<Vec<TutorialSumma
     let mut shared = Vec::new();
     for rel in readmes {
         match share::read_shared(&ws.guard, &rel) {
+            Ok(t) if own_copies.contains(&(rel.clone(), t.id.clone())) => {}
             Ok(t) => {
                 let mut summary = TutorialSummary::of(
                     TutorialRef::Shared {
@@ -528,6 +539,29 @@ mod tests {
                 .iter()
                 .all(|p| p.state == share::PlannedState::Unchanged)
         );
+
+        // Shared from a private tutorial: the same tutorial, one row, the private one.
+        let key = root_key(&ws);
+        appdata.save_private_tutorial(&key, t.clone()).unwrap();
+        let readme = format!("{folder}/README.md");
+        appdata
+            .set_tutorial_shared_as(&key, &t.id, &readme)
+            .unwrap();
+        let list = library(&ws, &appdata).unwrap();
+        assert_eq!(list.len(), 1, "{list:?}");
+        assert_eq!(list[0].reference, TutorialRef::Private { id: t.id.clone() });
+        assert_eq!(list[0].shared_as.as_deref(), Some(readme.as_str()));
+        // A copy that holds another tutorial (another id) is not this one: both are listed.
+        let mut other = t.clone();
+        other.id = "another-tutorial".to_owned();
+        appdata.save_private_tutorial(&key, other).unwrap();
+        appdata
+            .set_tutorial_shared_as(&key, "another-tutorial", &readme)
+            .unwrap();
+        appdata
+            .set_tutorial_shared_as(&key, &t.id, "docs/tutorials/elsewhere/README.md")
+            .unwrap();
+        assert_eq!(library(&ws, &appdata).unwrap().len(), 3);
     }
 
     #[test]
