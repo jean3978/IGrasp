@@ -189,9 +189,40 @@
   gap: 10px;
 }
 
-.academy-progress-icon {
+/* The progress ring with the sharing badge on its lower-right corner. */
+.academy-row-icon {
+  position: relative;
   display: inline-flex;
   grid-area: icon;
+}
+
+.academy-sharing-badge {
+  position: absolute;
+  right: -8px;
+  bottom: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--academy-board);
+  border-radius: 50%;
+  background: var(--academy-chalk-muted);
+  color: var(--academy-board);
+}
+
+.academy-sharing-badge[data-shared='true'] {
+  background: var(--academy-chalk-accent);
+}
+
+.academy-sharing-badge svg {
+  width: 9px;
+  height: 9px;
+  stroke-width: 3;
+}
+
+.academy-progress-icon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 26px;
@@ -251,6 +282,47 @@
   flex: none;
   align-items: center;
   gap: 0;
+}
+
+/* Room for Details and the three actions of a private tutorial, so every row's Details lines up
+   whatever actions follow it (a shared tutorial has none). */
+.academy-board .academy-row-actions {
+  min-width: 184px;
+}
+
+/* Details: the first action, a labelled chalk pill, more visible than the icon buttons. */
+.academy-details-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  margin-right: 6px;
+  padding: 0 10px 0 8px;
+  border: var(--border-width) solid var(--academy-chalk-muted);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--academy-chalk);
+  font: inherit;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.academy-details-button svg {
+  width: 14px;
+  height: 14px;
+  color: var(--academy-chalk-accent);
+}
+
+.academy-details-button:hover,
+.academy-details-button[data-state='open'] {
+  border-color: var(--academy-chalk);
+  background: var(--academy-board-row-hover);
+}
+
+.academy-details-button:focus-visible {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: 1px;
 }
 
 .academy-board .icon-button {
@@ -398,6 +470,93 @@
 .academy-details-facts dd {
   margin: 0;
   color: var(--fg);
+}
+
+/* The subject step's three ways to choose (typed, found by Hoot for the role, ready-made): each a
+   numbered section with its title and what it does, an "or" between them. The AI way uses the
+   provider's warm accent, like every AI control. */
+.academy-way {
+  padding: 16px 18px 18px;
+  border: var(--border-width) solid var(--quiz-card-border);
+  border-radius: var(--radius-l);
+  background: var(--quiz-card);
+  box-shadow: var(--quiz-card-shadow);
+}
+
+.academy-way[data-ai='true'] {
+  border-color: var(--ai-border);
+}
+
+.academy-way-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.academy-way-number {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--fg-on-accent);
+  font-weight: 700;
+}
+
+.academy-way[data-ai='true'] .academy-way-number {
+  background: var(--ai-accent);
+}
+
+.academy-way-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.academy-way-title {
+  margin: 2px 0 2px;
+  color: var(--fg-strong);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.academy-way-lead {
+  margin: 0;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+}
+
+.academy-way-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.academy-way-body .academy-family:first-child .academy-family-title {
+  margin-top: 0;
+}
+
+.academy-way-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--fg-muted);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.academy-way-or::before,
+.academy-way-or::after {
+  flex: 1;
+  height: 0;
+  border-top: var(--border-width) dashed var(--border-strong);
+  content: '';
 }
 
 /* "More subjects": the cards about what the chosen role never touches, on request. */
@@ -621,9 +780,10 @@
   inset: 0;
   display: grid;
   place-items: center;
+  /* Opaque from the first frame: the hub under it must not show before the welcome. Only Hoot,
+     the sparks and the words animate in; the whole screen fades out into the hub. */
   background: var(--academy-wall);
   cursor: pointer;
-  animation: academy-welcome-in 0.25s ease-out both;
   transition: opacity 0.45s ease-in;
 }
 
@@ -714,12 +874,6 @@
   width: 9px;
   height: 9px;
   animation-delay: 0.65s;
-}
-
-@keyframes academy-welcome-in {
-  from {
-    opacity: 0;
-  }
 }
 
 @keyframes academy-welcome-pop {

@@ -24,17 +24,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   chapter bonus to come), the takeaways as numbered cards, the steps still to do with a way back
   to the first one, and what comes next.
 - The Academy's hub is a classroom: your tutorials on a blackboard across the wall (one concise
-  line each: progress ring, title, role and subject, difficulty bars with tooltips, compact
-  actions; a **Details** button opens a card with the progress, where it lives, its freshness and
-  verification; scrolled when there are many), and in front of it Hoot in a mortarboard and owls
-  at their desks. A clear **New tutorial** button, clear of the AI tools, opens a four-step
-  wizard: **Role** first (proposed for the project, or typed), then the **Subject** with the
-  cards that fit the role first and the others behind **More subjects**, the **Options** and
-  **Confirm**. Opening the Academy tab plays a short welcome by Hoot (under four seconds, skipped
-  by a click or a key, not shown when the effects are off or with reduced motion).
+  line each: progress ring with a private or shared badge, title, role and subject, difficulty
+  bars with tooltips, a **Details** pill that opens a card with the progress, where it lives, its
+  freshness and verification, then compact actions; scrolled when there are many), and in front
+  of it Hoot in a mortarboard and owls at their desks. A clear **New tutorial** button, clear of
+  the AI tools, opens a four-step wizard: **Role** first (proposed for the project, or typed),
+  then the **Subject** in three numbered ways (type it; **subjects found by Hoot for your role**,
+  deeply tied to its work, kept with the role; the **ready-made** cards, those that fit the role
+  first and the others behind **More subjects**), the **Options** and **Confirm**. Opening the
+  Academy tab plays a short welcome by Hoot over the whole tab (under four seconds, skipped by a
+  click or a key, not shown when the effects are off or with reduced motion).
 
 ### Fixed
 
+- A tutorial shared in the project was missing from the Academy's board the first time the
+  Academy opened (before the document graph was ready); it appears as soon as the graph is.
 - A code tour went back to its first stop after **Open in the code viewer** and a return to the
   Academy; it keeps its stop while the tutorial is open.
 - The app went blank at the end of every chapter of a tutorial written by the AI: the backend

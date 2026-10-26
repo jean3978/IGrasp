@@ -20,19 +20,23 @@ a tutorial on its own and never marks it verified.
   opens; opening it is free: the profile, the cards, the library and the badges are local.
 - **Welcome**: when the tab opens (it was not open), Hoot pops up, its mortarboard drops on its
   head, "Welcome to Hoot's Academy", and the screen fades into the hub after under four seconds
-  (long enough to read it).
-  A click or any key skips it; switching back to an open Academy tab does not replay it, and it
+  (long enough to read it). It covers the whole tab and is opaque from its first frame: the hub
+  never shows before it. A click or any key skips it; switching back to an open Academy tab does not replay it, and it
   is not shown when the learning effects are off or the system asks for reduced motion.
 - **The hub** is a classroom: **Your tutorials** on a blackboard across the wall, and in front of
   it Hoot in a mortarboard and three owls at their desks (one thinks, one raises a wing now and
   then). The board stays concise: per tutorial, a progress ring (a cap once graduated, a list for
-  an outline), the title, who it is for and its subject, the difficulty as one to three bars, a
-  warning mark when a source changed or steps were updated since read (each mark explains itself
-  in a tooltip), and compact Details, Share, Save as… and Delete buttons. **Details** opens a
+  an outline) with a badge on its corner (a lock for a private tutorial, people for one shared
+  with the project), the title, who it is for and its subject, the difficulty as one to three
+  bars, a warning mark when a source changed or steps were updated since read (each mark explains
+  itself in a tooltip), a labelled **Details** pill, then compact Share, Save as… and Delete
+  buttons (the pills line up from row to row). **Details** opens a
   card with the rest: the progress as a bar with the XP, three statuses with an icon each (where
   it lives: private, shared, shared as; its sources' freshness; its verification), then level,
   length, chapters and when it changed. Many tutorials scroll inside the board, which stays short
-  enough to keep the whole classroom in view. Above it, **New tutorial** (the wizard below, set
+  enough to keep the whole classroom in view. The board follows the folder: a shared tutorial
+  appears as soon as the document graph knows it, even when the Academy opened before the graph
+  was ready (a late listing never replaces a newer one). Above it, **New tutorial** (the wizard below, set
   below the AI tools of the tab's corner) and **Continue where you left off** (the last tutorial in
   progress, its chapter and step); under it, the project profile with **Edit** (the Phase 4
   dialog; a correction rebuilds the cards).
@@ -42,9 +46,18 @@ a tutorial on its own and never marks it verified.
   subject step: the cards that fit the role first, under "For a Level designer", the others by
   family, and those about what the role never touches (the dependency list for an artist) behind
   **More subjects** (`tutorialRoles.ts`; developers see every card as proposed, and suggestions
-  are never hidden). The subject step has **What do you want to learn?** (type a subject,
-  Enter), the **subject cards** and **Suggest more subjects**; a failed outline comes back to it
-  with the subjects that may work better.
+  are never hidden). The subject step offers three ways, each a numbered section with its title
+  and what it does, an "or" between them:
+  1. **What do you want to learn?**: type a subject in your own words, Enter.
+  2. **Subjects for a Level designer, found by Hoot** (marked as using AI): **Find subjects for a
+     Level designer** asks the AI, through its confirmation card, for subjects deeply tied to
+     that role's work in this project (what they make, touch, tune or decide; the role's craft
+     from `learning/role.rs` is in the prompt). The accepted subjects are kept with the folder and
+     with their role, and shown here for that role and its family only (`suggestedFor`); then
+     **Find more subjects** asks again.
+  3. **Ready-made subjects**: the local cards, for any reader, ranked for the role.
+
+  A failed outline comes back to this step with the subjects that may work better.
 - **Subject cards** are built locally from the project profile, without AI
   ([ADR 0028](../decisions/0028-subject-families-built-locally.md)). Twelve universal families
   (The Big Picture; Tech Stack, as used here; Architecture Tour; Feature Deep Dive; Trace It;
@@ -59,9 +72,11 @@ a tutorial on its own and never marks it verified.
   project uses (for example "Godot materials and shaders", "web security"), or type your own. A
   domain card fills it in. Hoot then teaches that domain through this project's own use of it, a concept at a
   time, never as a separate course.
-- **Suggest more subjects** (marked as using AI) asks the AI for subjects the cards missed,
-  through its confirmation card. The accepted ones appear as cards of the **Suggested** family
-  and are kept with the folder.
+- **Find subjects for a <role>** (marked as using AI) asks the AI for subjects the cards missed,
+  written for the role of the wizard's first step (a developer when none was chosen), through
+  its confirmation card. The accepted ones are cards of the **Suggested** family, kept with the
+  folder and stamped with their role (`forRole`); those made before roles count as a
+  developer's.
 
 ### Options and the confirmation card
 

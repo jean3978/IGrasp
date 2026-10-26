@@ -849,7 +849,7 @@ export function createMockAi({
         kind: 'suggest',
         length: 'standard',
         calls: 1,
-        suggest: composeMockSuggest(deps, tutorialCards()),
+        suggest: composeMockSuggest(deps, tutorialCards(), request.role),
       };
     }
     if (action === 'tutorialReview') {

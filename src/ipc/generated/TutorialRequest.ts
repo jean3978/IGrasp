@@ -6,4 +6,4 @@ import type { TutorialRef } from "./TutorialRef";
  * What the frontend sends to start a tutorial operation; the backend composes the prompts, the
  * schemas and the validators (the frontend never writes a tutorial prompt).
  */
-export type TutorialRequest = { "kind": "outline", input: TutorialInput, } | { "kind": "chapters", id: string, indices: Array<number>, } | { "kind": "chapter", id: string, index: number, goal: string | null, } | { "kind": "review", tutorial: TutorialRef, } | { "kind": "suggest" };
+export type TutorialRequest = { "kind": "outline", input: TutorialInput, } | { "kind": "chapters", id: string, indices: Array<number>, } | { "kind": "chapter", id: string, index: number, goal: string | null, } | { "kind": "review", tutorial: TutorialRef, } | { "kind": "suggest", role?: string, };

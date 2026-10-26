@@ -171,7 +171,7 @@ interface AcademyState {
   prepareChapters: (indices: number[]) => Promise<void>;
   /** Estimates writing one chapter again, or a chapter for a missing topic (`goal`). */
   prepareChapter: (tutorialId: string, index: number, goal?: string) => Promise<void>;
-  /** Estimates "Suggest more subjects" (spends nothing). */
+  /** Estimates "Find subjects for <the role>" (spends nothing). */
   prepareSuggest: () => Promise<void>;
   /** Estimates "Check with the AI" of a tutorial (spends nothing). */
   prepareReview: (ref: TutorialRef) => Promise<void>;
@@ -277,6 +277,9 @@ export const useAcademy = create<AcademyState>()((set, get) => {
     /** Saves of accepted chapters still in flight (the next one waits for the previous). */
     saving: Promise<void>;
   } | null = null;
+
+  /** Listings of the library asked so far: only the last one's answer is kept. */
+  let libraryRequests = 0;
 
   const notifyError = (what: string, err: unknown) => {
     useToasts.getState().notify('error', `${what}: ${errorMessage(err)}`);
@@ -493,10 +496,14 @@ export const useAcademy = create<AcademyState>()((set, get) => {
     },
 
     async refreshLibrary() {
+      // The latest listing wins: an older one answering late (before the graph was ready, so
+      // without the shared tutorials) must not overwrite it.
+      const asked = ++libraryRequests;
       try {
-        set({ library: await backend.listTutorials() });
+        const library = await backend.listTutorials();
+        if (asked === libraryRequests) set({ library });
       } catch {
-        set({ library: [] });
+        if (asked === libraryRequests) set({ library: [] });
       }
     },
 
@@ -595,7 +602,14 @@ export const useAcademy = create<AcademyState>()((set, get) => {
     },
 
     async prepareSuggest() {
-      await prepare('suggest', 'subjectSuggestion', { kind: 'suggest' }, 'Suggest more subjects');
+      // For the role of the wizard's first step (a developer when none was chosen).
+      const role = get().setup.role.trim();
+      await prepare(
+        'suggest',
+        'subjectSuggestion',
+        role ? { kind: 'suggest', role } : { kind: 'suggest' },
+        role ? `Find subjects for ${/^[aeiou]/i.test(role) ? 'an' : 'a'} ${role}` : 'Find subjects',
+      );
     },
 
     async prepareReview(ref) {

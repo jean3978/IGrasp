@@ -3,8 +3,10 @@
 // first ("For a level designer") and which wait behind "More subjects" because they are about
 // what that craft never touches (the dependency list for an artist). Developers, and roles that
 // read as no family, see every card as the profile proposed them. Suggestions are never hidden.
+// The AI's suggestions are written for one role (`forRole`): `suggestedFor` keeps this role's.
 
 import type { RoleFamily, TutorialSubject } from '../../ipc/types';
+import { roleFamily } from '../quiz/quizRoles';
 
 interface Fit {
   /** Shown first, in this order. `*` matches one id segment: `domain:*:ui`. */
@@ -109,6 +111,22 @@ const FITS: Partial<Record<RoleFamily, Fit>> = {
     hide: [...CODE_FAMILIES, ...BACKEND_DOMAINS],
   },
 };
+
+/**
+ * The suggested cards written for this role: the same role (whatever its case), or another of
+ * the same family (a Level builder's suggestions serve a Level designer). Suggestions made before
+ * roles were for developers. A role of no family only matches itself.
+ */
+export function suggestedFor(cards: TutorialSubject[], role: string): TutorialSubject[] {
+  const mine = role.trim().toLowerCase();
+  const family = roleFamily(role);
+  return cards.filter((c) => {
+    if (c.kind !== 'suggested') return false;
+    const theirs = c.forRole ?? 'Developer';
+    if (theirs.trim().toLowerCase() === mine) return true;
+    return family !== 'general' && roleFamily(theirs) === family;
+  });
+}
 
 /** Whether an id matches a pattern whose `*` stands for one segment. */
 function matches(pattern: string, id: string): boolean {

@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { TutorialSubject } from '../../ipc/types';
-import { rankTutorialSubjects } from './tutorialRoles';
+import { rankTutorialSubjects, suggestedFor } from './tutorialRoles';
 
 const card = (id: string, kind: TutorialSubject['kind'] = 'universal'): TutorialSubject => ({
   id,
@@ -55,5 +55,33 @@ describe('rankTutorialSubjects', () => {
     const art = rankTutorialSubjects(CARDS, 'art');
     expect(ids(art.more)).toContain('domain:web:api');
     expect(ids([...art.forRole, ...art.rest])).toContain('suggested:1');
+  });
+});
+
+describe('suggestedFor', () => {
+  const forRole = (id: string, role?: string): TutorialSubject => ({
+    ...card(id, 'suggested'),
+    ...(role ? { forRole: role } : {}),
+  });
+  const SUGGESTED = [
+    forRole('suggested:old'),
+    forRole('suggested:level', 'Level designer'),
+    forRole('suggested:builder', 'Level builder'),
+    forRole('suggested:artist', 'Artist'),
+    forRole('suggested:ops', 'Head of fun'),
+    card('family:glossary'),
+  ];
+
+  it('keeps the suggestions of the role and of its family, never the local cards', () => {
+    expect(ids(suggestedFor(SUGGESTED, 'level designer'))).toEqual([
+      'suggested:level',
+      'suggested:builder',
+    ]);
+    expect(ids(suggestedFor(SUGGESTED, 'Artist'))).toEqual(['suggested:artist']);
+  });
+
+  it('reads suggestions made before roles as a developer’s, and a role of no family exactly', () => {
+    expect(ids(suggestedFor(SUGGESTED, 'Backend developer'))).toEqual(['suggested:old']);
+    expect(ids(suggestedFor(SUGGESTED, 'Head of fun'))).toEqual(['suggested:ops']);
   });
 });

@@ -106,11 +106,18 @@ pub fn compose_operation(
                 calls,
             })
         }
-        (AiUserAction::SubjectSuggestion, TutorialRequest::Suggest) => {
+        (AiUserAction::SubjectSuggestion, TutorialRequest::Suggest { role }) => {
             let offered = learning::tutorial_subjects(ws, appdata, names)?.cards;
             let (profile, walk) = learning::corrected_profile(ws, appdata, false)?;
-            let composed =
-                compose_suggest(ws.guard.root(), &profile, &walk, names, &offered, model)?;
+            let composed = compose_suggest(
+                ws.guard.root(),
+                &profile,
+                &walk,
+                names,
+                &offered,
+                role.as_deref(),
+                model,
+            )?;
             Ok(TutorialOperation {
                 kind: cost::SUGGEST,
                 length: Length::Standard,

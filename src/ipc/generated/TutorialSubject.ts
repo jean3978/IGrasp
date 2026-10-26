@@ -35,4 +35,9 @@ picks: Array<SubjectPick>,
 /**
  * The domain this card teaches, pre-filling "I'm new to…" when chosen.
  */
-domain: string | null, };
+domain: string | null, 
+/**
+ * The role a suggested card was written for ("Level designer"); absent on the local cards
+ * and on suggestions made before roles (for developers).
+ */
+forRole?: string, };

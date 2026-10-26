@@ -10,13 +10,13 @@ import {
   CircleCheck,
   CircleDashed,
   Download,
-  FolderGit2,
   GraduationCap,
   Info,
   ListChecks,
   Lock,
   Share2,
   Trash2,
+  Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Popover, Tooltip } from 'radix-ui';
@@ -110,7 +110,10 @@ function BoardRow({ t }: { t: TutorialSummary }) {
         <span className="academy-row-sub">
           {t.role ?? 'Developer'} · {t.subject}
         </span>
-        <ProgressRing t={t} />
+        <span className="academy-row-icon">
+          <ProgressRing t={t} />
+          <SharingBadge t={t} />
+        </span>
         <span className="academy-row-marks">
           {warn && (
             <Hint text={`Needs attention: ${warn}`}>
@@ -128,9 +131,13 @@ function BoardRow({ t }: { t: TutorialSummary }) {
       <span className="academy-row-actions">
         <Popover.Root>
           <Popover.Trigger asChild>
-            <IconButton label={`Details of ${t.title}`}>
-              <Info aria-hidden />
-            </IconButton>
+            <button
+              type="button"
+              className="academy-details-button"
+              aria-label={`Details of ${t.title}`}
+            >
+              <Info aria-hidden /> Details
+            </button>
           </Popover.Trigger>
           <Popover.Portal>
             <Popover.Content
@@ -220,6 +227,28 @@ function Hint({ text, children }: { text: string; children: ReactElement }) {
         </Tooltip.Content>
       </Tooltip.Portal>
     </Tooltip.Root>
+  );
+}
+
+/** Where the tutorial lives, in words: private (the app's data) or shared with the project. */
+const sharingText = (t: TutorialSummary) =>
+  t.reference.type === 'shared'
+    ? `Shared in the project: ${t.reference.relPath}`
+    : t.sharedAs
+      ? `Private, also shared as ${t.sharedAs}`
+      : "Private, in the app's data";
+
+/** A small badge on the progress ring: a lock for a private tutorial, people for a shared one. */
+function SharingBadge({ t }: { t: TutorialSummary }) {
+  const shared = t.reference.type === 'shared' || t.sharedAs !== null;
+  const text = sharingText(t);
+  const Icon = shared ? Users : Lock;
+  return (
+    <Hint text={text}>
+      <span className="academy-sharing-badge" data-shared={shared ? 'true' : undefined}>
+        <Icon role="img" aria-label={text} />
+      </span>
+    </Hint>
   );
 }
 
@@ -363,13 +392,9 @@ function TutorialDetails({ t, warn }: { t: TutorialSummary; warn: string | null 
       </div>
 
       <ul className="academy-details-statuses">
-        {t.reference.type === 'shared' ? (
-          <Status icon={FolderGit2}>{`Shared in the project: ${t.reference.relPath}`}</Status>
-        ) : t.sharedAs ? (
-          <Status icon={Share2}>{`Private, shared as ${t.sharedAs}`}</Status>
-        ) : (
-          <Status icon={Lock}>Private, in the app&apos;s data</Status>
-        )}
+        <Status icon={t.reference.type === 'shared' || t.sharedAs !== null ? Users : Lock}>
+          {sharingText(t)}
+        </Status>
         {warn ? (
           <Status icon={AlertTriangle} tone="warn">
             {warn}

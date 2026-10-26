@@ -319,6 +319,28 @@ describe('mock tutorial generation', () => {
     await expect(
       backend.aiStart('subjectSuggestion', start({ kind: 'outline', input: input() })),
     ).rejects.toMatchObject({ code: 'Ai' });
+    expect(r.subjects.every((s) => s.forRole === undefined)).toBe(true);
+    expect(mock().state.ai.lastRequest?.prompt).toContain('that a developer joining it');
+  });
+
+  it('suggests subjects for the role of the wizard, stamped with it', async () => {
+    const done = new Promise<AiEvent[]>((resolve) => {
+      const events: AiEvent[] = [];
+      void backend.listen('ai://event', (e) => {
+        events.push(e.event);
+        if (e.event.type === 'done') resolve(events);
+      });
+    });
+    await backend.aiStart('subjectSuggestion', start({ kind: 'suggest', role: 'Level designer' }));
+    const r = outputs(await done)[0] as SuggestResult;
+    expect(mock().state.ai.lastRequest?.prompt).toContain(
+      'for a Level designer on this project, deeply tied to their own work',
+    );
+    expect(r.subjects.length).toBeGreaterThan(0);
+    expect(r.subjects.every((s) => s.forRole === 'Level designer')).toBe(true);
+    // Kept with their role.
+    await backend.saveSuggestedSubjects(r.subjects);
+    expect((await backend.listTutorialSubjects()).cards.at(-1)?.forRole).toBe('Level designer');
   });
 
   it('quizzes on a written tutorial, limited to its cited files', async () => {

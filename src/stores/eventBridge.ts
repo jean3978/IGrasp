@@ -15,9 +15,14 @@ import { useToasts } from './toasts';
 import { useTree } from './tree';
 import { useWorkspace } from './workspace';
 
-/** Once the Academy was opened, its library follows the folder (a shared tutorial pulled in). */
+/**
+ * While the Academy is open (or once it was), its library follows the folder: a shared tutorial
+ * pulled in, and the shared tutorials themselves once the graph is ready. The tab's own first
+ * listing may have run before the graph, and its subjects may still be loading.
+ */
 function refreshAcademyLibrary() {
-  if (useAcademy.getState().subjects !== null) void useAcademy.getState().refreshLibrary();
+  const open = useTabs.getState().tabs.some((t) => t.id === ACADEMY_TAB);
+  if (open || useAcademy.getState().subjects !== null) void useAcademy.getState().refreshLibrary();
 }
 
 export async function startEventBridge(): Promise<Unsubscribe> {

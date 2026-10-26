@@ -74,6 +74,11 @@ pub struct TutorialSubject {
     pub picks: Vec<SubjectPick>,
     /// The domain this card teaches, pre-filling "I'm new to…" when chosen.
     pub domain: Option<String>,
+    /// The role a suggested card was written for ("Level designer"); absent on the local cards
+    /// and on suggestions made before roles (for developers).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub for_role: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -877,6 +882,7 @@ impl Cards<'_> {
             material,
             picks,
             domain: None,
+            for_role: None,
         });
     }
 }
@@ -1487,6 +1493,7 @@ pub fn build(profile: &ProjectProfile, corpus: &Corpus, subjects: &[Subject]) ->
                     material,
                     picks: Vec::new(),
                     domain: Some(gap),
+                    for_role: None,
                 },
             ));
         }
@@ -1511,6 +1518,7 @@ pub fn build(profile: &ProjectProfile, corpus: &Corpus, subjects: &[Subject]) ->
                 material: s.material,
                 picks: Vec::new(),
                 domain: Some(gap),
+                for_role: None,
             },
         ));
     }

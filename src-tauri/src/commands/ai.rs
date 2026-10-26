@@ -116,7 +116,7 @@ fn tutorial_estimate(
 ) -> AppResult<AiSizeEstimate> {
     let action = match request {
         TutorialRequest::Review { .. } => AiUserAction::TutorialReview,
-        TutorialRequest::Suggest => AiUserAction::SubjectSuggestion,
+        TutorialRequest::Suggest { .. } => AiUserAction::SubjectSuggestion,
         _ => AiUserAction::TutorialGeneration,
     };
     let op = compose_operation(ws, appdata, names, action, request, None)?;
@@ -611,7 +611,7 @@ mod tests {
             (AiUserAction::TutorialGeneration, None),
             (
                 AiUserAction::TutorialGeneration,
-                Some(TutorialRequest::Suggest),
+                Some(TutorialRequest::Suggest { role: None }),
             ),
         ] {
             assert!(

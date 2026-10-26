@@ -22,6 +22,7 @@ use crate::ai::types::{AiPolicy, AiRequest};
 use crate::error::AppResult;
 use crate::learning::corpus::{Corpus, PathStatus, SourceScope, read_text};
 use crate::learning::quiz::validate::{names_project, words};
+use crate::learning::role::{RoleFamily, family, focus};
 use crate::learning::subjects::Material;
 use crate::profile::ProjectProfile;
 use crate::profile::walk::Walk;
@@ -88,18 +89,47 @@ pub fn suggest_schema() -> Value {
     })
 }
 
-fn suggest_task(name: &str, offered: &[TutorialSubject]) -> String {
+/// Who the subjects are for: developers by default, else a role and what its craft touches here.
+fn suggest_reader(role: Option<&str>) -> String {
+    let Some(r) = role else {
+        return "that a developer joining it would want to learn".to_owned();
+    };
+    let fam = family(r);
+    if fam == RoleFamily::Developer {
+        return format!(
+            "that {} {r} on this project would want to learn",
+            article(r)
+        );
+    }
+    let craft = focus(fam).map_or_else(String::new, |f| format!(" Their craft here is {f}."));
+    format!(
+        "for {} {r} on this project, deeply tied to their own work: what they make, touch, tune or decide in this project, and how it reaches the rest of it.{craft} Every subject must make sense to a {r} reading its title; leave out the code internals they never meet (dependencies, build plumbing, data structures) unless their work depends on them",
+        article(r)
+    )
+}
+
+fn suggest_task(name: &str, offered: &[TutorialSubject], role: Option<&str>) -> String {
     let list: Vec<String> = offered.iter().map(|c| format!("- {}", c.title)).collect();
     format!(
-        "Suggest {MIN_SUGGESTIONS} to {MAX_SUGGESTIONS} more tutorial subjects about {name} that a developer joining it would want to learn, and that the subject cards below do not already offer. Open the files first: each subject follows something this project really does (a flow, a mechanism, a convention, a tricky part), with a title phrased about this project, a one-line blurb naming its files or identifiers, the anchor files it would start from (root-relative paths you opened), and a selfCheck. Never a generic topic (\"Learn Rust\", \"What is REST\").
+        "Suggest {MIN_SUGGESTIONS} to {MAX_SUGGESTIONS} more tutorial subjects about {name} {}, and that the subject cards below do not already offer. Open the files first: each subject follows something this project really does (a flow, a mechanism, a convention, a tricky part), with a title phrased about this project, a one-line blurb naming its files or identifiers, the anchor files it would start from (root-relative paths you opened), and a selfCheck. Never a generic topic (\"Learn Rust\", \"What is REST\").
 Already offered:
 {}",
+        suggest_reader(role),
         if list.is_empty() {
             "(none)".to_owned()
         } else {
             list.join("\n")
         }
     )
+}
+
+/// "an" before a vowel, else "a".
+fn article(word: &str) -> &'static str {
+    if word.starts_with(['A', 'E', 'I', 'O', 'U', 'a', 'e', 'i', 'o', 'u']) {
+        "an"
+    } else {
+        "a"
+    }
 }
 
 /// Composes the suggestion request in the folder of `root`.
@@ -109,8 +139,12 @@ pub fn compose_suggest(
     walk: &Walk,
     agent_names: &[String],
     offered: &[TutorialSubject],
+    role: Option<&str>,
     model: Option<String>,
 ) -> AppResult<Composed<SuggestValidator>> {
+    let role = role
+        .map(|r| r.trim().chars().take(80).collect::<String>())
+        .filter(|r| !r.is_empty());
     let corpus = Corpus::build(root, walk, &SourceScope::WholeProject, agent_names);
     let mut anchors: Vec<String> = Vec::new();
     anchors.extend(profile.docs.readme.clone());
@@ -122,6 +156,7 @@ pub fn compose_suggest(
     let map = corpus.map();
     let input = TutorialInput {
         subject: "more subjects to learn".to_owned(),
+        role: role.clone(),
         ..TutorialInput::default()
     };
     let prompt = preamble(
@@ -133,7 +168,7 @@ pub fn compose_suggest(
             agent_files: &agent_text,
             focus: None,
         },
-        &suggest_task(&profile.name, offered),
+        &suggest_task(&profile.name, offered, role.as_deref()),
     );
     let taken: BTreeSet<String> = offered.iter().map(|c| c.title.to_lowercase()).collect();
     Ok(Composed {
@@ -152,6 +187,7 @@ pub fn compose_suggest(
             project_name: profile.name.clone(),
             modules: profile.modules.iter().map(|m| m.path.clone()).collect(),
             taken,
+            role,
             cache: HashMap::new(),
             best: Vec::new(),
             rejected_total: 0,
@@ -170,6 +206,8 @@ pub struct SuggestValidator {
     modules: Vec<String>,
     /// Titles already offered (lower case).
     taken: BTreeSet<String>,
+    /// The role the subjects are for, stamped on each accepted card.
+    role: Option<String>,
     cache: HashMap<String, Arc<Vec<String>>>,
     best: Vec<TutorialSubject>,
     rejected_total: u32,
@@ -257,6 +295,7 @@ impl SuggestValidator {
                     material: Material::Some,
                     picks: Vec::new(),
                     domain: None,
+                    for_role: self.role.clone(),
                 })
             })();
             match verdict {
@@ -355,6 +394,7 @@ mod tests {
             material: Material::Some,
             picks: vec![],
             domain: None,
+            for_role: None,
         }];
         let mut c = compose_suggest(
             dir.path(),
@@ -363,8 +403,14 @@ mod tests {
             &["CLAUDE.md".to_owned()],
             &offered,
             None,
+            None,
         )
         .unwrap();
+        assert!(
+            c.request
+                .prompt
+                .contains("that a developer joining it would want")
+        );
         assert_eq!(c.request.policy, AiPolicy::ReadOnly);
         assert!(
             c.request
@@ -403,8 +449,57 @@ mod tests {
                 assert_eq!(r.subjects[0].kind, FamilyKind::Suggested);
                 assert_eq!(r.subjects[0].anchors, vec!["src/upload/retry.rs"]);
                 assert_eq!(r.rejected_count, 4);
+                assert_eq!(r.subjects[0].for_role, None);
             }
             other => panic!("{other:?}"),
         }
+    }
+
+    #[test]
+    fn suggestions_for_a_role_are_tied_to_its_craft_and_stamped_with_it() {
+        let dir = tree(&[
+            ("README.md", "# Orbit\n\nOrbit keeps a live index.\n"),
+            (
+                "levels/cave.tscn",
+                "[node name=\"Cave\"]\nspawn_point = Vector2(4, 8)\n",
+            ),
+        ]);
+        let (profile, walk) = build(dir.path(), &[], &AtomicBool::new(false));
+        let mut c = compose_suggest(
+            dir.path(),
+            &profile,
+            &walk,
+            &[],
+            &[],
+            Some("  Level designer "),
+            None,
+        )
+        .unwrap();
+        let prompt = &c.request.prompt;
+        assert!(
+            prompt.contains("for a Level designer on this project, deeply tied to their own work")
+        );
+        // The craft of the level family, and the audience block of the tutorial prompts.
+        assert!(prompt.contains("spawn points"));
+        assert!(prompt.contains("A Level designer on this project"));
+        let out = json!({ "subjects": [
+            { "title": "How Orbit's cave level places its spawn_point", "blurb": "Follows spawn_point in levels/cave.tscn.",
+              "anchors": ["levels/cave.tscn"], "selfCheck": { "projectSpecific": true, "reason": "r" } },
+        ]});
+        let _ = c.validator.check(1, &out);
+        match c.validator.on_exhausted() {
+            Verdict::Accept(v) => {
+                let r: SuggestResult = serde_json::from_value(v).unwrap();
+                assert_eq!(r.subjects[0].for_role.as_deref(), Some("Level designer"));
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_developer_role_keeps_the_developer_task() {
+        let task = suggest_task("Orbit", &[], Some("Backend developer"));
+        assert!(task.contains("that a Backend developer on this project would want to learn"));
+        assert!(!task.contains("deeply tied"));
     }
 }

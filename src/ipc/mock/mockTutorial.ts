@@ -472,6 +472,8 @@ export type { Step };
 export interface MockSuggestComposed {
   ctx: TutorialValidationContext;
   taken: Set<string>;
+  /** The role the subjects are for, stamped on each accepted card. */
+  role: string | null;
   prompt: string;
   inlined: AiInlinedDocument[];
 }
@@ -479,13 +481,23 @@ export interface MockSuggestComposed {
 export function composeMockSuggest(
   deps: MockTutorialDeps,
   offered: TutorialSubject[],
+  role?: string,
 ): MockSuggestComposed {
-  const b = base(deps, normalizedInput({ ...EMPTY_INPUT, subject: 'more subjects to learn' }));
+  const input = normalizedInput({
+    ...EMPTY_INPUT,
+    subject: 'more subjects to learn',
+    role: role ?? null,
+  });
+  const b = base(deps, input);
   const list = offered.map((c) => `- ${c.title}`).join('\n') || '(none)';
+  const reader = input.role
+    ? `for a ${input.role} on this project, deeply tied to their own work`
+    : 'that a developer joining it would want to learn';
   return {
     ctx: b.ctx,
     taken: new Set(offered.map((c) => c.title.toLowerCase())),
-    prompt: `You are Hoot, the teacher of IGrasp's Academy. Suggest 5 to 8 more tutorial subjects about ${deps.profile.name}.\nAlready offered:\n${list}`,
+    role: input.role,
+    prompt: `You are Hoot, the teacher of IGrasp's Academy. Suggest 5 to 8 more tutorial subjects about ${deps.profile.name} ${reader}.\nAlready offered:\n${list}`,
     inlined: inlinedOf(deps, ['README.md', 'docs/architecture.md']),
   };
 }
@@ -556,6 +568,7 @@ export class MockSuggestValidator {
           material: 'some',
           picks: [],
           domain: null,
+          ...(this.c.role ? { forRole: this.c.role } : {}),
         };
       })();
       if (typeof verdict === 'string') rejected.push([title, verdict]);

@@ -65,8 +65,9 @@ export function AcademyTab() {
           {screen === 'tutorial' && open && <TutorialView reference={open} motion={motion} />}
           {screen === 'review' && review && <ReviewScreen review={review} />}
         </div>
-        <AcademyWelcome motion={motion && !reducedMotion} />
       </div>
+      {/* Over the whole tab (not inside the scrolled page), opaque from its first frame. */}
+      <AcademyWelcome motion={motion && !reducedMotion} />
       <WriteConfirmDialog />
       {motion && !reducedMotion && <EffectsCanvas />}
     </>

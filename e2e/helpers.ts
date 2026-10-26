@@ -257,7 +257,7 @@ export async function openAcademy(page: Page): Promise<void> {
   });
   await page.keyboard.press('Control+Alt+a');
   await expect(page.locator('.academy-home')).toBeVisible();
-  // Hoot's welcome plays for about two seconds over the hub, then goes.
+  // Hoot's welcome plays for under four seconds over the tab, then goes.
   await expect(page.locator('.academy-welcome')).toHaveCount(0, { timeout: 5000 });
 }
 

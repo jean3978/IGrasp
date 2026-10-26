@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { backend } from '../../ipc/client';
 import { FIXTURE_ROOT, FIXTURE_SHARED_TUTORIAL } from '../../ipc/mock/fixture';
 import { useAcademy } from '../../stores/academy';
+import { useAiProvider } from '../../stores/aiProvider';
 import { startEventBridge } from '../../stores/eventBridge';
 import { useSettings } from '../../stores/settings';
 import { useTabs } from '../../stores/tabs';
@@ -104,6 +105,76 @@ describe("Hoot's welcome", () => {
   });
 });
 
+describe('subjects found for the role', () => {
+  it('asks for the role, keeps the subjects with it, and shows them in their own section', async () => {
+    await useAiProvider.getState().checkStatus();
+    await act(async () => {
+      await academy().refreshSubjects();
+    });
+    academy().startNew();
+    academy().chooseRole('Level designer');
+    await act(async () => {
+      await academy().prepareSuggest();
+    });
+    expect(academy().pending?.request).toEqual({ kind: 'suggest', role: 'Level designer' });
+    expect(academy().pending?.title).toBe('Find subjects for a Level designer');
+    expect(mock().state.ai.starts).toEqual([]);
+    await act(async () => {
+      await academy().confirmStart();
+    });
+    await waitFor(() => {
+      expect(academy().subjects?.cards.some((c) => c.forRole === 'Level designer')).toBe(true);
+    });
+    expect(mock().state.ai.starts).toEqual(['subjectSuggestion']);
+
+    useAcademy.setState({ screen: 'create', welcome: false });
+    renderTab();
+    const forRole = screen.getByRole('region', {
+      name: 'Subjects for a Level designer, found by Hoot',
+    });
+    const suggested = academy().subjects?.cards.filter((c) => c.kind === 'suggested') ?? [];
+    const first = suggested[0];
+    if (!first) throw new Error('no suggestion');
+    expect(within(forRole).getByRole('button', { name: new RegExp(first.title) })).toBeVisible();
+    expect(
+      within(forRole).getByRole('button', { name: /^Find more subjects for a Level designer/ }),
+    ).toBeInTheDocument();
+    // Not among the ready-made subjects, nor for another role.
+    const ready = screen.getByRole('region', { name: 'Ready-made subjects' });
+    expect(within(ready).queryByRole('button', { name: new RegExp(first.title) })).toBeNull();
+    act(() => {
+      academy().chooseRole('Artist');
+    });
+    expect(screen.queryByRole('button', { name: new RegExp(first.title) })).not.toBeInTheDocument();
+  });
+});
+
+describe('the library', () => {
+  it('takes in the shared tutorials when the graph is ready, while the Academy still loads', async () => {
+    mock().addSharedTutorial();
+    await useWorkspace.getState().openRoot(FIXTURE_ROOT);
+    await waitFor(() => {
+      expect(mock().state.graph).not.toBeNull();
+    });
+    act(() => {
+      useTabs.getState().openSpecial('academy');
+    });
+    // The tab's first listing ran before the graph, and its subjects are not there yet.
+    useAcademy.setState({ welcome: false, library: [], subjects: null });
+    mock().emit('graph://ready', {
+      generation: 1,
+      docs: 1,
+      links: 0,
+      brokenCount: 0,
+      elapsedMs: 1,
+      skipped: 0,
+    });
+    await waitFor(() => {
+      expect(academy().library.map((t) => t.reference.type)).toContain('shared');
+    });
+  });
+});
+
 describe('the hub', () => {
   it('lists the tutorials on the blackboard, and New tutorial walks through the wizard', async () => {
     useAcademy.setState({ welcome: false });
@@ -127,6 +198,10 @@ describe('the hub', () => {
       within(row).getByRole('img', { name: /steps done$|^Graduated$|^Outline only/ }),
     ).toBeInTheDocument();
     expect(row).not.toHaveTextContent('private');
+    // Private or shared, as a badge on the progress ring.
+    expect(within(row).getByRole('img', { name: "Private, in the app's data" })).toHaveClass(
+      'lucide-lock',
+    );
     // Each mark explains itself on hover; hovering the row shows no card.
     await userEvent.hover(within(row).getByRole('img', { name: /^Difficulty \d of 3: / }));
     expect(await screen.findByRole('tooltip')).toHaveTextContent(/^Difficulty \d of 3: /);
@@ -139,7 +214,10 @@ describe('the hub', () => {
     expect(card).toHaveTextContent(/Sources up to date|updated since you read it|outdated/i);
     expect(card).toHaveTextContent(/Verified on|Not verified yet/);
     await userEvent.keyboard('{Escape}');
-    // The actions are compact icon buttons with names.
+    // Details is a labelled pill; the other actions are compact icon buttons with names.
+    expect(within(list).getByRole('button', { name: `Details of ${t.title}` })).toHaveTextContent(
+      'Details',
+    );
     expect(within(list).getByRole('button', { name: `Delete ${t.title}` })).toHaveClass(
       'icon-button',
     );
@@ -165,6 +243,24 @@ describe('the hub', () => {
     expect(academy().setup.role).toBe('Level designer');
     current('Subject');
     expect(screen.getByText(/Choose what to learn as a Level designer/)).toBeInTheDocument();
+    // Three ways, in this order: typed, found by Hoot for the role, ready-made.
+    const ways = screen
+      .getAllByRole('region')
+      .filter((r) => r.classList.contains('academy-way'))
+      .map((r) => r.getAttribute('aria-labelledby'))
+      .map((id) => (id ? document.getElementById(id)?.textContent : null));
+    expect(ways).toEqual([
+      'What do you want to learn?',
+      'Subjects for a Level designer, found by Hoot',
+      'Ready-made subjects',
+    ]);
+    const forRole = screen.getByRole('region', {
+      name: 'Subjects for a Level designer, found by Hoot',
+    });
+    expect(within(forRole).getByText('No subject found for a Level designer yet.')).toBeVisible();
+    expect(
+      within(forRole).getByRole('button', { name: /^Find subjects for a Level designer/ }),
+    ).toBeInTheDocument();
     await userEvent.type(
       screen.getByRole('textbox', { name: 'What do you want to learn?' }),
       'How it starts{Enter}',

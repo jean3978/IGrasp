@@ -242,6 +242,11 @@ pub enum TutorialRequest {
     },
     /// The AI review ("Check with <provider>"): the tutorial against the project as it is now.
     Review { tutorial: TutorialRef },
-    /// "Suggest more subjects".
-    Suggest,
+    /// "Suggest more subjects": for the reader's `role` (the wizard's first step), else for
+    /// developers.
+    Suggest {
+        #[serde(default)]
+        #[ts(optional)]
+        role: Option<String>,
+    },
 }
