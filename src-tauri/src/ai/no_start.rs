@@ -56,7 +56,10 @@ fn write(root: &Path, rel: &str, content: &str) {
 #[test]
 fn no_ai_operation_starts_without_a_user_action() {
     let folder = tempfile::tempdir().unwrap();
-    let root = folder.path();
+    // Canonical like `RootGuard`'s root, so `key_of` matches the commands' app-data key (the
+    // Windows runners' temp folder is an 8.3 short path, `C:\Users\RUNNER~1\…`).
+    let canonical = dunce::canonicalize(folder.path()).unwrap();
+    let root = canonical.as_path();
     write(root, "README.md", "# Demo\n\nSee [guide](docs/guide.md).\n");
     write(
         root,
